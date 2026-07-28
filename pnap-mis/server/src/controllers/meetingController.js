@@ -1,0 +1,332 @@
+const fs = require('fs');
+const asyncHandler = require('express-async-handler');
+const Meeting = require('../models/Meeting');
+const { ok, created, ApiError } = require('../utils/response');
+const { canManageMeetings, canApprove, resolveUnitChain } = require('../utils/unitScope');
+const { inspectPhoto } = require('../utils/photoMetadata');
+const dynamicFormService = require('../services/dynamicFormService');
+const configSnapshotService = require('../services/configSnapshotService');
+const eventHashService = require('../services/eventHashService');
+const policyEngine = require('../services/policyEngine');
+const responsibilityHookService = require('../services/responsibilityHookService');
+
+// Resolve typeCode (preferred) or legacy type field, materialise the
+// snapshot, validate dynamicData. Throws ApiError on any failure.
+// Returns { snapshot, config, typeCode, dynamicData, body }.
+async function resolveEventConfig(d, entity) {
+  const rawCode = (d.typeCode || d.type || '').toString().toUpperCase();
+  if (!rawCode) throw new ApiError(400, 'TYPE_REQUIRED', 'type or typeCode is required');
+
+  const { snapshot, config } = await configSnapshotService.materialise(entity, rawCode);
+
+  // Body applicability — if the type config restricts to one body
+  // and the request asks for the other, reject before persisting.
+  const requestedBody = (d.body === 'COMMITTEE') ? 'COMMITTEE' : 'EXECUTIVE';
+  const appliesTo = config.appliesTo || {};
+  if (requestedBody === 'EXECUTIVE' && appliesTo.executive === false) {
+    throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Executive body`);
+  }
+  if (requestedBody === 'COMMITTEE' && appliesTo.committee === false) {
+    throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Committee body`);
+  }
+
+  // Dynamic-field validation against the snapshot. validate() throws
+  // a 400 with per-field errors if anything is malformed.
+  const dynamicData = dynamicFormService.validate(d.dynamicData || {}, snapshot.resolvedFields);
+
+  return { snapshot, config, typeCode: rawCode, dynamicData, body: requestedBody };
+}
+
+exports.list = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, state, type, from, to, scope, body } = req.query;
+  const filter = {};
+  if (unitLevel && unitId) {
+    if (scope === 'subtree') {
+      // Roll-up: include all meetings under this unit
+      const chain = await resolveUnitChain(unitLevel, unitId);
+      if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
+      if (unitLevel === 'BASIC_UNIT') filter.basicUnitId = chain.basicUnitId;
+      else if (unitLevel === 'AREA') filter.areaId = chain.areaId;
+      else if (unitLevel === 'DISTRICT') filter.districtId = chain.districtId;
+      else if (unitLevel === 'PROVINCE') filter.provinceId = chain.provinceId;
+    } else {
+      filter.unitLevel = unitLevel;
+      filter.unitId = unitId;
+    }
+  }
+  if (state) filter.state = state;
+  if (type) filter.type = type;
+  if (body === 'EXECUTIVE') filter.$or = [{ body: 'EXECUTIVE' }, { body: { $exists: false } }];
+  else if (body === 'COMMITTEE') filter.body = 'COMMITTEE';
+  if (from || to) {
+    filter.startAt = {};
+    if (from) filter.startAt.$gte = new Date(from);
+    if (to) filter.startAt.$lte = new Date(to);
+  }
+
+  const items = await Meeting.find(filter)
+    .sort({ startAt: -1 })
+    .limit(200)
+    .populate('chairpersonId', 'fullName memberId');
+  ok(res, items);
+});
+
+exports.create = asyncHandler(async (req, res) => {
+  if (!canManageMeetings(req.user)) {
+    throw new ApiError(403, 'FORBIDDEN', 'Only Senior Mawin / Admin may create meetings');
+  }
+  const data = req.body;
+  const chain = await resolveUnitChain(data.unitLevel, data.unitId);
+  if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
+
+  // Resolve EventTypeConfig + snapshot, validate dynamic fields,
+  // and confirm the requested body is allowed for this type.
+  const { snapshot, typeCode, dynamicData, body } = await resolveEventConfig(data, 'MEETING');
+
+  const m = await Meeting.create({
+    unitLevel: data.unitLevel,
+    unitId: data.unitId,
+    ...chain,
+    // Persist both the new canonical typeCode and the legacy `type`
+    // mirror so existing reads (exports, performance queries) keep
+    // working without a code change.
+    type: typeCode,
+    typeCode,
+    configSnapshotId: snapshot._id,
+    dynamicData,
+    body,
+    title: data.title,
+    venue: data.venue,
+    startAt: data.startAt,
+    endAt: data.endAt,
+    agenda: data.agenda,
+    chairpersonId: data.chairpersonId,
+    gps: (data.gpsLat && data.gpsLng) ? { lat: data.gpsLat, lng: data.gpsLng } : undefined,
+    state: 'SCHEDULED',
+    createdBy: req.user._id,
+  });
+  created(res, m);
+});
+
+exports.getOne = asyncHandler(async (req, res) => {
+  const m = await Meeting.findById(req.params.id)
+    .populate('chairpersonId', 'fullName memberId')
+    .populate('attendance.memberId', 'fullName memberId')
+    .populate('supervisorMemberId', 'fullName memberId')
+    .populate('studyContributions.memberId', 'fullName memberId');
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  ok(res, m);
+});
+
+// PATCH /meetings/:id — edit before finalize. Most fields are
+// editable until the record is sealed; on FINALIZED nothing here can
+// touch the immutable hash. If the type changes we re-materialise
+// the snapshot so dynamicData is validated against the new field set.
+exports.update = asyncHandler(async (req, res) => {
+  if (!canManageMeetings(req.user)) throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  const m = await Meeting.findById(req.params.id);
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  if (m.state === 'FINALIZED') {
+    throw new ApiError(400, 'INVALID_STATE', 'Finalized meeting is immutable');
+  }
+
+  const newCode = (req.body.typeCode || req.body.type || '').toString().toUpperCase();
+  const typeChanged = newCode && newCode !== (m.typeCode || m.type);
+  const dynamicProvided = req.body.dynamicData !== undefined;
+
+  if (typeChanged || dynamicProvided) {
+    // Resolve the (possibly new) type's snapshot and validate the
+    // resulting dynamicData. If only the dynamic bag changed and the
+    // type didn't, we re-validate against the meeting's existing
+    // type to catch any new required-field violations.
+    const codeForLookup = typeChanged ? newCode : (m.typeCode || m.type);
+    const { snapshot } = await configSnapshotService.materialise('MEETING', codeForLookup);
+    const next = dynamicProvided
+      ? dynamicFormService.validate(req.body.dynamicData, snapshot.resolvedFields)
+      : dynamicFormService.validate(m.dynamicData || {}, snapshot.resolvedFields);
+    m.dynamicData = next;
+    m.configSnapshotId = snapshot._id;
+    if (typeChanged) {
+      m.type = codeForLookup;
+      m.typeCode = codeForLookup;
+    }
+  }
+
+  const editable = [
+    'title', 'venue', 'startAt', 'endAt', 'agenda',
+    'chairpersonId', 'upcomingStrategy', 'notes', 'previousMeetingId',
+  ];
+  for (const k of editable) {
+    if (req.body[k] !== undefined) m[k] = req.body[k];
+  }
+  if (req.body.gpsLat != null && req.body.gpsLng != null) {
+    m.gps = { lat: req.body.gpsLat, lng: req.body.gpsLng };
+  }
+  await m.save();
+  ok(res, m);
+});
+
+// POST /meetings/:id/documents — upload an agenda / previous-report /
+// minutes / other PDF or image attachment. SRS §7.2 + §14.
+exports.uploadDocuments = asyncHandler(async (req, res) => {
+  if (!canManageMeetings(req.user)) throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  const m = await Meeting.findById(req.params.id);
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  if (m.state === 'FINALIZED') throw new ApiError(400, 'INVALID_STATE', 'Finalized meeting is immutable');
+
+  const kind = (req.body.kind || 'OTHER').toUpperCase();
+  for (const f of req.files || []) {
+    m.documents.push({
+      url: `/uploads/${f.filename}`,
+      filename: f.originalname,
+      kind: ['AGENDA', 'PREVIOUS_REPORT', 'MINUTES', 'OTHER'].includes(kind) ? kind : 'OTHER',
+      uploadedAt: new Date(),
+      uploadedBy: req.user._id,
+      sizeBytes: f.size,
+    });
+  }
+  await m.save();
+  ok(res, m);
+});
+
+exports.uploadPhotos = asyncHandler(async (req, res) => {
+  if (!canManageMeetings(req.user)) throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  const m = await Meeting.findById(req.params.id);
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  if (m.state === 'FINALIZED') throw new ApiError(400, 'INVALID_STATE', 'Finalized meeting is immutable');
+
+  // PR F1 — photo policy from snapshot. Defaults to strict (require
+  // EXIF + GPS) when the meeting has no snapshot (e.g. records
+  // created before PR 2 backfill).
+  let policyReqGps = true;
+  let policyReqExif = true;
+  if (m.configSnapshotId) {
+    const snap = await configSnapshotService.getById(m.configSnapshotId);
+    if (snap?.photoPolicy) {
+      policyReqGps = snap.photoPolicy.requireGps !== false;
+      policyReqExif = snap.photoPolicy.requireExif !== false;
+    }
+  }
+
+  const files = req.files || [];
+  const accepted = [];
+  const rejected = [];
+  const existingHashes = new Set((m.photos || []).map((p) => p.sha256).filter(Boolean));
+
+  for (const f of files) {
+    const verdict = await inspectPhoto(f.path, {
+      eventStart: m.startAt,
+      eventGps: m.gps && m.gps.lat != null ? m.gps : undefined,
+      requireGps: policyReqGps,
+      requireExif: policyReqExif,
+    });
+    if (!verdict.ok) {
+      rejected.push({ filename: f.originalname, reason: verdict.reason });
+      try { await fs.promises.unlink(f.path); } catch { /* ignore */ }
+      continue;
+    }
+    if (existingHashes.has(verdict.sha256)) {
+      rejected.push({ filename: f.originalname, reason: 'Duplicate of an already-uploaded photo for this meeting.' });
+      try { await fs.promises.unlink(f.path); } catch { /* ignore */ }
+      continue;
+    }
+    existingHashes.add(verdict.sha256);
+    m.photos.push({
+      url: `/uploads/${f.filename}`,
+      capturedAt: verdict.capturedAt,
+      gps: verdict.gps,
+      sha256: verdict.sha256,
+    });
+    accepted.push(f.originalname);
+  }
+
+  if (accepted.length === 0 && rejected.length > 0) {
+    throw new ApiError(400, 'PHOTO_REJECTED', `All photos rejected. ${rejected.map((r) => `${r.filename}: ${r.reason}`).join(' | ')}`);
+  }
+
+  await m.save();
+  ok(res, { meeting: m, accepted, rejected });
+});
+
+exports.finalize = asyncHandler(async (req, res) => {
+  if (!canManageMeetings(req.user) && !canApprove(req.user)) {
+    throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  }
+  const m = await Meeting.findById(req.params.id);
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  if (m.state === 'FINALIZED') throw new ApiError(400, 'INVALID_STATE', 'Already finalized');
+
+  // Resolve this meeting's snapshot so finalize honours the type's
+  // photo policy AND the hash incorporates the dynamicData snapshot
+  // ordering. Falls back to the legacy "≥1 photo" rule if no snapshot
+  // is wired (e.g. records that pre-date PR 2 backfill).
+  let snapshot = null;
+  if (m.configSnapshotId) {
+    snapshot = await configSnapshotService.getById(m.configSnapshotId);
+  }
+  const policy = snapshot?.photoPolicy || {};
+  const wf = snapshot?.workflow || {};
+  // Photos gate finalize only when BOTH switches agree: the photo
+  // policy says photos are required AND the workflow hasn't opted
+  // out of the finalize gate. Previously photoPolicy.required was
+  // ignored here (a dead toggle for meetings) — unticking it in the
+  // editor changed nothing. Legacy snapshots (no photoPolicy) keep
+  // the historical default of required.
+  const requiresPhotos = policy.required !== false          // photo policy master switch
+    && wf.finalizeRequiresPhotos !== false;                 // workflow finalize gate
+  const minCount = Math.max(0, parseInt(policy.minCount, 10) || 0);
+  const photoCount = (m.photos || []).length;
+
+  if (requiresPhotos) {
+    const required = Math.max(minCount, 1);
+    if (photoCount < required) {
+      throw new ApiError(
+        400,
+        'PHOTO_REQUIRED',
+        `At least ${required} photo${required === 1 ? '' : 's'} required to finalize this meeting`,
+      );
+    }
+  } else if (minCount > 0 && photoCount < minCount) {
+    throw new ApiError(400, 'PHOTO_REQUIRED', `At least ${minCount} photos required to finalize this meeting`);
+  }
+
+  Object.assign(m, req.body);
+
+  // PR U3 — quorum / attendance enforcement. Pulls the merged
+  // policy for this unit (GLOBAL → TIER → UNIT) and asserts that
+  // attendance meets the configured thresholds. The default seeded
+  // GLOBAL policy uses quorumMin=0, so this is a no-op until admin
+  // tightens it.
+  const unitPolicy = await policyEngine.resolveFor(m.unitLevel, m.unitId);
+  policyEngine.assertMeetingQuorum(m, m.attendance, unitPolicy);
+
+  m.state = 'FINALIZED';
+  m.finalizedAt = new Date();
+
+  // MTG-007: tamper-evident hash of the finalized record. Single
+  // canonical implementation lives in eventHashService — never hash
+  // inline. Captures dynamicData in snapshot field order so the
+  // hash can be re-verified later even if the live config drifts.
+  m.finalizedHash = await eventHashService.compute('MEETING', m, snapshot);
+  await m.save();
+
+  // PR U5 — fire-and-forget responsibility hook. Walks active
+  // ResponsibilityTemplate rows for MEETING_FINALIZED, evaluates
+  // their conditions, and creates Responsibility records keyed
+  // idempotently to (templateId, meeting._id). Errors swallowed so
+  // a misfiring template can never break finalize.
+  responsibilityHookService.onMeetingFinalized(m, req.user).catch(() => {});
+
+  ok(res, m);
+});
+
+exports.cancel = asyncHandler(async (req, res) => {
+  if (!canManageMeetings(req.user)) throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  const m = await Meeting.findById(req.params.id);
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  if (m.state === 'FINALIZED') throw new ApiError(400, 'INVALID_STATE', 'Cannot cancel finalized meeting');
+  m.state = 'CANCELLED';
+  m.notes = (m.notes || '') + `\n[CANCELLED] ${req.body.reason || ''}`;
+  await m.save();
+  ok(res, m);
+});

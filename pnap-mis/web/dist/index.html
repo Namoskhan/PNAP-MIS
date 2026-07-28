@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PNAP-MIS</title>
+    <!-- Inter — the UI's primary typeface. styles.css already falls
+         back to system-ui if this fails to load (offline, blocked). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <!--
+      Pre-JS fallback CSS variables. The full styles.css imports get
+      injected by Vite when main.jsx runs; before that, this inline
+      block keeps the page looking like PKNAP if the JS bundle is
+      delayed (slow network, slow JS parse). BrandingProvider then
+      overwrites these with whatever the SystemSettings document has
+      configured. Hand-curated to PKNAP_DEFAULT — keep in sync with
+      server/src/utils/themePresets.js → PKNAP_DEFAULT_LIGHT.
+    -->
+    <style>
+      :root {
+        --primary: #1e40af;
+        --primary-dark: #1e3a8a;
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --text: #0f172a;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --border-strong: #cbd5e1;
+        --danger: #dc2626;
+        --warning: #d97706;
+        --success: #059669;
+        --info: #0284c7;
+        --font-family: Inter, system-ui, sans-serif;
+        --font-size-base: 14px;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-family);
+        font-size: var(--font-size-base);
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-C0m88MF2.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-5CpHB9DC.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
