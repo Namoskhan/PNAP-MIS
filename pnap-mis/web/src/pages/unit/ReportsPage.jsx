@@ -53,6 +53,9 @@ export default function ReportsPage() {
     else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
     else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
     else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+    // Central has no unit key on Member; scope:'all' is the explicit
+    // opt-in the members endpoint requires when no unit filter is sent.
+    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [ctx]);
 

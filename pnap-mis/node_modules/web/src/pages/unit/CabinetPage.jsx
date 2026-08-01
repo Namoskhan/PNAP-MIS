@@ -213,6 +213,11 @@ export default function CabinetPage() {
     else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
     else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
     else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+    // Central has no unit key of its own on Member — every member is
+    // eligible for a Central seat (Chairman, Co-Chairman, Sr./Vice
+    // Chairman, First Secretary). scope:'all' is the explicit opt-in
+    // the members endpoint requires when no unit filter is sent.
+    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
     api.get('/members', { params })
       .then((r) => setMembers(r.data.data))
       .catch((e) => setErr(errorMessage(e)));

@@ -96,6 +96,10 @@ export default function CommitteePage() {
     if (resolved.unitLevel === 'AREA') params.areaId = resolved.unitId;
     if (resolved.unitLevel === 'DISTRICT') params.districtId = resolved.unitId;
     if (resolved.unitLevel === 'PROVINCE') params.provinceId = resolved.unitId;
+    // Central (and Basic Unit, which never had a branch here either)
+    // send no unit key — scope:'all' is the explicit opt-in the
+    // members endpoint requires when no unit filter is present.
+    if (resolved.unitLevel === 'CENTRAL' || resolved.unitLevel === 'BASIC_UNIT') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [resolved]);
 
