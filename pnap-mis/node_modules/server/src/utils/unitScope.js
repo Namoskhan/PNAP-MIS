@@ -167,6 +167,53 @@ function memberWithinAreaAdminScope(user, member) {
   return true;
 }
 
+// The caller's own place in the hierarchy. User.scope carries the
+// whole chain for member-provisioned logins; territorial admins get
+// only the keys at/above their tier, so a partial scope is widened by
+// resolving the unit it names. Falls back to the linked Member record
+// for accounts with no scope at all.
+async function resolveUserChain(user) {
+  const s = user?.scope || {};
+  if (s.basicUnitId) return (await resolveUnitChain('BASIC_UNIT', s.basicUnitId)) || {};
+  if (s.areaId) return (await resolveUnitChain('AREA', s.areaId)) || {};
+  if (s.districtId) return (await resolveUnitChain('DISTRICT', s.districtId)) || {};
+  if (s.provinceId) return { provinceId: s.provinceId };
+  if (user?.memberId) {
+    const Member = require('../models/Member');
+    const m = await Member.findById(user.memberId)
+      .select('basicUnitId areaId districtId provinceId').lean();
+    if (m) return m;
+  }
+  return {};
+}
+
+// Read gate for cabinet / role-assignment data on a given unit.
+// Two directions are allowed:
+//   • downward — a territorial admin reads anything in their subtree;
+//   • upward + own — anyone reads their own unit's cabinet and the
+//     cabinets above it, since those are the bodies that appoint and
+//     supervise them. Central is above everyone.
+// A sibling unit (another Area's cabinet, say) matches neither and is
+// refused.
+async function canReadUnitRoles(user, unitLevel, unitId) {
+  if (userHasRole(user, 'SUPER_ADMIN')) return true;
+  const target = await resolveUnitChain(unitLevel, unitId);
+  if (!target) return false;
+  const same = (a, b) => !!a && !!b && String(a) === String(b);
+
+  if (user?.roles?.includes('PROVINCE_ADMIN') && same(target.provinceId, user.scope?.provinceId)) return true;
+  if (user?.roles?.includes('DISTRICT_ADMIN') && same(target.districtId, user.scope?.districtId)) return true;
+  if (user?.roles?.includes('AREA_ADMIN') && same(target.areaId, user.scope?.areaId)) return true;
+
+  if (unitLevel === 'CENTRAL') return true;
+  const mine = await resolveUserChain(user);
+  if (unitLevel === 'PROVINCE') return same(unitId, mine.provinceId);
+  if (unitLevel === 'DISTRICT') return same(unitId, mine.districtId);
+  if (unitLevel === 'AREA') return same(unitId, mine.areaId);
+  if (unitLevel === 'BASIC_UNIT') return same(unitId, mine.basicUnitId);
+  return false;
+}
+
 // SRS §3.1 — Elaqayi / Zilla / Sobayi / Qomi committees include
 // "Permanent Members" appointed by the level's Senior Mawin Secretary
 // (or higher leadership). This gate authorizes the nominate / revoke
@@ -218,6 +265,8 @@ module.exports = {
   canManagePermanentMembers,
   unitWithinAreaAdminScope,
   memberWithinAreaAdminScope,
+  resolveUserChain,
+  canReadUnitRoles,
   userHasRole,
   ADMIN_ROLES,
   HIGHER_ADMIN_ROLES,

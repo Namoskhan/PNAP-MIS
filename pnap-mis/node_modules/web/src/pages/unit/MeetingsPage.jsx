@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
-import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, roleLabel } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
@@ -90,6 +90,13 @@ export default function MeetingsPage() {
   const [photosFor, setPhotosFor] = useState(null);
   const [gpsHint, setGpsHint] = useState('');
   const [creating, setCreating] = useState(false);
+  // Supervisor candidates are a different population from `members`
+  // (office-holders ABOVE this meeting's unit, not the local roster),
+  // so they live in their own state and load only when the finalize
+  // dialog actually asks for them.
+  const [supervisorCandidates, setSupervisorCandidates] = useState([]);
+  const [supervisorsLoading, setSupervisorsLoading] = useState(false);
+  const supervisorsForRef = useRef(null);
 
   const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
 
@@ -132,11 +139,18 @@ export default function MeetingsPage() {
 
   useEffect(() => {
     if (!ctx) return;
+    // Local roster — feeds the attendance table and the chairperson
+    // picker. CENTRAL has no unit key of its own on Member, so it asks
+    // for the unrestricted roster explicitly; the server honours that
+    // only for Super Admin and clamps everyone else to their scope.
+    // Without this branch the request carried no filter at all and
+    // came back with every member in the system.
     const params = { status: 'ACTIVE', limit: 500 };
     if (ctx.unitLevel === 'BASIC_UNIT') params.basicUnitId = ctx.unitId;
     else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
     else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
     else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [ctx]);
 
@@ -227,6 +241,31 @@ export default function MeetingsPage() {
       toast.dismiss(pending);
       toast.error(errorMessage(e), { title: 'Photo upload failed', duration: 9000 });
     }
+  }
+
+  // Lazy — the finalize dialog calls this the first time "Supervisor
+  // attended" is ticked, so opening the dialog to record attendance
+  // costs nothing. Cached per meeting; cleared when the dialog closes.
+  async function loadSupervisorCandidates(meetingId) {
+    if (supervisorsForRef.current === meetingId) return;
+    supervisorsForRef.current = meetingId;
+    setSupervisorsLoading(true);
+    try {
+      const r = await api.get(`/meetings/${meetingId}/supervisor-candidates`);
+      setSupervisorCandidates(r.data.data);
+    } catch (e) {
+      supervisorsForRef.current = null;
+      setSupervisorCandidates([]);
+      toast.error(errorMessage(e), { title: 'Could not load supervisors', duration: 7000 });
+    } finally {
+      setSupervisorsLoading(false);
+    }
+  }
+
+  function closeFinalize() {
+    setFinalizing(null);
+    supervisorsForRef.current = null;
+    setSupervisorCandidates([]);
   }
 
   async function cancelMeeting(m) {
@@ -467,8 +506,11 @@ export default function MeetingsPage() {
         <FinalizeDialog
           meeting={finalizing}
           members={members}
-          onClose={() => setFinalizing(null)}
-          onDone={() => { setFinalizing(null); reload(); }}
+          supervisorCandidates={supervisorCandidates}
+          supervisorsLoading={supervisorsLoading}
+          onNeedSupervisors={() => loadSupervisorCandidates(finalizing._id)}
+          onClose={closeFinalize}
+          onDone={() => { closeFinalize(); reload(); }}
         />
       )}
       {editing && (
@@ -496,12 +538,16 @@ export default function MeetingsPage() {
   );
 }
 
-function FinalizeDialog({ meeting, members, onClose, onDone }) {
+function FinalizeDialog({
+  meeting, members, supervisorCandidates, supervisorsLoading, onNeedSupervisors, onClose, onDone,
+}) {
+  const { user } = useAuth();
   const [previouswork, setPreviouswork] = useState('');
   const [upcomingStrategy, setUpcomingStrategy] = useState('');
   const [notes, setNotes] = useState('');
   const [supervisorAttended, setSupervisorAttended] = useState(false);
   const [supervisorMemberId, setSupervisorMemberId] = useState('');
+  const [supervisorQuery, setSupervisorQuery] = useState('');
   const [attendance, setAttendance] = useState(() => members.map((m) => ({
     memberId: m._id, name: m.fullName, status: 'ABSENT',
   })));
@@ -509,6 +555,34 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const isStudy = meeting.type === 'STC';
+
+  // A Central meeting has no level above it, so nobody is eligible to
+  // supervise it — the field is suppressed rather than shown empty.
+  const supervisionApplies = meeting.unitLevel !== 'CENTRAL';
+
+  function roleText(s) {
+    return (s.roles || []).map((r) => r.customName || roleLabel(user, r.code)).join(', ');
+  }
+
+  const selectedSupervisor = supervisorCandidates.find((s) => s._id === supervisorMemberId) || null;
+
+  // Candidates span several tiers now, so the list can be long on a
+  // phone. Filter across every visible token — name, role, unit and
+  // member code — so any of them narrows it.
+  const filteredSupervisors = useMemo(() => {
+    const q = supervisorQuery.trim().toLowerCase();
+    if (!q) return supervisorCandidates;
+    return supervisorCandidates.filter((s) => [
+      s.fullName, s.unitName, s.memberCode, LEVEL_LABELS[s.unitLevel], roleText(s),
+    ].filter(Boolean).join(' ').toLowerCase().includes(q));
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [supervisorQuery, supervisorCandidates, user]);
+
+  function toggleSupervisorAttended(checked) {
+    setSupervisorAttended(checked);
+    if (checked) onNeedSupervisors();
+    else { setSupervisorMemberId(''); setSupervisorQuery(''); }
+  }
 
   function setStatus(memberId, status) {
     setAttendance((rows) => rows.map((r) => r.memberId === memberId ? { ...r, status } : r));
@@ -571,19 +645,83 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
             <label>Activity notes</label>
             <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
-          <div className="field">
-            <label>
-              <input type="checkbox" checked={supervisorAttended} onChange={(e) => setSupervisorAttended(e.target.checked)} />
-              {' '}Supervisor attended
-            </label>
+          <div className="field full">
+            {supervisionApplies ? (
+              <label>
+                <input type="checkbox" checked={supervisorAttended} onChange={(e) => toggleSupervisorAttended(e.target.checked)} />
+                {' '}Supervisor attended
+              </label>
+            ) : (
+              <div className="muted" style={{ fontSize: 12 }}>
+                <strong>Supervisor attendance</strong> does not apply to a Central meeting —
+                there is no level above it to send a supervisor.
+              </div>
+            )}
           </div>
-          {supervisorAttended && (
-            <div className="field">
+          {supervisionApplies && supervisorAttended && (
+            <div className="field full">
               <label>Supervisor</label>
-              <select value={supervisorMemberId} onChange={(e) => setSupervisorMemberId(e.target.value)}>
-                <option value="">— pick supervisor —</option>
-                {members.map((m) => <option key={m._id} value={m._id}>{m.fullName}</option>)}
-              </select>
+              {selectedSupervisor ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div>
+                    <strong>{selectedSupervisor.fullName}</strong>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      {[roleText(selectedSupervisor),
+                        `${selectedSupervisor.unitName} (${LEVEL_LABELS[selectedSupervisor.unitLevel] || selectedSupervisor.unitLevel})`,
+                      ].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => { setSupervisorMemberId(''); setSupervisorQuery(''); }}
+                  >Change</button>
+                </div>
+              ) : supervisorsLoading ? (
+                <div className="muted" style={{ fontSize: 12 }}>Loading eligible supervisors…</div>
+              ) : supervisorCandidates.length === 0 ? (
+                <div className="muted" style={{ fontSize: 12 }}>
+                  No active office-holders were found above this unit, so there is nobody
+                  eligible to record as supervisor.
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="search"
+                    placeholder="Search by name, role or unit…"
+                    value={supervisorQuery}
+                    onChange={(e) => setSupervisorQuery(e.target.value)}
+                  />
+                  <div style={{
+                    maxHeight: 200, overflowY: 'auto', marginTop: 6,
+                    border: '1px solid var(--border)', borderRadius: 6,
+                  }}>
+                    {filteredSupervisors.length === 0 && (
+                      <div className="muted" style={{ fontSize: 12, padding: 8 }}>
+                        No supervisor matches “{supervisorQuery}”.
+                      </div>
+                    )}
+                    {filteredSupervisors.map((s) => (
+                      <button
+                        key={s._id}
+                        type="button"
+                        onClick={() => setSupervisorMemberId(s._id)}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '6px 8px', border: 'none', background: 'none',
+                          cursor: 'pointer', borderBottom: '1px solid var(--border)',
+                        }}
+                      >
+                        {s.fullName}
+                        <div className="muted" style={{ fontSize: 11 }}>
+                          {[roleText(s), `${s.unitName} (${LEVEL_LABELS[s.unitLevel] || s.unitLevel})`]
+                            .filter(Boolean).join(' · ')}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -45,7 +45,10 @@ export default function MemberListPage() {
     setLoading(true);
     try {
       const res = await api.get('/members', {
-        params: { q, status, page, limit: 20, ...scopeParams },
+        // scope:'all' is the explicit opt-in for the browse-everything
+        // case (Super Admin with no scopeParams and no search term).
+        // Ignored server-side for anyone who has a territorial scope.
+        params: { q, status, page, limit: 20, scope: 'all', ...scopeParams },
       });
       setItems(res.data.data);
       setMeta(res.data.meta);

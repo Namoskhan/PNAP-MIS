@@ -9,6 +9,7 @@ const configSnapshotService = require('../services/configSnapshotService');
 const eventHashService = require('../services/eventHashService');
 const policyEngine = require('../services/policyEngine');
 const responsibilityHookService = require('../services/responsibilityHookService');
+const supervisorService = require('../services/supervisorService');
 
 // Resolve typeCode (preferred) or legacy type field, materialise the
 // snapshot, validate dynamicData. Throws ApiError on any failure.
@@ -272,6 +273,24 @@ exports.uploadPhotos = asyncHandler(async (req, res) => {
   ok(res, { meeting: m, accepted, rejected });
 });
 
+// GET /meetings/:id/supervisor-candidates — the office-holders of
+// this meeting's ancestor units (SRS §12). Derived server-side from
+// the stored record so the client never names the units itself and
+// cannot widen its own scope. Empty at CENTRAL, which has no level
+// above it.
+exports.supervisorCandidates = asyncHandler(async (req, res) => {
+  // Same gate as finalize — this list only exists to fill that form,
+  // and without the check it would be a way around the scope rules
+  // now enforced on /roles.
+  if (!canManageMeetings(req.user) && !canApprove(req.user)) {
+    throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  }
+  const m = await Meeting.findById(req.params.id)
+    .select('unitLevel unitId areaId districtId provinceId').lean();
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  ok(res, await supervisorService.listCandidates(m));
+});
+
 exports.finalize = asyncHandler(async (req, res) => {
   if (!canManageMeetings(req.user) && !canApprove(req.user)) {
     throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
@@ -312,6 +331,20 @@ exports.finalize = asyncHandler(async (req, res) => {
     }
   } else if (minCount > 0 && photoCount < minCount) {
     throw new ApiError(400, 'PHOTO_REQUIRED', `At least ${minCount} photos required to finalize this meeting`);
+  }
+
+  // SRS §12 — the supervisor must be an office-holder of a unit ABOVE
+  // the one that met. Re-derived here rather than trusting whatever
+  // the picker offered, since supervisorAttended feeds the compliance
+  // report and a wrong entry silently inflates it.
+  if (req.body.supervisorMemberId) {
+    if (!(await supervisorService.isEligible(m, req.body.supervisorMemberId))) {
+      throw new ApiError(
+        400,
+        'INVALID_SUPERVISOR',
+        'The supervisor must hold an active role at a unit above this meeting\'s own unit.',
+      );
+    }
   }
 
   Object.assign(m, req.body);

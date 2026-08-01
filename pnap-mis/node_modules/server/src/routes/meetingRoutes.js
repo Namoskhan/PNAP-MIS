@@ -14,6 +14,7 @@ router.get('/:id', ctrl.getOne);
 router.patch('/:id', validate(meetingUpdateSchema), ctrl.update);
 router.post('/:id/photos', upload.array('photos', 10), ctrl.uploadPhotos);
 router.post('/:id/documents', uploadAny.array('documents', 5), ctrl.uploadDocuments);
+router.get('/:id/supervisor-candidates', ctrl.supervisorCandidates);
 router.post('/:id/finalize', validate(meetingFinalizeSchema), ctrl.finalize);
 router.post('/:id/cancel', ctrl.cancel);
 

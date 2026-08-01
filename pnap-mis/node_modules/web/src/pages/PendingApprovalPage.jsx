@@ -18,7 +18,10 @@ export default function PendingApprovalPage() {
 
   async function load() {
     try {
-      const params = { status: 'PENDING_APPROVAL', limit: 50 };
+      // scope:'all' covers the unscoped-admin case — the queue is
+      // meant to be cross-unit for higher admins. Anyone with a
+      // territorial scope is clamped to it server-side anyway.
+      const params = { status: 'PENDING_APPROVAL', limit: 50, scope: 'all' };
       if (isAreaAdminScoped && user?.scope?.areaId) {
         params.areaId = user.scope.areaId;
       }

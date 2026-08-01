@@ -91,7 +91,7 @@ exports.create = asyncHandler(async (req, res) => {
 });
 
 exports.list = asyncHandler(async (req, res) => {
-  const { page, limit, q, status, basicUnitId, areaId, districtId, provinceId } = req.query;
+  const { page, limit, q, status, basicUnitId, areaId, districtId, provinceId, scope } = req.query;
 
   const filter = {};
   if (status) filter.status = status;
@@ -104,12 +104,36 @@ exports.list = asyncHandler(async (req, res) => {
   // role) can only ever see members in their own area, regardless
   // of what the request asked for. Same for District / Province
   // scoped admins. Higher admins (Super / Central) see everything.
+  //
+  // basicUnitId is the last resort rather than the first: every
+  // member-provisioned login carries its whole chain in scope (see
+  // authController), so clamping on the narrowest key would pin a
+  // Province office-holder to their home Basic Unit. The branch
+  // exists so an account provisioned with ONLY a basic unit — which
+  // previously fell through with no clamp at all — stays inside it.
   const u = req.user;
-  const isHigher = ['SUPER_ADMIN'].some((r) => u.roles?.includes(r));
-  if (!isHigher) {
-    if (u.scope?.areaId) filter.areaId = u.scope.areaId;
-    else if (u.scope?.districtId) filter.districtId = u.scope.districtId;
-    else if (u.scope?.provinceId) filter.provinceId = u.scope.provinceId;
+  const isSuper = !!u.roles?.includes('SUPER_ADMIN');
+  let clamped = false;
+  if (!isSuper) {
+    if (u.scope?.areaId) { filter.areaId = u.scope.areaId; clamped = true; }
+    else if (u.scope?.districtId) { filter.districtId = u.scope.districtId; clamped = true; }
+    else if (u.scope?.provinceId) { filter.provinceId = u.scope.provinceId; clamped = true; }
+    else if (u.scope?.basicUnitId) { filter.basicUnitId = u.scope.basicUnitId; clamped = true; }
+  }
+
+  // Breadth has to be deliberate. Without this, a caller who has no
+  // territorial clamp (Super Admin, or any account with an empty
+  // scope) and who forgets a unit filter walks away with the entire
+  // membership — which is exactly how the meetings page leaked every
+  // member in the system at CENTRAL level. A search term counts as a
+  // filter; it is inherently narrow.
+  const hasUnitFilter = !!(basicUnitId || areaId || districtId || provinceId);
+  if (!hasUnitFilter && !q && !clamped && !(scope === 'all' && isSuper)) {
+    throw new ApiError(
+      400,
+      'UNSCOPED_QUERY',
+      'Member queries must be scoped: pass a unit filter (basicUnitId / areaId / districtId / provinceId) or a search term.',
+    );
   }
   if (q) {
     filter.$or = [

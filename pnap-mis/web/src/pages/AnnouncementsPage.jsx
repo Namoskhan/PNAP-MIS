@@ -89,7 +89,9 @@ export default function AnnouncementsPage() {
   useEffect(() => {
     if (!composeOpen || form.mode !== 'PERSON' || members.length > 0 || membersLoading) return;
     setMembersLoading(true);
-    api.get('/members', { params: { status: 'ACTIVE', limit: 500 } })
+    // scope:'all' — explicit opt-in for the unfiltered roster. The
+    // server clamps scoped users to their own hierarchy regardless.
+    api.get('/members', { params: { status: 'ACTIVE', limit: 500, scope: 'all' } })
       .then((r) => setMembers(r.data.data || []))
       .catch(() => setMembers([]))
       .finally(() => setMembersLoading(false));

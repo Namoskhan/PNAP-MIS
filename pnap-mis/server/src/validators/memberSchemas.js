@@ -72,6 +72,12 @@ const listQuerySchema = z.object({
   districtId: objectId.optional(),
   provinceId: objectId.optional(),
   q: z.string().optional(),
+  // Opt-in request for the unrestricted roster. Honoured only for
+  // SUPER_ADMIN; for anyone else the territorial clamp still applies.
+  // Its purpose is to make "I really do want every member" explicit,
+  // so an omitted unit filter can be rejected as a mistake instead of
+  // silently returning the whole membership.
+  scope: z.enum(['all']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(1000).default(20),
 });
