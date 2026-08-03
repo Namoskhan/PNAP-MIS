@@ -11,11 +11,15 @@ const WorkflowConfig = require('../models/WorkflowConfig');
 //                         (APPROVE_EXPENSE permission)
 //   MEMBER_APPROVAL     — memberController approve/reject → APPROVE_MEMBER
 //   ROLE_APPROVAL       — roleController.decide → DECIDE_ROLE
-//   TRANSFER_APPROVAL   — transferController.acknowledge → custom (we
-//                         use APPROVE_EXPENSE as a proxy; the
-//                         existing authorizeAck does extra checks the
-//                         engine doesn't know about — staged for a
-//                         follow-up PR)
+//   TRANSFER_APPROVAL   — transferController.acknowledge → the
+//                         destination unit's Finance Secretary
+//                         (MANAGE_FINANCE). authorizeAck does the
+//                         unit-scope half the engine can't model:
+//                         the decider must hold the seat AT the
+//                         destination unit. The two gates are ANDed.
+//                         Resolved per destination tier, so whichever
+//                         unit the sender addressed supplies the sole
+//                         approver — above it, below it or alongside.
 //   CABINET_APPOINTMENT — DECIDE_ROLE (cabinet appointments today
 //                         flow through roleController.decide)
 //
@@ -59,9 +63,16 @@ const DEFAULTS = [
       code: 'DESTINATION_ACK',
       name: 'Destination Finance Sec acknowledgment',
       sortOrder: 10,
-      requirePermission: 'APPROVE_EXPENSE',
+      // MANAGE_FINANCE — the permission that actually identifies a
+      // Finance Secretary. This stage originally shipped with
+      // APPROVE_EXPENSE as an admitted placeholder, which no Finance
+      // Secretary holds (APPROVE_EXPENSE belongs to the Secretary, who
+      // approves expenses the FS records — a deliberate segregation of
+      // duties). That blocked the very person the stage is named after
+      // from acknowledging an incoming transfer.
+      requirePermission: 'MANAGE_FINANCE',
     }],
-    note: 'Default single-stage. Cutover into transferController is a follow-up PR — the existing authorizeAck has unit-scope checks the engine doesn\'t yet model.',
+    note: 'Default single-stage. The destination unit\'s Finance Secretary acknowledges; transferController.authorizeAck additionally requires the decider to hold that seat at the destination unit itself.',
   },
   {
     domain: 'CABINET_APPOINTMENT',
@@ -74,6 +85,37 @@ const DEFAULTS = [
     note: 'Default single-stage. Cabinet appointments currently go through roleController.decide — this row is reserved for future split.',
   },
 ];
+
+// One-time repair of the TRANSFER_APPROVAL placeholder on databases
+// seeded before the fix. Rewrites the stage's requirePermission from
+// APPROVE_EXPENSE to MANAGE_FINANCE — but ONLY while the row is still
+// the pristine shipped default: system-owned, never edited by an
+// admin (configVersion 1), and carrying exactly the one original
+// stage. Any admin customisation is left untouched, per the seeder's
+// never-overwrite contract.
+//
+// Idempotent twice over: the version bump takes the row past the
+// configVersion === 1 guard, and the permission it looks for is gone
+// once rewritten.
+async function _repairTransferStagePermission() {
+  const doc = await WorkflowConfig.findOne({ domain: 'TRANSFER_APPROVAL', scope: 'GLOBAL' });
+  if (!doc || !doc.isSystem) return false;
+  if ((doc.configVersion || 1) !== 1) return false;
+  if (!Array.isArray(doc.stages) || doc.stages.length !== 1) return false;
+
+  const stage = doc.stages[0];
+  if (stage.code !== 'DESTINATION_ACK' || stage.requirePermission !== 'APPROVE_EXPENSE') return false;
+
+  stage.requirePermission = 'MANAGE_FINANCE';
+  doc.markModified('stages');
+  doc.configVersion = 2;
+  doc.note = DEFAULTS.find((d) => d.domain === 'TRANSFER_APPROVAL').note;
+  await doc.save();
+
+  // Drop any cached resolution so a long-lived process picks it up.
+  require('../services/workflowEngine').invalidate('TRANSFER_APPROVAL');
+  return true;
+}
 
 async function seedWorkflowConfigs() {
   let inserted = 0;
@@ -107,7 +149,9 @@ async function seedWorkflowConfigs() {
     }
   }
 
-  return { inserted, reconciled, total: DEFAULTS.length };
+  const repairedTransferStage = await _repairTransferStagePermission();
+
+  return { inserted, reconciled, repairedTransferStage, total: DEFAULTS.length };
 }
 
 module.exports = { seedWorkflowConfigs, DEFAULTS };

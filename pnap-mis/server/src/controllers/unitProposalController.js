@@ -13,23 +13,25 @@ const CabinetSlot = require('../models/CabinetSlot');
 const { ok, created, ApiError } = require('../utils/response');
 const { userHasRole } = require('../utils/unitScope');
 
-// Unit Formation Authority Matrix (CENTRAL_ADMIN removed; Super
-// owns the top tier directly).
-//   BASIC_UNIT proposed by AREA_ADMIN+    → approved by DISTRICT_ADMIN+
+// Unit Formation Authority Matrix. Mirrors the one-level rule in
+// utils/adminHierarchy — each tier proposes at the level it manages,
+// and the tier above approves. SUPER_ADMIN stays admissible
+// everywhere as the break-glass operator.
+//   BASIC_UNIT proposed by AREA_ADMIN+     → approved by DISTRICT_ADMIN+
 //   AREA       proposed by DISTRICT_ADMIN+ → approved by PROVINCE_ADMIN+
-//   DISTRICT   proposed by PROVINCE_ADMIN+ → approved by SUPER_ADMIN
-//   PROVINCE   proposed by SUPER_ADMIN     → approved by SUPER_ADMIN
+//   DISTRICT   proposed by PROVINCE_ADMIN+ → approved by CENTRAL_ADMIN+
+//   PROVINCE   proposed by CENTRAL_ADMIN+  → approved by CENTRAL_ADMIN+
 const PROPOSER_ROLES = {
-  BASIC_UNIT: ['DISTRICT_ADMIN', 'PROVINCE_ADMIN', 'SUPER_ADMIN'],
-  AREA: ['DISTRICT_ADMIN', 'PROVINCE_ADMIN', 'SUPER_ADMIN'],
-  DISTRICT: ['PROVINCE_ADMIN', 'SUPER_ADMIN'],
-  PROVINCE: ['SUPER_ADMIN'],
+  BASIC_UNIT: ['DISTRICT_ADMIN', 'PROVINCE_ADMIN', 'CENTRAL_ADMIN', 'SUPER_ADMIN'],
+  AREA: ['DISTRICT_ADMIN', 'PROVINCE_ADMIN', 'CENTRAL_ADMIN', 'SUPER_ADMIN'],
+  DISTRICT: ['PROVINCE_ADMIN', 'CENTRAL_ADMIN', 'SUPER_ADMIN'],
+  PROVINCE: ['CENTRAL_ADMIN', 'SUPER_ADMIN'],
 };
 const APPROVER_ROLES = {
-  BASIC_UNIT: ['DISTRICT_ADMIN', 'PROVINCE_ADMIN', 'SUPER_ADMIN'],
-  AREA: ['PROVINCE_ADMIN', 'SUPER_ADMIN'],
-  DISTRICT: ['SUPER_ADMIN'],
-  PROVINCE: ['SUPER_ADMIN'],
+  BASIC_UNIT: ['DISTRICT_ADMIN', 'PROVINCE_ADMIN', 'CENTRAL_ADMIN', 'SUPER_ADMIN'],
+  AREA: ['PROVINCE_ADMIN', 'CENTRAL_ADMIN', 'SUPER_ADMIN'],
+  DISTRICT: ['CENTRAL_ADMIN', 'SUPER_ADMIN'],
+  PROVINCE: ['CENTRAL_ADMIN', 'SUPER_ADMIN'],
 };
 
 exports.list = asyncHandler(async (req, res) => {

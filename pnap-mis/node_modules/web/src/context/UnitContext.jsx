@@ -38,8 +38,36 @@ export function UnitProvider({ children }) {
     // levels are out of an Area Admin's scope and trying to render
     // a province cabinet from their token would surface as 0
     // members and an "Invalid input" banner.
-    const isHigherAdmin = ['SUPER_ADMIN','PROVINCE_ADMIN','DISTRICT_ADMIN']
+    const isHigherAdmin = ['SUPER_ADMIN','CENTRAL_ADMIN','PROVINCE_ADMIN','DISTRICT_ADMIN']
       .some((r) => user.roles?.includes(r));
+
+    // CENTRAL_ADMIN — the national tier. It has no territorial scope
+    // key of its own (it is responsible for every province), so its
+    // home context is the CENTRAL singleton; that is what makes
+    // /unit/breakdown list Provinces.
+    //
+    // Like the AREA_ADMIN branch below, this must also correct a STALE
+    // context, not just fill an empty one: ctx is hydrated from
+    // localStorage, so a browser that previously held a lower-level
+    // context (a district, an area, a basic unit) would keep it and
+    // the Province Breakdown would silently render the wrong tier's
+    // children. CENTRAL and PROVINCE are both legitimate for this
+    // persona — the cabinet page drops them onto a province on
+    // purpose — so only levels below province are reset.
+    const isCentralAdmin = user.roles?.includes('CENTRAL_ADMIN')
+      && !user.roles?.includes('SUPER_ADMIN');
+    if (isCentralAdmin) {
+      const inScope = ctx && (ctx.unitLevel === 'CENTRAL' || ctx.unitLevel === 'PROVINCE');
+      if (!inScope) {
+        api.get('/org/central')
+          .then((r) => setCtx({
+            unitLevel: 'CENTRAL',
+            unitId: r.data.data._id,
+            unitName: r.data.data.name || 'PKNAP Central',
+          }))
+          .catch(() => {});
+      }
+    }
 
     // Pure MEMBER (no admin, no cabinet role) — pin to their Basic
     // Unit so /unit/meetings and /unit/activities show their unit's

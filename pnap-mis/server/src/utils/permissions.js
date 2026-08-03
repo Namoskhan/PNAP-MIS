@@ -67,6 +67,22 @@ const PERMISSION_BY_CODE = Object.fromEntries(PERMISSIONS.map((p) => [p.code, p]
 const DEFAULT_PERMISSIONS = {
   SUPER_ADMIN:        PERMISSION_CODES,
 
+  // National tier between Super and Province. Its distinguishing
+  // authority — creating Provinces and administering Province Admins —
+  // is enforced by role in utils/adminHierarchy, not by a permission
+  // code: the CREATE_* codes above are catalogued but never consulted
+  // by any route (org CRUD has always been role-gated). Its operational
+  // grants mirror PROVINCE_ADMIN so the shared member / cabinet /
+  // finance surfaces behave identically one tier up, plus
+  // POST_ANNOUNCEMENT for the national communication surface.
+  CENTRAL_ADMIN: [
+    'REGISTER_MEMBER', 'APPROVE_MEMBER',
+    'MANAGE_FINANCE', 'APPROVE_EXPENSE',
+    'MANAGE_MEETINGS',
+    'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS',
+    'POST_ANNOUNCEMENT',
+  ],
+
   PROVINCE_ADMIN: [
     'REGISTER_MEMBER', 'APPROVE_MEMBER',
     'MANAGE_FINANCE', 'APPROVE_EXPENSE',

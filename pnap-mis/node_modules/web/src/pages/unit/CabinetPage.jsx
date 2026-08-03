@@ -111,7 +111,12 @@ export default function CabinetPage() {
   // these and also manages the Central Cabinet per SRS §3.4.
   const [allProvinces, setAllProvinces] = useState([]);
   const [centralUnit, setCentralUnit] = useState(null);
-  const isCentralAdminUser = user?.roles?.includes('SUPER_ADMIN');
+  // The national tier: CENTRAL_ADMIN, with SUPER_ADMIN retained as
+  // break-glass. This was defined as SUPER_ADMIN alone — a leftover
+  // from the period when the CENTRAL_ADMIN role did not exist — which
+  // is why a real Central Admin saw no province surfaces at all.
+  const isCentralAdminUser = user?.roles?.includes('CENTRAL_ADMIN')
+    || user?.roles?.includes('SUPER_ADMIN');
   useEffect(() => {
     if (!isCentralAdminUser) return;
     api.get('/org/provinces')
@@ -327,7 +332,7 @@ export default function CabinetPage() {
   // hold the SENIOR_MAWIN assignment in). Higher admins use the
   // global UnitSwitcher on the dashboard.
   const roles = user?.roles || [];
-  const hasHigherAdmin = ['SUPER_ADMIN','PROVINCE_ADMIN','DISTRICT_ADMIN']
+  const hasHigherAdmin = ['SUPER_ADMIN','CENTRAL_ADMIN','PROVINCE_ADMIN','DISTRICT_ADMIN']
     .some((r) => roles.includes(r));
   const showAreaPicker = !!user?.scope?.areaId &&
     roles.includes('AREA_ADMIN') &&
@@ -337,7 +342,13 @@ export default function CabinetPage() {
   const showProvincePicker = isProvinceAdminUser && !roles.includes('SUPER_ADMIN');
   // Central Admin's picker — assign Province Cabinet roles per SRS
   // §3.3 + §5.1 ("province will be structured by the Central Admin").
-  const showCentralPicker = isCentralAdminUser;
+  // The Central body's OWN cabinet (Chairman, Co-Chairman, …) belongs
+  // to Super Admin. A Central Admin manages the tier directly below it
+  // — the Provinces — so this card is not part of its surface.
+  const showCentralPicker = roles.includes('SUPER_ADMIN');
+  // Province cabinets are the Central Admin's responsibility under the
+  // one-level rule; Super Admin keeps it as break-glass.
+  const showProvinceCabinetPicker = isCentralAdminUser;
   // Secretary (and higher admin) can assign roles directly via the
   // existing single-shot assign flow OR approve proposals raised by
   // Senior Mawin. SECRETARY-only users see read-only cabinet rows
@@ -384,6 +395,41 @@ export default function CabinetPage() {
             </button>
             <span className="muted" style={{ fontSize: 13 }}>
               Assign the Central Executive (Chairman, Co-Chairman, Sr.&nbsp;Vice Chairman, Vice Chairman, Secretary General, First Secretary, Finance Secretary, etc.) — auto-forms the Central Committee + unlocks the Qomi Jirga tab on first approval.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Central Admin picks a Province and assigns its Sobayi
+          cabinet — the exact shape of the District picker below it
+          and the Area picker below that, one tier up. `allProvinces`
+          was already being fetched here but never rendered, so the
+          page fell through to the Central cabinet and showed Chairman
+          / Co-Chairman instead of the Province roles. */}
+      {showProvinceCabinetPicker && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <label style={{ fontWeight: 600 }}>Assign Province Cabinet for:</label>
+            <select
+              value={ctx.unitLevel === 'PROVINCE' ? String(ctx.unitId) : ''}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (!id) return;
+                const p = allProvinces.find((x) => String(x._id) === id);
+                if (p) setCtx({ unitLevel: 'PROVINCE', unitId: p._id, unitName: p.name });
+              }}
+              style={{ minWidth: 280 }}
+            >
+              <option value="">— pick a province —</option>
+              {allProvinces.length === 0 && <option disabled>(no provinces yet)</option>}
+              {allProvinces.map((p) => (
+                <option key={p._id} value={String(p._id)}>{p.name}{p.code ? ` (${p.code})` : ''}</option>
+              ))}
+            </select>
+            <span className="muted" style={{ fontSize: 13 }}>
+              Pick a Province to assign its Sobayi cabinet (President / Saddar, Senior Vice President,
+              Vice President, General Secretary, Finance Sec., etc.). Members shown are everyone
+              registered under any district / area / BU within that province.
             </span>
           </div>
         </div>

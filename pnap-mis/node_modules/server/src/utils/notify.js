@@ -34,8 +34,10 @@ async function userIdForMember(memberId) {
 // Find the territorial admins responsible for a given chain of
 // {provinceId, districtId, areaId}. Order: AREA_ADMIN of the area,
 // DISTRICT_ADMIN of the district, PROVINCE_ADMIN of the province.
-// Super Admin is intentionally excluded so the bell doesn't drown
-// in subordinate noise.
+// Super Admin is intentionally excluded so the bell doesn't drown in
+// subordinate noise, and CENTRAL_ADMIN with it — it is unscoped, so
+// every chain would match it and its bell would carry the whole
+// organization's traffic.
 async function admindIdsForChain({ provinceId, districtId, areaId }) {
   const queries = [];
   if (areaId) queries.push({ roles: 'AREA_ADMIN', 'scope.areaId': areaId, isActive: true });

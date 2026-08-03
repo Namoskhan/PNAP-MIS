@@ -32,7 +32,9 @@ export default function MemberListPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
 
-  const isHigherAdmin = ['SUPER_ADMIN'].some((r) => user?.roles?.includes(r));
+  // Super and Central are the two unbounded tiers — mirrors
+  // server/src/utils/adminHierarchy.GLOBAL_TIERS.
+  const isHigherAdmin = ['SUPER_ADMIN', 'CENTRAL_ADMIN'].some((r) => user?.roles?.includes(r));
   const scopeParams = (() => {
     if (isHigherAdmin) return {};
     if (user?.scope?.areaId) return { areaId: user.scope.areaId };

@@ -56,12 +56,12 @@ function userHasRole(user, ...roles) {
   return user.roles.some((r) => roles.includes(r));
 }
 
-const ADMIN_ROLES = ['SUPER_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'];
+const ADMIN_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'];
 // Higher-tier admins (everyone except AREA_ADMIN). AREA_ADMIN is
 // scoped to approving members in their area and assigning roles for
 // basic units within that area — so they're excluded from meeting /
 // finance / unit-creation management.
-const HIGHER_ADMIN_ROLES = ['SUPER_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'];
+const HIGHER_ADMIN_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'];
 
 // SUPER_ADMIN is now included in every role list — with NATIONAL_ADMIN
 // removed, Super is the bootstrap authority for the Central tier and
@@ -121,7 +121,9 @@ function canPostAnnouncement(user)      { return userHasPermission(user, 'POST_A
 // Non-admin users (Senior Mawin, Secretary, Finance Sec.) have their
 // own per-controller checks and are passed through here.
 async function unitWithinAreaAdminScope(user, unitLevel, unitId) {
-  if (userHasRole(user, 'SUPER_ADMIN')) return true;
+  // Super and Central are the unbounded tiers — Central structures
+  // every province, so it has no territorial boundary of its own.
+  if (userHasRole(user, 'SUPER_ADMIN', 'CENTRAL_ADMIN')) return true;
 
   if (user.roles?.includes('PROVINCE_ADMIN')) {
     const provId = String(user.scope?.provinceId || '');
@@ -154,7 +156,7 @@ async function unitWithinAreaAdminScope(user, unitLevel, unitId) {
 // territorial scope. Mirror of unitWithinAreaAdminScope for member
 // records (which already store the denormalized hierarchy).
 function memberWithinAreaAdminScope(user, member) {
-  if (userHasRole(user, 'SUPER_ADMIN')) return true;
+  if (userHasRole(user, 'SUPER_ADMIN', 'CENTRAL_ADMIN')) return true;
   if (user.roles?.includes('PROVINCE_ADMIN')) {
     return String(member.provinceId) === String(user.scope?.provinceId || '');
   }
@@ -196,7 +198,7 @@ async function resolveUserChain(user) {
 // A sibling unit (another Area's cabinet, say) matches neither and is
 // refused.
 async function canReadUnitRoles(user, unitLevel, unitId) {
-  if (userHasRole(user, 'SUPER_ADMIN')) return true;
+  if (userHasRole(user, 'SUPER_ADMIN', 'CENTRAL_ADMIN')) return true;
   const target = await resolveUnitChain(unitLevel, unitId);
   if (!target) return false;
   const same = (a, b) => !!a && !!b && String(a) === String(b);

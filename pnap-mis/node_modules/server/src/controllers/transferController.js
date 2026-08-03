@@ -4,39 +4,22 @@ const Area = require('../models/Area');
 const District = require('../models/District');
 const Province = require('../models/Province');
 const { ok, created, ApiError } = require('../utils/response');
-const { canManageFinance, canApprove, resolveUnitChain } = require('../utils/unitScope');
+const { canManageFinance, resolveUnitChain } = require('../utils/unitScope');
 const policyEngine = require('../services/policyEngine');
 const workflowEngine = require('../services/workflowEngine');
+// Destination rule lives in utils/transferRouting so the preview
+// endpoint below and the create path share one implementation of what
+// counts as a legal recipient.
+const { resolveDestination } = require('../utils/transferRouting');
 
-// SRS §9.3 — upward-only routing.
-const PARENT_LEVEL = {
-  BASIC_UNIT: 'AREA',
-  AREA: 'DISTRICT',
-  DISTRICT: 'PROVINCE',
-  PROVINCE: 'CENTRAL',
-};
-
-async function destinationFor(sourceLevel, sourceChain) {
-  const dl = PARENT_LEVEL[sourceLevel];
-  if (dl === 'AREA') return { destinationLevel: dl, destinationUnitId: sourceChain.areaId };
-  if (dl === 'DISTRICT') return { destinationLevel: dl, destinationUnitId: sourceChain.districtId };
-  if (dl === 'PROVINCE') return { destinationLevel: dl, destinationUnitId: sourceChain.provinceId };
-  if (dl === 'CENTRAL') {
-    // Province → Central: receiver is the Central singleton. Use its
-    // _id as destinationUnitId so the Central Finance Secretary's
-    // RoleAssignment matches the gate below.
-    const { ensureCentralSingleton } = require('../utils/centralUnit');
-    const c = await ensureCentralSingleton();
-    return { destinationLevel: dl, destinationUnitId: c._id };
-  }
-  return null;
-}
-
-// Approval gate for acknowledge / reject. Per product directive a
-// transfer flows up exactly one level — Basic Unit → Area, Area →
-// District, District → Province, Province → Central — and is approved
-// by the Finance Secretary of THAT receiving unit (or a scope-
-// bounded admin acting as override).
+// Approval gate for acknowledge / reject. Under the revised finance
+// policy the sender names the recipient outright, and THAT unit is the
+// sole approver — no unit between the two has any say, in either
+// direction. This gate was already expressed purely in terms of the
+// stored destination rather than any notion of "parent", so it carries
+// over unchanged: the decider must be the Finance Secretary of the
+// destination unit itself (or a scope-bounded admin acting as
+// override).
 async function authorizeAck(user, transfer) {
   if (!user) throw new ApiError(401, 'UNAUTHORIZED', 'Login required');
   const roles = user.roles || [];
@@ -114,38 +97,74 @@ exports.list = asyncHandler(async (req, res) => {
   ok(res, items);
 });
 
+// GET /api/transfers/destination-preview?sourceLevel=&sourceUnitId=&destinationId=
+//
+// Authoritative echo of a destination the sender picked in the tree:
+// the resolved unit, its full hierarchy, and which way the funds
+// move. Runs the same resolveDestination the create path runs, so if
+// this returns 200 the transfer will be accepted, and if it 400s the
+// UI can show exactly why before the sender fills in an amount.
+//
+// Advisory to the client, authoritative in effect: create re-resolves
+// the destination from scratch, so a client that skips this call, or
+// edits its response, gains nothing.
+exports.destinationPreview = asyncHandler(async (req, res) => {
+  const { sourceLevel, sourceUnitId, destinationId } = req.query;
+  if (!sourceLevel || !sourceUnitId) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'sourceLevel and sourceUnitId are required');
+  }
+  const { source, destination, path, direction } = await resolveDestination(
+    sourceLevel, sourceUnitId, destinationId,
+  );
+  ok(res, { source, destination, path, direction });
+});
+
 exports.initiate = asyncHandler(async (req, res) => {
   if (!canManageFinance(req.user)) {
     throw new ApiError(403, 'FORBIDDEN', 'Only Finance Secretary / Admin may initiate transfers');
   }
-  const { sourceLevel, sourceUnitId, mode, reference, note } = req.body;
+  const { sourceLevel, sourceUnitId, destinationId, mode, reference, note } = req.body;
   // Multipart payload — amount comes through as a string from the form.
   const amount = parseFloat(req.body.amount);
-  if (!PARENT_LEVEL[sourceLevel]) {
-    throw new ApiError(400, 'INVALID_LEVEL', 'Cannot transfer from CENTRAL upward');
-  }
   if (!amount || amount <= 0) throw new ApiError(400, 'VALIDATION_ERROR', 'amount must be positive');
   if (!req.file) {
     throw new ApiError(400, 'RECEIPT_REQUIRED',
       'Upload a receipt / proof-of-payment image — the receiving Finance Secretary must verify it before approving.');
   }
 
-  // PR U3 — direction policy. Today every transfer is UP (PARENT_LEVEL
-  // routing); the engine asserts that direction is in the policy's
-  // allowedDirections list. The default seeded GLOBAL policy uses
-  // ['UP'], so this is a no-op for the existing flow. Future PRs
-  // can extend the controller to support DOWN/SAME_TIER once admin
-  // explicitly opts in via the policy.
-  const policy = await policyEngine.resolveFor(sourceLevel, sourceUnitId);
-  policyEngine.assertTransferDirection('UP', policy);
+  // The only routing input accepted from the client is an opaque id.
+  // resolveDestination looks up its tier AND its province in the
+  // database, then throws a specific 400 for each way it can be
+  // illegitimate — unknown id, deactivated unit, sender paying itself,
+  // or a unit outside the sender's province when the sender is not a
+  // Province. Nothing the client asserts about either endpoint is
+  // believed; both are re-resolved from stored data.
+  const { source, destination, direction } = await resolveDestination(
+    sourceLevel, sourceUnitId, destinationId,
+  );
 
+  // PR U3 — direction policy. Transfers are no longer upward by
+  // construction, so the real direction is computed from the two tiers
+  // and asserted against UnitPolicy.transfer.allowedDirections. The
+  // seeded GLOBAL policy now permits UP / DOWN / SAME_TIER to match
+  // the revised business rule; an admin who narrows it still governs.
+  const policy = await policyEngine.resolveFor(sourceLevel, sourceUnitId);
+  policyEngine.assertTransferDirection(direction, policy);
+
+  // Source-side hierarchy, denormalized for the §11 roll-ups. This is
+  // the SENDER's chain and stays that way — the destination is no
+  // longer guaranteed to sit anywhere near it.
   const chain = await resolveUnitChain(sourceLevel, sourceUnitId);
   if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Source unit not found');
-  const dest = await destinationFor(sourceLevel, chain);
 
   const t = await FundTransfer.create({
-    sourceLevel, sourceUnitId,
-    ...dest,
+    sourceLevel,
+    sourceUnitId,
+    sourceName: source.name,
+    destinationLevel: destination.level,
+    destinationUnitId: destination.id,
+    destinationName: destination.name,
+    direction,
     ...chain,
     amount, mode, reference, note,
     receiptImageUrl: `/uploads/${req.file.filename}`,
@@ -156,9 +175,24 @@ exports.initiate = asyncHandler(async (req, res) => {
 
 // PR F1 — workflow gate. authorizeAck already enforced unit-scope
 // (must be Finance Sec / admin at destination unit). workflowEngine
-// adds permission/role + multi-stage chain. Default single-stage
-// TRANSFER_APPROVAL workflow uses APPROVE_EXPENSE, which the
-// destination Finance Sec already has, so behavior is unchanged.
+// adds permission/role + multi-stage chain, and the two are ANDed.
+//
+// The default single-stage TRANSFER_APPROVAL workflow requires
+// MANAGE_FINANCE — held by every role authorizeAck admits except
+// AREA_ADMIN. It originally required APPROVE_EXPENSE, which the
+// destination Finance Secretary does NOT hold (that permission
+// belongs to the Secretary, who approves the expenses the FS
+// records); the mismatch made every incoming transfer un-acknowledgable
+// by its named approver. See utils/seedWorkflowConfigs.
+//
+// The chain is resolved for the tier of the CHOSEN destination and no
+// other, so a Basic Unit → Province transfer runs the PROVINCE-tier
+// workflow (or GLOBAL if admin defined none for that tier), and a
+// District → Basic Unit transfer runs the BASIC_UNIT one. Units the
+// transfer passed over — in either direction — contribute no stages.
+// One destination, one approver, which is exactly the revised policy:
+// the engine was already keyed on destinationLevel, so it needed no
+// change to express it.
 async function _runTransferWorkflow(t, user, decision, note) {
   const { stages, config } = await workflowEngine.resolveStages(
     'TRANSFER_APPROVAL', t.destinationLevel, { amount: t.amount },

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUnit } from '../context/UnitContext';
 import {
@@ -8,6 +8,7 @@ import {
   isOperatorPersona,
   isPresidentPersona,
   isProvinceAdminOnly,
+  isCentralAdminOnly,
   isDistrictAdminOnly,
   isSuperAdmin as isSuperAdminFn,
   isSecretaryOnly,
@@ -28,6 +29,7 @@ const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
 // Human-readable label for the role-persona selector.
 const ROLE_DISPLAY = {
   SUPER_ADMIN: 'Super Admin',
+  CENTRAL_ADMIN: 'Central Admin',
   PROVINCE_ADMIN: 'Province Admin',
   DISTRICT_ADMIN: 'District Admin',
   AREA_ADMIN: 'Area Admin',
@@ -51,6 +53,10 @@ const ROLE_DISPLAY = {
 };
 
 export default function Layout() {
+  // Two sidebar entries share /admin/users and are distinguished only
+  // by their query string, so active-state has to consider it —
+  // NavLink matches on pathname alone.
+  const { search } = useLocation();
   const { user, logout, allRoles, activeRole, setActiveRole } = useAuth();
   const { ctx } = useUnit();
   const branding = useBranding();
@@ -92,6 +98,7 @@ export default function Layout() {
   const isSecretary = isSecretaryOnly(user);
   const isDistrictAdmin = isDistrictAdminOnly(user);
   const isProvinceAdmin = isProvinceAdminOnly(user);
+  const isCentralAdmin = isCentralAdminOnly(user);
   const isFinanceSecretary = isFinanceOnly(user);
   const isMember = isPureMember(user);
   const isPresident = isPresidentPersona(user);
@@ -130,14 +137,33 @@ export default function Layout() {
             <div className="nav-group">God Mode</div>
             <nav>
               <NavLink to="/" end>Dashboard</NavLink>
-              <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
+              {/* Super Admin administers Central Admins, not
+                  Provinces — province management moved down a tier
+                  with the one-level hierarchy. /admin/manage-org is
+                  still reachable by URL as a break-glass path.
+                  Lands on the user directory pre-filtered to the tier
+                  Super Admin is responsible for; the create action for
+                  this role lives there too, since a Central Admin has
+                  no org unit to be created alongside. */}
+              <NavLink
+                to="/admin/users?role=CENTRAL_ADMIN"
+                className={({ isActive }) => (
+                  isActive && search.includes('role=CENTRAL_ADMIN') ? 'active' : undefined
+                )}
+              >Central Admins</NavLink>
               <NavLink to="/members">All Members</NavLink>
               <NavLink to="/admin/pending-approvals">Pending Role Approvals</NavLink>
               <NavLink to="/admin/finance-overview">Finance Overview</NavLink>
             </nav>
             <NavGroup label="User Manager" icon={<UsersIcon size={14} />} storageKey="pnap_nav_user_manager" defaultOpen>
               <NavLink to="/admin/roles">Role Management</NavLink>
-              <NavLink to="/admin/users">All Users &amp; Credentials</NavLink>
+              {/* Same page as the Central Admins entry above but with
+                  no role filter — so its active state must exclude the
+                  filtered URL, otherwise both light up at once. */}
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) => (isActive && !search ? 'active' : undefined)}
+              >All Users &amp; Credentials</NavLink>
               <NavLink to="/admin/audit">Audit Log</NavLink>
             </NavGroup>
             <NavGroup label="Event Manager" icon={<FolderIcon size={14} />} storageKey="pnap_nav_event_manager">
@@ -188,6 +214,20 @@ export default function Layout() {
               <NavLink to="/members/pending" end>Member Approvals</NavLink>
               <NavLink to="/members">All Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Cabinet Roles</NavLink>
+            </nav>
+          </>
+        )}
+
+        {isCentralAdmin && (
+          <>
+            <div className="nav-group">My Organization</div>
+            <nav>
+              <NavLink to="/unit" end>Dashboard</NavLink>
+              <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
+              <NavLink to="/members">Province Members</NavLink>
+              <NavLink to="/unit/cabinet">Assign Province Cabinet Roles</NavLink>
+              <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
+              <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
           </>
         )}
@@ -327,7 +367,7 @@ export default function Layout() {
           </>
         )}
 
-        {!isSuperAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
+        {!isSuperAdmin && !isCentralAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
           <>
             <div className="nav-group">Global</div>
             <nav>

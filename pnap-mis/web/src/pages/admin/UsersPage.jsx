@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../utils/permissions';
 import { useToast } from '../../components/Toast';
 
 const ROLE_OPTIONS = [
-  'SUPER_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
+  'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
   'SECRETARY', 'SENIOR_MAWIN', 'FINANCE_SECRETARY',
   'PRESS_SECRETARY', 'CULTURE_SECRETARY', 'SPORTS_SECRETARY',
   'PRESIDENT', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT', 'GENERAL_SECRETARY',
@@ -32,14 +32,20 @@ export default function UsersPage() {
   const canWrite = isSuperAdmin(viewer);
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const nav = useNavigate();
+  // Deep-linkable role filter. The sidebar's "Central Admins" entry
+  // lands here as /admin/users?role=CENTRAL_ADMIN — without this the
+  // param was accepted by the URL and silently ignored by the page.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roleParam = searchParams.get('role') || '';
+  const [createOpen, setCreateOpen] = useState(false);
 
   // ─── Filters (committed) — applied state used to fetch ───────────
   const [filters, setFilters] = useState({
-    q: '', role: '', isActive: '', provinceId: '', districtId: '', areaId: '',
+    q: '', role: roleParam, isActive: '', provinceId: '', districtId: '', areaId: '',
   });
   // ─── Filter form (draft) — what the user is editing pre-Apply ────
   const [draft, setDraft] = useState({
-    q: '', role: '', isActive: '', provinceId: '', districtId: '', areaId: '',
+    q: '', role: roleParam, isActive: '', provinceId: '', districtId: '', areaId: '',
   });
   const [page, setPage] = useState(1);
   const [items, setItems] = useState([]);
@@ -140,6 +146,15 @@ export default function UsersPage() {
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [filters, page]);
 
+  // Follow later navigations to ?role=… (clicking the sidebar entry
+  // while already on this page changes only the query string, which
+  // would otherwise leave the previous filter applied).
+  useEffect(() => {
+    setDraft((d) => (d.role === roleParam ? d : { ...d, role: roleParam }));
+    setFilters((f) => (f.role === roleParam ? f : { ...f, role: roleParam }));
+    setPage(1);
+  }, [roleParam]);
+
   function applyFilters() { setPage(1); setFilters(draft); }
   function clearFilters() {
     const empty = { q: '', role: '', isActive: '', provinceId: '', districtId: '', areaId: '' };
@@ -194,6 +209,18 @@ export default function UsersPage() {
             <div className="rm-hero-sub">Search, filter, and manage every user account in the system</div>
           </div>
           <div className="rm-hero-actions">
+            {/* Central Admin is the one admin tier with no org unit of
+                its own — Central is a pre-existing singleton, so it
+                cannot be created through ManageOrgPage, which creates
+                an admin alongside a NEW child unit. This is its only
+                creation path. */}
+            {canWrite && (
+              <button
+                type="button"
+                className="rm-hero-btn solid"
+                onClick={() => setCreateOpen(true)}
+              >+ Create Central Admin</button>
+            )}
             <button
               type="button"
               className="rm-hero-btn outline"
@@ -386,6 +413,117 @@ export default function UsersPage() {
           onSaved={() => { setEditing(null); load(); toast.success?.('User updated.'); }}
         />
       )}
+
+      {createOpen && (
+        <CreateCentralAdminDialog
+          onClose={() => setCreateOpen(false)}
+          onCreated={() => {
+            setCreateOpen(false);
+            // Drop the user into the Central Admin view so the new
+            // account is visible immediately.
+            setSearchParams({ role: 'CENTRAL_ADMIN' });
+            load();
+            toast.success?.('Central Admin created.');
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Create Central Admin ──────────────────────────────────────────
+// The Central Admin is the only administrative tier without an org
+// unit of its own: Super Admin creates the person, and that person
+// then creates the Provinces. Every other tier's admin is created
+// alongside its unit in ManageOrgPage, which is why this dialog is
+// here and not there.
+//
+// No scope is collected — Central Admin is national by definition, and
+// the server ignores any scope sent for this role (see
+// adminUserController.create).
+function CreateCentralAdminDialog({ onClose, onCreated }) {
+  const [form, setForm] = useState({ fullName: '', username: '', email: '', password: '' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const canSubmit = form.fullName.trim()
+    && (form.username.trim() || form.email.trim())
+    && form.password.length >= 6;
+
+  async function submit() {
+    setErr('');
+    setBusy(true);
+    try {
+      const body = {
+        fullName: form.fullName.trim(),
+        password: form.password,
+        role: 'CENTRAL_ADMIN',
+      };
+      if (form.username.trim()) body.username = form.username.trim();
+      if (form.email.trim()) body.email = form.email.trim();
+      await api.post('/admin/users', body);
+      onCreated?.();
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose?.(); }}>
+      <div className="modal" style={{ maxWidth: 480 }} role="dialog" aria-modal="true" aria-label="Create Central Admin">
+        <h3 style={{ marginTop: 0 }}>Create Central Admin</h3>
+        <p className="muted" style={{ marginTop: 0 }}>
+          A Central Admin structures the Provinces and administers the Province Admins.
+          The account is national — it carries no territorial scope.
+        </p>
+
+        {err && <div className="alert error">{err}</div>}
+
+        <div className="form-grid">
+          <div className="field full">
+            <label>Full name <span className="req">*</span></label>
+            <input
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label>Username</label>
+            <input
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label>Email</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
+          </div>
+          <div className="field full">
+            <label>Password <span className="req">*</span></label>
+            <input
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+            <span className="hint">
+              At least 6 characters. Provide a username or an email — either can be used to sign in.
+            </span>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button className="btn secondary" type="button" disabled={busy} onClick={onClose}>Cancel</button>
+          <button className="btn" type="button" disabled={!canSubmit || busy} onClick={submit}>
+            {busy ? 'Creating…' : 'Create Central Admin'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

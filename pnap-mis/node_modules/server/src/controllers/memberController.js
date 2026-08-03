@@ -112,7 +112,10 @@ exports.list = asyncHandler(async (req, res) => {
   // exists so an account provisioned with ONLY a basic unit — which
   // previously fell through with no clamp at all — stays inside it.
   const u = req.user;
-  const isSuper = !!u.roles?.includes('SUPER_ADMIN');
+  // Super and Central are the two unbounded tiers (see
+  // utils/adminHierarchy.GLOBAL_TIERS) — Central Admin is responsible
+  // for every province, so a territorial clamp would blind it.
+  const isSuper = require('../utils/adminHierarchy').isGlobalAdmin(u);
   let clamped = false;
   if (!isSuper) {
     if (u.scope?.areaId) { filter.areaId = u.scope.areaId; clamped = true; }
@@ -182,7 +185,7 @@ exports.update = asyncHandler(async (req, res) => {
   const u = req.user;
   const isOwner = u?.memberId && String(u.memberId) === String(member._id);
   const isAnyAdmin = u?.roles?.some((r) => [
-    'SUPER_ADMIN',
+    'SUPER_ADMIN', 'CENTRAL_ADMIN',
     'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
   ].includes(r));
   if (!isOwner && !isAnyAdmin) {
@@ -320,7 +323,7 @@ exports.stats = asyncHandler(async (req, res) => {
   // global membership statistics.
   const u = req.user;
   const match = {};
-  const isHigher = ['SUPER_ADMIN'].some((r) => u.roles?.includes(r));
+  const isHigher = require('../utils/adminHierarchy').isGlobalAdmin(u);
   if (!isHigher) {
     if (u.scope?.areaId) match.areaId = u.scope.areaId;
     else if (u.scope?.districtId) match.districtId = u.scope.districtId;

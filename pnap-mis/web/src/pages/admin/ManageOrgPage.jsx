@@ -4,14 +4,32 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
 import { SkeletonRows } from '../../components/Skeleton';
 
-// Role-aware org-management page.
-//   SUPER_ADMIN    → manages Provinces, creates Province Admins
+// Role-aware org-management page. One row per administrative tier,
+// each managing exactly the tier directly below it — the same
+// one-level rule the server enforces in utils/adminHierarchy.
+//   SUPER_ADMIN    → manages Central Admins (break-glass: also Provinces)
+//   CENTRAL_ADMIN  → manages Provinces, creates Province Admins
 //   PROVINCE_ADMIN → manages Districts in their province, creates District Admins
 //   DISTRICT_ADMIN → manages Areas in their district, creates Area Admins
 //   AREA_ADMIN     → manages Basic Units in their area (no admin user needed)
 
 const TIER = {
+  // Super Admin keeps the Province surface as the documented
+  // break-glass path — a fresh database has no Central Admin yet, so
+  // something has to be able to create the first provinces. It is off
+  // the normal sidebar (see Layout) and reachable by URL only.
   SUPER_ADMIN: {
+    title: 'Manage Provinces',
+    subtitle: 'Break-glass override — province management belongs to the Central Admin.',
+    childLabel: 'Province',
+    childPlural: 'Provinces',
+    listEndpoint: '/org/provinces',
+    createEndpoint: '/org/provinces',
+    childAdminRole: 'PROVINCE_ADMIN',
+    parentLabel: null,
+    showCreateAdmin: true,
+  },
+  CENTRAL_ADMIN: {
     title: 'Manage Provinces',
     childLabel: 'Province',
     childPlural: 'Provinces',
@@ -56,8 +74,11 @@ const TIER = {
   },
 };
 
+// Highest tier wins, so a user holding several admin roles gets the
+// broadest surface. Order matches adminHierarchy.ADMIN_TIERS.
 function pickTier(roles) {
   if (roles.includes('SUPER_ADMIN')) return TIER.SUPER_ADMIN;
+  if (roles.includes('CENTRAL_ADMIN')) return TIER.CENTRAL_ADMIN;
   if (roles.includes('PROVINCE_ADMIN')) return TIER.PROVINCE_ADMIN;
   if (roles.includes('DISTRICT_ADMIN')) return TIER.DISTRICT_ADMIN;
   if (roles.includes('AREA_ADMIN')) return TIER.AREA_ADMIN;
@@ -113,6 +134,9 @@ export default function ManageOrgPage() {
             {tier.parentLabel ? `Within your ${tier.parentLabel.toLowerCase()}` : 'System-wide'}
           </div>
           <h2 style={{ margin: '1px 0 0' }}>{tier.title}</h2>
+          {tier.subtitle && (
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{tier.subtitle}</div>
+          )}
         </div>
         <button className="btn" type="button" onClick={() => setOpen(true)}>
           + Create {tier.childLabel}

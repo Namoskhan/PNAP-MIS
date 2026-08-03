@@ -8,7 +8,8 @@ const { DEFAULT_PERMISSIONS } = require('./permissions');
 // built-in roles can't be tampered with.
 const BUILTIN_ROLES = [
   // Territorial admins
-  { code: 'SUPER_ADMIN',       label: 'Super Admin',        category: 'ADMIN', sortOrder: 10, description: 'Global override — bootstrap and break-glass.' },
+  { code: 'SUPER_ADMIN',       label: 'Super Admin',        category: 'ADMIN', sortOrder: 10, description: 'Global override — bootstrap and break-glass. Administers Central Admins.' },
+  { code: 'CENTRAL_ADMIN',     label: 'Central Admin',      category: 'ADMIN', sortOrder: 15, description: 'National tier — structures Provinces and administers Province Admins.' },
   { code: 'PROVINCE_ADMIN',    label: 'Province Admin',     category: 'ADMIN', sortOrder: 20 },
   { code: 'DISTRICT_ADMIN',    label: 'District Admin',     category: 'ADMIN', sortOrder: 30 },
   { code: 'AREA_ADMIN',        label: 'Area Admin',         category: 'ADMIN', sortOrder: 40 },
