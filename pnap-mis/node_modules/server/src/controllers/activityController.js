@@ -7,6 +7,7 @@ const { inspectPhoto } = require('../utils/photoMetadata');
 const dynamicFormService = require('../services/dynamicFormService');
 const configSnapshotService = require('../services/configSnapshotService');
 const responsibilityHookService = require('../services/responsibilityHookService');
+const activityService = require('../services/activityService');
 
 // Mirror of the helper in meetingController — resolves typeCode,
 // materialises the snapshot, validates dynamicData, enforces body
@@ -103,6 +104,26 @@ exports.create = asyncHandler(async (req, res) => {
     campaign,
     createdBy: req.user._id,
   });
+
+  // Organizer + named lead both did party work here.
+  const common = {
+    req,
+    chain,
+    unitLevel: d.unitLevel,
+    unitId: d.unitId,
+    targetType: 'Activity',
+    targetId: a._id,
+    targetLabel: a.title,
+  };
+  activityService.record({ ...common, action: 'ACTIVITY_CREATED' }).catch(() => {});
+  if (a.leadMemberId && String(a.leadMemberId) !== String(req.user.memberId || '')) {
+    activityService.record({
+      ...common,
+      action: 'ACTIVITY_PARTICIPATION',
+      memberId: a.leadMemberId,
+    }).catch(() => {});
+  }
+
   created(res, a);
 });
 
@@ -138,6 +159,30 @@ exports.complete = asyncHandler(async (req, res) => {
   // meeting finalize: walks templates with trigger.event=
   // ACTIVITY_COMPLETED, idempotent on (templateId, activity._id).
   responsibilityHookService.onActivityCompleted(a, req.user).catch(() => {});
+
+  // Completion credits the officer, and every listed participant —
+  // taking part in a party activity is exactly the kind of work the
+  // active/inactive rule is meant to see.
+  const chain = {
+    basicUnitId: a.basicUnitId,
+    areaId: a.areaId,
+    districtId: a.districtId,
+    provinceId: a.provinceId,
+  };
+  const common = {
+    req,
+    chain,
+    unitLevel: a.unitLevel,
+    unitId: a.unitId,
+    targetType: 'Activity',
+    targetId: a._id,
+    targetLabel: a.title,
+  };
+  activityService.record({ ...common, action: 'ACTIVITY_COMPLETED' }).catch(() => {});
+  activityService.recordMany(
+    [...(a.participants || []), a.leadMemberId].filter(Boolean),
+    { ...common, action: 'ACTIVITY_PARTICIPATION' },
+  ).catch(() => {});
 
   ok(res, a);
 });

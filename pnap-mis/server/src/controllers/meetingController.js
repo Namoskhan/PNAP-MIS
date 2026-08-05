@@ -10,6 +10,7 @@ const eventHashService = require('../services/eventHashService');
 const policyEngine = require('../services/policyEngine');
 const responsibilityHookService = require('../services/responsibilityHookService');
 const supervisorService = require('../services/supervisorService');
+const activityService = require('../services/activityService');
 
 // Resolve typeCode (preferred) or legacy type field, materialise the
 // snapshot, validate dynamicData. Throws ApiError on any failure.
@@ -130,6 +131,20 @@ exports.create = asyncHandler(async (req, res) => {
     state: 'SCHEDULED',
     createdBy: req.user._id,
   });
+
+  // Meeting Creation — credited to the convening officer. The chain is
+  // already resolved above, so this costs no extra lookup.
+  activityService.record({
+    action: 'MEETING_CREATED',
+    req,
+    chain,
+    unitLevel: data.unitLevel,
+    unitId: data.unitId,
+    targetType: 'Meeting',
+    targetId: m._id,
+    targetLabel: m.title || m.type,
+  }).catch(() => {});
+
   created(res, m);
 });
 
@@ -373,6 +388,43 @@ exports.finalize = asyncHandler(async (req, res) => {
   // idempotently to (templateId, meeting._id). Errors swallowed so
   // a misfiring template can never break finalize.
   responsibilityHookService.onMeetingFinalized(m, req.user).catch(() => {});
+
+  // ── Organizational activity ──────────────────────────────────────
+  // Three distinct facts, none of them overlapping:
+  //   • the officer who sealed the record → MEETING_FINALIZED
+  //   • everyone on the roster who showed up → ATTENDANCE_MARKED
+  //   • chairperson / supervisor who took part without being on the
+  //     roster → MEETING_PARTICIPATION
+  // The meeting already carries its denormalized chain, so no lookup
+  // is needed. recordMany() is one insertMany + one updateMany, so a
+  // 300-person roster stays two queries.
+  const chain = {
+    basicUnitId: m.basicUnitId,
+    areaId: m.areaId,
+    districtId: m.districtId,
+    provinceId: m.provinceId,
+  };
+  const common = {
+    req,
+    chain,
+    unitLevel: m.unitLevel,
+    unitId: m.unitId,
+    targetType: 'Meeting',
+    targetId: m._id,
+    targetLabel: m.title || m.type,
+    occurredAt: m.finalizedAt,
+  };
+
+  const attended = (m.attendance || [])
+    .filter((a) => a.status === 'PRESENT' || a.status === 'LATE')
+    .map((a) => a.memberId);
+  const attendedSet = new Set(attended.map(String));
+  const participants = [m.chairpersonId, m.supervisorMemberId]
+    .filter((id) => id && !attendedSet.has(String(id)));
+
+  activityService.record({ ...common, action: 'MEETING_FINALIZED' }).catch(() => {});
+  activityService.recordMany(attended, { ...common, action: 'ATTENDANCE_MARKED' }).catch(() => {});
+  activityService.recordMany(participants, { ...common, action: 'MEETING_PARTICIPATION' }).catch(() => {});
 
   ok(res, m);
 });

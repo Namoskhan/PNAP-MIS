@@ -7,6 +7,7 @@ const { ok, created, ApiError } = require('../utils/response');
 const { canManageFinance, resolveUnitChain } = require('../utils/unitScope');
 const policyEngine = require('../services/policyEngine');
 const workflowEngine = require('../services/workflowEngine');
+const activityService = require('../services/activityService');
 // Destination rule lives in utils/transferRouting so the preview
 // endpoint below and the create path share one implementation of what
 // counts as a legal recipient.
@@ -170,6 +171,18 @@ exports.initiate = asyncHandler(async (req, res) => {
     receiptImageUrl: `/uploads/${req.file.filename}`,
     initiatedBy: req.user._id,
   });
+
+  activityService.record({
+    action: 'FUND_TRANSFER_INITIATED',
+    req,
+    chain,
+    unitLevel: sourceLevel,
+    unitId: sourceUnitId,
+    targetType: 'FundTransfer',
+    targetId: t._id,
+    targetLabel: `${t.sourceName} → ${t.destinationName}`,
+  }).catch(() => {});
+
   created(res, t);
 });
 
@@ -231,6 +244,23 @@ exports.acknowledge = asyncHandler(async (req, res) => {
   // finalState === 'PENDING' (extra stages remain) leaves state alone.
   t.decisionNote = req.body.note;
   await t.save();
+
+  // Two distinct activities, matching the two things that can happen
+  // here: clearing an intermediate workflow stage is an APPROVAL; the
+  // final transition that moves the money is the ACKNOWLEDGEMENT.
+  // Scoped to the DESTINATION unit — the sender's denormalized chain
+  // on the record describes where the money came from, not where this
+  // decision was taken.
+  activityService.record({
+    action: wf.finalState === 'APPROVED' ? 'FUND_TRANSFER_ACKNOWLEDGED' : 'FUND_TRANSFER_APPROVED',
+    req,
+    unitLevel: t.destinationLevel,
+    unitId: t.destinationUnitId,
+    targetType: 'FundTransfer',
+    targetId: t._id,
+    targetLabel: `${t.sourceName} → ${t.destinationName}`,
+  }).catch(() => {});
+
   ok(res, t);
 });
 

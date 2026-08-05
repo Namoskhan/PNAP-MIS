@@ -21,6 +21,11 @@ const CHART_AXIS_FILL = '#334155';   // matches --text-soft
 const CHART_AXIS_SUB  = '#475569';   // for second-tier sublabels
 
 // ─── Horizontal bar chart ───
+// rows: [{ label, value, color? }] — a per-row `color` overrides
+// `accent`, which is what lets one HBar carry a CATEGORICAL palette
+// (one hue per identity) instead of a single magnitude colour. Rows
+// are always directly labelled, so a categorical palette here never
+// relies on colour alone to be readable.
 export function HBar({ rows, accent = 'var(--primary)', emptyLabel = 'No data.' }) {
   if (!rows || rows.length === 0) {
     return <p className="muted" style={{ margin: 0, fontSize: 13 }}>{emptyLabel}</p>;
@@ -34,7 +39,7 @@ export function HBar({ rows, accent = 'var(--primary)', emptyLabel = 'No data.' 
           <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
             <div style={{ width: 130, color: 'var(--text-soft)', fontWeight: 500 }}>{r.label}</div>
             <div style={{ flex: 1, height: 14, background: 'var(--surface-alt)', borderRadius: 7, overflow: 'hidden', position: 'relative' }}>
-              <div style={{ width: `${pct}%`, height: '100%', background: accent, borderRadius: 7, transition: 'width .3s ease' }} />
+              <div style={{ width: `${pct}%`, height: '100%', background: r.color || accent, borderRadius: 7, transition: 'width .3s ease' }} />
             </div>
             <div style={{ width: 40, textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{r.value || 0}</div>
           </div>
@@ -138,13 +143,22 @@ export function Sparkline({ values, color = BRAND.dark, fill = 'rgba(30,64,175,0
 
 // ─── Vertical bars (with optional light "background" track) ───
 // rows: [{ label, value, total? }] — if total > value, a light track is drawn behind the value bar.
-export function VBars({ rows, height = 90, color = BRAND.dark, trackColor = BRAND.tint, emptyLabel = 'No data.', showLabels = true }) {
+//
+// `width` is the SVG's viewBox width, i.e. the coordinate space the
+// 11px labels are measured against — NOT the rendered size, which is
+// always 100% of the container. With the default 240 and more than
+// about six bars, each slot becomes narrower than its own label and
+// the axis turns to mush. Callers plotting many bars, or bars with
+// long labels, should pass a width scaled to
+// `rows.length x longest-label` and put the chart in a horizontally
+// scrollable wrapper. Defaulted so existing call sites are unchanged.
+export function VBars({ rows, height = 90, color = BRAND.dark, trackColor = BRAND.tint, emptyLabel = 'No data.', showLabels = true, width = 240 }) {
   if (!rows || rows.length === 0) {
     return <p className="muted" style={{ margin: 0, fontSize: 12, padding: '20px 0' }}>{emptyLabel}</p>;
   }
   const max = Math.max(...rows.map((r) => Math.max(r.total || 0, r.value || 0)), 1);
   const padX = 8, padTop = 14, padBottom = showLabels ? 24 : 6;
-  const w = 240, plotH = height - padTop - padBottom;
+  const w = width, plotH = height - padTop - padBottom;
   const slot = (w - padX * 2) / rows.length;
   const barW = Math.min(slot * 0.62, 30);
   return (

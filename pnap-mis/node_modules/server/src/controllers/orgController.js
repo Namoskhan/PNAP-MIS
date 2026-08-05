@@ -5,6 +5,7 @@ const Area = require('../models/Area');
 const BasicUnit = require('../models/BasicUnit');
 const CabinetSlot = require('../models/CabinetSlot');
 const { ok, created, ApiError } = require('../utils/response');
+const activityService = require('../services/activityService');
 
 // Tier-creation hierarchy — one level down at every step
 // (utils/adminHierarchy):
@@ -144,6 +145,23 @@ exports.listBasicUnits = asyncHandler(async (req, res) => {
   ok(res, units);
 });
 
+// Structuring the organization is itself meaningful organizational
+// activity (Province / District / Area / Basic Unit Management). One
+// helper so the four creation endpoints below stay one line each and
+// the chain is assembled the same way every time.
+function recordOrgActivity(req, action, unitLevel, unitId, label, chain) {
+  activityService.record({
+    action,
+    req,
+    chain,
+    unitLevel,
+    unitId,
+    targetType: unitLevel,
+    targetId: unitId,
+    targetLabel: label,
+  }).catch(() => {});
+}
+
 // Province creation — CENTRAL_ADMIN's core responsibility, with
 // SUPER_ADMIN retained as break-glass so a database with no Central
 // Admin can still be bootstrapped. No auto-provisioned admin; a
@@ -153,6 +171,7 @@ exports.createProvince = asyncHandler(async (req, res) => {
     throw new ApiError(403, 'FORBIDDEN', 'Only a Central Admin can create provinces');
   }
   const p = await Province.create(req.body);
+  recordOrgActivity(req, 'PROVINCE_MANAGED', 'PROVINCE', p._id, p.name, { provinceId: p._id });
   created(res, p);
 });
 
@@ -165,6 +184,9 @@ exports.createDistrict = asyncHandler(async (req, res) => {
     throw new ApiError(403, 'FORBIDDEN', 'You can only create districts within your own province');
   }
   const d = await District.create({ ...req.body, provinceId: province._id });
+  recordOrgActivity(req, 'DISTRICT_MANAGED', 'DISTRICT', d._id, d.name, {
+    districtId: d._id, provinceId: province._id,
+  });
   created(res, d);
 });
 
@@ -182,6 +204,9 @@ exports.createArea = asyncHandler(async (req, res) => {
     provinceId: district.provinceId,
   });
   await CabinetSlot.seedFor('AREA', a._id);
+  recordOrgActivity(req, 'AREA_MANAGED', 'AREA', a._id, a.name, {
+    areaId: a._id, districtId: district._id, provinceId: district.provinceId,
+  });
   created(res, a);
 });
 
@@ -199,5 +224,8 @@ exports.createBasicUnit = asyncHandler(async (req, res) => {
     provinceId: area.provinceId,
   });
   await CabinetSlot.seedFor('BASIC_UNIT', u._id);
+  recordOrgActivity(req, 'BASIC_UNIT_MANAGED', 'BASIC_UNIT', u._id, u.name, {
+    basicUnitId: u._id, areaId: area._id, districtId: area.districtId, provinceId: area.provinceId,
+  });
   created(res, u);
 });

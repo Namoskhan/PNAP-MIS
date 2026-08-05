@@ -3736,3 +3736,210 @@ html { scroll-behavior: smooth; }
   .orgtree-row { padding-top: 10px; padding-bottom: 10px; }
   .orgtree-caret { width: 28px; height: 28px; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Executive dashboard — collapsible sections
+   ──────────────────────────────────────────────────────────────
+   The national MIS dashboard carries far more than fits on one
+   screen, so it is split into sections that open one at a time.
+   Only the Executive Summary is expanded by default; every other
+   section mounts its content lazily on first open, so a closed
+   section costs neither a request nor a render.
+   ══════════════════════════════════════════════════════════════ */
+.dash-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.dash-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+.dash-section-head:hover { background: var(--surface-alt); }
+.dash-section-head:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.dash-section-caret {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform .22s ease;
+}
+.dash-section.open > .dash-section-head .dash-section-caret { transform: rotate(90deg); }
+.dash-section-heading { flex: 1; min-width: 0; }
+.dash-section-title { font-weight: 600; font-size: 14.5px; }
+.dash-section-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.dash-section-badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  background: var(--primary-tint);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+
+/* Animating to `auto` height is not possible directly; a 0fr → 1fr
+   grid row is the one technique that does it without hard-coding a
+   max-height that would clip a tall section. */
+.dash-section-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .24s ease;
+}
+.dash-section.open > .dash-section-wrap { grid-template-rows: 1fr; }
+.dash-section-clip { overflow: hidden; }
+.dash-section-body { padding: 2px 14px 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-section-wrap, .dash-section-caret { transition: none; }
+}
+
+/* The scope bar rides along as the user scrolls the long page, so the
+   way back up the hierarchy is always one click away — drilling
+   happens from cards far below the fold, and a trail that has scrolled
+   out of view is a hierarchy with no exit.
+   52px clears the sticky .topbar; z-index stays below it so the topbar
+   always wins an overlap.
+
+   Note: the Executive Summary is deliberately NOT the sticky element.
+   Expanded it is taller than the viewport, and pinning a block that
+   size buries the page behind it instead of keeping context visible. */
+.dash-scope-bar {
+  position: sticky;
+  top: 52px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+}
+@media (max-width: 860px) {
+  .dash-scope-bar { position: static; }
+}
+
+/* Recent-activity feed. The list grows with the page size, which
+   would otherwise stretch this card far past the trend chart beside
+   it and leave the row lopsided. Cap it and scroll instead; the
+   global scrollbar styling above applies automatically. */
+.dash-feed {
+  max-height: 260px;
+  overflow-y: auto;
+  /* Room for the scrollbar so the last column of text isn't clipped. */
+  padding-right: 4px;
+  /* Contain overscroll so reaching the end of the feed doesn't start
+     scrolling the whole dashboard behind it. */
+  overscroll-behavior: contain;
+}
+
+/* ── Breadcrumb scope trail ─────────────────────────────────── */
+.dash-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.dash-crumb {
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--primary-dark);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  transition: background var(--t-fast);
+}
+.dash-crumb:hover { background: var(--primary-tint); }
+.dash-crumb.current {
+  color: var(--text);
+  font-weight: 600;
+  cursor: default;
+}
+.dash-crumb.current:hover { background: none; }
+.dash-crumb-sep { color: var(--muted-soft); }
+
+/* ── Drill-down unit cards ──────────────────────────────────── */
+.dash-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+.dash-unit-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 13px 14px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+}
+.dash-unit-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.dash-unit-card.leaf { cursor: default; }
+.dash-unit-card.leaf:hover { transform: none; box-shadow: none; border-color: var(--border); }
+.dash-unit-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.dash-unit-card-name {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-unit-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  font-size: 12.5px;
+}
+.dash-unit-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.dash-unit-stat span { color: var(--muted); }
+.dash-unit-stat strong { font-variant-numeric: tabular-nums; }
+.dash-unit-card-foot {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--muted);
+}

@@ -6,8 +6,24 @@ const Donation = require('../models/Donation');
 const Responsibility = require('../models/Responsibility');
 const RoleAssignment = require('../models/RoleAssignment');
 const { ok, ApiError } = require('../utils/response');
-const { memberWithinAreaAdminScope } = require('../utils/unitScope');
+const { memberWithinAreaAdminScope, unitWithinAreaAdminScope } = require('../utils/unitScope');
 const performanceEngine = require('../services/performanceEngine');
+
+// Name + code for the unit being reported on, so the report has a
+// heading rather than an id. CENTRAL is the singleton national body.
+async function describeUnit(unitLevel, unitId) {
+  if (unitLevel === 'CENTRAL') return { level: 'CENTRAL', _id: null, name: 'Central (National)' };
+  const Model = {
+    PROVINCE: require('../models/Province'),
+    DISTRICT: require('../models/District'),
+    AREA: require('../models/Area'),
+    BASIC_UNIT: require('../models/BasicUnit'),
+  }[unitLevel];
+  if (!Model) throw new ApiError(400, 'VALIDATION_ERROR', `Unknown unitLevel ${unitLevel}`);
+  const doc = await Model.findById(unitId).select('name code').lean();
+  if (!doc) throw new ApiError(404, 'NOT_FOUND', 'Unit not found');
+  return { level: unitLevel, _id: doc._id, name: doc.name, code: doc.code };
+}
 
 // SRS §10 — per-member performance:
 //   • meetings attended (PRESENT or LATE)
@@ -107,5 +123,91 @@ exports.memberScore = asyncHandler(async (req, res) => {
       _id: m._id, fullName: m.fullName, memberId: m.memberId,
     },
     ...result,
+  });
+});
+
+// ─── Unit performance ─────────────────────────────────────────────
+// The unit analogue of memberScore: the same PerformanceRuleSet and
+// weights applied to a whole Province / District / Area / Basic Unit,
+// so its score sits on the same 0–100 scale as its members'.
+exports.unitPerformance = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel is required');
+  if (unitLevel !== 'CENTRAL' && !unitId) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'unitId is required for non-CENTRAL units');
+  }
+  if (!(await unitWithinAreaAdminScope(req.user, unitLevel, unitId))) {
+    throw new ApiError(403, 'FORBIDDEN', 'Unit is outside your scope');
+  }
+
+  const unit = await describeUnit(unitLevel, unitId);
+  const result = await performanceEngine.computeForUnit(unitLevel, unitId, { from, to });
+  ok(res, { unit, ...result });
+});
+
+// Per-member leaderboard for a unit.
+//
+// Scores are computed one member at a time by the engine, so this is
+// PAGINATED and hard-capped rather than scoring an entire province in
+// one request — a 2,000-member province would otherwise mean 10,000
+// metric queries in a single call.
+exports.unitMemberScores = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel is required');
+  if (!(await unitWithinAreaAdminScope(req.user, unitLevel, unitId))) {
+    throw new ApiError(403, 'FORBIDDEN', 'Unit is outside your scope');
+  }
+
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(25, Math.max(1, parseInt(req.query.limit, 10) || 10));
+  const scope = performanceEngine.unitScopeFilter(unitLevel, unitId);
+  const filter = { ...scope, status: 'ACTIVE' };
+
+  const [total, members] = await Promise.all([
+    Member.countDocuments(filter),
+    Member.find(filter)
+      .sort({ fullName: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .select('fullName memberId phone basicUnitId')
+      .lean(),
+  ]);
+
+  // Sequential rather than Promise.all: each score is already five
+  // queries, and firing 25 x 5 at once just moves the contention into
+  // the driver's connection pool.
+  const rows = [];
+  for (const m of members) {
+    try {
+      const r = await performanceEngine.computeForMember(m._id, { from, to }, { tierCode: 'BASIC_UNIT' });
+      rows.push({
+        _id: m._id,
+        fullName: m.fullName,
+        memberCode: m.memberId,
+        phone: m.phone,
+        totalScore: r.totalScore,
+        components: r.components.map((c) => ({ metric: c.metric, raw: c.raw, weight: c.weight })),
+      });
+    } catch (err) {
+      // No ruleset, or a metric blew up — the member still belongs in
+      // the list, just without a score.
+      rows.push({
+        _id: m._id, fullName: m.fullName, memberCode: m.memberId,
+        phone: m.phone, totalScore: null, error: err.code || 'SCORE_FAILED',
+      });
+    }
+  }
+
+  rows.sort((a, b) => (b.totalScore ?? -1) - (a.totalScore ?? -1));
+
+  ok(res, {
+    total,
+    page,
+    limit,
+    pages: Math.ceil(total / limit) || 1,
+    // Scores are page-local: the sort ranks this page, not the whole
+    // unit. Said plainly so nobody reads page 2 as "ranks 11-20".
+    rankingScope: 'PAGE',
+    items: rows,
   });
 });

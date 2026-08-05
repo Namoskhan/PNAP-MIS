@@ -8,6 +8,7 @@ const { ok, created, ApiError } = require('../utils/response');
 const { canManageFinance, canApprove, resolveUnitChain } = require('../utils/unitScope');
 const policyEngine = require('../services/policyEngine');
 const workflowEngine = require('../services/workflowEngine');
+const activityService = require('../services/activityService');
 
 // Mongoose's `find` auto-casts query strings to ObjectId; aggregate's
 // $match does NOT. Cast every ObjectId-typed field explicitly when
@@ -147,6 +148,20 @@ exports.recordExpense = asyncHandler(async (req, res) => {
     approvedAt: requiresApproval ? undefined : new Date(),
     recordedBy: req.user._id,
   });
+
+  // Report Submission — filing a voucher-backed expense return is the
+  // unit's financial reporting duty.
+  activityService.record({
+    action: 'REPORT_SUBMITTED',
+    req,
+    chain,
+    unitLevel: d.unitLevel,
+    unitId: d.unitId,
+    targetType: 'Expense',
+    targetId: doc._id,
+    targetLabel: doc.category,
+  }).catch(() => {});
+
   created(res, doc);
 });
 
@@ -238,6 +253,24 @@ exports.decideExpense = asyncHandler(async (req, res) => {
       link: '/unit/finance',
     }).catch(() => {});
   }
+
+  // Report Approval. Fires on every decision, including intermediate
+  // multi-stage ones — each approver did the work of reviewing it.
+  activityService.record({
+    action: 'REPORT_APPROVED',
+    req,
+    chain: {
+      basicUnitId: e.basicUnitId,
+      areaId: e.areaId,
+      districtId: e.districtId,
+      provinceId: e.provinceId,
+    },
+    unitLevel: e.unitLevel,
+    unitId: e.unitId,
+    targetType: 'Expense',
+    targetId: e._id,
+    targetLabel: e.category,
+  }).catch(() => {});
 
   ok(res, e);
 });

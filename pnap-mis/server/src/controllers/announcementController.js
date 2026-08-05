@@ -5,6 +5,7 @@ const { ok, created, ApiError } = require('../utils/response');
 const { resolveUnitChain, userHasRole, canPostAnnouncement } = require('../utils/unitScope');
 const { notify, notifyMany, userIdForMember } = require('../utils/notify');
 const User = require('../models/User');
+const activityService = require('../services/activityService');
 
 // Resolve the viewer's effective territorial chain. Admins use their
 // scope; members use their member chain; CENTRAL roles see everything.
@@ -124,6 +125,17 @@ exports.create = asyncHandler(async (req, res) => {
       }).catch(() => {});
     }
 
+    activityService.record({
+      action: 'ANNOUNCEMENT_CREATED',
+      req,
+      chain: { basicUnitId: m.basicUnitId, areaId: m.areaId, districtId: m.districtId, provinceId: m.provinceId },
+      unitLevel: 'BASIC_UNIT',
+      unitId: m.basicUnitId,
+      targetType: 'Announcement',
+      targetId: doc._id,
+      targetLabel: doc.title,
+    }).catch(() => {});
+
     return created(res, doc);
   }
 
@@ -156,6 +168,23 @@ exports.create = asyncHandler(async (req, res) => {
   // Skip for very wide GLOBAL/CENTRAL broadcasts to avoid a write
   // storm; users will see those on the Announcements page.
   fanoutNotifications(doc).catch((err) => console.error('[announcement fanout]', err.message));
+
+  // Announcement Creation, plus Notification Broadcast when this post
+  // actually fans out to a bell audience (wide GLOBAL / CENTRAL posts
+  // deliberately skip fan-out, so they are not broadcasts).
+  const common = {
+    req,
+    chain,
+    unitLevel: data.unitLevel,
+    unitId: data.unitId || undefined,
+    targetType: 'Announcement',
+    targetId: doc._id,
+    targetLabel: doc.title,
+  };
+  activityService.record({ ...common, action: 'ANNOUNCEMENT_CREATED' }).catch(() => {});
+  if (doc.scope !== 'GLOBAL' && doc.unitLevel !== 'CENTRAL') {
+    activityService.record({ ...common, action: 'NOTIFICATION_BROADCAST' }).catch(() => {});
+  }
 
   created(res, doc);
 });

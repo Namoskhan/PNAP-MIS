@@ -24,7 +24,7 @@ async function connectDB() {
       'User', 'Member', 'Province', 'District', 'Area', 'BasicUnit',
       'CabinetSlot', 'RoleAssignment', 'Meeting', 'Activity',
       'Donation', 'Expense', 'FundTransfer', 'PermanentMembership',
-      'UnitProposal', 'Counter', 'Responsibility', 'AuditLog', 'Central',
+      'UnitProposal', 'Counter', 'Responsibility', 'AuditLog', 'ActivityLog', 'Central', 'Congress',
       'EventTypeConfig', 'FieldDefinition', 'EventConfigSnapshot',
       'UnitTierConfig', 'UnitTierConfigSnapshot',
       'CabinetTemplate', 'UnitPolicy', 'WorkflowConfig',
@@ -368,6 +368,21 @@ async function connectDB() {
       if (r.skipped) console.warn(`[db] ${r.skipped} finalized meeting(s) skipped during rehash`);
     } catch (err) {
       console.warn(`[db] rehash finalized meetings failed: ${err.message}`);
+    }
+
+    // Derive organizational activity history into ActivityLog so the
+    // executive dashboard's active/inactive rules have something to
+    // read on first boot. Self-skipping after the first successful
+    // run (sentinel row), and idempotent if interrupted.
+    try {
+      const { backfillActivityLog } = require('../utils/backfillActivityLog');
+      const r = await backfillActivityLog();
+      if (!r.skipped) {
+        console.log(`[db] derived ${r.inserted} historical activity log entr(ies); `
+          + `stamped lastActivityAt on ${r.membersTouched} member(s)`);
+      }
+    } catch (err) {
+      console.warn(`[db] activity-log backfill failed: ${err.message}`);
     }
 
     // Backfill Elaqayi Committee formation timestamp for any Area

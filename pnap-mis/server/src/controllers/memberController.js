@@ -5,6 +5,19 @@ const { ok, created, ApiError } = require('../utils/response');
 const { generateMemberId } = require('../utils/memberId');
 const { canApproveMember, memberWithinAreaAdminScope } = require('../utils/unitScope');
 const workflowEngine = require('../services/workflowEngine');
+const activityService = require('../services/activityService');
+
+// Member records already carry their denormalized hierarchy, so every
+// activity hook in this file can hand the chain straight over instead
+// of making activityService resolve it again.
+function chainOf(member) {
+  return {
+    basicUnitId: member.basicUnitId,
+    areaId: member.areaId,
+    districtId: member.districtId,
+    provinceId: member.provinceId,
+  };
+}
 
 // PR F1 — shared workflow decide helper. Runs alongside the bespoke
 // authorize* check on each controller: bespoke handles unit/scope
@@ -86,6 +99,20 @@ exports.create = asyncHandler(async (req, res) => {
     submittedVia: 'WEB',
     status: 'PENDING_APPROVAL',
   });
+
+  // Member Registration — credited to the officer who filed it, not
+  // to the applicant (who has done no organizational work yet and is
+  // not even approved).
+  activityService.record({
+    action: 'MEMBER_REGISTERED',
+    req,
+    chain: chainOf(member),
+    unitLevel: 'BASIC_UNIT',
+    unitId: member.basicUnitId,
+    targetType: 'Member',
+    targetId: member._id,
+    targetLabel: member.fullName,
+  }).catch(() => {});
 
   created(res, member);
 });
@@ -216,6 +243,21 @@ exports.update = asyncHandler(async (req, res) => {
   Object.assign(member, req.body);
   if (req.file) member.photoUrl = `/uploads/${req.file.filename}`;
   await member.save();
+
+  // Member Update. Both branches are real organizational work: a
+  // member curating their own record, or an officer maintaining the
+  // roster — so credit whoever actually made the edit.
+  activityService.record({
+    action: 'MEMBER_UPDATED',
+    req,
+    chain: chainOf(member),
+    unitLevel: 'BASIC_UNIT',
+    unitId: member.basicUnitId,
+    targetType: 'Member',
+    targetId: member._id,
+    targetLabel: member.fullName,
+  }).catch(() => {});
+
   ok(res, member);
 });
 
@@ -263,6 +305,20 @@ exports.approve = asyncHandler(async (req, res) => {
       link: `/members/${member._id}`,
     }).catch(() => {});
   }
+
+  // Member Approval — deciding on an application is organizational
+  // work regardless of whether it was the final stage of a multi-stage
+  // workflow, so this fires on every decision, not only the last one.
+  activityService.record({
+    action: 'MEMBER_APPROVED',
+    req,
+    chain: chainOf(member),
+    unitLevel: 'BASIC_UNIT',
+    unitId: member.basicUnitId,
+    targetType: 'Member',
+    targetId: member._id,
+    targetLabel: member.fullName,
+  }).catch(() => {});
 
   ok(res, member);
 });

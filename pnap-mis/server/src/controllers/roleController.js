@@ -11,6 +11,7 @@ const {
   resolveUnitChain,
 } = require('../utils/unitScope');
 const workflowEngine = require('../services/workflowEngine');
+const activityService = require('../services/activityService');
 
 // SUPER_ADMIN can initiate or decide role assignments at any tier
 // (NATIONAL_ADMIN was removed; Super took over its Central-tier
@@ -259,6 +260,33 @@ exports.decide = asyncHandler(async (req, res) => {
   // read `decision === 'APPROVED'`, which is fine because they only
   // mean to fire when the FINAL state is APPROVED; rebind here so
   // the existing block doesn't need restructuring.
+  // Cabinet Role Assignment — credited both to the officer who
+  // decided and to the member who took office. Taking a cabinet seat
+  // is the clearest possible signal that someone is engaged, and it
+  // also seeds a brand-new office bearer's activity so their unit
+  // isn't reported dormant from the day its cabinet was formed.
+  activityService.record({
+    action: 'CABINET_ROLE_ASSIGNED',
+    req,
+    unitLevel: ra.unitLevel,
+    unitId: ra.unitId,
+    targetType: 'RoleAssignment',
+    targetId: ra._id,
+    targetLabel: ra.roleCode,
+  }).catch(() => {});
+  if (finalState === 'APPROVED') {
+    activityService.record({
+      action: 'CABINET_ROLE_ASSIGNED',
+      req,
+      memberId: ra.memberId,
+      unitLevel: ra.unitLevel,
+      unitId: ra.unitId,
+      targetType: 'RoleAssignment',
+      targetId: ra._id,
+      targetLabel: ra.roleCode,
+    }).catch(() => {});
+  }
+
   // eslint-disable-next-line no-param-reassign
   if (finalState !== 'APPROVED') return ok(res, ra);
 

@@ -53,6 +53,14 @@ const memberSchema = new mongoose.Schema(
     status: { type: String, enum: STATUSES, default: 'PENDING_APPROVAL', index: true },
     statusReason: { type: String },
 
+    // Denormalized "most recent meaningful organizational activity".
+    // Written ONLY by services/activityService (via $max, so it never
+    // moves backwards) and read by the executive dashboard's
+    // active/inactive rule. Distinct from `status`, which is the
+    // membership workflow state: a member can be status=ACTIVE and
+    // still be dormant. Absent on members who have never acted.
+    lastActivityAt: { type: Date, default: null },
+
     submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     submittedVia: { type: String, enum: ['PUBLIC', 'WEB', 'MOBILE', 'ADMIN'], default: 'WEB' },
 
@@ -84,6 +92,14 @@ const memberSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Executive-dashboard read paths. Every active/inactive query is
+// "members in <scope> whose lastActivityAt is (or is not) past a
+// cutoff", so the scope key leads and the timestamp follows — that
+// ordering lets one index serve both the count and the sorted
+// inactive-member listing.
+memberSchema.index({ provinceId: 1, lastActivityAt: -1 });
+memberSchema.index({ status: 1, lastActivityAt: -1 });
 
 memberSchema.methods.setPassword = async function (plain) {
   this.passwordHash = await bcrypt.hash(plain, 12);
