@@ -14,6 +14,27 @@ const env = {
   UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
   MAX_UPLOAD_MB: parseInt(process.env.MAX_UPLOAD_MB || '5', 10),
   NODE_ENV: process.env.NODE_ENV || 'development',
+
+  // Public base URL of the web client. Verification and reset links
+  // point at the SPA, never at the API — the browser must land on a
+  // page that can show a result, and the raw token must not be
+  // handed to a server route the user cannot see the outcome of.
+  // Trailing slashes are stripped so link building stays simple.
+  APP_URL: (process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, ''),
+
+  // SMTP. With SMTP_HOST unset the mailer falls back to logging the
+  // message (including the link) to the console, so the whole flow is
+  // exercisable in development without a mail server.
+  SMTP_HOST: process.env.SMTP_HOST || '',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
+  SMTP_USER: process.env.SMTP_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || '',
+  SMTP_FROM: process.env.SMTP_FROM || 'PNAP MIS <no-reply@pnap.local>',
+  // Most providers use STARTTLS on 587 (secure=false) and implicit TLS
+  // on 465. Derived rather than configured, with an escape hatch.
+  SMTP_SECURE: process.env.SMTP_SECURE
+    ? process.env.SMTP_SECURE === 'true'
+    : parseInt(process.env.SMTP_PORT || '587', 10) === 465,
 };
 
 module.exports = env;

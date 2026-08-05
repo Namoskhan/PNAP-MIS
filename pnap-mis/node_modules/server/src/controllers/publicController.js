@@ -82,6 +82,11 @@ exports.register = asyncHandler(async (req, res) => {
     }))
     .catch(() => {});
 
+  // No verification email here on purpose. An applicant is
+  // PENDING_APPROVAL and has no login identity yet — the verification
+  // link is sent by memberController.approve, at the moment the account
+  // actually becomes usable.
+
   created(res, {
     _id: member._id,
     fullName: member.fullName,

@@ -135,6 +135,16 @@ exports.create = asyncHandler(async (req, res) => {
     detail: { role, scope: cleanScope },
   }).catch(() => {});
 
+  // Ask the new admin to confirm their address, so the account can be
+  // recovered later without an out-of-band reset. Fire-and-forget: an
+  // SMTP outage must not fail the account creation the caller just
+  // performed, and the link can always be re-requested.
+  if (user.email) {
+    require('../services/verificationService')
+      .requestVerification(user.email)
+      .catch(() => {});
+  }
+
   const obj = user.toJSON();
   ok(res, obj, 201);
 });

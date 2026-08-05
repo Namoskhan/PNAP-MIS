@@ -62,6 +62,31 @@ const userSchema = new mongoose.Schema(
     memberId: { type: mongoose.Schema.Types.ObjectId, ref: 'Member' },
     isActive: { type: Boolean, default: true },
     lastLoginAt: Date,
+
+    // ── Email verification + password reset ──────────────────────────
+    // One system for the whole application, keyed here on User, so a
+    // member and an admin follow the exact same flow. Note the password
+    // itself may still live on the linked Member — see
+    // services/accountService.credentialStore().
+    //
+    // Tokens are stored as SHA-256 hashes and never in plaintext: a
+    // leaked database dump must not be replayable as a live reset link.
+    // select:false so they cannot ride along in an API response even by
+    // accident.
+    emailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date },
+    emailVerificationToken: { type: String, select: false },
+    emailVerificationExpires: { type: Date, select: false },
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
+
+    // Marks the bootstrap Super Admin provisioned by utils/superAdmin.
+    // That account is deliberately excluded from both flows — its
+    // password is managed out of band (seed file / database /
+    // maintenance script). Flagged on the document rather than matched
+    // on a role name so the exclusion survives a role rename and never
+    // depends on the role system.
+    isBootstrap: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -84,6 +109,12 @@ userSchema.index(
   { unique: true, partialFilterExpression: { username: { $type: 'string' } } }
 );
 
+// Token lookups are single-document point reads on a field that is
+// absent from the vast majority of rows, so a sparse index keeps them
+// O(1) without carrying every user.
+userSchema.index({ emailVerificationToken: 1 }, { sparse: true });
+userSchema.index({ passwordResetToken: 1 }, { sparse: true });
+
 userSchema.methods.setPassword = async function (plain) {
   this.passwordHash = await bcrypt.hash(plain, 12);
 };
@@ -94,6 +125,12 @@ userSchema.methods.verifyPassword = function (plain) {
 userSchema.methods.toJSON = function () {
   const obj = this.toObject({ virtuals: true });
   delete obj.passwordHash;
+  // Belt and braces: these are select:false, but a caller that
+  // explicitly selects them must still never leak one to a client.
+  delete obj.emailVerificationToken;
+  delete obj.emailVerificationExpires;
+  delete obj.passwordResetToken;
+  delete obj.passwordResetExpires;
   delete obj.__v;
   return obj;
 };

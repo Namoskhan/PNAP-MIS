@@ -304,6 +304,20 @@ exports.approve = asyncHandler(async (req, res) => {
       body: `Welcome, ${member.fullName}. Your member ID is ${member.memberId}.`,
       link: `/members/${member._id}`,
     }).catch(() => {});
+
+    // Approval is the moment the member gains a real login identity, so
+    // it is also the moment their email is worth confirming — a
+    // confirmed address is what lets them recover the account later
+    // without an administrator resetting it by hand.
+    //
+    // Fire-and-forget, like the notification above: an SMTP outage must
+    // not fail an approval, and the member can always request a fresh
+    // link from /resend-verification.
+    if (member.email) {
+      require('../services/verificationService')
+        .requestVerification(member.email)
+        .catch(() => {});
+    }
   }
 
   // Member Approval — deciding on an application is organizational

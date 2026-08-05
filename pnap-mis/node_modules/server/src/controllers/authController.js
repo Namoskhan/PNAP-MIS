@@ -168,3 +168,96 @@ async function _finishMemberLogin(member, password, res) {
 exports.me = asyncHandler(async (req, res) => {
   ok(res, await shapeUser(req.user));
 });
+
+// ---------------------------------------------------------------------------
+// Account security — email verification + forgot/reset password
+// ---------------------------------------------------------------------------
+// Appended below the login path, which is untouched. These handlers are
+// thin: every decision lives in services/verificationService and
+// services/passwordResetService, and the rule about WHERE a password is
+// actually stored lives in services/accountService.
+//
+// The two "request" endpoints answer identically no matter what the
+// server found, and they answer WITHOUT awaiting the lookup or the mail
+// send. That is not laziness — awaiting would make a hit measurably
+// slower than a miss and turn the response time into an account-
+// existence oracle, which is the exact leak the identical body is there
+// to prevent.
+const verificationService = require('../services/verificationService');
+const resetService = require('../services/passwordResetService');
+
+const GENERIC_SENT =
+  'If an account matches that information, we have sent an email with further instructions.';
+
+function detach(promise, label) {
+  promise
+    .then((outcome) => {
+      if (outcome !== 'SENT') console.log(`[auth] ${label}: ${outcome}`);
+    })
+    .catch((err) => console.error(`[auth] ${label} failed: ${err.stack || err.message}`));
+}
+
+// POST /auth/forgot-password  { identifier }
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const identifier = String(req.body.identifier || req.body.email || '').trim();
+  if (!identifier) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Enter your email, username or CNIC.');
+  }
+  detach(resetService.requestReset(identifier), 'forgot-password');
+  return res.status(202).json({ success: true, data: { message: GENERIC_SENT } });
+});
+
+// POST /auth/resend-verification  { identifier }
+exports.resendVerification = asyncHandler(async (req, res) => {
+  const identifier = String(req.body.identifier || req.body.email || '').trim();
+  if (!identifier) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Enter your email, username or CNIC.');
+  }
+  detach(verificationService.requestVerification(identifier), 'resend-verification');
+  return res.status(202).json({ success: true, data: { message: GENERIC_SENT } });
+});
+
+// GET /auth/verify-email/:token
+exports.verifyEmail = asyncHandler(async (req, res) => {
+  const result = await verificationService.confirmVerification(req.params.token);
+  if (!result.ok) {
+    throw new ApiError(
+      400,
+      result.code,
+      result.code === 'TOKEN_EXPIRED'
+        ? 'This verification link has expired. Request a new one.'
+        : 'This verification link is not valid. Request a new one.'
+    );
+  }
+  return ok(res, { verified: true, alreadyVerified: result.alreadyVerified });
+});
+
+// GET /auth/reset-password/:token — check a link before showing the form.
+exports.checkResetToken = asyncHandler(async (req, res) => {
+  const result = await resetService.inspectToken(req.params.token);
+  if (!result.ok) {
+    throw new ApiError(
+      400,
+      result.code,
+      result.code === 'TOKEN_EXPIRED'
+        ? 'This reset link has expired. Request a new one.'
+        : 'This reset link is not valid. Request a new one.'
+    );
+  }
+  return ok(res, { valid: true, fullName: result.fullName });
+});
+
+// POST /auth/reset-password  { token, password, confirmPassword }
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const { token, password, confirmPassword } = req.body;
+  const result = await resetService.confirmReset(token, password, confirmPassword);
+  if (!result.ok) {
+    const message =
+      result.message ||
+      (result.code === 'TOKEN_EXPIRED'
+        ? 'This reset link has expired. Request a new one.'
+        : 'This reset link is not valid. Request a new one.');
+    throw new ApiError(400, result.code, message);
+  }
+  return ok(res, { reset: true, message: 'Your password has been updated. You can now sign in.' });
+});

@@ -1,0 +1,14 @@
+# Environment files — these hold real credentials (SMTP passwords,
+# JWT secrets, database URIs) and must never be committed.
+# .env.example is the tracked template and carries placeholders only.
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

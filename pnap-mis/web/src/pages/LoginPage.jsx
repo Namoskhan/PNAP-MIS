@@ -1,29 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { errorMessage } from '../api/client';
 import PublicRegisterModal from '../components/PublicRegisterModal';
+import IdentifierField from '../components/IdentifierField';
+import PasswordField from '../components/PasswordField';
 import { useToast } from '../components/Toast';
-
-// If the user types digits, format them as a CNIC (5-7-1). If they
-// type anything that isn't a digit (e.g. "@" for email or letters
-// for username), leave the value as-is so admins can enter their
-// email/username untouched.
-function maybeFormatCnic(input) {
-  if (!input) return '';
-  // Anything beyond digits, dashes, and whitespace is a non-CNIC
-  // identifier — let it through verbatim. Dashes + spaces alone are
-  // tolerated because users sometimes paste from a CNIC card with a
-  // trailing space.
-  if (/[^0-9\s-]/.test(input)) return input;
-  // Strip everything except digits, cap at 13 (CNIC length).
-  const digits = input.replace(/\D/g, '').slice(0, 13);
-  if (digits.length === 0) return '';
-  if (digits.length <= 5) return digits;
-  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`;
-}
 
 export default function LoginPage() {
   const { login, user } = useAuth();
@@ -109,43 +92,26 @@ export default function LoginPage() {
           </p>
         )}
         {err && <div className="alert error">{err}</div>}
-        <div className="field">
-          <label>Email, Username, or CNIC</label>
-          <input
-            value={identifier}
-            placeholder="email@example.com  ·  username  ·  XXXXX-XXXXXXX-X"
-            onChange={(e) => setIdentifier(maybeFormatCnic(e.target.value))}
-            onPaste={(e) => {
-              // Format pasted CNICs immediately — without this, a
-              // pasted "1560504515151" would briefly appear unformatted
-              // before the next keystroke triggered the formatter.
-              const text = e.clipboardData.getData('text');
-              if (text && !/[^0-9\s-]/.test(text)) {
-                e.preventDefault();
-                setIdentifier(maybeFormatCnic(text));
-              }
-            }}
-            autoComplete="username"
-            spellCheck={false}
-            autoCapitalize="off"
-            required
-          />
-          {/^\d/.test(identifier) && (
-            <div className="hint">Auto-formatting as CNIC</div>
-          )}
-        </div>
-        <div className="field" style={{ marginTop: 12 }}>
-          <label>Password</label>
-          <input
-            type="password"
+        <IdentifierField value={identifier} onChange={setIdentifier} />
+        <div style={{ marginTop: 12 }}>
+          <PasswordField
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
+            onChange={setPassword}
+            autoComplete="current-password"
+            labelAction={
+              <Link to="/forgot-password" style={{ fontSize: 12.5 }}>
+                Forgot password?
+              </Link>
+            }
           />
         </div>
         <button className="btn" style={{ marginTop: 18, width: '100%' }} disabled={busy}>
           {busy ? 'Signing in…' : 'Sign In'}
         </button>
+        <div className="muted" style={{ marginTop: 14, textAlign: 'center', fontSize: 12.5 }}>
+          Didn't get your confirmation email?{' '}
+          <Link to="/resend-verification">Resend verification</Link>
+        </div>
       </form>
       <PublicRegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
     </div>

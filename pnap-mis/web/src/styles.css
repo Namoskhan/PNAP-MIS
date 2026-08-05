@@ -666,6 +666,41 @@ a:hover { color: var(--primary); }
 .field .error { color: var(--danger); font-size: 12px; margin-top: 5px; font-weight: 500; }
 .field .hint { color: var(--muted); font-size: 12px; margin-top: 5px; }
 
+/* ---------- Password field with show/hide toggle ---------- */
+/* The wrapper only positions the button; the input keeps every one of
+   its normal .field styles, including the focus ring, so a password
+   field is visually identical to any other input until you look for
+   the eye. */
+.pw-wrap { position: relative; display: flex; flex-direction: column; }
+/* Room for the button, so a long password never runs underneath it. */
+.pw-wrap input { padding-right: 40px; }
+.pw-toggle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 1px;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  transition: color var(--t-fast);
+}
+.pw-toggle:hover { color: var(--text); }
+.pw-toggle:active { color: var(--primary); }
+/* The toggle is real functionality, so it stays in the tab order and
+   needs a focus indicator a keyboard user can actually see. */
+.pw-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  color: var(--text);
+}
+
 /* ---------- Tables ---------- */
 table.list {
   width: 100%;
