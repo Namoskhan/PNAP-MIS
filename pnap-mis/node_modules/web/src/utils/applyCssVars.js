@@ -44,18 +44,29 @@ const PALETTE_TO_CSS_VAR = {
   tierBasicUnit: '--tier-basic-unit',
 };
 
-// Apply a palette object to :root. Skips empty/null values so a
-// partial palette doesn't blank out vars the legacy CSS depends on.
+// Apply a palette object to :root.
+//
+// A token the new palette does NOT define is actively REMOVED rather
+// than left alone. These are inline properties on <html>, so they
+// outrank every stylesheet rule and nothing else ever clears them:
+// switching from a complete light palette to a partial dark one used to
+// leave the undefined tokens showing their light values forever, giving
+// a half-applied theme that no amount of re-saving would correct.
+// Removing the property lets the stylesheet's own default take over,
+// which is what "this palette doesn't set that token" should mean.
 export function applyPalette(palette) {
   if (!palette || typeof document === 'undefined') return;
   const root = document.documentElement;
   for (const [key, varName] of Object.entries(PALETTE_TO_CSS_VAR)) {
     const v = palette[key];
     if (v) root.style.setProperty(varName, v);
+    else root.style.removeProperty(varName);
   }
   // shadowAlpha is special — it's a number, used in shadow rules.
   if (typeof palette.shadowAlpha === 'number') {
     root.style.setProperty('--shadow-alpha', String(palette.shadowAlpha));
+  } else {
+    root.style.removeProperty('--shadow-alpha');
   }
 }
 

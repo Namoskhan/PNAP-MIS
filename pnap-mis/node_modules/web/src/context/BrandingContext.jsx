@@ -136,6 +136,20 @@ export function BrandingProvider({ children }) {
     return () => window.removeEventListener('focus', onFocus);
   }, [load]);
 
+  // activeMode 'AUTO' means "follow the OS". resolveMode() reads that
+  // preference once, at apply time — so without this listener, AUTO was
+  // only honoured on page load: a user switching their system to dark
+  // mode would sit on the light palette until they reloaded. Only
+  // subscribes while AUTO is actually selected.
+  useEffect(() => {
+    if (state.theme?.activeMode !== 'AUTO') return undefined;
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => applyTheme(state.theme);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [state.theme]);
+
   // Live-update document.title even when state changes due to a
   // refresh — covers the case where admin renames the system.
   useEffect(() => {

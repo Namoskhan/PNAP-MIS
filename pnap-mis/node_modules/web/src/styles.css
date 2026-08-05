@@ -2743,6 +2743,14 @@ html { scroll-behavior: smooth; }
 }
 .rm-hero-btn.solid:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); }
 .rm-hero-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+/* The .solid:hover rule is more specific than :disabled, so without
+   these a disabled button still lifts and recolors under the cursor —
+   it reads as clickable when it isn't. */
+.rm-hero-btn:disabled:hover { transform: none; box-shadow: none; }
+.rm-footer .rm-hero-btn.solid:disabled:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
 
 /* ── Roles list card ─────────────────────────────────────────── */
 .rm-card {
