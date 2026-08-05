@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from './AuthContext';
+import { LEVEL_ORDER, homeTierOf, levelIndex } from '../utils/unitTier';
 
 // SRS §13.3 / DASH-002 — every authenticated screen runs in the
 // context of a selected unit (level + id). Higher-level users can
@@ -9,7 +10,28 @@ import { useAuth } from './AuthContext';
 const UnitContext = createContext(null);
 const STORAGE_KEY = 'pnap_unit_ctx';
 
-const LEVEL_ORDER = ['CENTRAL', 'PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT'];
+// The persisted context is STAMPED WITH THE USER WHO SET IT.
+//
+// It used to be a bare {unitLevel, unitId, unitName} under a single
+// global key, and logout() did not remove it. So the context outlived
+// the session: sign out of Super Admin and into an Area Admin on the
+// same browser, and the top-left button still read "CENTRAL · PKNAP
+// Central", and Assign Cabinet Roles still listed the previous
+// account's unit until you manually picked a new one. Binding the row
+// to a user id fixes that even when logout never runs — an expired
+// token, a closed tab, a second account in the same browser.
+function readStored(userId) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!raw || !raw.unitLevel || !raw.unitId) return null;
+    // No stamp = written by the old build, or by a different account.
+    // Either way it is not ours; discard rather than inherit it.
+    if (!raw.userId || String(raw.userId) !== String(userId || '')) return null;
+    return { unitLevel: raw.unitLevel, unitId: raw.unitId, unitName: raw.unitName };
+  } catch {
+    return null;
+  }
+}
 
 export function UnitProvider({ children }) {
   const { user } = useAuth();
@@ -18,10 +40,10 @@ export function UnitProvider({ children }) {
   const [areas, setAreas] = useState([]);
   const [units, setUnits] = useState([]);
 
-  const [ctx, setCtx] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; }
-    catch { return null; }
-  });
+  // AuthContext seeds `user` synchronously from its own localStorage
+  // cache, so the owner check is available on the very first render —
+  // a foreign context is never painted, not even for one frame.
+  const [ctx, setCtx] = useState(() => readStored(user?._id));
 
   // /api/org/provinces is auth-gated. Only fetch once the user is
   // logged in; otherwise an anonymous visitor on /register or /login
@@ -96,17 +118,87 @@ export function UnitProvider({ children }) {
       }
     }
 
+    // PROVINCE_ADMIN / DISTRICT_ADMIN had NO correction branch at all.
+    // Central Admin, Area Admin, plain members and cabinet-role holders
+    // each got one; these two fell through every case, so whatever
+    // context happened to be in localStorage simply persisted — which
+    // is why Assign Cabinet Roles opened on the previous unit until you
+    // picked a new one by hand. They now default to their own tier and
+    // reject anything above it, exactly like the Area Admin branch.
+    const isSuperOrCentral = user.roles?.includes('SUPER_ADMIN')
+      || user.roles?.includes('CENTRAL_ADMIN');
+
+    if (!isSuperOrCentral && user.roles?.includes('PROVINCE_ADMIN') && user.scope?.provinceId) {
+      const inScope = ctx && (
+        ['DISTRICT', 'AREA', 'BASIC_UNIT'].includes(ctx.unitLevel)
+        || (ctx.unitLevel === 'PROVINCE' && String(ctx.unitId) === String(user.scope.provinceId))
+      );
+      if (!inScope) {
+        setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: 'My Province' });
+        api.get('/org/provinces')
+          .then((r) => {
+            const p = (r.data.data || [])
+              .find((x) => String(x._id) === String(user.scope.provinceId));
+            if (p?.name) {
+              setCtx((c) => (c && String(c.unitId) === String(user.scope.provinceId)
+                ? { ...c, unitName: p.name } : c));
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    if (!isSuperOrCentral && user.roles?.includes('DISTRICT_ADMIN')
+      && !user.roles?.includes('PROVINCE_ADMIN') && user.scope?.districtId) {
+      const inScope = ctx && (
+        ['AREA', 'BASIC_UNIT'].includes(ctx.unitLevel)
+        || (ctx.unitLevel === 'DISTRICT' && String(ctx.unitId) === String(user.scope.districtId))
+      );
+      if (!inScope) {
+        setCtx({ unitLevel: 'DISTRICT', unitId: user.scope.districtId, unitName: 'My District' });
+        api.get('/org/districts', { params: { provinceId: user.scope.provinceId } })
+          .then((r) => {
+            const d = (r.data.data || [])
+              .find((x) => String(x._id) === String(user.scope.districtId));
+            if (d?.name) {
+              setCtx((c) => (c && String(c.unitId) === String(user.scope.districtId)
+                ? { ...c, unitName: d.name } : c));
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
     if (user.roles?.includes('AREA_ADMIN') && !isHigherAdmin && user.scope?.areaId) {
       const inScope = ctx && (
         ctx.unitLevel === 'BASIC_UNIT' ||
         (ctx.unitLevel === 'AREA' && String(ctx.unitId) === String(user.scope.areaId))
       );
       if (!inScope) {
+        // The unit's name comes from the AREA, never from the admin's
+        // own fullName. It used to be derived by stripping the literal
+        // " Area Admin" suffix off the user's name — which only ever
+        // worked for the auto-provisioned "<Area> Area Admin" accounts.
+        // For an admin created by hand through Manage Organization, the
+        // suffix isn't there, so the strip was a no-op and the top-left
+        // context button displayed the PERSON'S NAME where a unit name
+        // belongs ("AREA · Shumail Khan").
         setCtx({
           unitLevel: 'AREA',
           unitId: user.scope.areaId,
-          unitName: user.fullName?.replace(' Area Admin', '') || 'My Area',
+          unitName: 'My Area',
         });
+        api.get('/org/areas', { params: { districtId: user.scope.districtId } })
+          .then((r) => {
+            const area = (r.data.data || [])
+              .find((a) => String(a._id) === String(user.scope.areaId));
+            if (area?.name) {
+              setCtx((c) => (c && String(c.unitId) === String(user.scope.areaId)
+                ? { ...c, unitName: area.name }
+                : c));
+            }
+          })
+          .catch(() => { /* keep the generic label */ });
       }
     }
 
@@ -234,9 +326,12 @@ export function UnitProvider({ children }) {
   }, [user]);
 
   useEffect(() => {
-    if (ctx) localStorage.setItem(STORAGE_KEY, JSON.stringify(ctx));
-    else localStorage.removeItem(STORAGE_KEY);
-  }, [ctx]);
+    if (ctx && user?._id) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...ctx, userId: user._id }));
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [ctx, user?._id]);
 
   async function loadDistricts(provinceId) {
     const r = await api.get('/org/districts', { params: { provinceId } });

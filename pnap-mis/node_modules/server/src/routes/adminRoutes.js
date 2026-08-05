@@ -4,6 +4,7 @@ const userCtrl = require('../controllers/adminUserController');
 const auditCtrl = require('../controllers/adminAuditController');
 const memberCtrl = require('../controllers/memberController');
 const roleCtrl = require('../controllers/roleController');
+const { requireUnitScope } = require('../middleware/unitScopeGuard');
 const financeCtrl = require('../controllers/financeController');
 
 // Every admin endpoint requires authentication. Per-route role checks
@@ -18,8 +19,14 @@ router.use(authenticate);
 
 // Read-only directory lookups (executives at a level, search,
 // per-user lookup) — open to every admin tier so anyone with admin
-// powers can browse the org. Backend controllers still scope what
-// rows are returned per the caller.
+// powers can browse the org.
+//
+// This block used to claim the controllers scoped the rows per caller.
+// They did not: /executives took a (level, unitId) straight from the
+// query and returned that unit's cabinet to any admin tier, so a
+// District Admin could read another province's executive directory.
+// The territorial bound is now applied here, by the same helper the
+// cabinet endpoint uses.
 const READ_ADMIN = requireRole(
   'SUPER_ADMIN', 'CENTRAL_ADMIN',
   'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
@@ -34,7 +41,7 @@ const TIER_ADMIN = requireRole(
 // ─── Read-only directory (any admin tier) ─────────────────────────
 router.get('/users', READ_ADMIN, userCtrl.list);
 router.get('/search', READ_ADMIN, userCtrl.search);
-router.get('/executives', READ_ADMIN, userCtrl.listExecutives);
+router.get('/executives', READ_ADMIN, requireUnitScope(), userCtrl.listExecutives);
 router.get('/users/:id', READ_ADMIN, userCtrl.getOne);
 
 // ─── Tier-admin creation (Super → Central → Province → District → Area)

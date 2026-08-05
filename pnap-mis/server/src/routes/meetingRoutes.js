@@ -5,10 +5,13 @@ const { validate } = require('../middleware/validate');
 const { upload } = require('../middleware/upload');
 const { uploadAny } = require('../middleware/uploadAny');
 const { meetingCreateSchema, meetingFinalizeSchema, meetingUpdateSchema } = require('../validators/unitSchemas');
+const { requireUnitScope } = require('../middleware/unitScopeGuard');
 
 router.use(authenticate);
 
-router.get('/', ctrl.list);
+// A meeting list addressed at (unitLevel, unitId) must stay inside the
+// caller's territory; see middleware/unitScopeGuard.
+router.get('/', requireUnitScope(), ctrl.list);
 router.post('/', validate(meetingCreateSchema), ctrl.create);
 router.get('/:id', ctrl.getOne);
 router.patch('/:id', validate(meetingUpdateSchema), ctrl.update);
