@@ -137,11 +137,7 @@ export default function Layout() {
             <div className="nav-group">God Mode</div>
             <nav>
               <NavLink to="/" end>Dashboard</NavLink>
-              {/* Super Admin administers Central Admins, not
-                  Provinces — province management moved down a tier
-                  with the one-level hierarchy. /admin/manage-org is
-                  still reachable by URL as a break-glass path.
-                  Lands on the user directory pre-filtered to the tier
+              {/* Lands on the user directory pre-filtered to the tier
                   Super Admin is responsible for; the create action for
                   this role lives there too, since a Central Admin has
                   no org unit to be created alongside. */}
@@ -151,6 +147,12 @@ export default function Layout() {
                   isActive && search.includes('role=CENTRAL_ADMIN') ? 'active' : undefined
                 )}
               >Central Admins</NavLink>
+              {/* Province management is SHARED with the Central Admin,
+                  not delegated away from Super Admin. Both tiers create
+                  provinces; only Super Admin can delete one, and only
+                  Super Admin can walk the whole hierarchy from here —
+                  hence "Units" rather than "Provinces". */}
+              <NavLink to="/admin/manage-org">Manage Units</NavLink>
               <NavLink to="/members">All Members</NavLink>
               <NavLink to="/admin/pending-approvals">Pending Role Approvals</NavLink>
               <NavLink to="/admin/finance-overview">Finance Overview</NavLink>

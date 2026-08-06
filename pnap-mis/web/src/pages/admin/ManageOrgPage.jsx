@@ -3,24 +3,25 @@ import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
 import { SkeletonRows } from '../../components/Skeleton';
+import { ChevronRightIcon } from '../../components/icons';
 
 // Role-aware org-management page. One row per administrative tier,
 // each managing exactly the tier directly below it — the same
 // one-level rule the server enforces in utils/adminHierarchy.
-//   SUPER_ADMIN    → manages Central Admins (break-glass: also Provinces)
-//   CENTRAL_ADMIN  → manages Provinces, creates Province Admins
+//   SUPER_ADMIN    → manages Central Admins AND Provinces (create + DELETE)
+//   CENTRAL_ADMIN  → manages Provinces, creates Province Admins (no delete)
 //   PROVINCE_ADMIN → manages Districts in their province, creates District Admins
 //   DISTRICT_ADMIN → manages Areas in their district, creates Area Admins
 //   AREA_ADMIN     → manages Basic Units in their area (no admin user needed)
 
 const TIER = {
-  // Super Admin keeps the Province surface as the documented
-  // break-glass path — a fresh database has no Central Admin yet, so
-  // something has to be able to create the first provinces. It is off
-  // the normal sidebar (see Layout) and reachable by URL only.
+  // Province management is SHARED between Super Admin and Central
+  // Admin, not delegated away from Super Admin. Both create provinces
+  // and both see this list; deletion is Super Admin's alone.
   SUPER_ADMIN: {
+    level: 'PROVINCE',
     title: 'Manage Provinces',
-    subtitle: 'Break-glass override — province management belongs to the Central Admin.',
+    subtitle: 'You can create and delete provinces. Central Admins manage everything within them.',
     childLabel: 'Province',
     childPlural: 'Provinces',
     listEndpoint: '/org/provinces',
@@ -30,6 +31,7 @@ const TIER = {
     showCreateAdmin: true,
   },
   CENTRAL_ADMIN: {
+    level: 'PROVINCE',
     title: 'Manage Provinces',
     childLabel: 'Province',
     childPlural: 'Provinces',
@@ -40,6 +42,7 @@ const TIER = {
     showCreateAdmin: true,
   },
   PROVINCE_ADMIN: {
+    level: 'DISTRICT',
     title: 'Manage Districts',
     childLabel: 'District',
     childPlural: 'Districts',
@@ -51,6 +54,7 @@ const TIER = {
     showCreateAdmin: true,
   },
   DISTRICT_ADMIN: {
+    level: 'AREA',
     title: 'Manage Areas',
     childLabel: 'Area',
     childPlural: 'Areas',
@@ -62,6 +66,7 @@ const TIER = {
     showCreateAdmin: true,
   },
   AREA_ADMIN: {
+    level: 'BASIC_UNIT',
     title: 'Manage Basic Units',
     childLabel: 'Basic Unit',
     childPlural: 'Basic Units',
@@ -73,6 +78,47 @@ const TIER = {
     showCreateAdmin: false,
   },
 };
+
+// Super Admin is the only role that can delete an org unit, and it can
+// do so at EVERY tier — so it is also the only role that needs to walk
+// down the hierarchy on this page. Every other admin keeps its single
+// fixed tier above, unchanged.
+//
+// `parentParam` is both the list filter and the field the create call
+// must carry; for Super Admin it comes from the drill trail rather than
+// from user.scope, which is empty for an unscoped account.
+const SUPER_LEVELS = [
+  {
+    level: 'PROVINCE', title: 'Manage Provinces',
+    subtitle: 'Open a province to see its districts, then its areas, then its basic units. '
+      + 'You can create and delete a unit at any tier.',
+    childLabel: 'Province', childPlural: 'Provinces',
+    listEndpoint: '/org/provinces', createEndpoint: '/org/provinces',
+    deleteEndpoint: '/org/provinces',
+    parentParam: null, childAdminRole: 'PROVINCE_ADMIN', showCreateAdmin: true,
+  },
+  {
+    level: 'DISTRICT', title: 'Manage Districts',
+    childLabel: 'District', childPlural: 'Districts',
+    listEndpoint: '/org/districts', createEndpoint: '/org/districts',
+    deleteEndpoint: '/org/districts',
+    parentParam: 'provinceId', childAdminRole: 'DISTRICT_ADMIN', showCreateAdmin: true,
+  },
+  {
+    level: 'AREA', title: 'Manage Areas',
+    childLabel: 'Area', childPlural: 'Areas',
+    listEndpoint: '/org/areas', createEndpoint: '/org/areas',
+    deleteEndpoint: '/org/areas',
+    parentParam: 'districtId', childAdminRole: 'AREA_ADMIN', showCreateAdmin: true,
+  },
+  {
+    level: 'BASIC_UNIT', title: 'Manage Basic Units',
+    childLabel: 'Basic Unit', childPlural: 'Basic Units',
+    listEndpoint: '/org/basic-units', createEndpoint: '/org/basic-units',
+    deleteEndpoint: '/org/basic-units',
+    parentParam: 'areaId', childAdminRole: null, showCreateAdmin: false,
+  },
+];
 
 // Highest tier wins, so a user holding several admin roles gets the
 // broadest surface. Order matches adminHierarchy.ADMIN_TIERS.
@@ -88,7 +134,20 @@ function pickTier(roles) {
 export default function ManageOrgPage() {
   const { user } = useAuth();
   const toast = useToast();
-  const tier = pickTier(user?.roles || []);
+  const isSuper = (user?.roles || []).includes('SUPER_ADMIN');
+
+  // Super Admin walks the hierarchy; every other admin is pinned to the
+  // single tier they administer. `trail` is the path drilled so far —
+  // [] means the province list.
+  const [trail, setTrail] = useState([]);
+  const tier = isSuper
+    ? SUPER_LEVELS[Math.min(trail.length, SUPER_LEVELS.length - 1)]
+    : pickTier(user?.roles || []);
+  const parent = trail[trail.length - 1] || null;
+  // A basic unit has no children, so it is where drilling stops.
+  const canDrill = isSuper && trail.length < SUPER_LEVELS.length - 1;
+  // What opening a row reveals — used for the chevron's tooltip.
+  const childNoun = canDrill ? SUPER_LEVELS[trail.length + 1].childLabel : '';
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,9 +158,15 @@ export default function ManageOrgPage() {
     setLoading(true);
     try {
       const params = {};
-      if (tier.parentScopeKey === 'provinceId' && user.scope?.provinceId) params.provinceId = user.scope.provinceId;
-      if (tier.parentScopeKey === 'districtId' && user.scope?.districtId) params.districtId = user.scope.districtId;
-      if (tier.parentScopeKey === 'areaId' && user.scope?.areaId) params.areaId = user.scope.areaId;
+      if (isSuper) {
+        // Parent comes from the drill trail — an unscoped Super Admin
+        // has nothing in user.scope to read.
+        if (tier.parentParam && parent) params[tier.parentParam] = parent.id;
+      } else {
+        if (tier.parentScopeKey === 'provinceId' && user.scope?.provinceId) params.provinceId = user.scope.provinceId;
+        if (tier.parentScopeKey === 'districtId' && user.scope?.districtId) params.districtId = user.scope.districtId;
+        if (tier.parentScopeKey === 'areaId' && user.scope?.areaId) params.areaId = user.scope.areaId;
+      }
       const r = await api.get(tier.listEndpoint, { params });
       setItems(r.data.data || []);
     } catch (e) {
@@ -111,7 +176,46 @@ export default function ManageOrgPage() {
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id]);
+  // Reloads on drill as well as on login — the trail IS the query.
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.id, trail]);
+
+  // Deleting an org unit is Super Admin's alone, at every tier. The
+  // role check matters independently of the tier: a Central Admin sees
+  // this same page with the same province list, so gating on tier alone
+  // would hand them the button.
+  const canDelete = isSuper;
+  // Name + Type + Code + Status, plus Actions when deletion is offered.
+  const cols = canDelete ? 5 : 4;
+  const [deletingId, setDeletingId] = useState(null);
+
+  async function remove(item) {
+    const noun = tier.childLabel.toLowerCase();
+    if (!confirm(
+      `Delete the ${noun} "${item.name}"?\n\n`
+      + `Its ${noun} admin account will be deleted along with it.\n\n`
+      + 'This cannot be undone. It will be refused if anything else still '
+      + 'belongs to it — child units, members, cabinet roles, meetings '
+      + 'or activities.'
+    )) return;
+    setDeletingId(item._id);
+    try {
+      const res = await api.delete(`${tier.deleteEndpoint}/${item._id}`);
+      const removed = res.data?.data?.removedAdmins || 0;
+      toast.success(
+        removed
+          ? `${item.name} deleted, along with ${removed} admin account${removed === 1 ? '' : 's'}.`
+          : `${item.name} deleted`,
+        { title: `${tier.childLabel} removed` }
+      );
+      load();
+    } catch (e) {
+      // The server answers 409 with a sentence naming exactly what is
+      // still inside, which is far more useful than "delete failed".
+      toast.error(errorMessage(e), { title: 'Could not delete', duration: 9000 });
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (!tier) {
     return (
@@ -131,11 +235,38 @@ export default function ManageOrgPage() {
       <div className="page-header">
         <div>
           <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 0.4, textTransform: 'uppercase' }}>
-            {tier.parentLabel ? `Within your ${tier.parentLabel.toLowerCase()}` : 'System-wide'}
+            {isSuper
+              ? (parent ? `Inside ${parent.name}` : 'System-wide')
+              : (tier.parentLabel ? `Within your ${tier.parentLabel.toLowerCase()}` : 'System-wide')}
           </div>
-          <h2 style={{ margin: '1px 0 0' }}>{tier.title}</h2>
-          {tier.subtitle && (
+          {/* One page title for Super Admin regardless of depth. The
+              tier being viewed is already stated by the breadcrumb and
+              by the Type column, so retitling the page on every drill
+              just made the header flicker between four names. */}
+          <h2 style={{ margin: '1px 0 0' }}>{isSuper ? 'Manage Units' : tier.title}</h2>
+          {tier.subtitle && !parent && (
             <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{tier.subtitle}</div>
+          )}
+          {/* Drill trail. Only Super Admin can move between tiers here,
+              so this renders for nobody else. */}
+          {isSuper && trail.length > 0 && (
+            <div className="dash-crumbs" style={{ marginTop: 6 }}>
+              <button type="button" className="dash-crumb" onClick={() => setTrail([])}>
+                Pakistan
+              </button>
+              {trail.map((t, i) => (
+                <span key={t.id}>
+                  <span className="dash-crumb-sep">/</span>
+                  <button
+                    type="button"
+                    className="dash-crumb"
+                    onClick={() => setTrail(trail.slice(0, i + 1))}
+                  >
+                    {t.name}
+                  </button>
+                </span>
+              ))}
+            </div>
           )}
         </div>
         <button className="btn" type="button" onClick={() => setOpen(true)}>
@@ -148,6 +279,7 @@ export default function ManageOrgPage() {
         onClose={() => setOpen(false)}
         tier={tier}
         user={user}
+        parentId={isSuper ? parent?.id : undefined}
         onCreated={(child) => {
           toast.success(`${child?.name || tier.childLabel} created`, { title: `${tier.childLabel} added` });
           load();
@@ -158,15 +290,17 @@ export default function ManageOrgPage() {
         <thead>
           <tr>
             <th>Name</th>
+            <th>Type</th>
             <th>Code</th>
             <th>Status</th>
+            {canDelete && <th style={{ textAlign: 'right' }}>Actions</th>}
           </tr>
         </thead>
         <tbody>
-          {loading && <SkeletonRows rows={5} cols={3} />}
+          {loading && <SkeletonRows rows={5} cols={cols} />}
           {!loading && items.length === 0 && (
             <tr>
-              <td colSpan="3" style={{ padding: 0 }}>
+              <td colSpan={cols} style={{ padding: 0 }}>
                 <div className="empty-smart" style={{ border: 'none', padding: 36 }}>
                   <div className="empty-icon">📂</div>
                   <h3>No {tier.childPlural.toLowerCase()} yet</h3>
@@ -177,9 +311,39 @@ export default function ManageOrgPage() {
           )}
           {!loading && items.map((it) => (
             <tr key={it._id}>
-              <td className="cell-strong">{it.name}</td>
+              <td className="cell-strong">
+                {canDrill ? (
+                  // The whole name is the control, with a chevron as the
+                  // affordance — a row you can open should look openable
+                  // before it is hovered.
+                  <button
+                    type="button"
+                    className="unit-drill"
+                    onClick={() => setTrail([...trail, { id: it._id, name: it.name, level: tier.level }])}
+                    title={`Open ${it.name} — show its ${childNoun.toLowerCase()}s`}
+                  >
+                    <span>{it.name}</span>
+                    <ChevronRightIcon size={15} />
+                  </button>
+                ) : it.name}
+              </td>
+              <td>
+                <span className={`unit-type ${tier.level || ''}`}>{tier.childLabel}</span>
+              </td>
               <td>{it.code || <span className="cell-muted">—</span>}</td>
               <td><span className="badge ACTIVE">{it.isActive === false ? 'Inactive' : 'Active'}</span></td>
+              {canDelete && (
+                <td style={{ textAlign: 'right' }}>
+                  <button
+                    type="button"
+                    className="btn danger sm"
+                    onClick={() => remove(it)}
+                    disabled={deletingId === it._id}
+                  >
+                    {deletingId === it._id ? 'Deleting…' : 'Delete'}
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -188,7 +352,7 @@ export default function ManageOrgPage() {
   );
 }
 
-function CreateModal({ open, onClose, tier, user, onCreated }) {
+function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
   const toast = useToast();
   const [form, setForm] = useState({ name: '', code: '' });
   const [admin, setAdmin] = useState({ fullName: '', username: '', email: '', password: '' });
@@ -218,10 +382,12 @@ function CreateModal({ open, onClose, tier, user, onCreated }) {
       // 1. Create the child unit
       const body = { name: form.name.trim() };
       if (form.code.trim()) body.code = form.code.trim();
-      // Inject the parent scope so backend RBAC passes
-      if (tier.parentScopeKey === 'provinceId') body.provinceId = user.scope?.provinceId;
-      if (tier.parentScopeKey === 'districtId') body.districtId = user.scope?.districtId;
-      if (tier.parentScopeKey === 'areaId') body.areaId = user.scope?.areaId;
+      // Inject the parent scope so backend RBAC passes. A drilling
+      // Super Admin supplies it explicitly (parentId) because its own
+      // user.scope is empty by design; scoped admins read it from
+      // their own scope as before.
+      const parentKey = tier.parentScopeKey || tier.parentParam;
+      if (parentKey) body[parentKey] = parentId || user.scope?.[parentKey];
       const childRes = await api.post(tier.createEndpoint, body);
       const child = childRes.data.data;
 

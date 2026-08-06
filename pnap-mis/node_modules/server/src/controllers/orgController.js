@@ -6,6 +6,7 @@ const BasicUnit = require('../models/BasicUnit');
 const CabinetSlot = require('../models/CabinetSlot');
 const { ok, created, ApiError } = require('../utils/response');
 const activityService = require('../services/activityService');
+const { audit } = require('../utils/audit');
 
 // Tier-creation hierarchy — one level down at every step
 // (utils/adminHierarchy):
@@ -174,6 +175,180 @@ exports.createProvince = asyncHandler(async (req, res) => {
   recordOrgActivity(req, 'PROVINCE_MANAGED', 'PROVINCE', p._id, p.name, { provinceId: p._id });
   created(res, p);
 });
+
+// ─── Org-unit deletion — SUPER_ADMIN ONLY, at every tier ─────────────
+//
+// Deliberately narrower than creation. Creation is delegated one level
+// down (Central Admin creates provinces, Province Admin creates
+// districts, and so on), but removal is destructive and irreversible,
+// so it stays with the bootstrap authority alone. The check is an
+// explicit SUPER_ADMIN test, NOT isGlobalAdmin() — that helper admits
+// Central Admin too, which is exactly what must not happen here.
+//
+// Every unit sits on a denormalized chain: districts, areas, basic
+// units, members, meetings, activities and donations all carry the
+// ancestor ids. Cascading a delete would silently destroy member and
+// meeting records; leaving the children behind would orphan them
+// against an id that no longer resolves. So a unit may be deleted ONLY
+// when nothing depends on it, and the refusal names exactly what is in
+// the way so the operator knows what to clear first.
+
+const UNIT_MODEL = {
+  PROVINCE: () => Province,
+  DISTRICT: () => District,
+  AREA: () => Area,
+  BASIC_UNIT: () => BasicUnit,
+};
+// The chain key each tier is referenced by on every descendant record.
+const UNIT_FK = {
+  PROVINCE: 'provinceId',
+  DISTRICT: 'districtId',
+  AREA: 'areaId',
+  BASIC_UNIT: 'basicUnitId',
+};
+const UNIT_NOUN = {
+  PROVINCE: 'province',
+  DISTRICT: 'district',
+  AREA: 'area',
+  BASIC_UNIT: 'basic unit',
+};
+// Tiers that live beneath each tier, nearest first.
+const TIERS_BELOW = {
+  PROVINCE: ['DISTRICT', 'AREA', 'BASIC_UNIT'],
+  DISTRICT: ['AREA', 'BASIC_UNIT'],
+  AREA: ['BASIC_UNIT'],
+  BASIC_UNIT: [],
+};
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function deleteUnitHandler(level) {
+  return asyncHandler(async (req, res) => {
+    if (!isSuper(req.user)) {
+      throw new ApiError(403, 'FORBIDDEN',
+        `Only a Super Admin can delete ${UNIT_NOUN[level] === 'area' ? 'an' : 'a'} ${UNIT_NOUN[level]}.`);
+    }
+    const Model = UNIT_MODEL[level]();
+    const unit = await Model.findById(req.params.id);
+    if (!unit) throw new ApiError(404, 'NOT_FOUND', `${UNIT_NOUN[level]} not found`);
+
+    const Member = require('../models/Member');
+    const User = require('../models/User');
+    const RoleAssignment = require('../models/RoleAssignment');
+    const Meeting = require('../models/Meeting');
+    const Activity = require('../models/Activity');
+
+    const fk = UNIT_FK[level];
+    const scoped = { [fk]: unit._id };
+
+    const [childCounts, members, scopedUsers, roles, meetings, activities] = await Promise.all([
+      Promise.all(TIERS_BELOW[level].map((l) => UNIT_MODEL[l]().countDocuments(scoped))),
+      Member.countDocuments(scoped),
+      // Accounts pinned to this unit. Partitioned below — a pure
+      // territorial admin is deleted WITH the unit; anything else
+      // blocks.
+      User.find({ [`scope.${fk}`]: unit._id })
+        .select('_id fullName username email roles memberId').lean(),
+      // A cabinet seat can be held by a member rostered elsewhere (a
+      // province officer registered in a basic unit), so this is not
+      // covered by the member count above.
+      RoleAssignment.countDocuments({
+        unitLevel: level, unitId: unit._id,
+        state: 'APPROVED', endedAt: { $exists: false },
+      }),
+      Meeting.countDocuments(scoped),
+      Activity.countDocuments(scoped),
+    ]);
+
+    // A territorial admin exists ONLY to administer this unit — a
+    // Province Admin whose province is gone has nothing left to
+    // administer — so it is removed WITH the unit rather than blocking
+    // it. Creating a unit provisions its admin in the same step, and
+    // deleting one should undo that step, not leave an orphan behind
+    // for the operator to hunt down.
+    //
+    // Two kinds of account are deliberately NOT swept up, and still
+    // block instead:
+    //   * a member-linked login (memberId set) — that is a person's own
+    //     account, not scaffolding, and deleting it would take their
+    //     membership login with it;
+    //   * SUPER_ADMIN / CENTRAL_ADMIN — global tiers are never removed
+    //     as a side effect of tidying up an org unit.
+    const disposableAdmins = [];
+    const blockingUsers = [];
+    for (const u of scopedUsers) {
+      const isGlobalTier = (u.roles || []).includes('SUPER_ADMIN')
+        || (u.roles || []).includes('CENTRAL_ADMIN');
+      if (!u.memberId && !isGlobalTier) disposableAdmins.push(u);
+      else blockingUsers.push(u);
+    }
+
+    const counts = {
+      members, roles, meetings, activities,
+      admins: blockingUsers.length,
+      adminsToRemove: disposableAdmins.length,
+    };
+    const blockers = [];
+    TIERS_BELOW[level].forEach((l, i) => {
+      const n = childCounts[i];
+      counts[UNIT_NOUN[l].replace(' ', '')] = n;
+      if (n) blockers.push(plural(n, UNIT_NOUN[l]));
+    });
+    if (members) blockers.push(plural(members, 'member'));
+    if (blockingUsers.length) blockers.push(plural(blockingUsers.length, 'linked user account'));
+    if (roles) blockers.push(plural(roles, 'cabinet role'));
+    if (meetings) blockers.push(plural(meetings, 'meeting'));
+    if (activities) blockers.push(plural(activities, 'activity').replace('activitys', 'activities'));
+
+    if (blockers.length) {
+      throw new ApiError(
+        409,
+        'UNIT_NOT_EMPTY',
+        `"${unit.name}" still contains ${blockers.join(', ')}. `
+        + `Remove or reassign them before deleting this ${UNIT_NOUN[level]}.`,
+        { counts }
+      );
+    }
+
+    // Cabinet slots are seeded per unit — the unit's own scaffolding
+    // rather than user data — so they go with it.
+    await CabinetSlot.deleteMany({ unitLevel: level, unitId: unit._id });
+    if (disposableAdmins.length) {
+      await User.deleteMany({ _id: { $in: disposableAdmins.map((u) => u._id) } });
+    }
+    await Model.deleteOne({ _id: unit._id });
+
+    await audit({
+      req,
+      action: `${level}_DELETE`,
+      targetType: level,
+      targetId: unit._id,
+      targetLabel: unit.name,
+      // Record WHICH admin logins went with it. A deletion that removes
+      // credentials has to be reconstructable from the audit trail.
+      before: {
+        name: unit.name,
+        code: unit.code,
+        removedAdmins: disposableAdmins.map((u) => ({
+          _id: u._id, fullName: u.fullName, username: u.username,
+          email: u.email, roles: u.roles,
+        })),
+      },
+    });
+
+    ok(res, {
+      deleted: true,
+      name: unit.name,
+      level,
+      removedAdmins: disposableAdmins.length,
+    });
+  });
+}
+
+exports.deleteProvince = deleteUnitHandler('PROVINCE');
+exports.deleteDistrict = deleteUnitHandler('DISTRICT');
+exports.deleteArea = deleteUnitHandler('AREA');
+exports.deleteBasicUnit = deleteUnitHandler('BASIC_UNIT');
 
 // District creation — SUPER_ADMIN or the PROVINCE_ADMIN of that
 // specific province. The province admin's scope.provinceId must

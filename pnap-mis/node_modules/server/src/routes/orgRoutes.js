@@ -24,4 +24,19 @@ router.post('/districts', requireRole('SUPER_ADMIN', 'PROVINCE_ADMIN'), ctrl.cre
 router.post('/areas', requireRole('SUPER_ADMIN', 'DISTRICT_ADMIN'), ctrl.createArea);
 router.post('/basic-units', requireRole('SUPER_ADMIN', 'AREA_ADMIN'), ctrl.createBasicUnit);
 
+// DELETE — SUPER_ADMIN ONLY, at every tier.
+//
+// Creation is delegated one level down; removal is not delegated at
+// all. No Central / Province / District / Area Admin may delete an org
+// unit, including their own. The route gate and a second explicit
+// isSuper() check inside the controller both enforce it, so adding a
+// role to these lines alone cannot silently widen the permission.
+//
+// Deletion is refused while anything still depends on the unit — see
+// deleteUnitHandler for what counts as a blocker.
+router.delete('/provinces/:id', requireRole('SUPER_ADMIN'), ctrl.deleteProvince);
+router.delete('/districts/:id', requireRole('SUPER_ADMIN'), ctrl.deleteDistrict);
+router.delete('/areas/:id', requireRole('SUPER_ADMIN'), ctrl.deleteArea);
+router.delete('/basic-units/:id', requireRole('SUPER_ADMIN'), ctrl.deleteBasicUnit);
+
 module.exports = router;

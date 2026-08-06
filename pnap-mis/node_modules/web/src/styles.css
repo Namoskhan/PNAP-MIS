@@ -3828,6 +3828,51 @@ html { scroll-behavior: smooth; }
   color: var(--muted);
   margin-top: 1px;
 }
+/* ---------- Manage Units: drill row + tier badge ---------- */
+/* The whole name is the control. A chevron sits after it so a row that
+   opens looks openable before it is hovered — a text arrow read as
+   decoration rather than an affordance. */
+.unit-drill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--primary-dark);
+  cursor: pointer;
+  text-align: left;
+}
+.unit-drill:hover { color: var(--primary); }
+.unit-drill svg { flex-shrink: 0; transition: transform var(--t-fast); }
+.unit-drill:hover svg { transform: translateX(2px); }
+.unit-drill:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Tier identity. Reuses the --tier-* tokens the scope tree already
+   uses, so a Province reads the same colour everywhere in the app
+   rather than being a fifth thing to learn. */
+.unit-type {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  color: var(--tier, var(--muted));
+  background: color-mix(in srgb, var(--tier, var(--muted)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tier, var(--muted)) 30%, transparent);
+}
+.unit-type.PROVINCE   { --tier: var(--tier-province); }
+.unit-type.DISTRICT   { --tier: var(--tier-district); }
+.unit-type.AREA       { --tier: var(--tier-area); }
+.unit-type.BASIC_UNIT { --tier: var(--tier-basic-unit); }
+
 .dash-section-badge {
   flex-shrink: 0;
   font-size: 12px;
