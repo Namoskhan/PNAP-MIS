@@ -194,43 +194,77 @@ a:hover { color: var(--primary); }
   border-radius: 3px;
 }
 
-.sidebar nav { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
+/* ── Sidebar nav items ───────────────────────────────────────
+   Single source of truth for the nav link. There used to be a second
+   block further down that re-declared the hover and the active bar and,
+   being later in the file, quietly won — see the note where it was. */
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
 .sidebar nav a {
   display: flex;
   align-items: center;
-  padding: 9px 14px;
-  margin: 0 4px;
-  color: rgba(255, 255, 255, .82);
+  gap: 10px;
+  /* Left padding leaves room for the active bar, and is applied to EVERY
+     item so labels do not shift by 4px the moment one becomes active. */
+  padding: 9px 12px 9px 16px;
+  color: rgba(255, 255, 255, .78);
   text-decoration: none;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
   font-weight: 500;
+  line-height: 1.35;
   position: relative;
-  transition: background var(--t-fast), color var(--t-fast);
+  transition:
+    background-color .16s ease,
+    color .16s ease,
+    transform .16s cubic-bezier(.16, 1, .3, 1);
 }
 .sidebar nav a:hover {
-  background: rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .09);
+  color: #fff;
+  /* Nudge with a transform, never padding: padding is a layout property,
+     so animating it reflowed the item and made the label jump. */
+  transform: translateX(2px);
+}
+.sidebar nav a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
   color: #fff;
 }
 .sidebar nav a.active {
   background: #fff;
   color: var(--primary-dark);
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .16), 0 6px 14px -8px rgba(0, 0, 0, .45);
 }
+/* The pill does not slide — only unselected items respond to hover. */
+.sidebar nav a.active:hover { transform: none; }
 .sidebar nav a.active::before {
   content: "";
   position: absolute;
-  left: -4px;
-  top: 6px;
-  bottom: 6px;
+  left: 6px;
+  top: 9px;
+  bottom: 9px;
   width: 3px;
   border-radius: 2px;
-  background: #fff;
+  /* Brand blue, NOT #fff — this bar sits inside the white active pill,
+     so a white bar was invisible. */
+  background: var(--primary);
+  animation: navActiveIn .25s cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes navActiveIn {
+  from { transform: scaleY(0); opacity: 0; }
+  to   { transform: scaleY(1); opacity: 1; }
+}
+/* Navigation must not move for anyone who has asked motion to stop —
+   the states still read through colour, weight and the accent bar. */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar nav a { transition: background-color .16s ease, color .16s ease; }
+  .sidebar nav a:hover { transform: none; }
+  .sidebar nav a.active::before { animation: none; }
 }
 
 .nav-group {
-  margin: 16px 18px 6px;
+  margin: 18px 18px 6px;
   font-size: 11px;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -1655,28 +1689,9 @@ table.smart tbody tr:hover {
   background: var(--surface-alt);
 }
 
-/* ── Sidebar nav: animated active indicator ─────────────────── */
-.sidebar nav a {
-  transition:
-    background-color .18s ease,
-    color .18s ease,
-    padding-left .2s cubic-bezier(.4, 0, .2, 1);
-  position: relative;
-}
-.sidebar nav a:hover { padding-left: 18px; }
-.sidebar nav a.active::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 8px; bottom: 8px;
-  width: 3px;
-  background: #fff;
-  border-radius: 0 3px 3px 0;
-  animation: navActiveIn .25s cubic-bezier(.16, 1, .3, 1);
-}
-@keyframes navActiveIn {
-  from { transform: scaleY(0); opacity: 0; }
-  to   { transform: scaleY(1); opacity: 1; }
-}
+/* Sidebar nav lived here as a second, later-winning override of the block
+   near the top of this file. Merged up there so there is one definition;
+   don't re-add nav rules below that point. */
 
 /* ── Toolbar tab buttons: smooth transition between tabs ────── */
 .toolbar .btn {
@@ -2223,33 +2238,62 @@ html { scroll-behavior: smooth; }
 }
 .users-search-icon {
   position: absolute;
-  left: 12px; top: 50%;
+  left: 13px; top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
+  display: inline-flex;
   pointer-events: none;
-  opacity: .65;
+  color: var(--muted);
+  transition: color .15s ease;
 }
+/* This input sits beside .users-filter-select and had NO styling of its
+   own — only the two padding overrides — so it rendered as a bare
+   browser input next to a designed control, at a different height. It
+   now matches that select exactly: same height, border, radius and ring. */
 .users-search-input {
   width: 100%;
-  padding-left: 36px !important;
-  padding-right: 36px !important;
+  height: 40px;
+  padding: 0 38px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+.users-search-input::placeholder { color: var(--muted-soft); }
+.users-search-input:hover { border-color: var(--muted-soft); }
+.users-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.12);
+}
+/* The magnifier lights up with the field it belongs to. */
+.users-search-wrap:focus-within .users-search-icon { color: var(--primary); }
+/* type="search" draws its own cancel button in WebKit, which would sit
+   under the custom clear button as a second, differently-styled X. */
+.users-search-input::-webkit-search-cancel-button,
+.users-search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+
 .users-search-clear {
   position: absolute;
-  right: 8px; top: 50%;
+  right: 9px; top: 50%;
   transform: translateY(-50%);
   width: 22px; height: 22px;
   border: 0;
+  padding: 0;
   background: var(--surface-alt);
   color: var(--text-soft);
   border-radius: 50%;
   cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background-color .15s ease, color .15s ease;
 }
 .users-search-clear:hover { background: var(--primary); color: #fff; }
+.users-search-clear:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 .users-toolbar-filters {
   display: flex; gap: 8px; align-items: center;
 }
@@ -2568,23 +2612,39 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Sidebar collapsible nav group ──────────────────────────── */
-.nav-collapsible { margin-bottom: 4px; }
+.nav-collapsible { margin-bottom: 2px; }
 .nav-collapsible-head {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%;
+  display: flex; align-items: center; gap: 9px;
+  /* Inset to match the nav links below it, so the group reads as a
+     heading over its own items instead of a floating label. */
+  width: calc(100% - 20px);
+  margin: 8px 10px 2px;
   background: transparent;
   border: 0;
+  border-radius: 8px;
   color: rgba(255, 255, 255, .55);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
-  padding: 12px 18px 6px;
+  padding: 8px 12px 8px 16px;
   cursor: pointer;
   text-align: left;
-  transition: color .15s ease;
+  transition: color .15s ease, background-color .15s ease;
 }
-.nav-collapsible-head:hover { color: #fff; }
+.nav-collapsible-head:hover {
+  color: #fff;
+  /* The whole row is the hit target, so it needs to look like one. */
+  background: rgba(255, 255, 255, .06);
+}
+.nav-collapsible-head:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  color: #fff;
+}
+/* An open group is a heading with content under it — give it more
+   presence than a collapsed one. */
+.nav-collapsible.open > .nav-collapsible-head { color: rgba(255, 255, 255, .82); }
 .nav-collapsible-icon {
   display: inline-flex;
   align-items: center;

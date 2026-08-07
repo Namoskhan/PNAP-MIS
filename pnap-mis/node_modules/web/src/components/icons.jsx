@@ -375,3 +375,25 @@ export function EyeOffIcon(props) {
     </Svg>
   );
 }
+
+// Search / clear. The users filter used the 🔍 and × characters, which
+// this icon set exists to replace — emoji pick up the platform's own
+// colour and metrics, so they neither match the text beside them nor
+// respond to focus.
+export function SearchIcon(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Svg>
+  );
+}
+
+export function XIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </Svg>
+  );
+}

@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../utils/permissions';
 import { useToast } from '../../components/Toast';
+import { SearchIcon, XIcon } from '../../components/icons';
 
 const ROLE_OPTIONS = [
   'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
@@ -241,7 +242,9 @@ export default function UsersPage() {
       <div className="users-filter-card">
         <div className="users-filter-row">
           <div ref={searchBoxRef} className="users-search-wrap" style={{ flex: 2 }}>
-            <span className="users-search-icon" aria-hidden="true">🔍</span>
+            <span className="users-search-icon" aria-hidden="true">
+              <SearchIcon size={16} />
+            </span>
             <input
               type="search"
               value={searchQ}
@@ -257,7 +260,7 @@ export default function UsersPage() {
                 className="users-search-clear"
                 onClick={() => { setSearchQ(''); setShowDropdown(false); }}
                 aria-label="Clear search"
-              >×</button>
+              ><XIcon size={13} /></button>
             )}
             {showDropdown && (
               <div className="users-search-pop">
