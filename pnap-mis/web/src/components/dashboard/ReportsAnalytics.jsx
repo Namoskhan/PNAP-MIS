@@ -1,10 +1,9 @@
 import SmartKpi from '../SmartKpi';
 import { SkeletonKpiGrid } from '../Skeleton';
-import { HBar, PctBar, BRAND } from '../charts';
+import { StackedHBar, Donut } from '../charts';
 import { FileTextIcon, CheckIcon, InfoIcon } from '../icons';
 import useAnalytics from './useAnalytics';
 import UnitReportDownloads from './UnitReportDownloads';
-import PerformanceReports from './PerformanceReports';
 
 // Section 6 — Reports.
 //
@@ -25,7 +24,7 @@ const LEVEL_NOUN = {
 };
 
 export default function ReportsAnalytics({
-  params, windowLabel, unitLevel, unitId, scopeName, periodFrom, scope,
+  params, periodFrom, scope,
 }) {
   const { data, loading, error } = useAnalytics('/dashboard/reports', params);
 
@@ -71,38 +70,52 @@ export default function ReportsAnalytics({
       {noun && rows.length > 0 && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'minmax(0, 2fr) minmax(200px, 1fr)',
           gap: 10, marginBottom: 12,
-        }}>
+        }} className="rep-grid">
+          {/* One stacked bar per unit carries what the two old panels said
+              between them: bar length is how much is owed in total, and the
+              split inside it is the filing rate. Reading the same unit twice
+              in two different charts was the thing to remove. */}
           <div className="chart-card">
             <div className="chart-card-head">
               <div>
-                <div className="chart-card-title">{noun}s owing reports</div>
+                <div className="chart-card-title">Filing status by {noun.toLowerCase()}</div>
                 <div className="chart-card-sub">Most outstanding first</div>
               </div>
             </div>
-            <HBar
-              rows={rows.slice(0, 10).map((r) => ({ label: r.name, value: r.outstanding }))}
-              accent="var(--danger)"
-              emptyLabel="Nothing outstanding."
+            <StackedHBar
+              rows={rows.slice(0, 10).map((r) => ({
+                label: r.name,
+                values: { filed: r.filed, outstanding: r.outstanding },
+              }))}
+              series={[
+                { key: 'filed', label: 'Filed', color: 'var(--success)' },
+                { key: 'outstanding', label: 'Outstanding', color: 'var(--danger)' },
+              ]}
+              emptyLabel="Nothing on record."
             />
           </div>
 
-          <div className="chart-card">
+          <div className="chart-card rep-gauge">
             <div className="chart-card-head">
               <div>
-                <div className="chart-card-title">Filing rate by {noun.toLowerCase()}</div>
+                <div className="chart-card-title">Filing rate</div>
                 <div className="chart-card-sub">Filed ÷ (filed + outstanding)</div>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9, paddingTop: 4 }}>
-              {rows.slice(0, 8).map((r) => (
-                <PctBar
-                  key={r._id}
-                  value={r.filingRate}
-                  label={`${r.name} · ${r.filed} filed, ${r.outstanding} owed`}
-                />
-              ))}
+            <div className="rep-gauge-body">
+              <Donut
+                percent={t.filingRate ?? 0}
+                label=""
+                size={132}
+                stroke={13}
+                color={(t.filingRate ?? 0) >= 60 ? 'var(--success)' : 'var(--warning)'}
+                trackColor="var(--surface-alt)"
+              />
+              <p className="rep-gauge-note">
+                {t.filed.toLocaleString()} filed · {t.outstanding.toLocaleString()} still owed
+              </p>
             </div>
           </div>
         </div>
@@ -110,15 +123,6 @@ export default function ReportsAnalytics({
 
       {/* Province / District / Area / Basic Unit report downloads. */}
       <UnitReportDownloads scope={scope} from={periodFrom} />
-
-      {/* Unit performance score, member leaderboard, member reports. */}
-      <PerformanceReports
-        unitLevel={unitLevel}
-        unitId={unitId}
-        scopeName={scopeName}
-        from={periodFrom}
-        windowLabel={windowLabel}
-      />
     </>
   );
 }

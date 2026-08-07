@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import SmartKpi from '../SmartKpi';
 import { SkeletonKpiGrid } from '../Skeleton';
-import { HBar, AreaChart, BRAND } from '../charts';
+import { HBar, AreaChart, StackedHBar, BRAND } from '../charts';
 import { UsersIcon, ZapIcon, CheckIcon, MinusCircleIcon } from '../icons';
 import useAnalytics from './useAnalytics';
 
@@ -193,39 +193,30 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
       </div>
 
       {noun && rows.length > 0 && (
-        <div className="chart-card" style={{ marginTop: 10 }}>
-          <div className="chart-card-head">
-            <div className="chart-card-title">{noun}-wise detail</div>
-            <div className="chart-card-meta">{rows.length} {noun.toLowerCase()}s</div>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="list">
-              <thead>
-                <tr>
-                  <th>{noun}</th>
-                  <th style={{ textAlign: 'right' }}>Members</th>
-                  <th style={{ textAlign: 'right' }}>New</th>
-                  <th style={{ textAlign: 'right' }}>Active</th>
-                  <th style={{ textAlign: 'right' }}>Inactive</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r._id}>
-                    <td><strong>{r.name}</strong></td>
-                    <td style={{ textAlign: 'right' }}>{r.total.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right' }}>{r.newMembers.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>
-                      {r.active.toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>{r.inactive.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ChartCard
+          title={`Every ${noun.toLowerCase()}, side by side`}
+          sub="Bar length is how many members there are. The colours show how many of them are actually taking part."
+          meta={`${rows.length} ${noun.toLowerCase()}${rows.length === 1 ? '' : 's'}`}
+        >
+          <StackedHBar
+            rows={rows.map((r) => ({
+              label: r.name,
+              values: { active: r.active, inactive: r.inactive },
+              note: r.newMembers,
+            }))}
+            series={[
+              { key: 'active', label: 'Taking part', color: 'var(--success)' },
+              { key: 'inactive', label: 'Not taking part', color: 'var(--muted-soft)' },
+            ]}
+            noteLabel="Joined recently"
+            emptyLabel="No units in this scope."
+          />
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 12, marginBottom: 0 }}>
+            The green figure after each bar is how many people joined recently.
+          </p>
+        </ChartCard>
       )}
+
     </>
   );
 }

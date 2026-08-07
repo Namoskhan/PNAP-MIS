@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import HeroBanner from '../components/HeroBanner';
 import { SkeletonCard } from '../components/Skeleton';
 import { isPureMember as isPureMemberFn } from '../utils/permissions';
-import ExecutiveAnalytics from '../components/dashboard/ExecutiveAnalytics';
+import CommandCenter from '../components/dashboard/cc/CommandCenter';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -166,5 +166,8 @@ export default function DashboardPage() {
   // bars, active-share donut, quick actions) is gone: the analytics
   // below answer the same questions with more depth, and its three
   // quick-action links already live in the sidebar.
-  return <ExecutiveAnalytics />;
+  // Super Admin lands on the Command Centre. The previous section-based
+  // view is untouched at components/dashboard/ExecutiveAnalytics.jsx —
+  // swapping this one import back restores it.
+  return <CommandCenter />;
 }

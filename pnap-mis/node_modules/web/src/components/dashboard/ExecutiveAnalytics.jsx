@@ -119,7 +119,7 @@ export default function ExecutiveAnalytics() {
         <div>
           <h2 style={{ marginBottom: 2 }}>Executive National MIS</h2>
           <div className="subtitle">
-            Organizational health for {scopeName} — {windowLabel}
+            Organizational health {scope.provinceId ? `for ${scopeName}` : 'across the whole country'} — {windowLabel}
           </div>
         </div>
       </div>
@@ -127,19 +127,25 @@ export default function ExecutiveAnalytics() {
       {/* The scope trail is what sticks, not the Executive Summary.
           Drilling happens from cards far down the page, so the way back
           has to stay on screen — and a thin bar can do that, whereas a
-          KPI block taller than the viewport cannot usefully be pinned. */}
-      <div className="dash-scope-bar">
-        <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
-        {scope.provinceId && (
+          KPI block taller than the viewport cannot usefully be pinned.
+
+          Hidden until you have actually drilled somewhere. At national
+          scope the whole bar was a single dead "Pakistan" pill: not
+          clickable, sitting above a page that is already national, and
+          telling the reader nothing they did not know. A breadcrumb
+          earns its place once there is a trail to walk back. */}
+      {scope.provinceId && (
+        <div className="dash-scope-bar">
+          <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
           <button
             type="button"
             className="btn secondary sm"
             onClick={() => navigateTo('NATIONAL')}
           >
-            Reset to Pakistan
+            Back to the whole country
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <AnalyticsFilters
         scope={scope}
@@ -154,7 +160,7 @@ export default function ExecutiveAnalytics() {
       <DashboardSection
         title="Executive Summary"
         subtitle={`Headline figures for ${scopeName}`}
-        defaultOpen
+        eager
       >
         <ExecutiveSummary data={s} loading={summary.loading} windowLabel={windowLabel} />
       </DashboardSection>

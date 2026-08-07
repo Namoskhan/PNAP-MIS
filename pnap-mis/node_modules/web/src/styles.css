@@ -3791,43 +3791,118 @@ html { scroll-behavior: smooth; }
    ══════════════════════════════════════════════════════════════ */
 .dash-section {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 14px;
   background: var(--surface);
-  margin-bottom: 10px;
-  overflow: hidden;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 16px -12px rgba(15, 23, 42, .10);
 }
 .dash-section-head {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px 0;
+}
+.dash-section-heading { flex: 1; min-width: 0; }
+.dash-section-title {
+  margin: 0;
+  font-weight: 650;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.dash-section-sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+/* ---------- Stacked horizontal bars (composition per row) ---------- */
+.shb { display: flex; flex-direction: column; gap: 12px; }
+.shb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.shb-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.shb-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+
+.shb-rows { display: flex; flex-direction: column; gap: 10px; }
+.shb-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.3fr) 1fr auto;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  padding: 13px 16px;
-  background: transparent;
-  border: 0;
-  font: inherit;
+}
+.shb-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The track is the full width of the biggest row; the stack inside it
+   is this row's share of that. Two elements, so bar LENGTH stays
+   comparable across rows while the split stays readable within one. */
+.shb-track {
+  height: 22px;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.shb-stack {
+  display: flex;
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: width .45s cubic-bezier(.16, 1, .3, 1);
+}
+.shb-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  transition: width .45s cubic-bezier(.16, 1, .3, 1);
+}
+/* A number wider than its segment would spill into the neighbouring
+   colour and misattribute itself. Clipped rather than shrunk — the
+   value is always available on hover and in the total column. */
+.shb-seg-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  padding: 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.shb-total {
+  min-width: 74px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--t-fast);
+  font-variant-numeric: tabular-nums;
 }
-.dash-section-head:hover { background: var(--surface-alt); }
-.dash-section-head:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
+.shb-note {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--success);
 }
-.dash-section-caret {
-  flex-shrink: 0;
-  color: var(--muted);
-  transition: transform .22s ease;
+
+@media (max-width: 560px) {
+  .shb-row { grid-template-columns: 1fr auto; }
+  /* The label takes its own line rather than being squeezed to three
+     characters next to the bar. */
+  .shb-label { grid-column: 1 / -1; }
+  .shb-track { grid-column: 1; }
 }
-.dash-section.open > .dash-section-head .dash-section-caret { transform: rotate(90deg); }
-.dash-section-heading { flex: 1; min-width: 0; }
-.dash-section-title { font-weight: 600; font-size: 14.5px; }
-.dash-section-sub {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 1px;
-}
+
 /* ---------- Manage Units: drill row + tier badge ---------- */
 /* The whole name is the control. A chevron sits after it so a row that
    opens looks openable before it is hovered — a text arrow read as
@@ -3886,17 +3961,20 @@ html { scroll-behavior: smooth; }
 /* Animating to `auto` height is not possible directly; a 0fr → 1fr
    grid row is the one technique that does it without hard-coding a
    max-height that would clip a tall section. */
-.dash-section-wrap {
+/* The 0fr → 1fr collapse animation that lived here is gone — nothing
+   collapses any more. */
+.dash-section-wrap-unused {
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows .24s ease;
 }
-.dash-section.open > .dash-section-wrap { grid-template-rows: 1fr; }
-.dash-section-clip { overflow: hidden; }
-.dash-section-body { padding: 2px 14px 14px; }
+.dash-section-body { padding: 16px 20px 20px; }
+/* Reserves height for a section that has scrolled near but not yet
+   mounted, so the page does not jump as each one arrives. */
+.dash-section-placeholder { min-height: 120px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .dash-section-wrap, .dash-section-caret { transition: none; }
+  .dash-section-placeholder { min-height: 0; }
 }
 
 /* The scope bar rides along as the user scrolls the long page, so the
@@ -4030,4 +4108,306 @@ html { scroll-behavior: smooth; }
   justify-content: space-between;
   font-size: 11.5px;
   color: var(--muted);
+}
+
+/* ================= Command Centre dashboard ================= */
+.cc { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---- Scroll reveal ---- */
+.cc-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .5s cubic-bezier(.16, 1, .3, 1),
+              transform .5s cubic-bezier(.16, 1, .3, 1);
+  will-change: opacity, transform;
+}
+.cc-reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cc-reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ---- Masthead ---- */
+.cc-masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+}
+.cc-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--primary);
+  margin-bottom: 5px;
+}
+.cc-title { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.cc-lede { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); max-width: 62ch; }
+.cc-live {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: var(--success);
+  background: var(--success-bg);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+}
+.cc-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success);
+  animation: cc-pulse 2.4s ease-in-out infinite;
+}
+@keyframes cc-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, .45); }
+  50%      { opacity: .65; box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .cc-live-dot { animation: none; } }
+
+/* ---- Acts ---- */
+.cc-act { margin-top: 18px; }
+.cc-act-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 0 2px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+/* The numbered marker is what makes the page read as a sequence rather
+   than a pile of unrelated panels. */
+.cc-act-marker {
+  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary); color: #fff;
+  font-size: 14px; font-weight: 700;
+}
+.cc-act-heading { flex: 1; min-width: 0; }
+.cc-act-title { margin: 3px 0 0; font-size: 18px; font-weight: 650; letter-spacing: -0.012em; }
+.cc-act-lead { margin: 5px 0 0; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 74ch; }
+.cc-act-meta {
+  flex-shrink: 0; align-self: center;
+  font-size: 12.5px; font-weight: 600; color: var(--primary-dark);
+  background: var(--primary-tint);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+}
+
+/* ---- Act 1 standing strip ---- */
+.cc-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+.cc-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 12px;
+  padding: 16px 18px;
+  height: 100%;
+}
+.cc-stat.tone-good { border-left-color: var(--success); }
+.cc-stat.tone-warn { border-left-color: var(--warning); }
+.cc-stat-value {
+  font-size: 30px; font-weight: 700; line-height: 1.05;
+  letter-spacing: -0.025em; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cc-stat-label { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--text-soft); }
+.cc-stat-sub { margin-top: 4px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+/* ---- Act 2 province matrix ---- */
+.pm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+.pm-card-wrap { height: 100%; }
+.pm-card {
+  height: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 16px -12px rgba(15, 23, 42, .10);
+  transition: box-shadow .25s ease, transform .25s cubic-bezier(.16, 1, .3, 1);
+}
+.pm-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .05), 0 12px 26px -14px rgba(15, 23, 42, .2);
+}
+/* A silent province is dimmed, not hidden — it is still a province. */
+.pm-card.dormant { background: var(--surface-alt); }
+.pm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.pm-name {
+  border: 0; background: none; padding: 0;
+  font: inherit; font-size: 16px; font-weight: 700;
+  color: var(--primary-dark); cursor: pointer; text-align: left;
+  letter-spacing: -0.01em;
+}
+.pm-name:hover { text-decoration: underline; }
+.pm-flag {
+  flex-shrink: 0;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .03em;
+  padding: 3px 9px; border-radius: var(--radius-pill);
+}
+.pm-flag.on  { background: var(--success-bg); color: var(--success); }
+.pm-flag.off { background: var(--surface-alt); color: var(--muted); }
+
+.pm-members { margin-bottom: 15px; }
+.pm-members-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.pm-members-label { font-size: 12.5px; color: var(--muted); margin-left: 6px; }
+.pm-members-split { display: block; margin-top: 3px; font-size: 12px; color: var(--text-soft); }
+.pm-members-track {
+  margin-top: 8px; height: 5px; border-radius: 3px;
+  background: var(--surface-alt); overflow: hidden;
+}
+.pm-members-fill {
+  height: 100%; border-radius: 3px; background: var(--success);
+  transition: width .6s cubic-bezier(.16, 1, .3, 1);
+}
+
+.pm-tiers { display: flex; flex-direction: column; gap: 10px; }
+.pm-tier-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.pm-tier-label { font-size: 12px; color: var(--text-soft); font-weight: 500; }
+.pm-tier-num { font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+.pm-tier-of { color: var(--muted); font-weight: 400; }
+.pm-tier-track { height: 6px; border-radius: 3px; background: var(--surface-alt); overflow: hidden; }
+.pm-tier-fill { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.16, 1, .3, 1); }
+
+.pm-officer {
+  margin-top: 15px; padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  font-size: 12.5px; color: var(--text-soft);
+}
+.pm-officer-label {
+  display: block; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 2px;
+}
+.pm-officer-role { color: var(--muted); margin-left: 6px; }
+.pm-officer-none { color: var(--muted); font-style: italic; }
+
+@media (max-width: 640px) {
+  .cc-title { font-size: 21px; }
+  .cc-act-head { gap: 11px; }
+  .cc-act-marker { width: 26px; height: 26px; font-size: 13px; }
+}
+
+/* ================= Chart legend & heatmap ================= */
+
+/* Legend text wears text tokens, never the series colour — the swatch
+   beside it is what carries identity. */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend-swatch {
+  width: 11px; height: 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ---- Heatmap ---- */
+.hm-scroll { width: 100%; overflow-x: auto; }
+.hm {
+  border-collapse: separate;
+  /* 2px of surface between cells — without it adjacent shades merge into
+     one block and the matrix stops reading as discrete cells. */
+  border-spacing: 2px;
+  width: 100%;
+  font-size: 12px;
+}
+.hm-corner { background: none; }
+.hm-colhead,
+.hm-rowhead {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-align: center;
+  padding: 4px 6px;
+  white-space: nowrap;
+  background: none;
+}
+.hm-rowhead { text-align: left; padding-right: 10px; }
+.hm-colhead span,
+.hm-rowhead span { display: block; }
+.hm-sub {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.hm-cell {
+  /* Same relief as the columns: the palest steps would otherwise lose
+     their edge against the surface. */
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .10);
+  min-width: 46px;
+  height: 34px;
+  text-align: center;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-alt);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+/* The two darkest steps need light ink to stay legible. */
+.hm-cell.on-dark { color: #fff; }
+/* An empty cell is deliberately unshaded — see shadeFor(). */
+.hm-cell.empty { background: var(--surface-alt); opacity: .55; }
+.hm-cell:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 2px var(--surface), 0 2px 8px -2px rgba(15, 23, 42, .3);
+  position: relative;
+  z-index: 1;
+}
+
+.hm-scale {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.hm-scale-chip { width: 20px; height: 9px; border-radius: 2px; }
+.hm-scale-label { font-variant-numeric: tabular-nums; }
+.hm-scale-label:first-child { margin-right: 3px; }
+.hm-scale-label:last-child { margin-left: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-cell:hover { transform: none; }
+}
+
+/* ---- Standing tile: figure beside its share gauge ---- */
+.cc-stat-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cc-stat-main { min-width: 0; }
+.cc-stat-gauge { flex-shrink: 0; margin-top: 2px; }
+
+/* ---- Reports: stacked bars beside the overall gauge ---- */
+.rep-gauge-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 0 4px;
+}
+.rep-gauge-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  /* The gauge is a companion to the bars, not a column of its own. */
+  .rep-grid { grid-template-columns: 1fr !important; }
 }

@@ -405,6 +405,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     { header: 'Date', key: 'd', width: 22 },
     { header: 'Type', key: 't', width: 8 },
     { header: 'Title', key: 'tt', width: 32 },
+    { header: 'Description', key: 'desc', width: 40 },
     { header: 'Venue', key: 'v', width: 28 },
     { header: 'Chair', key: 'c', width: 24 },
     { header: 'Attendance', key: 'a', width: 12 },
@@ -418,6 +419,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
       d: new Date(m.startAt).toLocaleString(),
       t: m.type,
       tt: m.title || '',
+      desc: m.description || '',
       v: m.venue,
       c: m.chairpersonId?.fullName || '',
       a: (m.attendance || []).filter((x) => x.status === 'PRESENT').length,
@@ -584,7 +586,14 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
       doc.text(`Attendance: ${present} present, ${late} late, ${absent} absent (of ${att.length} on roster)`);
     }
 
-    // Agenda / notes / strategy (compact)
+    // Description / agenda / notes / strategy (compact)
+    // Description leads: it is the meeting's own account of itself and
+    // reads as the lead-in to the agenda, not as another meta line.
+    if (m.description) {
+      doc.moveDown(0.2);
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Description');
+      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.description, { align: 'justify' });
+    }
     if (m.agenda) {
       doc.moveDown(0.2);
       doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Agenda');
@@ -783,7 +792,13 @@ exports.meetingPdf = asyncHandler(async (req, res) => {
   if (m.supervisorAttended) doc.text(`Supervisor: attended`);
   doc.moveDown(0.6);
 
-  // ─── Agenda / notes
+  // ─── Description / agenda / notes
+  if (m.description) {
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(sectionColor).text('Description');
+    doc.moveDown(0.2);
+    doc.font('Helvetica').fontSize(10).fillColor('#1a1a1a').text(m.description, { align: 'justify' });
+    doc.moveDown(0.6);
+  }
   if (m.agenda) {
     doc.font('Helvetica-Bold').fontSize(11).fillColor(sectionColor).text('Agenda');
     doc.moveDown(0.2);

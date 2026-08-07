@@ -49,6 +49,82 @@ export function HBar({ rows, accent = 'var(--primary)', emptyLabel = 'No data.' 
   );
 }
 
+// ─── Stacked horizontal bars (composition per row) ───
+//
+// For "how big is each one, and what is it made of" — the question a
+// per-unit table answers a column at a time and makes the reader add up
+// themselves.
+//
+// Bars are scaled to the LARGEST ROW TOTAL, not each to its own width,
+// so the length of a bar means population size and the split inside it
+// means composition. Scaling each row to 100% would make a 3-member
+// unit look the same size as a 3,000-member one — the single easiest
+// way to make a chart like this lie.
+//
+// rows:   [{ label, values: { [key]: number }, note? }]
+// series: [{ key, label, color }]  — drawn left to right in this order
+export function StackedHBar({ rows, series, emptyLabel = 'No data.', noteLabel }) {
+  if (!rows || rows.length === 0) {
+    return <p className="muted" style={{ margin: 0, fontSize: 13 }}>{emptyLabel}</p>;
+  }
+  const totalOf = (r) => series.reduce((s, x) => s + (r.values[x.key] || 0), 0);
+  const max = Math.max(...rows.map(totalOf), 1);
+
+  return (
+    <div className="shb">
+      <div className="shb-legend">
+        {series.map((s) => (
+          <span key={s.key} className="shb-legend-item">
+            <span className="shb-swatch" style={{ background: s.color }} />
+            {s.label}
+          </span>
+        ))}
+      </div>
+
+      <div className="shb-rows">
+        {rows.map((r) => {
+          const total = totalOf(r);
+          // Width of the whole bar relative to the biggest row.
+          const scale = (total / max) * 100;
+          return (
+            <div key={r.label} className="shb-row">
+              <div className="shb-label" title={r.label}>{r.label}</div>
+
+              <div className="shb-track">
+                <div className="shb-stack" style={{ width: `${Math.max(scale, total > 0 ? 1.5 : 0)}%` }}>
+                  {series.map((s) => {
+                    const v = r.values[s.key] || 0;
+                    if (v <= 0) return null;
+                    return (
+                      <div
+                        key={s.key}
+                        className="shb-seg"
+                        style={{ width: `${(v / total) * 100}%`, background: s.color }}
+                        title={`${r.label} — ${s.label}: ${v.toLocaleString()} of ${total.toLocaleString()}`}
+                      >
+                        {/* Printed inside only when the segment is wide
+                            enough to hold it; CSS hides it otherwise. */}
+                        <span className="shb-seg-num">{v.toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="shb-total">
+                {total.toLocaleString()}
+                {r.note != null && r.note > 0 && (
+                  <span className="shb-note" title={noteLabel}>+{r.note.toLocaleString()}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Multi-series sparkline (legacy trend) ───
 export function MultiSparkline({ data, series, height = 110 }) {
   if (!data || data.length === 0) {
@@ -330,6 +406,284 @@ export function RankedList({ items, palette = [BRAND.darkest, BRAND.dark, BRAND.
           <div style={{ fontSize: 12, color: 'var(--primary-dark)', fontWeight: 600, flexShrink: 0 }}>{formatValue(it.value)}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Validated categorical palette ───
+// Slots 1–3 of the reference categorical theme, for series that carry an
+// IDENTITY (Cabinet vs Committee vs Jirga) rather than a magnitude. The
+// BRAND ramp above is a single-hue sequential scale and must not be used
+// for identity — five shades of the same blue are not distinguishable as
+// categories.
+//
+// Validated against the light surface on the all-pairs list: worst CVD
+// ΔE 9.2, worst normal-vision ΔE 24.0. Aqua measures 2.74:1 against white,
+// under the 3:1 threshold, so every chart drawn with this palette ships a
+// legend AND direct value labels — identity is never colour alone.
+//
+// Do not extend past three. Slot 4 of the reference theme is yellow, and
+// yellow against orange fails the all-pairs floors; a fourth category
+// folds into "Other" or becomes a separate facet.
+export const CATEGORICAL = ['#2a78d6', '#eb6834', '#1baf7a'];
+
+// Sequential steps for magnitude — one hue, light to dark, monotonic in
+// lightness so the ramp survives greyscale printing and colour blindness.
+export const SEQUENTIAL = [BRAND.tint, BRAND.pinker, BRAND.light, BRAND.bright, BRAND.dark, BRAND.darkest];
+
+// Picks n steps SPREAD across the ramp rather than the first n. Taking
+// consecutive steps off the light end (steps 1,2,3 for three series) puts
+// two near-white fills side by side and the stack stops separating; spacing
+// them uses the ramp's full lightness range whatever n turns out to be.
+// The pale end still sits under 3:1 on white, so charts drawn from this
+// ramp carry a legend and direct labels — never colour alone.
+export function rampSteps(n) {
+  const last = SEQUENTIAL.length - 1;          // 5
+  if (n <= 1) return [SEQUENTIAL[last - 1]];
+  return Array.from({ length: n }, (_, i) =>
+    SEQUENTIAL[1 + Math.round((i * (last - 1)) / (n - 1))]);
+}
+
+// Rounds only the top of a column so the mark stays anchored to its
+// baseline — a fully rounded bar reads as floating and misstates zero.
+function topRoundedPath(x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, w / 2, h));
+  return `M ${x} ${y + h} L ${x} ${y + rr} Q ${x} ${y} ${x + rr} ${y}`
+    + ` L ${x + w - rr} ${y} Q ${x + w} ${y} ${x + w} ${y + rr}`
+    + ` L ${x + w} ${y + h} Z`;
+}
+
+// ─── Shared legend ───
+// Always rendered for two or more series, so identity never depends on
+// colour recall alone.
+export function ChartLegend({ series }) {
+  if (!series || series.length < 2) return null;
+  return (
+    <div className="chart-legend">
+      {series.map((s) => (
+        <span key={s.key} className="chart-legend-item">
+          <span className="chart-legend-swatch" style={{ background: s.color }} />
+          <span>{s.label}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ─── Stacked column chart ───
+// groups: [{ label, sublabel?, values: { [seriesKey]: number } }]
+// series: [{ key, label, color }]
+//
+// Vertical because the category axis is time — years read left to right.
+export function StackedColumns({
+  groups, series, height = 220, emptyLabel = 'No data.',
+  showTotals = true, colWidth = 58,
+}) {
+  const rows = (groups || []).filter(Boolean);
+  if (rows.length === 0) {
+    return <p className="muted" style={{ margin: 0, fontSize: 13 }}>{emptyLabel}</p>;
+  }
+  const totalOf = (g) => series.reduce((s, x) => s + (g.values?.[x.key] || 0), 0);
+  const max = Math.max(...rows.map(totalOf), 1);
+  const padL = 34, padR = 12, padT = showTotals ? 26 : 12, padB = 30;
+  const w = padL + padR + rows.length * colWidth;
+  const plotH = height - padT - padB;
+  const barW = Math.min(36, colWidth - 18);
+  const yOf = (v) => padT + plotH - (v / max) * plotH;
+
+  return (
+    <div>
+      <div style={{ width: '100%', overflowX: 'auto' }}>
+        <svg
+          viewBox={`0 0 ${w} ${height}`}
+          style={{ width: '100%', minWidth: Math.min(w, 520), height, display: 'block' }}
+          role="img"
+          aria-label="Stacked column chart"
+        >
+          {/* Recessive gridlines — the data sits in front of them. */}
+          {[0, 0.5, 1].map((t) => {
+            const y = padT + plotH * (1 - t);
+            return (
+              <g key={t}>
+                <line
+                  x1={padL} y1={y} x2={w - padR} y2={y}
+                  stroke="var(--border)" strokeWidth="1"
+                  strokeDasharray={t === 0 ? '0' : '3 3'}
+                />
+                <text
+                  x={padL - 6} y={y + 3.5} fontSize="10.5" fontWeight="500"
+                  fill={CHART_AXIS_FILL} textAnchor="end"
+                >
+                  {Math.round(max * t).toLocaleString()}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Every segment carries a hairline outline. The pale end of the
+              sequential ramp sits near 1.4:1 against white — legible as a
+              shade beside its neighbours, but its outer edge would vanish
+              into the page without it. This is the required relief, not
+              decoration; the legend and the heatmap below are the rest. */}
+          {rows.map((g, gi) => {
+            const cx = padL + gi * colWidth + colWidth / 2;
+            const x = cx - barW / 2;
+            const total = totalOf(g);
+            let cursor = padT + plotH;          // stack upward from the baseline
+            const segs = [];
+            series.forEach((s) => {
+              const v = g.values?.[s.key] || 0;
+              if (v <= 0) return;
+              const rawH = (v / max) * plotH;
+              // 2px of surface between segments keeps adjacent fills from
+              // reading as one block; never let the gap eat the segment.
+              const segH = Math.max(rawH - 2, 1.5);
+              const y = cursor - rawH;
+              segs.push({ s, v, y, h: segH, isTop: false });
+              cursor = y;
+            });
+            if (segs.length > 0) segs[segs.length - 1].isTop = true;
+
+            return (
+              <g key={g.label}>
+                {segs.map(({ s, v, y, h, isTop }) => (
+                  isTop
+                    ? (
+                      <path
+                        key={s.key} d={topRoundedPath(x, y, barW, h, 4)} fill={s.color}
+                        stroke="rgba(15, 23, 42, 0.16)" strokeWidth="1"
+                      >
+                        <title>{`${g.label} — ${s.label}: ${v.toLocaleString()} of ${total.toLocaleString()}`}</title>
+                      </path>
+                    )
+                    : (
+                      <rect
+                        key={s.key} x={x} y={y} width={barW} height={h} fill={s.color}
+                        stroke="rgba(15, 23, 42, 0.16)" strokeWidth="1"
+                      >
+                        <title>{`${g.label} — ${s.label}: ${v.toLocaleString()} of ${total.toLocaleString()}`}</title>
+                      </rect>
+                    )
+                ))}
+
+                {/* Total above the column — a selective direct label, not a
+                    number printed on every segment. */}
+                {showTotals && total > 0 && (
+                  <text
+                    x={cx} y={yOf(total) - 8} fontSize="11" fontWeight="700"
+                    fill={CHART_AXIS_FILL} textAnchor="middle"
+                  >
+                    {total.toLocaleString()}
+                  </text>
+                )}
+
+                <text
+                  x={cx} y={height - 15} fontSize="10.5" fontWeight="600"
+                  fill={CHART_AXIS_FILL} textAnchor="middle"
+                >
+                  {g.label}
+                </text>
+                {g.sublabel && (
+                  <text
+                    x={cx} y={height - 4} fontSize="9.5" fontWeight="500"
+                    fill={CHART_AXIS_SUB} textAnchor="middle"
+                  >
+                    {g.sublabel}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <ChartLegend series={series} />
+    </div>
+  );
+}
+
+// ─── Heatmap ───
+// rows / cols: [{ key, label, sublabel? }]
+// cells: { [rowKey]: { [colKey]: number } }
+//
+// The right form for a dense two-dimensional count matrix: the eye finds
+// the hot cell without reading a single number, and the numbers are still
+// there when it needs them. Built as a real <table> so it doubles as the
+// accessible table view of itself.
+export function Heatmap({
+  rows, cols, cells, emptyLabel = 'No data.',
+  rowHeader = '', valueNoun = '',
+}) {
+  if (!rows?.length || !cols?.length) {
+    return <p className="muted" style={{ margin: 0, fontSize: 13 }}>{emptyLabel}</p>;
+  }
+  const all = [];
+  rows.forEach((r) => cols.forEach((c) => all.push(cells?.[r.key]?.[c.key] || 0)));
+  const max = Math.max(...all, 1);
+
+  // Zero keeps the plain surface rather than the palest blue: "never
+  // happened" is a different statement from "happened rarely", and a
+  // shaded zero erases that difference.
+  const shadeFor = (v) => {
+    if (!v) return null;
+    const t = v / max;
+    if (t <= 0.20) return 1;
+    if (t <= 0.40) return 2;
+    if (t <= 0.60) return 3;
+    if (t <= 0.80) return 4;
+    return 5;
+  };
+
+  return (
+    <div>
+      <div className="hm-scroll">
+        <table className="hm">
+          <thead>
+            <tr>
+              <th className="hm-corner" scope="col">{rowHeader}</th>
+              {cols.map((c) => (
+                <th key={c.key} className="hm-colhead" scope="col">
+                  <span>{c.label}</span>
+                  {c.sublabel && <span className="hm-sub">{c.sublabel}</span>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key}>
+                <th className="hm-rowhead" scope="row">
+                  <span>{r.label}</span>
+                  {r.sublabel && <span className="hm-sub">{r.sublabel}</span>}
+                </th>
+                {cols.map((c) => {
+                  const v = cells?.[r.key]?.[c.key] || 0;
+                  const step = shadeFor(v);
+                  return (
+                    <td
+                      key={c.key}
+                      className={`hm-cell${step && step >= 4 ? ' on-dark' : ''}${step ? '' : ' empty'}`}
+                      style={step ? { background: SEQUENTIAL[step] } : undefined}
+                      title={`${r.label} · ${c.label}: ${v.toLocaleString()}${valueNoun ? ` ${valueNoun}` : ''}`}
+                    >
+                      {v ? v.toLocaleString() : ''}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* A sequential scale needs its ends named, or the shading is decoration. */}
+      <div className="hm-scale">
+        <span className="hm-scale-label">0</span>
+        {SEQUENTIAL.slice(1).map((c, i) => (
+          <span key={i} className="hm-scale-chip" style={{ background: c }} />
+        ))}
+        <span className="hm-scale-label">{max.toLocaleString()}</span>
+      </div>
     </div>
   );
 }

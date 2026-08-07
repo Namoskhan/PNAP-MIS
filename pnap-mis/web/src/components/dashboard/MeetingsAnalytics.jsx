@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import SmartKpi from '../SmartKpi';
 import { SkeletonKpiGrid } from '../Skeleton';
-import { HBar, AreaChart, VBars, BRAND } from '../charts';
+import {
+  HBar, AreaChart, VBars, BRAND,
+  StackedColumns, StackedHBar, Heatmap, CATEGORICAL, rampSteps,
+} from '../charts';
 import { CalendarIcon, CheckIcon, ClockIcon, InfoIcon } from '../icons';
 import useAnalytics from './useAnalytics';
 import CongressManager from './CongressManager';
@@ -54,6 +57,10 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
   const [yearBasis, setYearBasis] = useState('CALENDAR');
   const [years, setYears] = useState(5);
   const [showCongress, setShowCongress] = useState(false);
+  // The yearly columns can be split by body or by tier. Two separate
+  // charts would force the reader to hold one in memory to compare;
+  // one chart with a toggle keeps the axis and scale fixed.
+  const [yearSplit, setYearSplit] = useState('BODY');
   const { data, loading, error, reload } = useAnalytics(
     '/dashboard/meetings',
     { ...params, yearBasis, years },
@@ -86,6 +93,50 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
   // +12 units of gutter so adjacent labels don't touch at the extremes.
   const slotWidth = Math.min(200, Math.max(44, Math.round(longestLabel * 6.2) + 12));
   const chartWidth = Math.max(240, yearly.length * slotWidth);
+
+  // The year x tier x body matrix is a heatmap, not a list: one row per
+  // period, one column per tier+body pair, shaded by conducted count.
+  // Built from exactly the rows the table used, so the numbers match.
+  const matrixCols = [];
+  const colSeen = new Set();
+  const matrixRows = [];
+  const rowSeen = new Set();
+  const matrixCells = {};
+  matrix.forEach((r) => {
+    const ck = `${r.level}|${r.body}`;
+    if (!colSeen.has(ck)) {
+      colSeen.add(ck);
+      matrixCols.push({
+        key: ck,
+        label: TIER_LABEL[r.level] || r.level,
+        sublabel: BODY_LABEL[r.body] || r.body,
+      });
+    }
+    const rk = String(r.year);
+    if (!rowSeen.has(rk)) {
+      rowSeen.add(rk);
+      matrixRows.push({ key: rk, label: r.label });
+    }
+    if (!matrixCells[rk]) matrixCells[rk] = {};
+    matrixCells[rk][ck] = r.conducted;
+  });
+
+  const yearSeries = yearSplit === 'BODY'
+    ? bodiesPresent.map((b, i) => ({
+        key: b,
+        label: BODY_LABEL[b] || b,
+        // Bodies are identities, not magnitudes — categorical hues.
+        color: CATEGORICAL[i % CATEGORICAL.length],
+      }))
+    : tiersPresent.map((tr, i) => ({
+        key: tr,
+        label: TIER_LABEL[tr] || tr,
+        // Tiers are an ordered hierarchy, so they take the sequential
+        // ramp: depth in the party reads as depth of colour. Steps are
+        // spread across the ramp so three tiers do not come out as three
+        // near-identical pale blues.
+        color: rampSteps(tiersPresent.length)[i],
+      }));
 
   return (
     <>
@@ -150,16 +201,6 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
           />
         </ChartCard>
 
-        <ChartCard title="Meetings by tier and body" sub={`Cabinet vs Committee, ${windowLabel}`}>
-          <HBar
-            rows={tiers.map((r) => ({
-              label: `${TIER_LABEL[r.level] || r.level} ${BODY_LABEL[r.body] || r.body}`,
-              value: r.total,
-            }))}
-            accent={BRAND.mid}
-            emptyLabel="No meetings in this window."
-          />
-        </ChartCard>
       </div>
 
       {/* ── Yearly view ──────────────────────────────────────────
@@ -274,53 +315,49 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         )}
       </div>
 
-      {/* Year x body and year x tier, the two cuts asked for. */}
+      {/* Year x body and year x tier, the two cuts asked for — as columns
+          rather than a grid of numbers. */}
       {yearly.length > 0 && (bodiesPresent.length > 0 || tiersPresent.length > 0) && (
         <div className="chart-card" style={{ marginTop: 10 }}>
           <div className="chart-card-head">
             <div>
-              <div className="chart-card-title">Conducted by year, body and tier</div>
+              <div className="chart-card-title">
+                Conducted by year, split by {yearSplit === 'BODY' ? 'body' : 'tier'}
+              </div>
               <div className="chart-card-sub">{data.yearBasisLabel}</div>
             </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`chip${yearSplit === 'BODY' ? ' on' : ''}`}
+                onClick={() => setYearSplit('BODY')}
+                disabled={bodiesPresent.length === 0}
+              >
+                By body
+              </button>
+              <button
+                type="button"
+                className={`chip${yearSplit === 'TIER' ? ' on' : ''}`}
+                onClick={() => setYearSplit('TIER')}
+                disabled={tiersPresent.length === 0}
+              >
+                By tier
+              </button>
+            </div>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="list">
-              <thead>
-                <tr>
-                  <th>Year</th>
-                  {bodiesPresent.map((b) => (
-                    <th key={b} style={{ textAlign: 'right' }}>{BODY_LABEL[b] || b}</th>
-                  ))}
-                  {tiersPresent.map((tr) => (
-                    <th key={tr} style={{ textAlign: 'right' }}>{TIER_LABEL[tr] || tr}</th>
-                  ))}
-                  <th style={{ textAlign: 'right' }}>Conducted</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {yearly.slice().reverse().map((y) => (
-                  <tr key={y.year}>
-                    <td><strong>{y.label}</strong></td>
-                    {bodiesPresent.map((b) => (
-                      <td key={b} style={{ textAlign: 'right' }}>
-                        {(y.bodies[b]?.conducted ?? 0).toLocaleString()}
-                      </td>
-                    ))}
-                    {tiersPresent.map((tr) => (
-                      <td key={tr} style={{ textAlign: 'right' }}>
-                        {(y.tiers[tr]?.conducted ?? 0).toLocaleString()}
-                      </td>
-                    ))}
-                    <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>
-                      {y.conducted.toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>{y.total.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <StackedColumns
+            groups={yearly.map((y) => ({
+              label: axisLabel(y),
+              sublabel: `${y.conducted.toLocaleString()} of ${y.total.toLocaleString()}`,
+              values: yearSplit === 'BODY'
+                ? Object.fromEntries(bodiesPresent.map((b) => [b, y.bodies[b]?.conducted ?? 0]))
+                : Object.fromEntries(tiersPresent.map((tr) => [tr, y.tiers[tr]?.conducted ?? 0])),
+            }))}
+            series={yearSeries}
+            height={240}
+            colWidth={Math.max(58, Math.min(150, slotWidth))}
+            emptyLabel="No conducted meetings on record."
+          />
         </div>
       )}
 
@@ -329,38 +366,22 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
           <div className="chart-card-head">
             <div>
               <div className="chart-card-title">Year · tier · body detail</div>
-              <div className="chart-card-sub">Every combination on record, newest first</div>
+              <div className="chart-card-sub">
+                Conducted meetings in every combination on record — darker is busier
+              </div>
             </div>
-            <div className="chart-card-meta">{matrix.length} rows</div>
+            <div className="chart-card-meta">{matrixCols.length} combinations</div>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="list">
-              <thead>
-                <tr>
-                  <th>Year</th>
-                  <th>Tier</th>
-                  <th>Body</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'right' }}>Conducted</th>
-                  <th style={{ textAlign: 'right' }}>Scheduled</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matrix.map((r) => (
-                  <tr key={`${r.year}-${r.level}-${r.body}`}>
-                    <td><strong>{r.label}</strong></td>
-                    <td>{TIER_LABEL[r.level] || r.level}</td>
-                    <td>{BODY_LABEL[r.body] || r.body}</td>
-                    <td style={{ textAlign: 'right' }}>{r.total.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>
-                      {r.conducted.toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>{r.scheduled.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* A real <table>, so this doubles as the accessible table view of
+              the shaded chart above it. */}
+          <Heatmap
+            rowHeader="Period"
+            valueNoun="conducted"
+            rows={matrixRows}
+            cols={matrixCols}
+            cells={matrixCells}
+            emptyLabel="Nothing on record yet."
+          />
         </div>
       )}
 
@@ -369,35 +390,24 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
           <div className="chart-card-head">
             <div>
               <div className="chart-card-title">Breakdown by tier and body</div>
-              <div className="chart-card-sub">Within the {windowLabel}</div>
+              <div className="chart-card-sub">
+                Conducted vs still scheduled, {windowLabel}
+              </div>
             </div>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="list">
-              <thead>
-                <tr>
-                  <th>Tier</th>
-                  <th>Body</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'right' }}>Conducted</th>
-                  <th style={{ textAlign: 'right' }}>Scheduled</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tiers.map((r) => (
-                  <tr key={`${r.level}-${r.body}`}>
-                    <td><strong>{TIER_LABEL[r.level] || r.level}</strong></td>
-                    <td>{BODY_LABEL[r.body] || r.body}</td>
-                    <td style={{ textAlign: 'right' }}>{r.total.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>
-                      {r.conducted.toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>{r.scheduled.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* Conducted and scheduled are lifecycle STATES, so they wear the
+              reserved status hues rather than categorical ones. */}
+          <StackedHBar
+            rows={tiers.map((r) => ({
+              label: `${TIER_LABEL[r.level] || r.level} ${BODY_LABEL[r.body] || r.body}`,
+              values: { conducted: r.conducted, scheduled: r.scheduled },
+            }))}
+            series={[
+              { key: 'conducted', label: 'Conducted', color: 'var(--success)' },
+              { key: 'scheduled', label: 'Scheduled', color: 'var(--warning)' },
+            ]}
+            emptyLabel="No meetings in this window."
+          />
         </div>
       )}
 
