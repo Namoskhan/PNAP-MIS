@@ -65,7 +65,6 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
       <div className="chart-card-head" style={{ marginBottom: 8 }}>
         <div>
           <div className="chart-card-title">Filters</div>
-          <div className="chart-card-sub">Applies to every section below</div>
         </div>
         {isFiltered && (
           <button

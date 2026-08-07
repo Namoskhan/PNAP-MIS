@@ -61,10 +61,10 @@ export default function ReportsAnalytics({
         />
       </div>
 
+      {/* Only the counter-intuitive half is worth saying: filed/outstanding
+          are self-explanatory, the date-filter exemption is not. */}
       <p className="muted" style={{ fontSize: 12, marginTop: -4, marginBottom: 12 }}>
-        A meeting&apos;s report is <strong>filed</strong> when the meeting is finalized and
-        <strong> outstanding</strong> once it has ended without that happening. Outstanding
-        counts ignore the date filter — a report from six months ago is still owed today.
+        Outstanding counts ignore the date filter — an old report is still owed today.
       </p>
 
       {noun && rows.length > 0 && (

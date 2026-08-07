@@ -15,7 +15,7 @@ import { InactiveUnitsTable, InactiveMembersTable } from '../InactiveTables';
 
 // ─── Command Centre ──────────────────────────────────────────────────
 //
-// The dashboard reads as SIX ACTS, top to bottom, each answering one
+// The dashboard reads as SEVEN ACTS, top to bottom, each answering one
 // question and handing the reader to the next:
 //
 //   1  Standing    how big is the party, right now
@@ -23,7 +23,8 @@ import { InactiveUnitsTable, InactiveMembersTable } from '../InactiveTables';
 //   3  People      who is joining, and who is taking part
 //   4  Work        campaigns being run
 //   5  Governance  meetings planned vs actually held
-//   6  Attention   what is broken and who is responsible
+//   6  Reports     what has been filed and what is still owed
+//   7  Attention   what is broken and who is responsible
 //
 // The order is deliberate: totals give context, provinces give
 // location, then the three things a party actually does, then the
@@ -48,6 +49,12 @@ const LEVEL_NOUN = {
 
 const num = (v) => (v ?? 0).toLocaleString();
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
+// Gauge and tone only mean something once the tier has units in it.
+const unitStat = (u) => {
+  if (!u || !u.total) return {};
+  const p = pct(u.active, u.total);
+  return { share: p, tone: p >= 50 ? 'good' : 'warn' };
+};
 
 /** One headline figure in the standing strip. */
 function Stat({ value, label, sub, tone = 'brand', delay, share }) {
@@ -160,11 +167,8 @@ export default function CommandCenter() {
           <h2 className="cc-title">
             {scope.provinceId ? scopeName : 'National Standing'}
           </h2>
-          <p className="cc-lede">
-            Everything the party is doing across {scopeName}, over the {windowLabel}.
-          </p>
         </div>
-        <div className="cc-live" title="Refreshes automatically every minute">
+        <div className="cc-live" title="Headline totals refresh every minute">
           <span className="cc-live-dot" aria-hidden="true" />
           Live
         </div>
@@ -193,28 +197,23 @@ export default function CommandCenter() {
       <Act
         n="1"
         title="Where the party stands"
-        lead="The headline totals. Everything below explains these numbers."
       >
         {summary.loading && !s ? <SkeletonKpiGrid count={5} /> : s && (
           <div className="cc-stats">
             <Stat delay={0} value={s.membership.total} label="Total membership"
               sub={`${num(s.membership.newMembers)} joined in the ${windowLabel}`} />
             <Stat delay={70} value={o.basicUnits.total} label="Basic units"
-              share={pct(o.basicUnits.active, o.basicUnits.total)}
               sub={`${num(o.basicUnits.active)} working · ${num(o.basicUnits.inactive)} silent`}
-              tone={pct(o.basicUnits.active, o.basicUnits.total) >= 50 ? 'good' : 'warn'} />
+              {...unitStat(o.basicUnits)} />
             <Stat delay={140} value={o.areas.total} label="Area units"
-              share={pct(o.areas.active, o.areas.total)}
               sub={`${num(o.areas.active)} working · ${num(o.areas.inactive)} silent`}
-              tone={pct(o.areas.active, o.areas.total) >= 50 ? 'good' : 'warn'} />
+              {...unitStat(o.areas)} />
             <Stat delay={210} value={o.districts.total} label="District units"
-              share={pct(o.districts.active, o.districts.total)}
               sub={`${num(o.districts.active)} working · ${num(o.districts.inactive)} silent`}
-              tone={pct(o.districts.active, o.districts.total) >= 50 ? 'good' : 'warn'} />
+              {...unitStat(o.districts)} />
             <Stat delay={280} value={o.provinces.total} label="Provincial parties"
-              share={pct(o.provinces.active, o.provinces.total)}
               sub={`${num(o.provinces.active)} working · ${num(o.provinces.inactive)} silent`}
-              tone={pct(o.provinces.active, o.provinces.total) >= 50 ? 'good' : 'warn'} />
+              {...unitStat(o.provinces)} />
           </div>
         )}
       </Act>
@@ -223,7 +222,7 @@ export default function CommandCenter() {
       <Act
         n="2"
         title={`Every ${childNoun.toLowerCase()}, side by side`}
-        lead={`Members, districts, areas and basic units for each ${childNoun.toLowerCase()} — and how many of each are actually working. Click a name to go inside it.`}
+        lead="Click any name to drill in."
         meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
       >
         {org.loading && !org.data ? <SkeletonCard lines={5} />
@@ -241,7 +240,6 @@ export default function CommandCenter() {
       <Act
         n="3"
         title="Who is joining, and who is taking part"
-        lead="New and total membership, broken down at every level beneath this one."
         meta={s ? `${num(s.membership.newMembers)} new` : null}
       >
         <MembershipAnalytics params={params} windowLabel={windowLabel} byStatus={s?.membership.byStatus} />
@@ -251,7 +249,6 @@ export default function CommandCenter() {
       <Act
         n="4"
         title="Coordination campaigns"
-        lead="Campaigns running, finished and upcoming — at every level beneath this one."
         meta={s ? `${num(s.campaigns.running)} running` : null}
       >
         <CampaignsAnalytics params={params} windowLabel={windowLabel} />
@@ -261,7 +258,7 @@ export default function CommandCenter() {
       <Act
         n="5"
         title="Meetings and governance"
-        lead="Scheduled against actually held — for provincial cabinet, committee and jirga, and for the central bodies. Yearly, and congress to congress."
+        lead="Scheduled against held, by tier, body and year."
         meta={s ? `${num(s.meetings.conducted)} of ${num(s.meetings.total)} held` : null}
       >
         <MeetingsAnalytics params={params} windowLabel={windowLabel} />
@@ -271,7 +268,6 @@ export default function CommandCenter() {
       <Act
         n="6"
         title="Reports"
-        lead="Filed and still owed, by level — provincial, district, area and basic unit."
         meta={s ? `${num(s.reports.outstanding)} owed` : null}
       >
         <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} />
@@ -281,7 +277,7 @@ export default function CommandCenter() {
       <Act
         n="7"
         title="Needs attention"
-        lead="Every silent unit and dormant member, with the office bearer responsible for each."
+        lead="With the officer responsible for each."
       >
         <div style={{ display: 'grid', gap: 16 }}>
           <InactiveUnitsTable params={params} />

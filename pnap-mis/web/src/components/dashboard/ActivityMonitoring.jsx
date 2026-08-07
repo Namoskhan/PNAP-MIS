@@ -206,12 +206,10 @@ export default function ActivityMonitoring({ params, summary, windowLabel }) {
         </div>
       )}
 
+      {/* The exclusion is the part nobody guesses, so it is the part kept. */}
       <p className="muted" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
-        A member counts as active after any one recorded organizational action inside
-        the window — attendance, meeting work, a fund transfer, an approval, a cabinet
-        assignment, an announcement or an administrative action. Logins, dashboard
-        visits and page views are deliberately excluded. A unit counts as active when
-        at least one of its key office bearers is active.
+        Active = one recorded organizational action in the window. Logins and page
+        views do not count. A unit is active when one of its key office bearers is.
       </p>
     </>
   );

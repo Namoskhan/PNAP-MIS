@@ -262,10 +262,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
             Say so and offer the fix rather than drawing an empty chart. */}
         {yearBasis === 'CONGRESS' && data.congressConfigured === false ? (
           <div className="alert info" style={{ marginBottom: 0 }}>
-            No Congress dates recorded yet, so there are no periods to report on.
-            Add them with <strong>Manage calendar</strong> above — two Congresses
-            give one closed period, and the most recent always opens a period that
-            is still running.
+            No Congress dates recorded yet. Add them with <strong>Manage calendar</strong> above.
           </div>
         ) : yearly.length === 0 ? (
           <p className="muted" style={{ margin: 0, fontSize: 13 }}>No meetings on record.</p>
@@ -304,9 +301,8 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         {yearBasis === 'CONGRESS' && data.unassignedMeetings > 0 && (
           <p className="muted" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
             <InfoIcon size={12} /> {data.unassignedMeetings.toLocaleString()} meeting
-            {data.unassignedMeetings === 1 ? '' : 's'} predate the earliest Congress on
-            record and fall outside every period. Add the earlier Congress to bring
-            them in.
+            {data.unassignedMeetings === 1 ? '' : 's'} predate the earliest Congress and
+            fall outside every period.
           </p>
         )}
 
@@ -414,14 +410,9 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
       {/* An honest gap is more useful than a fabricated zero. */}
       {data.jirgaTracked === false && (
         <div className="alert info" style={{ marginTop: 12 }}>
-          <strong>Jirga meetings are not counted anywhere above.</strong>{' '}
-          A meeting stores its body as <em>Cabinet</em> or <em>Committee</em> only —
-          Jirga exists in this system as a membership roster (Qomi / Sobayi Jirga),
-          never as a property of a meeting. Every Jirga meeting held so far is
-          therefore recorded as one of the other two, so there is no count to show
-          and no way to separate them retrospectively. Making it countable means
-          adding JIRGA as a third meeting body, which changes how meetings are
-          created — a change to the meeting module rather than to this dashboard.
+          <strong>Jirga meetings are not counted above.</strong>{' '}
+          A meeting stores its body as <em>Cabinet</em> or <em>Committee</em> only, so
+          Jirga meetings are recorded as one of those and cannot be separated out.
         </div>
       )}
     </>
