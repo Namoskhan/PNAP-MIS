@@ -4411,3 +4411,36 @@ html { scroll-behavior: smooth; }
   /* The gauge is a companion to the bars, not a column of its own. */
   .rep-grid { grid-template-columns: 1fr !important; }
 }
+
+/* ---- Password field with reveal toggle ---- */
+.pw-field { position: relative; display: block; width: 100%; min-width: 0; }
+/* Room for the button so a long password never runs under the icon.
+   Ties `.field input` on specificity and wins on source order — keep this
+   block after the base field styles. */
+.pw-field input { width: 100%; padding-right: 40px; }
+.pw-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.pw-toggle:hover { color: var(--text-soft); background: var(--surface-alt); }
+.pw-toggle:active { color: var(--primary); }
+/* tabIndex is -1, so this only appears on a real click — but a visible
+   focus ring still matters for anyone who lands here via touch. */
+.pw-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  color: var(--primary);
+}

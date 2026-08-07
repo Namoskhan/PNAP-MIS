@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
 import { SkeletonRows } from '../../components/Skeleton';
 import { ChevronRightIcon } from '../../components/icons';
+import PasswordInput from '../../components/PasswordInput';
 
 // Role-aware org-management page. One row per administrative tier,
 // each managing exactly the tier directly below it — the same
@@ -355,14 +356,14 @@ export default function ManageOrgPage() {
 function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
   const toast = useToast();
   const [form, setForm] = useState({ name: '', code: '' });
-  const [admin, setAdmin] = useState({ fullName: '', username: '', email: '', password: '' });
+  const [admin, setAdmin] = useState({ fullName: '', username: '', email: '', password: '', passwordConfirm: '' });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   useEffect(() => {
     if (!open) return;
     setForm({ name: '', code: '' });
-    setAdmin({ fullName: '', username: '', email: '', password: '' });
+    setAdmin({ fullName: '', username: '', email: '', password: '', passwordConfirm: '' });
     setErr('');
   }, [open]);
 
@@ -374,8 +375,12 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
     if (!form.name.trim()) { setErr(`${tier.childLabel} name is required`); return; }
     if (tier.showCreateAdmin) {
       if (!admin.fullName.trim()) { setErr('Admin full name is required'); return; }
-      if (!admin.username && !admin.email) { setErr('Either username or email is required for the admin'); return; }
+      // Email is mandatory: it is the address the account's verification
+      // and password-reset mail is sent to, so an admin created without
+      // one can never recover its own credentials.
+      if (!admin.email.trim()) { setErr('Admin email is required'); return; }
       if (!admin.password || admin.password.length < 6) { setErr('Admin password must be at least 6 characters'); return; }
+      if (admin.password !== admin.passwordConfirm) { setErr('Password and confirmation do not match.'); return; }
     }
     setBusy(true);
     try {
@@ -403,7 +408,8 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
           role: tier.childAdminRole,
           scope,
         };
-        if (admin.email.trim()) adminBody.email = admin.email.trim();
+        // passwordConfirm is a form-only field — it is never sent.
+        adminBody.email = admin.email.trim();
         if (admin.username.trim()) adminBody.username = admin.username.trim();
         try {
           await api.post('/admin/users', adminBody);
@@ -466,16 +472,48 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
                   <input value={admin.username} onChange={(e) => setAdmin({ ...admin, username: e.target.value })} placeholder="e.g. punjab-admin" />
                 </div>
                 <div className="field">
-                  <label>Email (alternative login)</label>
-                  <input type="email" value={admin.email} onChange={(e) => setAdmin({ ...admin, email: e.target.value })} />
+                  <label>Email *</label>
+                  <input
+                    type="email"
+                    value={admin.email}
+                    onChange={(e) => setAdmin({ ...admin, email: e.target.value })}
+                    required
+                    autoComplete="email"
+                  />
                 </div>
                 <div className="field">
-                  <label>Password * (min 6 chars)</label>
-                  <input type="password" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} required minLength={6} />
+                  <label htmlFor="org-admin-pw">Password * (min 6 chars)</label>
+                  <PasswordInput
+                    id="org-admin-pw"
+                    value={admin.password}
+                    onChange={(e) => setAdmin({ ...admin, password: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="org-admin-pw2">Confirm Password *</label>
+                  <PasswordInput
+                    id="org-admin-pw2"
+                    value={admin.passwordConfirm}
+                    onChange={(e) => setAdmin({ ...admin, passwordConfirm: e.target.value })}
+                    required
+                    minLength={6}
+                    placeholder="Re-enter password"
+                  />
+                  {/* Mismatch is caught on submit as well; this is the
+                      immediate feedback so it is not a surprise later. */}
+                  {admin.passwordConfirm && admin.password !== admin.passwordConfirm && (
+                    <div className="error" style={{ fontSize: 12, marginTop: 4 }}>
+                      Password and confirmation do not match.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="alert info" style={{ background: 'var(--info-bg)', border: '1px solid var(--info)', color: 'var(--info)', fontSize: 13, padding: 10, borderRadius: 6, marginTop: 8 }}>
-                Username OR email is required as the login identifier — at least one.
+                Email is the login identifier and receives verification and
+                password-reset mail. A username may be added as an optional
+                second way to sign in.
               </div>
             </>
           )}
