@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../utils/permissions';
 import { useToast } from '../../components/Toast';
 import { SearchIcon, XIcon } from '../../components/icons';
+import PasswordInput from '../../components/PasswordInput';
 
 const ROLE_OPTIONS = [
   'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
@@ -445,25 +446,38 @@ export default function UsersPage() {
 // the server ignores any scope sent for this role (see
 // adminUserController.create).
 function CreateCentralAdminDialog({ onClose, onCreated }) {
-  const [form, setForm] = useState({ fullName: '', username: '', email: '', password: '' });
+  const [form, setForm] = useState({
+    fullName: '', username: '', email: '', password: '', passwordConfirm: '',
+  });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  const mismatch = form.passwordConfirm.length > 0 && form.password !== form.passwordConfirm;
+  // Email is mandatory: it is where this account's verification and
+  // password-reset mail goes, so an admin created without one cannot
+  // recover its own credentials. Username stays optional.
   const canSubmit = form.fullName.trim()
-    && (form.username.trim() || form.email.trim())
-    && form.password.length >= 6;
+    && form.email.trim()
+    && form.password.length >= 6
+    && form.password === form.passwordConfirm;
 
   async function submit() {
     setErr('');
+    if (!form.email.trim()) { setErr('Email is required'); return; }
+    if (form.password !== form.passwordConfirm) {
+      setErr('Password and confirmation do not match.');
+      return;
+    }
     setBusy(true);
     try {
       const body = {
         fullName: form.fullName.trim(),
         password: form.password,
         role: 'CENTRAL_ADMIN',
+        // passwordConfirm is a form-only field — it is never sent.
+        email: form.email.trim(),
       };
       if (form.username.trim()) body.username = form.username.trim();
-      if (form.email.trim()) body.email = form.email.trim();
       await api.post('/admin/users', body);
       onCreated?.();
     } catch (e) {
@@ -500,22 +514,48 @@ function CreateCentralAdminDialog({ onClose, onCreated }) {
             />
           </div>
           <div className="field">
-            <label>Email</label>
+            <label htmlFor="ca-email">Email <span className="req">*</span></label>
             <input
+              id="ca-email"
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+              autoComplete="email"
             />
           </div>
-          <div className="field full">
-            <label>Password <span className="req">*</span></label>
-            <input
-              type="password"
+          <div className="field">
+            <label htmlFor="ca-pw">Password <span className="req">*</span></label>
+            <PasswordInput
+              id="ca-pw"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+              minLength={6}
             />
+            <span className="hint">At least 6 characters.</span>
+          </div>
+          <div className="field">
+            <label htmlFor="ca-pw2">Confirm Password <span className="req">*</span></label>
+            <PasswordInput
+              id="ca-pw2"
+              value={form.passwordConfirm}
+              onChange={(e) => setForm({ ...form, passwordConfirm: e.target.value })}
+              required
+              minLength={6}
+              placeholder="Re-enter password"
+            />
+            {/* Immediate feedback; submit re-checks so the two cannot drift. */}
+            {mismatch && (
+              <span className="error" style={{ fontSize: 12, marginTop: 4 }}>
+                Password and confirmation do not match.
+              </span>
+            )}
+          </div>
+          <div className="field full">
             <span className="hint">
-              At least 6 characters. Provide a username or an email — either can be used to sign in.
+              Email is the login identifier and receives verification and password-reset
+              mail. A username may be added as an optional second way to sign in.
             </span>
           </div>
         </div>
