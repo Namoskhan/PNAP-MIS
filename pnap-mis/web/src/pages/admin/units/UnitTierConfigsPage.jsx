@@ -3,7 +3,7 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { BuildingIcon, GearIcon, TagIcon, TrashIcon } from '../../../components/icons';
+import { BuildingIcon, GearIcon, TagIcon, TrashIcon, XIcon } from '../../../components/icons';
 
 // Unit Type Manager — edit the 5 built-in tier configs (labels,
 // capabilities, body policy, custom fields). Tiers themselves are
@@ -221,7 +221,7 @@ function EditTierDialog({ tier, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 720, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Edit tier · <code className="exec-login">{tier.tierCode}</code></h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 

@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { FileTextIcon, PuzzleIcon, TrashIcon } from '../../../components/icons';
+import { FileTextIcon, PuzzleIcon, TrashIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Report Templates — list + render + full composer dialog (PR F2).
 // Sections registry is locked in code; admin composes pre-built
 // sections into a template (sortOrder, title, per-section config).
@@ -41,7 +42,7 @@ export default function ReportTemplatesPage() {
 
   async function deleteTemplate(t) {
     if (t.isSystem) return;
-    if (!confirm(`Delete template "${t.name}"?`)) return;
+    if (!await dialog.confirm(`Delete template "${t.name}"?`)) return;
     try {
       await api.delete(`/admin/units/report-templates/${t._id}`);
       toast.success?.('Template deleted.');
@@ -279,7 +280,7 @@ function TemplateDialog({ mode, template, sectionRegistry, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 820, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{isEdit ? `Edit template · ${template.name}` : 'New report template'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 
@@ -492,7 +493,7 @@ function RenderDialog({ template, onClose }) {
       <div className="modal" style={{ maxWidth: 560 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Render "{template.name}"</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
         <div className="form-grid">

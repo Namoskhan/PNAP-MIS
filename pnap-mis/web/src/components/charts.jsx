@@ -63,12 +63,19 @@ export function HBar({ rows, accent = 'var(--primary)', emptyLabel = 'No data.' 
 //
 // rows:   [{ label, values: { [key]: number }, note? }]
 // series: [{ key, label, color }]  — drawn left to right in this order
-export function StackedHBar({ rows, series, emptyLabel = 'No data.', noteLabel }) {
+// `scrollAfter` bounds the height once there are more bars than a panel
+// can reasonably show. The membership view feeds this one row per unit —
+// 352 basic units produced a single chart hundreds of rows long. Only the
+// ROWS scroll; the legend sits above them and stays pinned.
+export function StackedHBar({
+  rows, series, emptyLabel = 'No data.', noteLabel, scrollAfter = 14,
+}) {
   if (!rows || rows.length === 0) {
     return <p className="muted" style={{ margin: 0, fontSize: 13 }}>{emptyLabel}</p>;
   }
   const totalOf = (r) => series.reduce((s, x) => s + (r.values[x.key] || 0), 0);
   const max = Math.max(...rows.map(totalOf), 1);
+  const scrolls = rows.length > scrollAfter;
 
   return (
     <div className="shb">
@@ -81,7 +88,14 @@ export function StackedHBar({ rows, series, emptyLabel = 'No data.', noteLabel }
         ))}
       </div>
 
-      <div className="shb-rows">
+      <div
+        className={`shb-rows${scrolls ? ' scroll' : ''}`}
+        // Scrollable regions need to be reachable and announced, or the
+        // rows past the fold are unreachable without a mouse.
+        tabIndex={scrolls ? 0 : undefined}
+        role={scrolls ? 'group' : undefined}
+        aria-label={scrolls ? `${rows.length} rows, scrollable` : undefined}
+      >
         {rows.map((r) => {
           const total = totalOf(r);
           // Width of the whole bar relative to the biggest row.

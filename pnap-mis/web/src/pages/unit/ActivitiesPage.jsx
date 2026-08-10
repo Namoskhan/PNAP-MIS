@@ -7,6 +7,8 @@ import { api, errorMessage } from '../../api/client';
 import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 function bodySupported(level) {
   return level === 'AREA' || level === 'DISTRICT' || level === 'PROVINCE' || level === 'CENTRAL';
 }
@@ -97,15 +99,15 @@ export default function ActivitiesPage() {
       const r = await api.post(`/activities/${id}/photos`, fd);
       const data = r.data.data;
       if (data.rejected?.length) {
-        alert(`Some photos rejected:\n${data.rejected.map((x) => `• ${x.filename}: ${x.reason}`).join('\n')}`);
+        dialog.alert(`Some photos rejected:\n${data.rejected.map((x) => `• ${x.filename}: ${x.reason}`).join('\n')}`);
       }
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   async function complete(id) {
     try { await api.post(`/activities/${id}/complete`, {}); reload(); }
-    catch (e) { alert(errorMessage(e)); }
+    catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -151,7 +153,7 @@ export default function ActivitiesPage() {
         <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Activity">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Record Activity</h3>
-            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
           <div className="form-grid">
             <div className="field">

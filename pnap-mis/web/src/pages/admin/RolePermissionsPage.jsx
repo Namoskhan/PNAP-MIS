@@ -4,6 +4,7 @@ import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../utils/permissions';
 import { useToast } from '../../components/Toast';
+import dialog from '../../components/dialog';
 import {
   UsersIcon, WalletIcon, CalendarIcon, ShieldIcon,
   MegaphoneIcon, BuildingIcon, GearIcon,
@@ -133,8 +134,8 @@ export default function RolePermissionsPage() {
     nav('/admin/roles');
   }
 
-  function switchRole(rid) {
-    if (dirty && !confirm('Discard unsaved changes?')) return;
+  async function switchRole(rid) {
+    if (dirty && !await dialog.confirm('Discard unsaved changes?')) return;
     nav(`/admin/roles/${rid}/permissions`);
   }
 

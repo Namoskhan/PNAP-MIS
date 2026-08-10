@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { PuzzleIcon, GearIcon, TrashIcon } from '../../../components/icons';
+import { PuzzleIcon, GearIcon, TrashIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Field Library — CRUD for FieldDefinition. Each field has a machine
 // `key` that's locked after creation; everything else (label,
 // validation, visibility, reporting flags) is editable.
@@ -53,7 +54,7 @@ export default function FieldLibraryPage() {
 
   async function deleteField(f) {
     if (!canWrite || f.isSystem) return;
-    if (!confirm(`Delete field "${f.label}" (${f.key})? Only safe if no event type currently uses it.`)) return;
+    if (!await dialog.confirm(`Delete field "${f.label}" (${f.key})? Only safe if no event type currently uses it.`)) return;
     try {
       await api.delete(`/admin/events/fields/${f._id}`);
       toast.success?.('Field deleted.');
@@ -286,7 +287,7 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{isEdit ? 'Edit field' : 'New field'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {isEdit && (
           <p className="muted" style={{ fontSize: 12, margin: '0 0 8px' }}>

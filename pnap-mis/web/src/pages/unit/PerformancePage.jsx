@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useUnit } from '../../context/UnitContext';
 import { api, errorMessage } from '../../api/client';
 
+import dialog from '../../components/dialog';
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
 export default function PerformancePage() {
@@ -50,7 +51,7 @@ export default function PerformancePage() {
     fetch(`/api/exports/member/${memberId}/pdf?${params.toString()}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(async (res) => {
-      if (!res.ok) { alert('Export failed.'); return; }
+      if (!res.ok) { dialog.alert('Export failed.'); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

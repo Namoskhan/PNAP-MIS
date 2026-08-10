@@ -3,9 +3,10 @@ import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
 import { SkeletonRows } from '../../components/Skeleton';
-import { ChevronRightIcon } from '../../components/icons';
+import { ChevronRightIcon, XIcon } from '../../components/icons';
 import PasswordInput from '../../components/PasswordInput';
 
+import dialog from '../../components/dialog';
 // Role-aware org-management page. One row per administrative tier,
 // each managing exactly the tier directly below it — the same
 // one-level rule the server enforces in utils/adminHierarchy.
@@ -191,7 +192,7 @@ export default function ManageOrgPage() {
 
   async function remove(item) {
     const noun = tier.childLabel.toLowerCase();
-    if (!confirm(
+    if (!await dialog.confirm(
       `Delete the ${noun} "${item.name}"?\n\n`
       + `Its ${noun} admin account will be deleted along with it.\n\n`
       + 'This cannot be undone. It will be refused if anything else still '
@@ -438,7 +439,7 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h2 style={{ margin: 0 }}>Create {tier.childLabel}</h2>
           <button type="button" className="btn secondary" onClick={() => !busy && onClose?.()}
-            style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }} aria-label="Close">×</button>
+            style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }} aria-label="Close"><XIcon size={16} /></button>
         </div>
 
         {err && <div className="alert error">{err}</div>}

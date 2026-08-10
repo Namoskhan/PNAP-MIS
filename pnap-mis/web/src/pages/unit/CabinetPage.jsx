@@ -7,6 +7,7 @@ import {
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 
+import dialog from '../../components/dialog';
 const ROLE_LABEL = {
   SECRETARY: 'Secretary',
   SENIOR_MAWIN: 'Senior Mawin Secretary',
@@ -263,11 +264,11 @@ export default function CabinetPage() {
   }
 
   async function decide(id, decision) {
-    if (!confirm(`Confirm ${decision}?`)) return;
+    if (!await dialog.confirm(`Confirm ${decision}?`)) return;
     try {
       await api.post(`/roles/${id}/decide`, { decision });
       await reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   async function proposeCustom() {
@@ -316,12 +317,12 @@ export default function CabinetPage() {
   }
 
   async function endRole(assignmentId) {
-    const reason = prompt('End reason (RESIGNED, EXPELLED, TERM_ENDED, TRANSFERRED, DECEASED, REPLACED):');
+    const reason = await dialog.prompt('End reason (RESIGNED, EXPELLED, TERM_ENDED, TRANSFERRED, DECEASED, REPLACED):');
     if (!reason) return;
     try {
       await api.post(`/roles/${assignmentId}/end`, { endReason: reason.toUpperCase() });
       await reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;

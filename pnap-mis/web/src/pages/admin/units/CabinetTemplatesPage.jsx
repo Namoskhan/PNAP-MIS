@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { TagIcon, TrashIcon, UsersIcon } from '../../../components/icons';
+import { TagIcon, TrashIcon, UsersIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Cabinet Structure — full CRUD for CabinetTemplate. Built-in slots
 // from the SRS-defined templates are isSystem (locked from delete);
 // admin can edit isMandatory / sortOrder / forward-compat fields,
@@ -47,7 +48,7 @@ export default function CabinetTemplatesPage() {
 
   async function deleteTemplate(t) {
     if (t.isSystem) return;
-    if (!confirm(`Delete custom slot "${t.roleCode}" at ${t.tierCode}? Vacant slots on units will also be removed.`)) return;
+    if (!await dialog.confirm(`Delete custom slot "${t.roleCode}" at ${t.tierCode}? Vacant slots on units will also be removed.`)) return;
     try {
       const r = await api.delete(`/admin/units/cabinet-templates/${t._id}`);
       const removed = r.data?.data?.vacantSlotsRemoved || 0;
@@ -217,7 +218,7 @@ function CabinetTemplateDialog({ mode, template, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 580 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{isEdit ? 'Edit cabinet slot' : 'New cabinet slot'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
         {isEdit && (

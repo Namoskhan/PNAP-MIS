@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import OrgTree from '../../components/OrgTree';
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 import DestinationHierarchy, {
   DestinationHierarchyInline, unitLabel,
 } from '../../components/DestinationHierarchy';
@@ -116,12 +118,12 @@ export default function TransfersPage() {
 
   async function ack(id) {
     try { await api.post(`/transfers/${id}/acknowledge`, {}); reload(); }
-    catch (e) { alert(errorMessage(e)); }
+    catch (e) { dialog.alert(errorMessage(e)); }
   }
   async function reject(id) {
-    const note = prompt('Reason for rejection:') || '';
+    const note = await dialog.prompt('Reason for rejection:') || '';
     try { await api.post(`/transfers/${id}/reject`, { note }); reload(); }
-    catch (e) { alert(errorMessage(e)); }
+    catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   const { user } = useAuth();
@@ -171,7 +173,7 @@ export default function TransfersPage() {
         <div className="modal tr-modal" role="dialog" aria-modal="true" aria-label="Initiate Fund Transfer">
           <div className="tr-modal-head">
             <h3 style={{ margin: 0 }}>Initiate Fund Transfer</h3>
-            <button type="button" className="btn secondary" onClick={() => setTransferModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+            <button type="button" className="btn secondary" onClick={() => setTransferModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
 
           {err && <div className="alert error">{err}</div>}

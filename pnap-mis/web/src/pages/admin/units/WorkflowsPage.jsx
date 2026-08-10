@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { GlobeIcon, RepeatIcon, TagIcon, TrashIcon } from '../../../components/icons';
+import { GlobeIcon, RepeatIcon, TagIcon, TrashIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Workflow Manager — list + full stage-builder dialog (PR F2).
 // Default GLOBAL chains have one stage matching the legacy gate;
 // admins can now add stages, attach thresholds, and create TIER
@@ -43,7 +44,7 @@ export default function WorkflowsPage() {
 
   async function deleteOne(w) {
     if (w.isSystem) return;
-    if (!confirm(`Delete the ${w.scope} workflow for ${w.domain}${w.tierCode ? ' · ' + w.tierCode : ''}?`)) return;
+    if (!await dialog.confirm(`Delete the ${w.scope} workflow for ${w.domain}${w.tierCode ? ' · ' + w.tierCode : ''}?`)) return;
     try {
       await api.delete(`/admin/units/workflows/${w._id}`);
       toast.success?.('Workflow deleted.');
@@ -239,7 +240,7 @@ function WorkflowDialog({ mode, workflow, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 760, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{isEdit ? `Edit workflow · ${workflow.domain}` : 'New workflow (TIER override)'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 

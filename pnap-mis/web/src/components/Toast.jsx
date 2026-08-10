@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
+import { XIcon } from '../components/icons';
 const ToastCtx = createContext(null);
 
 const ICONS = {
@@ -71,7 +72,7 @@ export function ToastProvider({ children }) {
               {t.title && <div className="toast-title">{t.title}</div>}
               <div className="toast-msg">{t.message}</div>
             </div>
-            <button className="toast-close" onClick={() => dismiss(t.id)} aria-label="Dismiss">×</button>
+            <button className="toast-close" onClick={() => dismiss(t.id)} aria-label="Dismiss"><XIcon size={16} /></button>
             {t.duration > 0 && <div className="toast-progress" />}
           </div>
         ))}

@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
+import { DialogHost } from './components/dialog';
 import { BrandingProvider } from './context/BrandingContext';
 import CommandPalette from './components/CommandPalette';
 import MemberRegisterModal from './components/MemberRegisterModal';
@@ -99,6 +100,8 @@ export default function App() {
     <ErrorBoundary>
       <BrandingProvider>
       <ToastProvider>
+        {/* One host for every dialog.confirm/prompt/alert in the app. */}
+        <DialogHost />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           {/* Account recovery. These MUST sit outside ProtectedRoute —

@@ -9,8 +9,9 @@ import { useToast } from '../../../components/Toast';
 import ColorPicker from '../../../components/branding/ColorPicker';
 import ThemePreviewPane from '../../../components/branding/ThemePreviewPane';
 import PresetGallery from '../../../components/branding/PresetGallery';
-import { CameraIcon, FolderIcon, MoonIcon, PaletteIcon, TargetIcon } from '../../../components/icons';
+import { CameraIcon, FolderIcon, MoonIcon, PaletteIcon, TargetIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Theme Manager — full color editor + light/dark mode toggle + preset
 // gallery + side-by-side preview. Color tokens are grouped by purpose
 // (Brand / Surfaces / Text / Borders / Status / Tiers) so admins can
@@ -167,7 +168,7 @@ export default function ThemeManagerPage() {
   }
 
   async function applyPresetByCode(code) {
-    if (!confirm(`Apply preset "${code}"? This overwrites the current theme. You can rollback from Settings History after saving.`)) return;
+    if (!await dialog.confirm(`Apply preset "${code}"? This overwrites the current theme. You can rollback from Settings History after saving.`)) return;
     setSaving(true); setServerErrors([]);
     try {
       const updated = await applyPreset(code);
@@ -546,7 +547,7 @@ function ThemeImportDialog({ onClose, onApply, busy }) {
       <div className="modal" style={{ maxWidth: 560 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Import theme</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 

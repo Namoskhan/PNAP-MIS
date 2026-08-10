@@ -5,6 +5,8 @@ import { useUnit } from '../context/UnitContext';
 import { hasRole, canPostAnnouncement } from '../utils/permissions';
 import { useToast } from '../components/Toast';
 
+import dialog from '../components/dialog';
+import { XIcon } from '../components/icons';
 // Audience modes — drives both the form and the visibility/payload
 // the backend receives. PERSON = direct message, others = broadcast.
 const AUDIENCE_MODES = [
@@ -146,7 +148,7 @@ export default function AnnouncementsPage() {
   }
 
   async function remove(id) {
-    if (!confirm('Delete this announcement?')) return;
+    if (!await dialog.confirm('Delete this announcement?')) return;
     try { await api.delete(`/announcements/${id}`); load(); }
     catch (e) { setErr(errorMessage(e)); }
   }
@@ -227,7 +229,7 @@ export default function AnnouncementsPage() {
           <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Post Announcement">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>{form.mode === 'PERSON' ? 'Send Direct Message' : 'Post Announcement'}</h3>
-              <button type="button" className="btn secondary" onClick={() => setComposeOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+              <button type="button" className="btn secondary" onClick={() => setComposeOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
             </div>
 
             <div className="field full" style={{ marginBottom: 12 }}>

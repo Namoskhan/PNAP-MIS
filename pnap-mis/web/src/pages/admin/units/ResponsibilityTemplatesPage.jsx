@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { ClipboardIcon, FileTextIcon, TrashIcon, UserIcon, ZapIcon } from '../../../components/icons';
+import { ClipboardIcon, FileTextIcon, TrashIcon, UserIcon, ZapIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Responsibility Manager — list + full create/edit dialog (PR F2).
 // Auto-task templates: fire when meetings/activities/roles transition.
 // Auto-created Responsibility documents are never cascaded on delete —
@@ -48,7 +49,7 @@ export default function ResponsibilityTemplatesPage() {
   useEffect(() => { load(); }, []);
 
   async function deleteTpl(t) {
-    if (!confirm(`Delete "${t.name}"? Responsibility documents already created from this template stay in place.`)) return;
+    if (!await dialog.confirm(`Delete "${t.name}"? Responsibility documents already created from this template stay in place.`)) return;
     try {
       const r = await api.delete(`/admin/units/responsibility-templates/${t._id}`);
       const inFlight = r.data?.data?.inFlightResponsibilities || 0;
@@ -231,7 +232,7 @@ function ResponsibilityTemplateDialog({ mode, template, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 720, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{isEdit ? `Edit template · ${template.name}` : 'New responsibility template'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 

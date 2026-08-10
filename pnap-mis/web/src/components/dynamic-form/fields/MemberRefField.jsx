@@ -12,6 +12,9 @@ import { FieldShell } from '../FieldShell';
 let _cache = null;
 let _inflight = null;
 
+// MUST stay async even though nothing here awaits: the caller does
+// loadMembers().then(...), and on a warm cache this returns the plain
+// array. `async` is what wraps that back into a Promise.
 async function loadMembers() {
   if (_cache) return _cache;
   if (_inflight) return _inflight;

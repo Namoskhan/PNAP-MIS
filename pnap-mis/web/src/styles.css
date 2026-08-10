@@ -115,6 +115,69 @@ h3 { font-size: 16px; font-weight: 600; }
 a { color: var(--primary-dark); }
 a:hover { color: var(--primary); }
 
+/* The base rule for .muted. It was missing entirely: the class is used
+   ~290 times across the app, but the only rules for it were scoped to
+   the login card, the public card, the sidebar user box and the hero —
+   so everywhere else "muted" text rendered at full body colour. That is
+   why so many components carry an inline color: var(--muted) instead. */
+.muted { color: var(--muted); }
+
+/* ---------- Focus ----------
+   A default visible focus ring for every interactive element. There were
+   11 component-specific :focus-visible rules and no fallback, so anything
+   not on that list — most links, menu items and icon buttons — left
+   keyboard users with no idea where they were.
+
+   Wrapped in :where() so it carries ZERO specificity: every existing
+   component rule still wins, and this only fills the gaps. */
+:where(a, button, summary, [tabindex]:not([tabindex="-1"]),
+       input, select, textarea):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Base form controls ----------
+   Until now the ONLY input styling was `.field input`, so any control
+   rendered outside a .field wrapper fell back to browser defaults. That
+   is exactly how the Users search box ended up as a raw input sitting
+   beside a fully designed select.
+
+   Style the ELEMENTS here; `.field` is then only responsible for layout.
+   Checkboxes, radios, ranges, files and colour pickers keep their native
+   appearance — box styling makes them worse, not better. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="submit"]):not([type="button"]),
+select,
+textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+input::placeholder,
+textarea::placeholder { color: var(--muted-soft); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):hover,
+select:hover,
+textarea:hover { border-color: var(--muted-soft); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--surface-alt);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 ::selection { background: var(--primary-light); color: var(--primary-dark); }
 
 /* Scrollbars */
@@ -284,7 +347,7 @@ a:hover { color: var(--primary); }
 }
 .sidebar .user-box strong { color: #fff; font-size: 14px; display: block; line-height: 1.3; }
 .sidebar .user-box .user-sub { color: rgba(255, 255, 255, .65); }
-.sidebar .user-box .muted { color: rgba(255, 255, 255, .65) !important; }
+.sidebar .user-box .muted { color: rgba(255, 255, 255, .65); }
 .sidebar .user-box button {
   margin-top: 12px;
   width: 100%;
@@ -658,6 +721,7 @@ a:hover { color: var(--primary); }
   width: 100%;
   min-width: 0;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 654 */
 .field { display: flex; flex-direction: column; }
 .field.full { grid-column: 1 / -1; }
 .field label {
@@ -1462,6 +1526,7 @@ table.smart .cell-strong { font-weight: 600; color: var(--text); }
 table.smart .cell-muted { color: var(--muted); }
 
 /* ---------- Smart forms ---------- */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 686 */
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
@@ -1474,6 +1539,7 @@ table.smart .cell-muted { color: var(--muted); }
   border-color: var(--danger);
   box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 700 */
 .field .error {
   color: var(--danger);
   font-size: 12px;
@@ -1500,6 +1566,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ---------- Smart button states ---------- */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 589 */
 .btn { transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast); }
 .btn:not(:disabled):hover { transform: translateY(-1px); }
 .btn:not(:disabled):active { transform: translateY(0); }
@@ -1549,6 +1616,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ---------- Page transitions ---------- */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 556 */
 .main > * { animation: pageIn .25s cubic-bezier(.4, 0, .2, 1); }
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -1588,11 +1656,13 @@ table.smart .cell-muted { color: var(--muted); }
    ============================================================ */
 
 /* ── Modal: backdrop blur + softer dialog spring ────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1054 */
 .modal-backdrop {
   animation: modalBackdropIn .22s cubic-bezier(.4, 0, .2, 1);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1062 */
 .modal {
   animation: modalDialogIn .28s cubic-bezier(.16, 1, .3, 1);
   transform-origin: center top;
@@ -1609,6 +1679,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ── Buttons: lift, glow, press feedback ────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 589 */
 .btn {
   transition:
     transform .16s cubic-bezier(.34, 1.56, .64, 1),
@@ -1620,11 +1691,13 @@ table.smart .cell-muted { color: var(--muted); }
   position: relative;
   overflow: hidden;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1504 */
 .btn:not(:disabled):hover {
   transform: translateY(-1.5px);
   box-shadow: 0 4px 10px -2px rgba(30, 64, 175, .25), 0 2px 4px -1px rgba(15, 23, 42, .06);
   filter: brightness(1.04);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1505 */
 .btn:not(:disabled):active {
   transform: translateY(0) scale(.98);
   box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
@@ -1639,6 +1712,7 @@ table.smart .cell-muted { color: var(--muted); }
 .btn.ghost:not(:disabled):hover { transform: none; box-shadow: none; filter: none; }
 
 /* Focus ring fades in instead of snapping */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 611 */
 .btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--ring), 0 4px 10px -2px rgba(30, 64, 175, .25);
@@ -1646,6 +1720,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ── Form inputs: smoother focus glow ───────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 669 */
 .field input,
 .field select,
 .field textarea {
@@ -1654,12 +1729,14 @@ table.smart .cell-muted { color: var(--muted); }
     box-shadow .18s ease,
     background-color .15s ease;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 686 */
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
   box-shadow: 0 0 0 3px var(--ring), 0 1px 2px rgba(15, 23, 42, .04);
   outline: none;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 663 */
 .field label {
   transition: color .15s ease;
 }
@@ -1668,12 +1745,14 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ── Cards: subtler hover lift ──────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 576 */
 .card {
   transition:
     box-shadow .25s ease,
     transform .25s cubic-bezier(.4, 0, .2, 1),
     border-color .2s ease;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 584 */
 .card:hover {
   transform: translateY(-1px);
   border-color: var(--border-strong, var(--border));
@@ -1702,6 +1781,7 @@ table.smart tbody tr:hover {
 }
 
 /* ── KPIs: slightly springier hover ─────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 886 */
 .kpi {
   transition:
     transform .22s cubic-bezier(.16, 1, .3, 1),
@@ -1717,6 +1797,7 @@ table.smart tbody tr:hover {
 }
 
 /* ── Alerts: slide in from above ────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 864 */
 .alert {
   animation: alertIn .26s cubic-bezier(.16, 1, .3, 1);
 }
@@ -1731,6 +1812,7 @@ input[type="file"]::file-selector-button {
 }
 
 /* ── Badges: subtle pop-in ──────────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 769 */
 .badge {
   transition: transform .12s ease, box-shadow .15s ease;
 }
@@ -2052,7 +2134,7 @@ html { scroll-behavior: smooth; }
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   color: rgba(255, 255, 255, 0.85);
 }
-.hero-actions .muted { color: rgba(255, 255, 255, 0.7) !important; }
+.hero-actions .muted { color: rgba(255, 255, 255, 0.7); }
 
 /* Live data indicator chip — sits in hero-actions */
 .hero-live-chip {
@@ -2139,6 +2221,7 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Polished SmartKpi — top accent strip + soft glow on hover */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1333 */
 .skpi {
   position: relative;
 }
@@ -2161,6 +2244,7 @@ html { scroll-behavior: smooth; }
     0 2px 4px rgba(15, 23, 42, .04);
   border-color: rgba(30, 64, 175, 0.25);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1358 */
 .skpi-icon {
   background: linear-gradient(135deg, rgba(30, 64, 175, 0.10), rgba(30, 64, 175, 0.05)) !important;
   box-shadow: 0 2px 6px -2px rgba(30, 64, 175, 0.15);
@@ -2169,6 +2253,7 @@ html { scroll-behavior: smooth; }
 .skpi:hover .skpi-icon { transform: scale(1.08) rotate(-4deg); }
 
 /* ── Polished chart cards — top accent + gentle hover ───────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1386 */
 .chart-card {
   position: relative;
   transition: box-shadow .25s ease, transform .25s cubic-bezier(.16, 1, .3, 1), border-color .2s ease;
@@ -2188,9 +2273,11 @@ html { scroll-behavior: smooth; }
   box-shadow: var(--shadow-md);
   border-color: rgba(30, 64, 175, 0.18);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1399 */
 .chart-card-title {
   display: inline-flex; align-items: center; gap: 6px;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1406 */
 .chart-card-meta {
   display: inline-flex; align-items: center; gap: 5px;
   background: rgba(30, 64, 175, 0.08);
@@ -2555,6 +2642,7 @@ html { scroll-behavior: smooth; }
 .exec-actions .btn:first-child { margin-left: 0; }
 
 /* ── User avatar ────────────────────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 307 */
 .user-avatar {
   border-radius: 50%;
   display: inline-flex;
@@ -3518,10 +3606,13 @@ html { scroll-behavior: smooth; }
 /* Nothing chosen yet — stays neutral rather than implying a
    destination the sender has not picked. */
 .tr-endpoint.to.empty {
+  background: var(--surface-alt);
+  /* border-color must come FIRST: as a shorthand it resets all four
+     sides, so when it sat below border-left-color that declaration was
+     dead and the left edge quietly took the generic border colour. */
+  border-color: var(--border);
   border-left-style: dashed;
   border-left-color: var(--border-strong);
-  background: var(--surface-alt);
-  border-color: var(--border);
 }
 .tr-endpoint-label {
   font-size: 11px;
@@ -3673,10 +3764,12 @@ html { scroll-behavior: smooth; }
   letter-spacing: .02em;
   color: var(--tier, var(--muted));
   /* Plain values first so a browser without color-mix still gets a
-     legible disc; the tinted pair overrides where supported. */
+     legible disc; the tinted pair overrides where supported. Each
+     fallback sits directly above the value that supersedes it — the
+     pairs used to be interleaved, which reads as an accidental repeat. */
   background: var(--surface-alt);
-  border: 1px solid var(--border-strong);
   background: color-mix(in srgb, var(--tier, var(--muted)) 12%, var(--surface));
+  border: 1px solid var(--border-strong);
   border: 1px solid color-mix(in srgb, var(--tier, var(--muted)) 28%, transparent);
 }
 .orgtree-row.selected .orgtree-badge {
@@ -4472,35 +4565,149 @@ html { scroll-behavior: smooth; }
   .rep-grid { grid-template-columns: 1fr !important; }
 }
 
-/* ---- Password field with reveal toggle ---- */
-.pw-field { position: relative; display: block; width: 100%; min-width: 0; }
-/* Room for the button so a long password never runs under the icon.
-   Ties `.field input` on specificity and wins on source order — keep this
-   block after the base field styles. */
-.pw-field input { width: 100%; padding-right: 40px; }
-.pw-toggle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  width: 38px;
+/* The password field's styles live with the other form controls near the
+   top of this file (.pw-wrap / .pw-toggle). A second copy lived here and,
+   being later in the cascade, silently restyled the sign-in page's toggle
+   — which is the whole reason stylelint's no-duplicate-selectors is on. */
+
+/* ---------- App dialogs (window.confirm / prompt / alert replacements) ---------- */
+.modal.dlg { max-width: 420px; }
+.dlg-title { margin: 0 0 8px; font-size: 17px; font-weight: 650; }
+.dlg-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-soft);
+  /* Native alerts preserved newlines; several call sites still pass
+     multi-line strings, so keep them readable. */
+  white-space: pre-wrap;
+}
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ---- Province matrix: filter + pager ---- */
+.pm-toolbar {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  transition: color var(--t-fast), background var(--t-fast);
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
 }
-.pw-toggle:hover { color: var(--text-soft); background: var(--surface-alt); }
-.pw-toggle:active { color: var(--primary); }
-/* tabIndex is -1, so this only appears on a real click — but a visible
-   focus ring still matters for anyone who lands here via touch. */
-.pw-toggle:focus-visible {
+.pm-search { position: relative; flex: 1 1 260px; max-width: 380px; min-width: 0; }
+.pm-search input {
+  width: 100%;
+  height: 38px;
+  padding: 0 34px;
+  font-size: 13px;
+}
+.pm-search-icon {
+  position: absolute;
+  left: 11px; top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  pointer-events: none;
+  color: var(--muted);
+  transition: color .15s ease;
+}
+.pm-search:focus-within .pm-search-icon { color: var(--primary); }
+/* type="search" draws its own cancel button in WebKit, which would sit
+   under the custom clear button as a second, differently styled X. */
+.pm-search input::-webkit-search-cancel-button,
+.pm-search input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.pm-search-clear {
+  position: absolute;
+  right: 8px; top: 50%;
+  transform: translateY(-50%);
+  width: 20px; height: 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; border: 0;
+  border-radius: 50%;
+  background: var(--surface-alt);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+.pm-search-clear:hover { background: var(--primary); color: #fff; }
+
+.pm-count {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- Scroll box ----
+   Bounded height so the section stays predictable however many units
+   exist; the grid scrolls inside it. --pm-scroll-h is the one knob:
+   raise it to show more rows before scrolling. */
+.pm-scroll.on {
+  max-height: var(--pm-scroll-h, min(72vh, 900px));
+  overflow-y: auto;
+  /* Room for the scrollbar so cards do not sit underneath it, and for
+     the card hover lift so it is not clipped at the edges. */
+  padding: 4px 10px 4px 4px;
+  margin: -4px -4px -4px -4px;
+  /* Fades the last row instead of slicing it, which is what tells the
+     eye there is more below. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-soft) transparent;
+}
+.pm-scroll.on::-webkit-scrollbar { width: 10px; }
+.pm-scroll.on::-webkit-scrollbar-track { background: transparent; }
+.pm-scroll.on::-webkit-scrollbar-thumb {
+  background: var(--muted-soft);
+  border-radius: 6px;
+  border: 3px solid var(--surface);
+}
+.pm-scroll.on::-webkit-scrollbar-thumb:hover { background: var(--text-soft); }
+/* The mask hides the focus ring of a card scrolled to the very bottom,
+   so drop it when someone is navigating by keyboard. */
+.pm-scroll.on:focus-within {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+
+/* ---- Stacked bar list: scroll once it outgrows the panel ----
+   The membership chart renders one row per unit, which is 352 rows at the
+   basic-unit level. Bound the ROWS only — .shb-legend sits above this and
+   must stay visible while they scroll. */
+.shb-rows.scroll {
+  max-height: var(--shb-scroll-h, min(58vh, 620px));
+  overflow-y: auto;
+  padding-right: 8px;
+  /* Fades the last row rather than slicing it, which is what tells the
+     eye there is more below. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-soft) transparent;
+}
+.shb-rows.scroll::-webkit-scrollbar { width: 10px; }
+.shb-rows.scroll::-webkit-scrollbar-track { background: transparent; }
+.shb-rows.scroll::-webkit-scrollbar-thumb {
+  background: var(--muted-soft);
+  border-radius: 6px;
+  border: 3px solid var(--surface);
+}
+.shb-rows.scroll::-webkit-scrollbar-thumb:hover { background: var(--text-soft); }
+/* The mask would hide the focus ring of a row at the very bottom, so drop
+   it while the region is being driven from the keyboard. */
+.shb-rows.scroll:focus-visible,
+.shb-rows.scroll:focus-within {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.shb-rows.scroll:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: -2px;
-  color: var(--primary);
+  outline-offset: 3px;
+  border-radius: 4px;
 }

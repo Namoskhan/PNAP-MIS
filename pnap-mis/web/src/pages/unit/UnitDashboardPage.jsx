@@ -9,6 +9,7 @@ import SmartKpi from '../../components/SmartKpi';
 import HeroBanner from '../../components/HeroBanner';
 import { SkeletonKpiGrid } from '../../components/Skeleton';
 
+import dialog from '../../components/dialog';
 const MEETING_TYPE_LABEL = {
   GBM: 'General Body', EXC: 'Executive', PRT: 'Protest', JLS: 'Jalsa',
   CMP: 'Campaign', SEM: 'Seminar', STC: 'Study Circle', OTH: 'Other',
@@ -203,7 +204,7 @@ export default function UnitDashboardPage() {
 
   async function previewSubReport() {
     const target = resolveReportTarget();
-    if (!target) { alert('Pick a unit first.'); return; }
+    if (!target) { dialog.alert('Pick a unit first.'); return; }
     setReportPreview(null);
     setPreviewBusy(true);
     try {
@@ -234,13 +235,13 @@ export default function UnitDashboardPage() {
         },
         meetings, activities,
       });
-    } catch { alert('Could not load preview.'); }
+    } catch { dialog.alert('Could not load preview.'); }
     finally { setPreviewBusy(false); }
   }
 
   function downloadSubReport(kind, format) {
     const target = resolveReportTarget();
-    if (!target) { alert('Pick a unit first.'); return; }
+    if (!target) { dialog.alert('Pick a unit first.'); return; }
     const { from, to } = reportRange();
     const params = new URLSearchParams({ unitLevel: target.unitLevel, unitId: target.unitId, from, to });
     const ext = format === 'pdf' ? 'pdf' : 'xlsx';
@@ -256,7 +257,7 @@ export default function UnitDashboardPage() {
       a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    }).catch(() => alert('Download failed.'));
+    }).catch(() => dialog.alert('Download failed.'));
   }
 
   // Reset stale preview when picker selection changes.

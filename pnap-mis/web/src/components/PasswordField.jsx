@@ -1,32 +1,28 @@
-import { useId, useState } from 'react';
-import { EyeIcon, EyeOffIcon } from './icons';
+import { useId } from 'react';
+import PasswordInput from './PasswordInput';
 
-// A password input with a show/hide toggle.
+// A labelled password field: the .field wrapper, its label and hint,
+// around the shared PasswordInput control.
 //
-// Two details that matter more than they look:
-//
-//   * type="button". Inside a <form>, a bare <button> defaults to
-//     type="submit", so an unmarked toggle would submit the login form
-//     every time someone tried to check what they had typed.
-//
-//   * The visible state is never the initial state, and it resets on
-//     nothing — revealing is always a deliberate act by the person at
-//     the keyboard. Nothing is persisted, so a shoulder-surfer can't
-//     inherit a revealed field from the last session.
+// This used to carry its own copy of the input + toggle markup, which
+// meant two components competing for the same .pw-toggle class. The
+// control now lives in exactly one place; this is only the label layout.
 //
 // `labelAction` renders on the right of the label row — used by the
 // sign-in form for its "Forgot password?" link.
+//
+// NOTE: onChange here takes the VALUE, not the event, because the
+// sign-in form was written against that signature. PasswordInput itself
+// takes the event, like every other input.
 export default function PasswordField({
   label = 'Password',
   labelAction,
   value,
   onChange,
   hint,
-  autoFocus = false,
   autoComplete = 'current-password',
   ...rest
 }) {
-  const [visible, setVisible] = useState(false);
   const id = useId();
 
   return (
@@ -45,33 +41,14 @@ export default function PasswordField({
         <label htmlFor={id}>{label}</label>
       )}
 
-      <div className="pw-wrap">
-        <input
-          id={id}
-          type={visible ? 'text' : 'password'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          autoComplete={autoComplete}
-          autoFocus={autoFocus}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          required
-          {...rest}
-        />
-        <button
-          type="button"
-          className="pw-toggle"
-          onClick={() => setVisible((v) => !v)}
-          // The button is the control, so it carries the label; the
-          // icon inside is decorative and already aria-hidden.
-          aria-label={visible ? 'Hide password' : 'Show password'}
-          aria-pressed={visible}
-          title={visible ? 'Hide password' : 'Show password'}
-        >
-          {visible ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
-        </button>
-      </div>
+      <PasswordInput
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        required
+        {...rest}
+      />
 
       {hint && <div className="hint">{hint}</div>}
     </div>

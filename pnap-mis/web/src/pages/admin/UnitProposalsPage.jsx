@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../../api/client';
 
+import dialog from '../../components/dialog';
 const TARGETS = [
   { code: 'BASIC_UNIT', label: 'Basic Unit', parent: 'Area' },
   { code: 'AREA', label: 'Area / Elaqayi', parent: 'District' },
@@ -122,12 +123,12 @@ export default function UnitProposalsPage() {
 
   async function decide(id, decision) {
     const note = decision === 'REJECTED' || decision === 'REVISION_REQUESTED'
-      ? prompt('Note for the proposer:') || ''
+      ? await dialog.prompt('Note for the proposer:') || ''
       : '';
     try {
       await api.post(`/unit-proposals/${id}/decide`, { decision, decisionNote: note });
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   return (

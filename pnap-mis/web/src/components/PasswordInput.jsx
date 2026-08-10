@@ -1,45 +1,53 @@
 import { useId, useState } from 'react';
 import { EyeIcon, EyeOffIcon } from './icons';
 
-// Password input with a reveal toggle.
+// The low-level password control: an input with a reveal toggle, and
+// nothing else. Callers supply their own label and layout — see
+// PasswordField for the wrapped variant used by the sign-in form.
 //
-// The toggle is a real <button type="button"> — inside a <form> a bare
-// <button> submits, which would fire the create request every time
-// someone peeked at what they had typed.
+// Two details that matter more than they look:
 //
-// Visibility is local state and always starts hidden: a re-render or a
-// reopened dialog must never leave a password on screen.
+//   * type="button". Inside a <form>, a bare <button> defaults to
+//     type="submit", so an unmarked toggle would submit the form every
+//     time someone checked what they had typed.
+//
+//   * Revealing is always a deliberate act and is never persisted, so a
+//     re-render or a reopened dialog can't leave a password on screen.
+//
+// onChange receives the EVENT (not the value) to match every other
+// input in the admin forms.
 export default function PasswordInput({
   value, onChange, id, className = '', ...rest
 }) {
-  const [shown, setShown] = useState(false);
+  const [visible, setVisible] = useState(false);
   const auto = useId();
   const inputId = id || auto;
 
   return (
-    <div className={`pw-field ${className}`.trim()}>
+    <div className={`pw-wrap ${className}`.trim()}>
       <input
         id={inputId}
-        type={shown ? 'text' : 'password'}
+        type={visible ? 'text' : 'password'}
         value={value}
         onChange={onChange}
         autoComplete="new-password"
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
         {...rest}
       />
       <button
         type="button"
         className="pw-toggle"
-        onClick={() => setShown((s) => !s)}
+        onClick={() => setVisible((v) => !v)}
         // The label states the ACTION, so a screen reader announces what
         // pressing it will do rather than the current state.
-        aria-label={shown ? 'Hide password' : 'Show password'}
-        aria-pressed={shown}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
         aria-controls={inputId}
-        // Not a tab stop: keyboard users move label → field → next field,
-        // and a toggle between them interrupts filling the form.
-        tabIndex={-1}
+        title={visible ? 'Hide password' : 'Show password'}
       >
-        {shown ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+        {visible ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
       </button>
     </div>
   );

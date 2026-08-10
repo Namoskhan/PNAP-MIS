@@ -4,6 +4,7 @@ import { api, errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { isSuperAdmin } from '../utils/permissions';
 
+import dialog from '../components/dialog';
 export default function MemberDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -199,7 +200,7 @@ export default function MemberDetailPage() {
           {msg && <div className="alert success">{msg}</div>}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button className="btn secondary" disabled={busy} onClick={async () => {
-              const pw = prompt(`Set new login password for ${m.fullName}:`, '123456');
+              const pw = await dialog.prompt(`Set new login password for ${m.fullName}:`, '123456');
               if (!pw) return;
               setBusy(true);
               try {
@@ -209,7 +210,7 @@ export default function MemberDetailPage() {
             }}>Reset Password</button>
 
             <button className="btn danger" disabled={busy || m.status === 'EXPELLED'} onClick={async () => {
-              const reason = prompt(`Remove ${m.fullName}? This will end every active role they hold and deactivate their login. Type a reason:`);
+              const reason = await dialog.prompt(`Remove ${m.fullName}? This will end every active role they hold and deactivate their login. Type a reason:`);
               if (!reason) return;
               setBusy(true);
               try {

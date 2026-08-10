@@ -8,6 +8,8 @@ import {
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
 const EXPENSE_CATEGORIES = ['OFFICE','TRANSPORT','PRINTING','REFRESHMENTS','STAGE_EQUIPMENT','COMMUNICATION','DONATIONS_OUT','SALARIES_STIPENDS','MISC'];
@@ -263,7 +265,7 @@ export default function FinancePage() {
 
   async function decideExpense(id, decision) {
     try { await api.post(`/finance/expenses/${id}/decide`, { decision }); reload(); }
-    catch (e) { alert(errorMessage(e)); }
+    catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   // Authed download helper — same pattern used by MeetingsPage /
@@ -285,7 +287,7 @@ export default function FinancePage() {
       a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    }).catch(() => alert('Download failed.'));
+    }).catch(() => dialog.alert('Download failed.'));
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -350,7 +352,7 @@ export default function FinancePage() {
           <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Donation">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>Record a Donation</h3>
-              <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+              <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
             </div>
             <div className="form-grid">
               <div className="field"><label>Amount (PKR)</label>
@@ -426,7 +428,7 @@ export default function FinancePage() {
           <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Expense">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>Record an Expense</h3>
-              <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+              <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
             </div>
             <div className="form-grid">
               <div className="field"><label>Amount (PKR)</label>

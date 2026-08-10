@@ -3,6 +3,7 @@ import { publicApi, publicErrorMessage } from '../api/publicClient';
 import { useToast } from './Toast';
 import { formatCnic, isCompleteCnic } from '../utils/formatters';
 
+import { XIcon } from '../components/icons';
 const CNIC_RX = /^\d{5}-\d{7}-\d$/;
 const PHONE_RX = /^(\+92|0)?3\d{2}[- ]?\d{7}$/;
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
@@ -219,9 +220,7 @@ export default function PublicRegisterModal({ open, onClose }) {
             onClick={() => !busy && onClose?.()}
             aria-label="Close"
             style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}
-          >
-            ×
-          </button>
+          ><XIcon size={16} /></button>
         </div>
 
         {submitted ? (

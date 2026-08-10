@@ -3,6 +3,7 @@ import { uploadLogo, resetLogo } from '../../api/branding';
 import { errorMessage } from '../../api/client';
 import { useToast } from '../Toast';
 
+import dialog from '../../components/dialog';
 // LogoUploader — single-slot file picker with preview, upload state,
 // and a Reset button. Shows the current logo as a thumbnail.
 //
@@ -58,7 +59,7 @@ export default function LogoUploader({
   }
 
   async function reset() {
-    if (!confirm(`Reset ${label}? The current image will be removed.`)) return;
+    if (!await dialog.confirm(`Reset ${label}? The current image will be removed.`)) return;
     setBusy(true);
     try {
       await resetLogo(slot);

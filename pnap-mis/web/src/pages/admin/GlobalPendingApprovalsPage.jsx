@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../../api/client';
 
+import dialog from '../../components/dialog';
 const ROLE_LABEL = {
   SECRETARY: 'Secretary',
   SENIOR_MAWIN: 'Senior Mawin Sec.',
@@ -43,7 +44,7 @@ export default function GlobalPendingApprovalsPage() {
   useEffect(() => { reload(); }, [levelFilter]);
 
   async function decide(id, decision) {
-    if (!confirm(`${decision === 'APPROVED' ? 'Approve' : 'Reject'} this role assignment?`)) return;
+    if (!await dialog.confirm(`${decision === 'APPROVED' ? 'Approve' : 'Reject'} this role assignment?`)) return;
     setBusy(true); setErr(''); setMsg('');
     try {
       await api.post(`/roles/${id}/decide`, { decision });

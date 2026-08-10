@@ -8,6 +8,8 @@ import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
 import { useToast } from '../../components/Toast';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 // Default starting type when no types have loaded yet — kept here so
 // the form has a sensible empty state. The picker itself is sourced
 // from /api/events/types (active types only) so admins can extend
@@ -269,21 +271,21 @@ export default function MeetingsPage() {
   }
 
   async function cancelMeeting(m) {
-    const reason = prompt('Cancellation reason:');
+    const reason = await dialog.prompt('Cancellation reason:');
     if (reason == null) return;
     try {
       await api.post(`/meetings/${m._id}/cancel`, { reason });
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   function exportPdf() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    downloadAuthed(`/api/exports/unit/meetings/pdf?${params}`, `${ctx.unitName}-meetings.pdf`).catch(() => alert('Export failed.'));
+    downloadAuthed(`/api/exports/unit/meetings/pdf?${params}`, `${ctx.unitName}-meetings.pdf`).catch(() => dialog.alert('Export failed.'));
   }
   function exportXlsx() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    downloadAuthed(`/api/exports/unit/meetings/xlsx?${params}`, `${ctx.unitName}-meetings.xlsx`).catch(() => alert('Export failed.'));
+    downloadAuthed(`/api/exports/unit/meetings/xlsx?${params}`, `${ctx.unitName}-meetings.xlsx`).catch(() => dialog.alert('Export failed.'));
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -332,7 +334,7 @@ export default function MeetingsPage() {
         <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Schedule Meeting">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Schedule a Meeting</h3>
-            <button type="button" className="btn secondary" onClick={() => setShowCreate(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+            <button type="button" className="btn secondary" onClick={() => setShowCreate(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
           <p className="muted" style={{ marginTop: 0 }}>
             Photos uploaded later must be taken with a phone camera (EXIF metadata intact). If
@@ -474,7 +476,7 @@ export default function MeetingsPage() {
               <td style={{ whiteSpace: 'nowrap' }}>
                 <button
                   className="btn ghost"
-                  onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => alert('PDF download failed.'))}
+                  onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => dialog.alert('PDF download failed.'))}
                   title="Download this meeting as PDF (with photos embedded)"
                 >📄 PDF</button>{' '}
                 {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
@@ -766,7 +768,7 @@ function FinalizeDialog({
                 </select>
                 <input placeholder="Topic" value={s.topic} onChange={(e) => updateStudyRow(i, { topic: e.target.value })} />
                 <input placeholder="Summary" value={s.summary} onChange={(e) => updateStudyRow(i, { summary: e.target.value })} />
-                <button type="button" className="btn ghost" onClick={() => removeStudyRow(i)}>×</button>
+                <button type="button" className="btn ghost" onClick={() => removeStudyRow(i)}><XIcon size={16} /></button>
               </div>
             ))}
             <button type="button" className="btn secondary" onClick={addStudyRow}>+ Add contribution</button>

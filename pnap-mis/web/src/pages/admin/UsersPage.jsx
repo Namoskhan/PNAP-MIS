@@ -8,6 +8,7 @@ import { useToast } from '../../components/Toast';
 import { SearchIcon, XIcon } from '../../components/icons';
 import PasswordInput from '../../components/PasswordInput';
 
+import dialog from '../../components/dialog';
 const ROLE_OPTIONS = [
   'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
   'SECRETARY', 'SENIOR_MAWIN', 'FINANCE_SECRETARY',
@@ -168,7 +169,7 @@ export default function UsersPage() {
   // ─── Per-row actions ─────────────────────────────────────────────
   async function resetPwd(u) {
     if (!canWrite) return;
-    const pw = prompt(`Set new password for "${u.fullName}":`, '123456');
+    const pw = await dialog.prompt(`Set new password for "${u.fullName}":`, '123456');
     if (!pw) return;
     try {
       await api.post(`/admin/users/${u._id}/reset-password`, { newPassword: pw });
@@ -178,7 +179,7 @@ export default function UsersPage() {
   async function toggleActive(u) {
     if (!canWrite) return;
     const next = !u.isActive;
-    if (!confirm(`${next ? 'Activate' : 'Deactivate'} ${u.fullName}?`)) return;
+    if (!await dialog.confirm(`${next ? 'Activate' : 'Deactivate'} ${u.fullName}?`)) return;
     // Optimistic flip — patch the local row immediately, revert on error.
     setItems((prev) => prev.map((x) => x._id === u._id ? { ...x, isActive: next } : x));
     try {
@@ -758,7 +759,7 @@ function EditUserDialog({ user, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Edit user</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
         <div className="form-grid">

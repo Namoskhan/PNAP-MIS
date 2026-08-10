@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
+import dialog from '../components/dialog';
 export default function PendingApprovalPage() {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
@@ -42,7 +43,7 @@ export default function PendingApprovalPage() {
   }
 
   async function reject(id) {
-    const reason = prompt('Reason for rejection:');
+    const reason = await dialog.prompt('Reason for rejection:');
     if (!reason) return;
     setBusy(true); setErr(''); setMsg('');
     try {

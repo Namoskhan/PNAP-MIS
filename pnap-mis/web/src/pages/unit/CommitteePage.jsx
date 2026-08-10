@@ -3,6 +3,8 @@ import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 // SRS §3.3 / §3.4 — at province and central, two distinct bodies
 // coexist with the same composition rules but separate Permanent
 // Member lists. Title flips per (level, body) pair.
@@ -118,11 +120,11 @@ export default function CommitteePage() {
   }
 
   async function removePerm(id) {
-    if (!confirm('Remove this permanent member?')) return;
+    if (!await dialog.confirm('Remove this permanent member?')) return;
     try {
       await api.post(`/committee/permanent/${id}/remove`);
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   // Members already in groups (a) or (b) shouldn't be re-nominated as
@@ -252,7 +254,7 @@ export default function CommitteePage() {
               <div className="modal" style={{ maxWidth: 560 }} role="dialog" aria-modal="true" aria-label="Nominate Selective Member">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <h3 style={{ margin: 0 }}>Nominate Selective Member</h3>
-                  <button type="button" className="btn secondary" onClick={() => setNominateOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+                  <button type="button" className="btn secondary" onClick={() => setNominateOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
                 <div className="form-grid">
                   <div className="field full">

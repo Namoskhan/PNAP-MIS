@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 const STATE_LABEL = {
   PENDING: 'Pending',
   IN_PROGRESS: 'In Progress',
@@ -67,15 +69,15 @@ export default function ResponsibilitiesPage() {
     try {
       await api.patch(`/responsibilities/${id}`, patch);
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   async function remove(id) {
-    if (!confirm('Delete this responsibility?')) return;
+    if (!await dialog.confirm('Delete this responsibility?')) return;
     try {
       await api.delete(`/responsibilities/${id}`);
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) { dialog.alert(errorMessage(e)); }
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -101,7 +103,7 @@ export default function ResponsibilitiesPage() {
         <div className="modal" style={{ maxWidth: 640 }} role="dialog" aria-modal="true" aria-label="Assign Responsibility">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Assign a responsibility</h3>
-            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
           <div className="form-grid">
             <div className="field full">
@@ -147,8 +149,8 @@ export default function ResponsibilitiesPage() {
               <td style={{ whiteSpace: 'nowrap' }}>
                 {canManage && r.state === 'PENDING' && <button className="btn secondary" onClick={() => update(r._id, { state: 'IN_PROGRESS' })}>Start</button>}{' '}
                 {canManage && r.state !== 'COMPLETED' && r.state !== 'CANCELLED' && (
-                  <button className="btn" onClick={() => {
-                    const note = prompt('Completion note (optional):') || '';
+                  <button className="btn" onClick={async () => {
+                    const note = await dialog.prompt('Completion note (optional):') || '';
                     update(r._id, { state: 'COMPLETED', completionNote: note });
                   }}>Mark Done</button>
                 )}{' '}

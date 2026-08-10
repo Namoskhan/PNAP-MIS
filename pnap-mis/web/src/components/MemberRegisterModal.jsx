@@ -3,6 +3,7 @@ import { api, errorMessage } from '../api/client';
 import { useToast } from './Toast';
 import { formatCnic, isCompleteCnic } from '../utils/formatters';
 
+import { XIcon } from '../components/icons';
 export default function MemberRegisterModal({ open, onClose, onSuccess }) {
   const toast = useToast();
   const [provinces, setProvinces] = useState([]);
@@ -139,9 +140,7 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
             onClick={() => !busy && onClose?.()}
             aria-label="Close"
             style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}
-          >
-            ×
-          </button>
+          ><XIcon size={16} /></button>
         </div>
 
         {err && <div className="alert error">{err}</div>}
