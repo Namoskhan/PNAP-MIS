@@ -126,7 +126,7 @@ export default function RolePermissionsPage() {
       //       fresh permissions list).
       load();
       refreshMe?.();
-    } catch (e) { setErr(errorMessage(e)); toast.error?.(errorMessage(e)); }
+    } catch (e) { toast.error(errorMessage(e), { title: 'Could not save permissions', duration: 7000 }); }
     finally { setSaving(false); }
   }
 

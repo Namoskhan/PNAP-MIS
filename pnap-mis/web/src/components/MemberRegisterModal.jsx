@@ -114,12 +114,17 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
       const res = await api.post('/members', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      onSuccess?.(res.data.data);
+      const member = res.data.data;
+      // Confirmed here rather than in onSuccess so EVERY caller reports
+      // it. The command-palette instance in App.jsx passes an empty
+      // onSuccess, so registering that way used to succeed silently.
+      toast.success(`${member?.fullName || 'Member'} submitted for approval`, { title: 'Registration received' });
+      onSuccess?.(member);
       onClose?.();
     } catch (e) {
-      const msg = errorMessage(e);
-      setErr(msg);
-      toast.error(msg, { title: 'Registration failed' });
+      // Toast only — the modal closes on success, and on failure the
+      // toast carries the reason without a banner repeating it.
+      toast.error(errorMessage(e), { title: 'Registration failed', duration: 9000 });
     } finally {
       setBusy(false);
     }

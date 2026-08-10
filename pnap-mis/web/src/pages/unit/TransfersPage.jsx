@@ -3,6 +3,7 @@ import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 import OrgTree from '../../components/OrgTree';
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
@@ -20,12 +21,12 @@ const DIRECTION_LABEL = { UP: 'Upward', DOWN: 'Downward', SAME_TIER: 'Same tier'
 
 export default function TransfersPage() {
   const { ctx } = useUnit();
+  const toast = useToast();
   const [tab, setTab] = useState('outgoing');
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
   const [receipt, setReceipt] = useState(null);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   // The node picked in the tree, and the server's verdict on it —
@@ -74,7 +75,9 @@ export default function TransfersPage() {
   }, [ctx, picked]);
 
   async function initiate() {
-    setErr(''); setMsg('');
+    setErr('');
+    // Both stay inline — the transfer modal is still open behind the
+    // confirm step, and these tell the user what to go fix in it.
     if (!preview) { setErr('Select a destination from the organization tree.'); return; }
     if (!receipt) { setErr('Please attach the receipt / proof-of-payment image before initiating the transfer.'); return; }
     setSubmitting(true);
@@ -90,17 +93,18 @@ export default function TransfersPage() {
       if (form.reference) fd.append('reference', form.reference);
       if (form.note) fd.append('note', form.note);
       fd.append('receipt', receipt);
+      const summary = `Transfer of ${PKR.format(parseFloat(form.amount))} to ${unitLabel(preview.destination)} initiated. `
+        + `Awaiting acknowledgement by the ${preview.destination.levelLabel} Finance Secretary.`;
       await api.post('/transfers', fd);
-      setMsg(`Transfer of ${PKR.format(parseFloat(form.amount))} to ${unitLabel(preview.destination)} initiated. `
-        + `Awaiting acknowledgement by the ${preview.destination.levelLabel} Finance Secretary.`);
       setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
       setReceipt(null);
       resetSelection();
       setConfirmOpen(false);
       setTransferModalOpen(false);
       reload();
+      toast.success(summary, { title: 'Transfer initiated', duration: 9000 });
     } catch (e) {
-      setErr(errorMessage(e));
+      toast.error(errorMessage(e), { title: 'Could not initiate transfer', duration: 7000 });
       setConfirmOpen(false);
     } finally { setSubmitting(false); }
   }
@@ -117,13 +121,23 @@ export default function TransfersPage() {
   }
 
   async function ack(id) {
-    try { await api.post(`/transfers/${id}/acknowledge`, {}); reload(); }
-    catch (e) { dialog.alert(errorMessage(e)); }
+    try {
+      await api.post(`/transfers/${id}/acknowledge`, {});
+      reload();
+      toast.success('Transfer acknowledged — funds credited to this unit.', { title: 'Transfer acknowledged' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not acknowledge transfer', duration: 7000 });
+    }
   }
   async function reject(id) {
     const note = await dialog.prompt('Reason for rejection:') || '';
-    try { await api.post(`/transfers/${id}/reject`, { note }); reload(); }
-    catch (e) { dialog.alert(errorMessage(e)); }
+    try {
+      await api.post(`/transfers/${id}/reject`, { note });
+      reload();
+      toast.success('Transfer rejected — the sending unit has been notified.', { title: 'Transfer rejected' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not reject transfer', duration: 7000 });
+    }
   }
 
   const { user } = useAuth();
@@ -153,7 +167,6 @@ export default function TransfersPage() {
       </div>
 
       {err && !transferModalOpen && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {canSend && (
         <div className="tr-banner">

@@ -7,6 +7,7 @@ import {
   hasRole, OPERATOR_AUTOPIN_ROLES,
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
@@ -19,6 +20,7 @@ const DONOR_TYPES = ['MEMBER','NON_MEMBER','CORPORATE','ANONYMOUS'];
 export default function FinancePage() {
   const { ctx, setCtx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const canRecord = canManageFinance(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   const canApprove = canApproveExpense(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   // The view-only banner only triggers for personas without write
@@ -99,7 +101,6 @@ export default function FinancePage() {
   const [monthTo, setMonthTo] = useState('');
 
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   // Real-time KPI refresh — keeps the summary cards in sync with new
   // donations / expenses / transfers logged by other officers without
@@ -218,7 +219,7 @@ export default function FinancePage() {
   }
 
   async function recordDonation() {
-    setErr(''); setMsg('');
+    setErr('');
     try {
       // When the donor is a registered member, the donorMemberId link
       // is enough to credit the donation on the member's performance
@@ -236,17 +237,21 @@ export default function FinancePage() {
         if (v !== '' && v != null) fd.append(k, v);
       });
       if (donReceipt) fd.append('receipt', donReceipt);
+      const amount = parseFloat(donForm.amount);
       await api.post('/finance/donations', fd);
-      setMsg('Donation recorded.');
       setDonForm({ amount: '', donorType: 'MEMBER', donorMemberId: '', donorName: '', donorCnic: '', paymentMode: 'CASH', receivedAt: '' });
       setDonReceipt(null);
       setDonModalOpen(false);
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(`Donation of ${PKR.format(amount)} recorded.`, { title: 'Donation recorded' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not record donation', duration: 7000 });
+    }
   }
 
   async function recordExpense() {
-    setErr(''); setMsg('');
+    setErr('');
+    // Validation stays inline — the modal is still open and being fixed.
     if (!expEvidence) { setErr('Please attach a bill / voucher.'); return; }
     try {
       const fd = new FormData();
@@ -254,18 +259,26 @@ export default function FinancePage() {
         if (v !== '' && v != null) fd.append(k, v);
       });
       fd.append('evidence', expEvidence);
+      const amount = parseFloat(expForm.amount);
       await api.post('/finance/expenses', fd);
-      setMsg('Expense recorded.');
       setExpForm({ amount: '', category: 'OFFICE', description: '', vendor: '', paymentMode: 'CASH', incurredAt: '' });
       setExpEvidence(null);
       setExpModalOpen(false);
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(`Expense of ${PKR.format(amount)} submitted for approval.`, { title: 'Expense recorded' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not record expense', duration: 7000 });
+    }
   }
 
   async function decideExpense(id, decision) {
-    try { await api.post(`/finance/expenses/${id}/decide`, { decision }); reload(); }
-    catch (e) { dialog.alert(errorMessage(e)); }
+    try {
+      await api.post(`/finance/expenses/${id}/decide`, { decision });
+      reload();
+      toast.success(`Expense ${decision.toLowerCase()}.`);
+    } catch (e) {
+      toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} expense`, duration: 7000 });
+    }
   }
 
   // Authed download helper — same pattern used by MeetingsPage /
@@ -287,7 +300,7 @@ export default function FinancePage() {
       a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-    }).catch(() => dialog.alert('Download failed.'));
+    }).catch(() => toast.error('Download failed.', { title: 'Export failed' }));
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -316,7 +329,6 @@ export default function FinancePage() {
       </div>
 
       {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {summary && (
         <>

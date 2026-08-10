@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 const ROLE_LABEL = {
@@ -26,10 +27,10 @@ const ROLE_LABEL = {
 // Senior Mawin somewhere has proposed a role and the local Secretary
 // is unavailable. Central Admin can approve as an override.
 export default function GlobalPendingApprovalsPage() {
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
 
   async function reload() {
@@ -45,12 +46,14 @@ export default function GlobalPendingApprovalsPage() {
 
   async function decide(id, decision) {
     if (!await dialog.confirm(`${decision === 'APPROVED' ? 'Approve' : 'Reject'} this role assignment?`)) return;
-    setBusy(true); setErr(''); setMsg('');
+    setBusy(true); setErr('');
     try {
       await api.post(`/roles/${id}/decide`, { decision });
-      setMsg(`Role ${decision.toLowerCase()}.`);
       await reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(`Role ${decision.toLowerCase()}.`);
+    } catch (e) {
+      toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} role`, duration: 7000 });
+    }
     finally { setBusy(false); }
   }
 
@@ -73,7 +76,6 @@ export default function GlobalPendingApprovalsPage() {
       </p>
 
       {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {items.length === 0 ? (
         <div className="card"><p className="muted" style={{ margin: 0 }}>No proposals waiting.</p></div>

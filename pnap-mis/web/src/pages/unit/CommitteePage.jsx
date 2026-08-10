@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
@@ -34,6 +35,7 @@ const OWN_HEADING = {
 export default function CommitteePage() {
   const { ctx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const [data, setData] = useState(null);
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
@@ -107,8 +109,10 @@ export default function CommitteePage() {
 
   async function nominate() {
     setErr('');
+    // Validation stays inline — the nominate form is still open.
     if (!memberId) { setErr('Pick a member.'); return; }
     try {
+      const nominee = members.find((m) => m._id === memberId);
       await api.post('/committee/permanent', {
         unitLevel: resolved.unitLevel, unitId: resolved.unitId,
         memberId, bodyType, nominationNote: note,
@@ -116,7 +120,13 @@ export default function CommitteePage() {
       setMemberId(''); setNote('');
       setNominateOpen(false);
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(
+        nominee ? `${nominee.fullName} nominated as a permanent member.` : 'Permanent member nominated.',
+        { title: 'Nomination recorded' }
+      );
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not nominate member', duration: 7000 });
+    }
   }
 
   async function removePerm(id) {
@@ -124,7 +134,10 @@ export default function CommitteePage() {
     try {
       await api.post(`/committee/permanent/${id}/remove`);
       reload();
-    } catch (e) { dialog.alert(errorMessage(e)); }
+      toast.success('Permanent member removed.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not remove member', duration: 7000 });
+    }
   }
 
   // Members already in groups (a) or (b) shouldn't be re-nominated as

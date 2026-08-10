@@ -6,6 +6,7 @@ import {
   isPresidentPersona, isOperatorPersona, roleLabel,
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 const ROLE_LABEL = {
@@ -30,6 +31,7 @@ const ROLE_LABEL = {
 export default function CabinetPage() {
   const { ctx, setCtx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const [cabinet, setCabinet] = useState([]);
   const [pending, setPending] = useState([]);
   const [members, setMembers] = useState([]);
@@ -38,7 +40,6 @@ export default function CabinetPage() {
   const [pickedMemberId, setPickedMemberId] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   // "Other / custom" role state (the 7th category in the SRS template).
   const [showCustom, setShowCustom] = useState(false);
@@ -243,7 +244,7 @@ export default function CabinetPage() {
   }, [memberSearch, members]);
 
   async function propose(roleCode, memberId) {
-    setErr(''); setMsg(''); setBusy(true);
+    setErr(''); setBusy(true);
     try {
       // Single-shot assign: propose then immediately approve. Admins
       // can do both since canInitiateRole + canApprove cover them.
@@ -254,12 +255,15 @@ export default function CabinetPage() {
         roleCode,
       });
       await api.post(`/roles/${r.data.data._id}/decide`, { decision: 'APPROVED' });
-      setMsg(`${ROLE_LABEL[roleCode] || roleLabel(user, roleCode)} assigned. The member can now log in with their CNIC.`);
       setAssignFor(null);
       setPickedMemberId('');
       await reload();
+      toast.success(
+        `${ROLE_LABEL[roleCode] || roleLabel(user, roleCode)} assigned. The member can now log in with their CNIC.`,
+        { title: 'Role assigned', duration: 7000 }
+      );
     } catch (e) {
-      setErr(errorMessage(e));
+      toast.error(errorMessage(e), { title: 'Could not assign role', duration: 7000 });
     } finally { setBusy(false); }
   }
 
@@ -268,7 +272,10 @@ export default function CabinetPage() {
     try {
       await api.post(`/roles/${id}/decide`, { decision });
       await reload();
-    } catch (e) { dialog.alert(errorMessage(e)); }
+      toast.success(`Role proposal ${decision.toLowerCase()}.`);
+    } catch (e) {
+      toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} proposal`, duration: 7000 });
+    }
   }
 
   async function proposeCustom() {
@@ -301,18 +308,18 @@ export default function CabinetPage() {
         customRoleName: customRoleName.trim(),
       };
     }
-    setErr(''); setMsg(''); setBusy(true);
+    setErr(''); setBusy(true);
     try {
       const r = await api.post('/roles', payload);
       await api.post(`/roles/${r.data.data._id}/decide`, { decision: 'APPROVED' });
-      setMsg(`Custom role "${payload.customRoleName}" assigned.`);
       setShowCustom(false);
       setCustomMemberId('');
       setCustomRoleName('');
       setPickedCatalogCode('');
       await reload();
+      toast.success(`Custom role "${payload.customRoleName}" assigned.`, { title: 'Role assigned' });
     } catch (e) {
-      setErr(errorMessage(e));
+      toast.error(errorMessage(e), { title: 'Could not assign custom role', duration: 7000 });
     } finally { setBusy(false); }
   }
 
@@ -322,7 +329,10 @@ export default function CabinetPage() {
     try {
       await api.post(`/roles/${assignmentId}/end`, { endReason: reason.toUpperCase() });
       await reload();
-    } catch (e) { dialog.alert(errorMessage(e)); }
+      toast.success(`Role ended (${reason.toUpperCase()}).`, { title: 'Role ended' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not end role', duration: 7000 });
+    }
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -524,7 +534,6 @@ export default function CabinetPage() {
       )}
 
       {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Cabinet roles</h3>

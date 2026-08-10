@@ -3,18 +3,24 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { isSuperAdmin } from '../utils/permissions';
+import { useToast } from '../components/Toast';
 
 import dialog from '../components/dialog';
 export default function MemberDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
   const sup = isSuperAdmin(user);
   const [m, setM] = useState(null);
+  // `err` is now ONLY for the page-load failure below, which renders
+  // instead of the profile. Action outcomes (approve / reject / edit /
+  // remove) go to toasts — routing them through this state used to
+  // blank the whole page on a failed button press.
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectErr, setRejectErr] = useState('');
   const [showReject, setShowReject] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -46,7 +52,10 @@ export default function MemberDetailPage() {
     try {
       await api.post(`/members/${id}/approve`);
       await load();
-    } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+      toast.success(`${m.fullName} approved. They can now log in with their CNIC.`, { title: 'Member approved' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not approve member', duration: 7000 });
+    } finally { setBusy(false); }
   }
 
   function startEdit() {
@@ -59,11 +68,10 @@ export default function MemberDetailPage() {
     });
     setEditPhoto(null);
     setEditing(true);
-    setErr(''); setMsg('');
   }
 
   async function saveEdit() {
-    setBusy(true); setErr(''); setMsg('');
+    setBusy(true);
     try {
       const fd = new FormData();
       Object.entries(editForm).forEach(([k, v]) => {
@@ -71,22 +79,34 @@ export default function MemberDetailPage() {
       });
       if (editPhoto) fd.append('photo', editPhoto);
       await api.patch(`/members/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setMsg('Profile updated.');
       setEditing(false);
       await load();
-    } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+      toast.success('Profile updated.');
+    } catch (e) {
+      // Duplicate email / phone come back as 409s here — worth longer
+      // than the default so the reason is readable before it fades.
+      toast.error(errorMessage(e), { title: 'Could not save profile', duration: 9000 });
+    } finally { setBusy(false); }
   }
 
   async function reject() {
-    if (!rejectReason.trim()) { setErr('Reason is required'); return; }
+    // Validation stays inline, beside the textarea being corrected —
+    // a toast would fade while the user is still typing the reason.
+    if (!rejectReason.trim()) { setRejectErr('Reason is required'); return; }
+    setRejectErr('');
     setBusy(true);
     try {
       await api.post(`/members/${id}/reject`, { reason: rejectReason });
       setShowReject(false);
       await load();
-    } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+      toast.success(`${m.fullName}'s application was rejected.`, { title: 'Member rejected' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not reject member', duration: 7000 });
+    } finally { setBusy(false); }
   }
 
+  // Only reached when the profile itself could not be fetched — there
+  // is no member to render around. Action failures no longer land here.
   if (err) return <div className="alert error">{err}</div>;
   if (!m) return <p>Loading…</p>;
 
@@ -102,7 +122,6 @@ export default function MemberDetailPage() {
         </div>
       </div>
 
-      {msg && <div className="alert success">{msg}</div>}
 
       {editing && (
         <div className="card" style={{ marginBottom: 16, borderTop: '3px solid var(--primary)' }}>
@@ -182,10 +201,11 @@ export default function MemberDetailPage() {
             <div className="field">
               <label>Rejection Reason</label>
               <textarea rows={3} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} />
+              {rejectErr && <div className="error">{rejectErr}</div>}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
               <button className="btn danger" disabled={busy} onClick={reject}>Confirm Reject</button>
-              <button className="btn secondary" onClick={() => setShowReject(false)}>Cancel</button>
+              <button className="btn secondary" onClick={() => { setShowReject(false); setRejectErr(''); }}>Cancel</button>
             </div>
           </div>
         )}
@@ -197,7 +217,6 @@ export default function MemberDetailPage() {
           <p className="muted" style={{ marginTop: 0 }}>
             Privileged actions. Audited. Last-Super-Admin guard prevents accidental lockout.
           </p>
-          {msg && <div className="alert success">{msg}</div>}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button className="btn secondary" disabled={busy} onClick={async () => {
               const pw = await dialog.prompt(`Set new login password for ${m.fullName}:`, '123456');
@@ -205,8 +224,10 @@ export default function MemberDetailPage() {
               setBusy(true);
               try {
                 await api.post(`/admin/members/${id}/reset-password`, { newPassword: pw });
-                setMsg('Password reset.');
-              } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+                toast.success(`Password reset for ${m.fullName}.`);
+              } catch (e) {
+                toast.error(errorMessage(e), { title: 'Could not reset password', duration: 7000 });
+              } finally { setBusy(false); }
             }}>Reset Password</button>
 
             <button className="btn danger" disabled={busy || m.status === 'EXPELLED'} onClick={async () => {
@@ -215,9 +236,15 @@ export default function MemberDetailPage() {
               setBusy(true);
               try {
                 const r = await api.post(`/admin/members/${id}/remove`, { reason });
-                setMsg(`Member removed. Cascaded ${r.data.data.cascadedRoles} role(s); login deactivated.`);
-                load();
-              } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+                const ended = r.data.data.cascadedRoles;
+                await load();
+                toast.success(
+                  `${m.fullName} removed — ${ended} role${ended === 1 ? '' : 's'} ended and login deactivated.`,
+                  { title: 'Member removed', duration: 7000 }
+                );
+              } catch (e) {
+                toast.error(errorMessage(e), { title: 'Could not remove member', duration: 7000 });
+              } finally { setBusy(false); }
             }}>Remove Member</button>
           </div>
         </div>

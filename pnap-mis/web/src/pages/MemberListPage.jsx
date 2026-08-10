@@ -113,8 +113,8 @@ export default function MemberListPage() {
       <MemberRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
-        onSuccess={(member) => {
-          toast.success(`${member?.fullName || 'Member'} submitted for approval`, { title: 'Registration received' });
+        onSuccess={() => {
+          // The modal raises its own "submitted for approval" toast.
           setPage(1);
           load();
         }}

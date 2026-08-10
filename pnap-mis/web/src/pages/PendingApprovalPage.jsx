@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
+import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 
 import dialog from '../components/dialog';
 export default function PendingApprovalPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   // For an AREA_ADMIN we pre-filter the queue to their own area so
   // they only see members they can actually approve. Higher-level
@@ -33,24 +34,28 @@ export default function PendingApprovalPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function approve(id) {
-    setBusy(true); setErr(''); setMsg('');
+  async function approve(id, name) {
+    setBusy(true); setErr('');
     try {
       await api.post(`/members/${id}/approve`);
-      setMsg('Member approved.');
       await load();
-    } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+      toast.success(`${name || 'Member'} approved — they can now log in with their CNIC.`, { title: 'Member approved' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not approve member', duration: 7000 });
+    } finally { setBusy(false); }
   }
 
-  async function reject(id) {
+  async function reject(id, name) {
     const reason = await dialog.prompt('Reason for rejection:');
     if (!reason) return;
-    setBusy(true); setErr(''); setMsg('');
+    setBusy(true); setErr('');
     try {
       await api.post(`/members/${id}/reject`, { reason });
-      setMsg('Member rejected.');
       await load();
-    } catch (e) { setErr(errorMessage(e)); } finally { setBusy(false); }
+      toast.success(`${name || 'Member'}'s application was rejected.`, { title: 'Member rejected' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not reject member', duration: 7000 });
+    } finally { setBusy(false); }
   }
 
   return (
@@ -65,7 +70,6 @@ export default function PendingApprovalPage() {
         </p>
       )}
       {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
       <table className="list">
         <thead>
           <tr>
@@ -87,8 +91,8 @@ export default function PendingApprovalPage() {
               <td>{m.basicUnitId?.name}</td>
               <td>{new Date(m.createdAt).toLocaleDateString()}</td>
               <td style={{ whiteSpace: 'nowrap' }}>
-                <button className="btn" disabled={busy} onClick={() => approve(m._id)}>Approve</button>{' '}
-                <button className="btn danger" disabled={busy} onClick={() => reject(m._id)}>Reject</button>
+                <button className="btn" disabled={busy} onClick={() => approve(m._id, m.fullName)}>Approve</button>{' '}
+                <button className="btn danger" disabled={busy} onClick={() => reject(m._id, m.fullName)}>Reject</button>
               </td>
             </tr>
           ))}

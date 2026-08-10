@@ -142,15 +142,21 @@ export default function AnnouncementsPage() {
       setComposeOpen(false);
       load();
     } catch (e) {
-      setErr(errorMessage(e));
-      toast.error?.('Could not post announcement.');
+      // Carry the server's actual reason — the previous fixed string
+      // hid things the user can act on, like a rejected target member.
+      toast.error(errorMessage(e), { title: 'Could not post announcement', duration: 9000 });
     }
   }
 
   async function remove(id) {
     if (!await dialog.confirm('Delete this announcement?')) return;
-    try { await api.delete(`/announcements/${id}`); load(); }
-    catch (e) { setErr(errorMessage(e)); }
+    try {
+      await api.delete(`/announcements/${id}`);
+      load();
+      toast.success('Announcement deleted.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not delete announcement', duration: 7000 });
+    }
   }
 
   function openCompose() {

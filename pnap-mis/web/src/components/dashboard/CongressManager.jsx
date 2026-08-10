@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../Toast';
 import { TrashIcon } from '../icons';
 
 // Compact manager for the National Congress calendar.
@@ -18,6 +19,7 @@ function toDateInput(iso) {
 }
 
 export default function CongressManager({ onChanged }) {
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
@@ -42,16 +44,19 @@ export default function CongressManager({ onChanged }) {
 
   // Every mutation refreshes the list AND tells the parent to refetch
   // its analytics — the period boundaries it is charting just moved.
-  async function mutate(fn) {
+  // `done` / `failed` describe the outcome; every caller goes through
+  // here, so reporting once in this wrapper covers add, edit and delete.
+  async function mutate(fn, done, failed) {
     setBusy(true);
     setErr('');
     try {
       await fn();
       await load();
       if (onChanged) onChanged();
+      if (done) toast.success(done);
       return true;
     } catch (e) {
-      setErr(errorMessage(e));
+      toast.error(errorMessage(e), { title: failed || 'Action failed', duration: 7000 });
       return false;
     } finally {
       setBusy(false);
@@ -61,15 +66,24 @@ export default function CongressManager({ onChanged }) {
   async function add(e) {
     e.preventDefault();
     if (!draft.label.trim() || !draft.heldOn) return;
-    const okDone = await mutate(() => api.post('/central/congresses', draft));
+    const label = draft.label.trim();
+    const okDone = await mutate(
+      () => api.post('/central/congresses', draft),
+      `Congress "${label}" added.`,
+      'Could not add congress',
+    );
     if (okDone) setDraft({ label: '', heldOn: '' });
   }
 
   async function saveEdit() {
-    const okDone = await mutate(() => api.patch(`/central/congresses/${editing._id}`, {
-      label: editing.label,
-      heldOn: editing.heldOn,
-    }));
+    const okDone = await mutate(
+      () => api.patch(`/central/congresses/${editing._id}`, {
+        label: editing.label,
+        heldOn: editing.heldOn,
+      }),
+      `Congress "${editing.label}" updated.`,
+      'Could not update congress',
+    );
     if (okDone) setEditing(null);
   }
 
@@ -140,7 +154,11 @@ export default function CongressManager({ onChanged }) {
                         <button
                           type="button" className="btn ghost sm" disabled={busy}
                           title="Remove from the calendar"
-                          onClick={() => mutate(() => api.delete(`/central/congresses/${c._id}`))}
+                          onClick={() => mutate(
+                            () => api.delete(`/central/congresses/${c._id}`),
+                            `Congress "${c.label}" removed.`,
+                            'Could not remove congress',
+                          )}
                         >
                           <TrashIcon size={13} />
                         </button>

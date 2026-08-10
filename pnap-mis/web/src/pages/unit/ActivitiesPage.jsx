@@ -4,6 +4,7 @@ import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
 
@@ -20,6 +21,7 @@ const DEFAULT_TYPE_CODE = 'CAMPAIGN';
 export default function ActivitiesPage() {
   const { ctx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const location = useLocation();
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   // Pure-member viewers shouldn't see the scope selector — they're
@@ -47,8 +49,6 @@ export default function ActivitiesPage() {
     campaign_expectedJoiners: '', campaign_actualJoiners: '', campaign_volunteerHours: '',
     dynamicData: {},
   });
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
 
@@ -77,19 +77,24 @@ export default function ActivitiesPage() {
   useEffect(() => { reload(); }, [ctx, scope, body]);
 
   async function create() {
-    setErr(''); setMsg('');
     try {
       const { dynamicData, ...rest } = form;
       const payload = { ...rest, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
       if (showBodyToggle) payload.body = body;
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
       if (dynamicData && Object.keys(dynamicData).length > 0) payload.dynamicData = dynamicData;
+      const title = form.title;
       await api.post('/activities', payload);
-      setMsg(showBodyToggle ? `${body === 'COMMITTEE' ? 'Committee' : 'Executive'} activity recorded.` : 'Activity recorded.');
       setShow(false);
       setForm((f) => ({ ...f, title: '', description: '', startAt: '', endAt: '', venue: '', dynamicData: {} }));
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(
+        showBodyToggle ? `${body === 'COMMITTEE' ? 'Committee' : 'Executive'} activity "${title}" recorded.` : `Activity "${title}" recorded.`,
+        { title: 'Activity recorded' }
+      );
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not record activity', duration: 7000 });
+    }
   }
 
   async function uploadPhoto(id, file) {
@@ -99,15 +104,29 @@ export default function ActivitiesPage() {
       const r = await api.post(`/activities/${id}/photos`, fd);
       const data = r.data.data;
       if (data.rejected?.length) {
-        dialog.alert(`Some photos rejected:\n${data.rejected.map((x) => `• ${x.filename}: ${x.reason}`).join('\n')}`);
+        // Partial success — the accepted photos did upload, so this is a
+        // warning rather than an error, and it lists what to re-shoot.
+        toast.warning(
+          `${data.rejected.length} photo(s) rejected: ${data.rejected.map((x) => `${x.filename} (${x.reason})`).join('; ')}`,
+          { title: 'Some photos rejected', duration: 9000 }
+        );
+      } else {
+        toast.success('Photo uploaded.');
       }
       reload();
-    } catch (e) { dialog.alert(errorMessage(e)); }
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Photo upload failed', duration: 7000 });
+    }
   }
 
   async function complete(id) {
-    try { await api.post(`/activities/${id}/complete`, {}); reload(); }
-    catch (e) { dialog.alert(errorMessage(e)); }
+    try {
+      await api.post(`/activities/${id}/complete`, {});
+      reload();
+      toast.success('Activity marked complete.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not complete activity', duration: 7000 });
+    }
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -145,8 +164,6 @@ export default function ActivitiesPage() {
         </div>
       )}
 
-      {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {show && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}>

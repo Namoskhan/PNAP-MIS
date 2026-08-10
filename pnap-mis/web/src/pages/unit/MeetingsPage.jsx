@@ -276,16 +276,19 @@ export default function MeetingsPage() {
     try {
       await api.post(`/meetings/${m._id}/cancel`, { reason });
       reload();
-    } catch (e) { dialog.alert(errorMessage(e)); }
+      toast.success(`"${m.title || 'Meeting'}" cancelled.`, { title: 'Meeting cancelled' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not cancel meeting', duration: 7000 });
+    }
   }
 
   function exportPdf() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    downloadAuthed(`/api/exports/unit/meetings/pdf?${params}`, `${ctx.unitName}-meetings.pdf`).catch(() => dialog.alert('Export failed.'));
+    downloadAuthed(`/api/exports/unit/meetings/pdf?${params}`, `${ctx.unitName}-meetings.pdf`).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
   function exportXlsx() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    downloadAuthed(`/api/exports/unit/meetings/xlsx?${params}`, `${ctx.unitName}-meetings.xlsx`).catch(() => dialog.alert('Export failed.'));
+    downloadAuthed(`/api/exports/unit/meetings/xlsx?${params}`, `${ctx.unitName}-meetings.xlsx`).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -476,7 +479,7 @@ export default function MeetingsPage() {
               <td style={{ whiteSpace: 'nowrap' }}>
                 <button
                   className="btn ghost"
-                  onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => dialog.alert('PDF download failed.'))}
+                  onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => toast.error('PDF download failed.', { title: 'Could not export' }))}
                   title="Download this meeting as PDF (with photos embedded)"
                 >📄 PDF</button>{' '}
                 {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
@@ -512,7 +515,10 @@ export default function MeetingsPage() {
           supervisorsLoading={supervisorsLoading}
           onNeedSupervisors={() => loadSupervisorCandidates(finalizing._id)}
           onClose={closeFinalize}
-          onDone={() => { closeFinalize(); reload(); }}
+          onDone={() => {
+            closeFinalize(); reload();
+            toast.success('Minutes recorded and the meeting is now finalized.', { title: 'Meeting finalized', duration: 7000 });
+          }}
         />
       )}
       {editing && (
@@ -520,7 +526,7 @@ export default function MeetingsPage() {
           meeting={editing}
           members={members}
           onClose={() => setEditing(null)}
-          onDone={() => { setEditing(null); reload(); }}
+          onDone={() => { setEditing(null); reload(); toast.success('Meeting updated.'); }}
         />
       )}
       {photosFor && (
@@ -1061,6 +1067,7 @@ function PhotosDialog({ meeting, onClose }) {
 }
 
 function DocumentsDialog({ meeting, onClose, onDone }) {
+  const toast = useToast();
   const [docs, setDocs] = useState(meeting.documents || []);
   const [kind, setKind] = useState('AGENDA');
   const [busy, setBusy] = useState(false);
@@ -1075,7 +1082,12 @@ function DocumentsDialog({ meeting, onClose, onDone }) {
       fd.append('kind', kind);
       const r = await api.post(`/meetings/${meeting._id}/documents`, fd);
       setDocs(r.data.data.documents || []);
-    } catch (e) { setErr(errorMessage(e)); }
+      // Reported here, not in onDone — that fires when the dialog is
+      // closed, which happens whether or not anything was attached.
+      toast.success(`${file.name} attached.`, { title: 'Document uploaded' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Document upload failed', duration: 9000 });
+    }
     finally { setBusy(false); }
   }
 

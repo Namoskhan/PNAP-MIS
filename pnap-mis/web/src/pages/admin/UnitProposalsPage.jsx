@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 const TARGETS = [
@@ -10,6 +11,7 @@ const TARGETS = [
 ];
 
 export default function UnitProposalsPage() {
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [stateFilter, setStateFilter] = useState('PENDING');
 
@@ -23,8 +25,6 @@ export default function UnitProposalsPage() {
   });
   const [provinceId, setProvinceId] = useState('');
   const [districtId, setDistrictId] = useState('');
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   async function reload() {
     const r = await api.get('/unit-proposals', { params: { state: stateFilter || undefined } });
@@ -111,14 +111,19 @@ export default function UnitProposalsPage() {
   }
 
   async function submit() {
-    setErr(''); setMsg('');
     try {
+      const name = form.name;
       await api.post('/unit-proposals', form);
-      setMsg('Unit proposed. Awaiting approval from the next level above.');
       setForm({ targetLevel: form.targetLevel, name: '', code: '', parentId: '', boundaryDescription: '', note: '' });
       setProvinceId(''); setDistrictId('');
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(
+        `"${name}" proposed. Awaiting approval from the next level above.`,
+        { title: 'Unit proposed', duration: 7000 }
+      );
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not propose unit', duration: 7000 });
+    }
   }
 
   async function decide(id, decision) {
@@ -128,7 +133,10 @@ export default function UnitProposalsPage() {
     try {
       await api.post(`/unit-proposals/${id}/decide`, { decision, decisionNote: note });
       reload();
-    } catch (e) { dialog.alert(errorMessage(e)); }
+      toast.success(`Proposal ${decision.toLowerCase().replace(/_/g, ' ')}.`);
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not record decision', duration: 7000 });
+    }
   }
 
   return (
@@ -137,8 +145,6 @@ export default function UnitProposalsPage() {
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Propose a New Unit</h3>
-        {err && <div className="alert error">{err}</div>}
-        {msg && <div className="alert success">{msg}</div>}
         <div className="form-grid">
           <div className="field">
             <label>Target Level</label>

@@ -425,9 +425,9 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
       onCreated?.(child);
       onClose?.();
     } catch (e) {
-      const msg = errorMessage(e);
-      setErr(msg);
-      toast.error(msg, { title: `Could not create ${tier.childLabel.toLowerCase()}` });
+      // Toast only — `err` above is reserved for the field-level
+      // validation messages, which must persist while the form is fixed.
+      toast.error(errorMessage(e), { title: `Could not create ${tier.childLabel.toLowerCase()}`, duration: 9000 });
     } finally {
       setBusy(false);
     }
