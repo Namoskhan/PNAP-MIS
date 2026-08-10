@@ -20,17 +20,21 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     if (fired.current) return;
     fired.current = true;
-    let alive = true;
+    // Deliberately NOT gated on an `alive` flag. Under StrictMode the
+    // sequence is effect → cleanup → effect: the cleanup of the first
+    // run fires while its request is still in the air, and the second
+    // run returns early on the guard above. An `alive` flag captured by
+    // the first run would therefore be false by the time the only
+    // response arrives, the state would never be set, and the page
+    // would sit on "Confirming your email…" forever — the request
+    // having succeeded on the server and spent the token.
+    //
+    // Settling on an unmounted component is safe: React 18 dropped the
+    // setState-after-unmount warning, and `fired` already guarantees
+    // exactly one request per token.
     verifyEmail(token)
-      .then((data) => {
-        if (alive) setState({ status: 'ok', alreadyVerified: data?.alreadyVerified });
-      })
-      .catch((err) => {
-        if (alive) setState({ status: 'failed', message: authErrorMessage(err) });
-      });
-    return () => {
-      alive = false;
-    };
+      .then((data) => setState({ status: 'ok', alreadyVerified: data?.alreadyVerified }))
+      .catch((err) => setState({ status: 'failed', message: authErrorMessage(err) }));
   }, [token]);
 
   if (state.status === 'working') {
