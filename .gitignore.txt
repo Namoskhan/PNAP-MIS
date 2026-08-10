@@ -1,1 +1,0 @@
-./pnap-mis/node_modules
