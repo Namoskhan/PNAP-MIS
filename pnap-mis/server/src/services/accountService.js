@@ -46,10 +46,14 @@ function isExcluded(user) {
 }
 
 /**
- * Member.email is `sparse` but NOT unique, so two members can legitimately
- * share a mailbox (a household, a shared office address). Pick
- * deterministically rather than letting Mongo's natural order decide:
- * an ACTIVE member first, then the oldest record.
+ * Member.email now carries a partial UNIQUE index, so at most one member
+ * can hold a given address and this normally resolves to a single row.
+ *
+ * The ACTIVE-first / oldest-next tie-break is kept deliberately: records
+ * created before the constraint existed may still share an address until
+ * `npm run dedupe-identity` has been run against that database, and a
+ * password-reset path must stay deterministic rather than let Mongo's
+ * natural order decide which account it recovers.
  */
 async function pickMemberByEmail(email) {
   const active = await Member.findOne({ email, status: 'ACTIVE' })

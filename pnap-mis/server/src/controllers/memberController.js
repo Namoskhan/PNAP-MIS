@@ -87,6 +87,14 @@ exports.create = asyncHandler(async (req, res) => {
     throw new ApiError(409, 'DUPLICATE_PHONE', 'A member with this mobile number already exists');
   }
 
+  // One membership per email address (only checked when one is given —
+  // the field is optional).
+  const { findMemberByEmail } = require('../utils/emailDup');
+  const dupEmail = await findMemberByEmail(data.email);
+  if (dupEmail) {
+    throw new ApiError(409, 'DUPLICATE_EMAIL', 'A member with this email address already exists');
+  }
+
   const photoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
 
   const member = await Member.create({
@@ -238,6 +246,11 @@ exports.update = asyncHandler(async (req, res) => {
     const { findMemberByPhone } = require('../utils/phoneDup');
     const dupPhone = await findMemberByPhone(req.body.phone, member._id);
     if (dupPhone) throw new ApiError(409, 'DUPLICATE_PHONE', 'A member with this mobile number already exists');
+  }
+  if (req.body.email) {
+    const { findMemberByEmail } = require('../utils/emailDup');
+    const dupEmail = await findMemberByEmail(req.body.email, member._id);
+    if (dupEmail) throw new ApiError(409, 'DUPLICATE_EMAIL', 'A member with this email address already exists');
   }
 
   Object.assign(member, req.body);

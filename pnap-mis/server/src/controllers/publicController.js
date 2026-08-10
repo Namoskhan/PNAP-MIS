@@ -34,6 +34,17 @@ exports.register = asyncHandler(async (req, res) => {
     throw new ApiError(409, 'DUPLICATE_PHONE', 'A member with this mobile number is already registered');
   }
 
+  // One membership per email address. Email is optional, so this only
+  // runs when one was supplied; the unique index is the real guarantee
+  // (it also closes the race between this check and the save below),
+  // but checking here turns a driver-level E11000 into a named error
+  // the registration form can point at the right field.
+  const { findMemberByEmail } = require('../utils/emailDup');
+  const dupEmail = await findMemberByEmail(data.email);
+  if (dupEmail) {
+    throw new ApiError(409, 'DUPLICATE_EMAIL', 'A member with this email address is already registered');
+  }
+
   const unit = await BasicUnit.findById(data.basicUnitId);
   if (!unit || unit.isActive === false) {
     throw new ApiError(400, 'INVALID_BASIC_UNIT', 'Selected basic unit is not available');

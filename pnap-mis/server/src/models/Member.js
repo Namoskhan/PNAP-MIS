@@ -23,7 +23,21 @@ const memberSchema = new mongoose.Schema(
       match: /^(\+92|0)?3\d{2}[- ]?\d{7}$/,
       trim: true,
     },
-    email: { type: String, lowercase: true, trim: true, sparse: true },
+    // Unique across members — see the partial index below. The setter
+    // collapses '' / whitespace to undefined so a blank optional field
+    // is stored as ABSENT rather than as an empty string; without that,
+    // every member who skipped the email field would share email=''
+    // and collide on the unique index.
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      set: (v) => {
+        if (v === undefined || v === null) return undefined;
+        const s = String(v).trim().toLowerCase();
+        return s === '' ? undefined : s;
+      },
+    },
     // Login handle derived from the first word of fullName at
     // registration time. Sparse-unique so legacy members without one
     // don't collide. Lowercased, alphanumeric only.
@@ -91,6 +105,21 @@ const memberSchema = new mongoose.Schema(
     workflowVersion: Number,
   },
   { timestamps: true }
+);
+
+// One membership per email address.
+//
+// partialFilterExpression rather than `sparse: true`, matching the same
+// choice on User.email: sparse exempts only MISSING values, so any two
+// members storing an explicit null would still collide. The filter here
+// applies the constraint to documents where email is a real string, and
+// the schema setter guarantees such a string is never empty.
+//
+// The CNIC constraint is declared on the field itself (`unique: true`);
+// it needs no filter because cnic is required, so every document has one.
+memberSchema.index(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { email: { $type: 'string' } } }
 );
 
 // Executive-dashboard read paths. Every active/inactive query is
