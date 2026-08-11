@@ -6,6 +6,10 @@ import { formatCnic, isCompleteCnic } from '../utils/formatters';
 import { XIcon } from '../components/icons';
 const CNIC_RX = /^\d{5}-\d{7}-\d$/;
 const PHONE_RX = /^(\+92|0)?3\d{2}[- ]?\d{7}$/;
+// Deliberately loose — the server's zod schema is the authority on what
+// counts as a valid address. This only catches the obvious typo before
+// a round trip.
+const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const LANGUAGES = ['Urdu', 'English', 'Pashto', 'Sindhi', 'Punjabi', 'Balochi', 'Saraiki'];
 
@@ -49,6 +53,8 @@ export default function PublicRegisterModal({ open, onClose }) {
   const [submitted, setSubmitted] = useState(null);
   // null = not checked, true = taken, false = available
   const [cnicTaken, setCnicTaken] = useState(null);
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [emailMissing, setEmailMissing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -128,6 +134,15 @@ export default function PublicRegisterModal({ open, onClose }) {
     if (form.cnic && !CNIC_RX.test(form.cnic)) e.cnic = 'Enter all 13 digits of your CNIC';
     if (cnicTaken) e.cnic = 'This CNIC is already registered. Use "Check status" to see your application.';
     if (form.phone && !PHONE_RX.test(form.phone)) e.phone = 'Use 03XX-XXXXXXX or +92 3XX XXXXXXX';
+    if (form.email && !EMAIL_RX.test(form.email.trim())) e.email = 'Enter a valid email address';
+    // Raised by onSubmit, not while typing — an empty field should not
+    // read as an error before the applicant has reached it.
+    if (emailMissing) e.email = 'Email is required';
+    // Set from the server's 409 on submit rather than from a live
+    // lookup. One email per member is enforced by a unique index, and
+    // asking "is this address registered?" before submitting would turn
+    // the public form into a way to test whether someone is a member.
+    if (emailTaken) e.email = 'This email address is already registered to another member.';
     if (form.dateOfBirth) {
       const dob = new Date(form.dateOfBirth);
       if (dob > new Date()) e.dateOfBirth = 'Date of birth must be in the past';
@@ -136,11 +151,16 @@ export default function PublicRegisterModal({ open, onClose }) {
     if (form.password && form.password.length < 6) e.password = 'At least 6 characters';
     if (form.passwordConfirm && form.password !== form.passwordConfirm) e.passwordConfirm = 'Passwords do not match';
     return e;
-  }, [form, cnicTaken]);
+  }, [form, cnicTaken, emailTaken, emailMissing]);
 
   if (!open) return null;
 
-  function setField(k, v) { setForm((f) => ({ ...f, [k]: v })); }
+  function setField(k, v) {
+    // Editing the address clears the "already registered" verdict —
+    // it applied to the previous value, not what is being typed now.
+    if (k === 'email') { setEmailTaken(false); setEmailMissing(false); }
+    setForm((f) => ({ ...f, [k]: v }));
+  }
 
   function toggleLanguage(lang) {
     setForm((f) => {
@@ -163,7 +183,13 @@ export default function PublicRegisterModal({ open, onClose }) {
   async function onSubmit(e) {
     e.preventDefault();
     setErr('');
-    if (Object.keys(fieldErrors).length) {
+    // The <form> carries noValidate, so the browser will not enforce the
+    // `required` attribute here — this is what actually makes email
+    // mandatory on the public path. Flagged rather than merely blocked,
+    // so the message appears beside the field like every other error.
+    const missingEmail = !form.email.trim();
+    if (missingEmail) setEmailMissing(true);
+    if (missingEmail || Object.keys(fieldErrors).length) {
       setErr('Please fix the highlighted fields.');
       return;
     }
@@ -198,7 +224,15 @@ export default function PublicRegisterModal({ open, onClose }) {
       toast.success('Application received', { title: 'Submitted to local Basic Unit Secretary' });
     } catch (ex) {
       const msg = publicErrorMessage(ex);
-      setErr(msg);
+      // Pin the duplicate-email rejection to the field that caused it,
+      // so the applicant sees it beside the input instead of only in a
+      // banner that does not say which value to change.
+      if (ex?.response?.data?.error?.code === 'DUPLICATE_EMAIL') {
+        setEmailTaken(true);
+        setErr('This email address is already registered. Please use a different one.');
+      } else {
+        setErr(msg);
+      }
       toast.error(msg, { title: 'Registration failed' });
     } finally {
       setBusy(false);
@@ -284,8 +318,15 @@ export default function PublicRegisterModal({ open, onClose }) {
                   {fieldErrors.phone && <div className="error">{fieldErrors.phone}</div>}
                 </div>
                 <div className="field">
-                  <label>Email</label>
-                  <input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
+                  <label>Email <span className="req">*</span></label>
+                  <input
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={(e) => setField('email', e.target.value)}
+                    aria-invalid={fieldErrors.email ? 'true' : undefined}
+                  />
+                  {fieldErrors.email && <div className="error">{fieldErrors.email}</div>}
                 </div>
                 <div className="field">
                   <label>Date of Birth <span className="req">*</span></label>

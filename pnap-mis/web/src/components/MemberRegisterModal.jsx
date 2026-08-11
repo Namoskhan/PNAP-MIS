@@ -35,6 +35,9 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
   const [err, setErr] = useState('');
   // null = not checked, true = taken, false = available
   const [cnicTaken, setCnicTaken] = useState(null);
+  // Set from the server's 409 on submit. One email per member is
+  // enforced by a unique index on Member.email.
+  const [emailTaken, setEmailTaken] = useState(false);
 
   // Live duplicate check once all 13 digits are typed. Uses the
   // member-list search the registrar already has access to; the
@@ -93,6 +96,9 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
   if (!open) return null;
 
   function setField(k, v) {
+    // Editing the address clears the "already registered" verdict —
+    // it applied to the previous value, not what is being typed now.
+    if (k === 'email') setEmailTaken(false);
     setForm((f) => ({ ...f, [k]: v }));
   }
 
@@ -122,8 +128,13 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
       onSuccess?.(member);
       onClose?.();
     } catch (e) {
-      // Toast only — the modal closes on success, and on failure the
-      // toast carries the reason without a banner repeating it.
+      // Duplicate email is pinned to the field so the officer can see
+      // which value to change; everything else stays toast-only, since
+      // the modal closes on success and a banner would just repeat it.
+      if (e?.response?.data?.error?.code === 'DUPLICATE_EMAIL') {
+        setEmailTaken(true);
+        setErr('This email address is already registered to another member.');
+      }
       toast.error(errorMessage(e), { title: 'Registration failed', duration: 9000 });
     } finally {
       setBusy(false);
@@ -175,8 +186,17 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
               <input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="03001234567" required />
             </div>
             <div className="field">
-              <label>Email</label>
-              <input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
+              <label>Email *</label>
+              <input
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setField('email', e.target.value)}
+                aria-invalid={emailTaken ? 'true' : undefined}
+              />
+              {emailTaken && (
+                <div className="error">This email address is already registered to another member.</div>
+              )}
             </div>
             <div className="field">
               <label>Date of Birth *</label>
