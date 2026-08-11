@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { ok, ApiError } = require('../utils/response');
 const { audit } = require('../utils/audit');
 const { creatableRoles, canManageAdminUser, adminTierOf } = require('../utils/adminHierarchy');
+const accountService = require('../services/accountService');
 
 // Tier-admin account management. Creation and credential actions both
 // follow the one-level rule in utils/adminHierarchy: an administrator
@@ -276,7 +277,18 @@ exports.resetPassword = asyncHandler(async (req, res) => {
   if (newPassword.length < 6) {
     throw new ApiError(400, 'WEAK_PASSWORD', 'Password must be at least 6 characters.');
   }
-  await u.setPassword(newPassword);
+
+  // Routed through accountService rather than writing User.passwordHash
+  // directly. For a MEMBER account the login path verifies against
+  // Member.passwordHash — the User row is only a JWT-subject + role
+  // cache and usually carries no password at all. Setting it here
+  // reported success, changed nothing the member's login reads, and
+  // left their OLD password working while the new one was rejected as
+  // invalid credentials. applyNewPassword owns the rule about which
+  // document actually holds the credential; see the header comment in
+  // services/accountService.
+  const account = await accountService.accountForUser(u);
+  const written = await accountService.applyNewPassword(account, newPassword);
   await u.save();
 
   await audit({
@@ -285,7 +297,7 @@ exports.resetPassword = asyncHandler(async (req, res) => {
     targetType: 'User',
     targetId: u._id,
     targetLabel: u.fullName,
-    note: `New password set by ${req.user?.fullName || 'an administrator'}`,
+    note: `New password set by ${req.user?.fullName || 'an administrator'} (stores: ${written.join(', ')})`,
   });
 
   ok(res, { ok: true });

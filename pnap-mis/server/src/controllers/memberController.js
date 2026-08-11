@@ -310,13 +310,19 @@ exports.approve = asyncHandler(async (req, res) => {
   // Notify only on final transition.
   if (wf.finalState === 'APPROVED') {
     const { notify, userIdForMember } = require('../utils/notify');
-    notify(await userIdForMember(member._id), {
+    // Awaited, not fire-and-forget. A newly approved member has never
+    // logged in, so userIdForMember has to provision their User row
+    // before the notification can be addressed to anything. Detaching
+    // this raced the response and, worse, resolved to null every time —
+    // which notify() drops in silence.
+    const notifyUserId = await userIdForMember(member._id);
+    await notify(notifyUserId, {
       type: 'MEMBER_APPROVED',
       severity: 'SUCCESS',
       title: 'Your membership was approved',
       body: `Welcome, ${member.fullName}. Your member ID is ${member.memberId}.`,
       link: `/members/${member._id}`,
-    }).catch(() => {});
+    });
 
     // Approval is the moment the member gains a real login identity, so
     // it is also the moment their email is worth confirming — a
@@ -495,8 +501,23 @@ exports.adminResetPassword = asyncHandler(async (req, res) => {
   if (newPassword.length < 6) {
     throw new ApiError(400, 'WEAK_PASSWORD', 'Password must be at least 6 characters');
   }
-  await member.setPassword(newPassword);
-  await member.save();
+
+  // Writing Member.passwordHash alone is right for the CNIC login, but
+  // if this member also holds an admin User row WITH its own password,
+  // loginByUsername / loginByEmail check that row first — so the old
+  // password would survive on those paths. applyNewPassword writes
+  // every store the account can actually be verified against.
+  const accountService = require('../services/accountService');
+  const account = await accountService.accountForUser(
+    await require('../models/User').findOne({ cnic: member.cnic })
+  );
+  if (account?.user) {
+    await accountService.applyNewPassword({ user: account.user, member }, newPassword);
+    await account.user.save();
+  } else {
+    await member.setPassword(newPassword);
+    await member.save();
+  }
 
   await audit({
     req, action: 'MEMBER_RESET_PASSWORD',

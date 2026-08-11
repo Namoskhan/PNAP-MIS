@@ -93,7 +93,12 @@ exports.create = asyncHandler(async (req, res) => {
   if (data.targetMemberId) {
     const m = await Member.findById(data.targetMemberId).select('_id fullName basicUnitId areaId districtId provinceId').lean();
     if (!m) throw new ApiError(404, 'NOT_FOUND', 'Target member not found');
-    const targetUserId = await userIdForMember(m._id); // null if member has no User account yet
+    // Resolves by memberId, then CNIC, and provisions the row for an
+    // ACTIVE member who has not logged in yet — otherwise a DM to a
+    // freshly approved member was written to the Announcements page but
+    // never rang their bell. Still null for a non-ACTIVE member, who
+    // has no login identity to receive it with.
+    const targetUserId = await userIdForMember(m._id);
 
     const doc = await Announcement.create({
       authorUserId: req.user._id,
