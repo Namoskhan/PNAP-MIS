@@ -342,7 +342,10 @@ export default function FinancePage() {
   // donations + expenses) as PDF or XLSX.
   function downloadReport(format) {
     if (!ctx) return;
+    // Same scope the on-screen figures use, so the downloaded report
+    // and the page can never disagree.
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+    if (scope === 'tree') params.set('scope', 'subtree');
     const ext = format === 'pdf' ? 'pdf' : 'xlsx';
     const filename = `${ctx.unitName || 'unit'}-finance.${ext}`;
     const token = localStorage.getItem('pnap_token');
@@ -378,7 +381,16 @@ export default function FinancePage() {
           <h2>Finance · {ctx.unitName}</h2>
           <div className="subtitle">{ctx.unitLevel.replace('_', ' ')}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* A Basic Unit has nothing beneath it, so the choice is
+              meaningless there. Everywhere else this drives BOTH the
+              figures on screen and the downloaded report. */}
+          {ctx.unitLevel !== 'BASIC_UNIT' && (
+            <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Report scope">
+              <option value="own">This unit only</option>
+              <option value="tree">Including subordinates</option>
+            </select>
+          )}
           <button className="btn secondary" onClick={() => downloadReport('pdf')}>Download PDF</button>
           <button className="btn secondary" onClick={() => downloadReport('xlsx')}>Download Excel</button>
         </div>

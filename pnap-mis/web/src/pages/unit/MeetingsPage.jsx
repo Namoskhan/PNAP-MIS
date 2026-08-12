@@ -303,10 +303,12 @@ export default function MeetingsPage() {
 
   function exportPdf() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+    if (scope === 'tree') params.set('scope', 'subtree');
     downloadAuthed(`/api/exports/unit/meetings/pdf?${params}`, `${ctx.unitName}-meetings.pdf`).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
   function exportXlsx() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+    if (scope === 'tree') params.set('scope', 'subtree');
     downloadAuthed(`/api/exports/unit/meetings/xlsx?${params}`, `${ctx.unitName}-meetings.xlsx`).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
 

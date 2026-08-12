@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -8,6 +9,7 @@ const Meeting = require('../models/Meeting');
 const Activity = require('../models/Activity');
 const Donation = require('../models/Donation');
 const Expense = require('../models/Expense');
+const FundTransfer = require('../models/FundTransfer');
 const BasicUnit = require('../models/BasicUnit');
 const Area = require('../models/Area');
 const District = require('../models/District');
@@ -158,6 +160,24 @@ function ownFilter(unitLevel, unitId) {
   return { unitLevel, unitId };
 }
 
+// Records carry BOTH their owning unit (unitLevel + unitId) and the
+// denormalized chain they sit under (areaId / districtId / provinceId).
+// `own` matches only what was recorded AT this unit; `subtree` matches
+// everything beneath it by chain key — which is how a District report
+// picks up the donations its Areas and Basic Units recorded.
+//
+// Deliberately mirrors financeController.applyScopeFilter so the report
+// and the on-screen figures can never disagree about what a scope means.
+function scopeFilter(unitLevel, unitId, scope, chain) {
+  if (scope !== 'subtree') return ownFilter(unitLevel, unitId);
+  if (unitLevel === 'BASIC_UNIT') return { basicUnitId: chain.basicUnitId };
+  if (unitLevel === 'AREA') return { areaId: chain.areaId };
+  if (unitLevel === 'DISTRICT') return { districtId: chain.districtId };
+  if (unitLevel === 'PROVINCE') return { provinceId: chain.provinceId };
+  // CENTRAL heads the organization, so its subtree is everything.
+  return {};
+}
+
 async function unitName(unitLevel, unitId) {
   const M = { BASIC_UNIT: BasicUnit, AREA: Area, DISTRICT: District, PROVINCE: Province }[unitLevel];
   if (!M) return 'CENTRAL';
@@ -165,19 +185,42 @@ async function unitName(unitLevel, unitId) {
   return doc?.name || unitLevel;
 }
 
-async function gatherUnitData({ unitLevel, unitId, from, to }) {
+async function gatherUnitData({ unitLevel, unitId, from, to, scope }) {
   const chain = unitLevel === 'CENTRAL' ? {} : await resolveUnitChain(unitLevel, unitId);
   if (unitLevel !== 'CENTRAL' && !chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
   const memberQ = memberFilter(unitLevel, chain);
-  const ownQ = ownFilter(unitLevel, unitId);
+  // `ownQ` is the scoped record filter — named for history, but it now
+  // widens to the whole subtree when the caller asks for it.
+  const ownQ = scopeFilter(unitLevel, unitId, scope, chain);
   const dateFilter = {};
   if (from) dateFilter.$gte = new Date(from);
   if (to) dateFilter.$lte = new Date(to);
   const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
   const recvClause = (Object.keys(dateFilter).length) ? { receivedAt: dateFilter } : {};
   const incurClause = (Object.keys(dateFilter).length) ? { incurredAt: dateFilter } : {};
+  const xferClause = (Object.keys(dateFilter).length) ? { transferredAt: dateFilter } : {};
 
-  const [members, meetings, activities, donations, expenses, responsibilities] = await Promise.all([
+  // Fund transfers are their OWN ledger — initiating one does not create
+  // an Expense, and acknowledging one does not approve an expense. They
+  // move money between units, so they only count once the receiving unit
+  // has acknowledged: until then the amount is still on the sender's
+  // books.
+  //
+  // Matched on the exact unit rather than the subtree, mirroring
+  // financeController's summary. Rolling them up would double-count any
+  // transfer INTERNAL to the subtree (an Area sending to its own
+  // District would appear as both an outflow and an inflow), and the
+  // schema denormalizes only the SOURCE chain, so the incoming side
+  // could not be rolled up symmetrically anyway.
+  const oid = (v) => {
+    try { return new mongoose.Types.ObjectId(String(v)); } catch { return null; }
+  };
+  const unitOid = oid(unitId);
+  const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause };
+  const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause };
+
+  const [members, meetings, activities, donations, expenses, responsibilities,
+    transfersOut, transfersIn] = await Promise.all([
     Member.find({ ...memberQ, status: 'ACTIVE' }).select('fullName memberId cnic phone').lean(),
     Meeting.find({ ...ownQ, ...startClause })
       .populate('chairpersonId', 'fullName memberId')
@@ -187,17 +230,22 @@ async function gatherUnitData({ unitLevel, unitId, from, to }) {
     Donation.find({ ...ownQ, ...recvClause }).lean(),
     Expense.find({ ...ownQ, ...incurClause }).lean(),
     Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
+    unitOid ? FundTransfer.find(outFilter).lean() : [],
+    unitOid ? FundTransfer.find(inFilter).lean() : [],
   ]);
 
   const name = await unitName(unitLevel, unitId);
-  return { name, unitLevel, members, meetings, activities, donations, expenses, responsibilities };
+  return {
+    name, unitLevel, members, meetings, activities, donations, expenses,
+    responsibilities, transfersOut, transfersIn,
+  };
 }
 
 // ─── FINANCE-only Excel — Summary + Donations + Expenses ───────────
 exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
 
   const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
   const expApproved = data.expenses.filter((e) => e.state === 'APPROVED').reduce((a, e) => a + (e.amount || 0), 0);
@@ -207,15 +255,24 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   wb.creator = 'PKNAP';
   wb.created = new Date();
 
+  // Acknowledged transfers are real movements of money and belong in
+  // the bottom line — the previous Net Balance ignored them and so
+  // disagreed with the Finance page.
+  const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
+  const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
+
   const sum = wb.addWorksheet('Summary');
-  sum.columns = [{ header: 'Metric', key: 'k', width: 32 }, { header: 'Value', key: 'v', width: 24 }];
+  sum.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 26 }];
   sum.addRow({ k: 'Unit', v: `${data.unitLevel} · ${data.name}` });
+  sum.addRow({ k: 'Scope', v: scope === 'subtree' ? 'Including all subordinate units' : 'This unit only' });
   sum.addRow({ k: 'Period', v: `${from || 'all'} → ${to || 'all'}` });
   sum.addRow({ k: 'Donations Count', v: data.donations.length });
   sum.addRow({ k: 'Donations Total (PKR)', v: donTotal });
+  sum.addRow({ k: 'Transfers In (PKR)', v: xferInTotal });
   sum.addRow({ k: 'Expenses Approved (PKR)', v: expApproved });
   sum.addRow({ k: 'Expenses Pending (PKR)', v: expPending });
-  sum.addRow({ k: 'Net Balance (PKR)', v: donTotal - expApproved });
+  sum.addRow({ k: 'Transfers Out (PKR)', v: xferOutTotal });
+  sum.addRow({ k: 'Net Balance (PKR)', v: donTotal + xferInTotal - expApproved - xferOutTotal });
   sum.getRow(1).font = { bold: true };
 
   const don = wb.addWorksheet('Donations');
@@ -266,17 +323,124 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     }));
   exp.getRow(1).font = { bold: true };
 
+  // Transfers get their own sheet rather than being folded into
+  // Expenses — a transfer is not an expense, and conflating them would
+  // double-count against the donation ledger.
+  const xf = wb.addWorksheet('Fund Transfers');
+  xf.columns = [
+    { header: 'Date', key: 'd', width: 14 },
+    { header: 'Direction', key: 'dir', width: 12 },
+    { header: 'Counterparty', key: 'p', width: 32 },
+    { header: 'Mode', key: 'm', width: 18 },
+    { header: 'State', key: 's', width: 16 },
+    { header: 'Amount (PKR)', key: 'a', width: 16 },
+  ];
+  [
+    ...data.transfersIn.map((t) => ({ t, dir: 'Incoming', party: t.sourceName || t.sourceLevel })),
+    ...data.transfersOut.map((t) => ({ t, dir: 'Outgoing', party: t.destinationName || t.destinationLevel })),
+  ]
+    .sort((a, b) => new Date(b.t.transferredAt || b.t.createdAt) - new Date(a.t.transferredAt || a.t.createdAt))
+    .forEach(({ t, dir, party }) => xf.addRow({
+      d: new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
+      dir,
+      p: party || '',
+      m: t.mode || '',
+      s: t.state || '',
+      a: t.amount || 0,
+    }));
+  xf.getRow(1).font = { bold: true };
+
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-finance.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
 });
 
+// ─── PDF table renderer ───────────────────────────────────────────
+//
+// Replaces the previous approach of padEnd()-ing strings into fixed
+// widths: that only lines up in a monospaced font, and these reports
+// are set in Helvetica, so every column drifted out of alignment as
+// soon as a value contained wide or narrow glyphs. Here each cell is
+// drawn at an explicit x with its own width, so columns are straight
+// regardless of content, numbers right-align under each other, and
+// overlong values ellipsize instead of being sliced mid-word.
+//
+// Also repeats the header band after a page break — previously a
+// table continuing onto page 2 lost its headings entirely.
+const PAGE_L = 40;
+const PAGE_R = 555;
+const ROW_H = 15;
+
+function drawTableHeader(doc, cols, sectionColor) {
+  const y = doc.y;
+  doc.rect(PAGE_L, y - 2, PAGE_R - PAGE_L, ROW_H + 2).fill(sectionColor);
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#ffffff');
+  cols.forEach((c) => {
+    doc.text(c.label, c.x + 4, y + 2, {
+      width: c.w - 8, align: c.align || 'left', lineBreak: false, ellipsis: true,
+    });
+  });
+  doc.y = y + ROW_H + 4;
+  doc.fillColor('#1a1a1a').font('Helvetica');
+}
+
+function drawTable(doc, { cols, rows, sectionColor, emptyText }) {
+  if (!rows.length) {
+    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#6b7280').text(emptyText);
+    doc.fillColor('#1a1a1a').font('Helvetica');
+    return;
+  }
+  drawTableHeader(doc, cols, sectionColor);
+  rows.forEach((cells, i) => {
+    // Leave room for the footer; start a fresh page with the header
+    // repeated so a continued table is still readable.
+    if (doc.y > doc.page.height - 70) {
+      doc.addPage();
+      drawTableHeader(doc, cols, sectionColor);
+    }
+    const y = doc.y;
+    if (i % 2 === 1) {
+      doc.rect(PAGE_L, y - 2, PAGE_R - PAGE_L, ROW_H).fill('#f4f6f8');
+      doc.fillColor('#1a1a1a');
+    }
+    doc.font('Helvetica').fontSize(8.5).fillColor('#1a1a1a');
+    cols.forEach((c, ci) => {
+      doc.text(String(cells[ci] ?? ''), c.x + 4, y + 1, {
+        width: c.w - 8, align: c.align || 'left', lineBreak: false, ellipsis: true,
+      });
+    });
+    doc.y = y + ROW_H;
+  });
+  doc.strokeColor('#d5dbe0').lineWidth(0.5)
+    .moveTo(PAGE_L, doc.y + 1).lineTo(PAGE_R, doc.y + 1).stroke();
+  doc.y += 5;
+}
+
+// Summary figures as a row of labelled boxes rather than a plain list
+// of "key: value" lines — the headline numbers are what a reader looks
+// for first, so they get the visual weight.
+function drawKpiBand(doc, tiles, sectionColor) {
+  const y = doc.y;
+  const gap = 8;
+  const w = (PAGE_R - PAGE_L - gap * (tiles.length - 1)) / tiles.length;
+  tiles.forEach((t, i) => {
+    const x = PAGE_L + i * (w + gap);
+    doc.rect(x, y, w, 42).fillAndStroke('#f4f6f8', '#d5dbe0');
+    doc.font('Helvetica').fontSize(7.5).fillColor('#5c6b76')
+      .text(t.label.toUpperCase(), x + 6, y + 6, { width: w - 12, lineBreak: false, ellipsis: true });
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(t.color || sectionColor)
+      .text(t.value, x + 6, y + 19, { width: w - 12, lineBreak: false, ellipsis: true });
+  });
+  doc.y = y + 42 + 12;
+  doc.fillColor('#1a1a1a').font('Helvetica').strokeColor('#000000');
+}
+
 // ─── FINANCE-only PDF — summary + donations table + expenses table
 exports.unitFinancePdf = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
   const branding = await _loadBrandingSafe();
   const sectionColor = branding?.reportBranding?.pdfHeaderColor
     || branding?.theme?.light?.primary
@@ -292,75 +456,137 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
   const expPending = data.expenses.filter((e) => e.state === 'PENDING').reduce((a, e) => a + (e.amount || 0), 0);
 
   // Branded header replaces the hardcoded "PKNAP Finance Report" title.
+  // The scope is stated explicitly — a District report that aggregates
+  // its Areas looks identical to one that does not unless it says so.
+  const scopeLabel = scope === 'subtree' ? 'including all subordinate units' : 'this unit only';
   applyBrandedHeader(doc, branding, 'Finance Report',
-    `${data.unitLevel} · ${data.name}  ·  Period: ${from || 'all'} → ${to || 'all'}`);
+    `${data.unitLevel.replace('_', ' ')} · ${data.name}   |   ${scopeLabel}   |   Period: ${from || 'all'} → ${to || 'all'}`);
 
-  doc.fontSize(13).text('Summary', { underline: true });
-  doc.moveDown(0.3);
-  doc.fontSize(11);
-  [
-    ['Donations (count)', data.donations.length],
-    ['Donations Total (PKR)', donTotal.toLocaleString()],
-    ['Approved Expenses (PKR)', expApproved.toLocaleString()],
-    ['Pending Expenses (PKR)', expPending.toLocaleString()],
-    ['Net Balance (PKR)', (donTotal - expApproved).toLocaleString()],
-  ].forEach(([k, v]) => doc.text(`${k}: ${v}`));
-  doc.moveDown(1);
+  // Acknowledged transfers move real money, so the report's bottom line
+  // has to account for them. The previous formula was
+  // donations - approvedExpenses, which ignored both sides entirely and
+  // disagreed with the Net Balance shown on the Finance page.
+  const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
+  const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
+  const net = donTotal + xferInTotal - expApproved - xferOutTotal;
 
-  doc.font('Helvetica-Bold').fontSize(14).fillColor(sectionColor).text(`Donations (${data.donations.length})`);
-  doc.strokeColor(sectionColor).lineWidth(1).moveTo(40, doc.y + 2).lineTo(555, doc.y + 2).stroke();
-  doc.moveDown(0.4);
-  if (data.donations.length === 0) {
-    doc.font('Helvetica-Oblique').fontSize(10).fillColor('gray').text('No donations recorded in this period.');
-    doc.fillColor('#1a1a1a').font('Helvetica');
-  } else {
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor);
-    doc.text('Receipt #          Date          Donor                              Mode               Amount (PKR)');
-    doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
-    data.donations
-      .slice()
-      .sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt))
-      .forEach((d) => {
-        if (doc.y > doc.page.height - 60) doc.addPage();
-        const receipt = (d.receiptNo || '—').padEnd(18).slice(0, 18);
-        const date = new Date(d.receivedAt).toLocaleDateString().padEnd(12).slice(0, 12);
-        const donorRaw = d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)');
-        const donor = donorRaw.padEnd(34).slice(0, 34);
-        const mode = (d.paymentMode || '—').padEnd(18).slice(0, 18);
-        doc.text(`${receipt} ${date} ${donor} ${mode} ${(d.amount || 0).toLocaleString()}`);
-      });
-    doc.moveDown(0.3);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(sectionColor).text(`Total Donations: PKR ${donTotal.toLocaleString()}`);
+  drawKpiBand(doc, [
+    { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
+    { label: 'Transfers In', value: `PKR ${xferInTotal.toLocaleString()}`, color: '#00a266' },
+    { label: 'Approved Expenses', value: `PKR ${expApproved.toLocaleString()}` },
+    { label: 'Transfers Out', value: `PKR ${xferOutTotal.toLocaleString()}`, color: '#e65f00' },
+    { label: 'Net Balance', value: `PKR ${net.toLocaleString()}`, color: net < 0 ? '#cf2e2e' : '#00a266' },
+  ], sectionColor);
+  if (expPending) {
+    doc.font('Helvetica-Oblique').fontSize(8.5).fillColor('#5c6b76')
+      .text(`Pending expenses awaiting approval: PKR ${expPending.toLocaleString()} (not included in Net Balance)`,
+        PAGE_L, doc.y, { width: PAGE_R - PAGE_L });
+    doc.moveDown(0.6);
     doc.font('Helvetica').fillColor('#1a1a1a');
   }
 
-  if (doc.y > doc.page.height - 200) doc.addPage(); else doc.moveDown(1);
-  doc.font('Helvetica-Bold').fontSize(14).fillColor(sectionColor).text(`Expenses (${data.expenses.length})`);
-  doc.strokeColor(sectionColor).lineWidth(1).moveTo(40, doc.y + 2).lineTo(555, doc.y + 2).stroke();
-  doc.moveDown(0.4);
-  if (data.expenses.length === 0) {
-    doc.font('Helvetica-Oblique').fontSize(10).fillColor('gray').text('No expenses recorded in this period.');
-    doc.fillColor('#1a1a1a').font('Helvetica');
-  } else {
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor);
-    doc.text('Date          Category               Description                          State        Amount (PKR)');
-    doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
-    data.expenses
+  function sectionTitle(text) {
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#1a1a1a').text(text, PAGE_L, doc.y);
+    doc.moveDown(0.35);
+    doc.font('Helvetica').fillColor('#1a1a1a');
+  }
+
+  sectionTitle(`Donations (${data.donations.length})`);
+  drawTable(doc, {
+    sectionColor,
+    emptyText: 'No donations recorded in this period.',
+    cols: [
+      { label: 'Receipt #', x: 40, w: 68 },
+      { label: 'Date', x: 108, w: 62 },
+      { label: 'Donor', x: 170, w: 168 },
+      { label: 'Mode', x: 338, w: 96 },
+      { label: 'Amount (PKR)', x: 434, w: 121, align: 'right' },
+    ],
+    rows: data.donations
+      .slice()
+      .sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt))
+      .map((d) => [
+        d.receiptNo || '—',
+        new Date(d.receivedAt).toLocaleDateString(),
+        d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)'),
+        d.paymentMode || '—',
+        (d.amount || 0).toLocaleString(),
+      ]),
+  });
+  if (data.donations.length) {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
+      .text(`Total Donations: PKR ${donTotal.toLocaleString()}`, PAGE_L, doc.y, {
+        width: PAGE_R - PAGE_L, align: 'right',
+      });
+    doc.font('Helvetica').fillColor('#1a1a1a');
+  }
+
+  if (doc.y > doc.page.height - 220) doc.addPage(); else doc.moveDown(1.2);
+
+  sectionTitle(`Expenses (${data.expenses.length})`);
+  drawTable(doc, {
+    sectionColor,
+    emptyText: 'No expenses recorded in this period.',
+    cols: [
+      { label: 'Date', x: 40, w: 62 },
+      { label: 'Category', x: 102, w: 98 },
+      { label: 'Description', x: 200, w: 178 },
+      { label: 'State', x: 378, w: 60 },
+      { label: 'Amount (PKR)', x: 438, w: 117, align: 'right' },
+    ],
+    rows: data.expenses
       .slice()
       .sort((a, b) => new Date(b.incurredAt) - new Date(a.incurredAt))
-      .forEach((e) => {
-        if (doc.y > doc.page.height - 60) doc.addPage();
-        const date = new Date(e.incurredAt).toLocaleDateString().padEnd(12).slice(0, 12);
-        const category = (e.category || '—').padEnd(22).slice(0, 22);
-        const desc = (e.description || e.vendor || '—').padEnd(36).slice(0, 36);
-        const state = (e.state || '—').padEnd(12).slice(0, 12);
-        doc.text(`${date} ${category} ${desc} ${state} ${(e.amount || 0).toLocaleString()}`);
-      });
-    doc.moveDown(0.3);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(sectionColor).text(
-      `Total Approved: PKR ${expApproved.toLocaleString()}` +
-      (expPending ? `   ·   Pending: PKR ${expPending.toLocaleString()}` : '')
-    );
+      .map((e) => [
+        new Date(e.incurredAt).toLocaleDateString(),
+        e.category || '—',
+        e.description || e.vendor || '—',
+        e.state || '—',
+        (e.amount || 0).toLocaleString(),
+      ]),
+  });
+  if (data.expenses.length) {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
+      .text(
+        `Total Approved: PKR ${expApproved.toLocaleString()}`
+        + (expPending ? `   ·   Pending: PKR ${expPending.toLocaleString()}` : ''),
+        PAGE_L, doc.y, { width: PAGE_R - PAGE_L, align: 'right' },
+      );
+    doc.font('Helvetica').fillColor('#1a1a1a');
+  }
+
+  // ── Fund transfers — their own ledger, not expenses ─────────────
+  const xfers = [
+    ...data.transfersIn.map((t) => ({ ...t, _dir: 'IN', _party: t.sourceName || t.sourceLevel })),
+    ...data.transfersOut.map((t) => ({ ...t, _dir: 'OUT', _party: t.destinationName || t.destinationLevel })),
+  ].sort((a, b) => new Date(b.transferredAt || b.createdAt) - new Date(a.transferredAt || a.createdAt));
+
+  if (doc.y > doc.page.height - 220) doc.addPage(); else doc.moveDown(1.2);
+  sectionTitle(`Fund Transfers (${xfers.length})`);
+  drawTable(doc, {
+    sectionColor,
+    emptyText: 'No acknowledged fund transfers in this period.',
+    cols: [
+      { label: 'Date', x: 40, w: 62 },
+      { label: 'Direction', x: 102, w: 62 },
+      { label: 'Counterparty', x: 164, w: 176 },
+      { label: 'Mode', x: 340, w: 88 },
+      { label: 'Amount (PKR)', x: 428, w: 127, align: 'right' },
+    ],
+    rows: xfers.map((t) => [
+      new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
+      t._dir === 'IN' ? 'Incoming' : 'Outgoing',
+      t._party || '—',
+      t.mode || '—',
+      (t.amount || 0).toLocaleString(),
+    ]),
+  });
+  if (xfers.length) {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
+      .text(
+        `In: PKR ${xferInTotal.toLocaleString()}   ·   Out: PKR ${xferOutTotal.toLocaleString()}`,
+        PAGE_L, doc.y, { width: PAGE_R - PAGE_L, align: 'right' },
+      );
     doc.font('Helvetica').fillColor('#1a1a1a');
   }
 
@@ -370,9 +596,9 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
 
 // ─── MEETINGS-only Excel — Summary + Meetings + Activities + Members + Responsibilities
 exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'PKNAP';
@@ -503,9 +729,9 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
 
 // ─── MEETINGS-only PDF — full per-meeting detail with embedded photos
 exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
   const branding = await _loadBrandingSafe();
   const sectionColor = branding?.reportBranding?.pdfHeaderColor
     || branding?.theme?.light?.primary
