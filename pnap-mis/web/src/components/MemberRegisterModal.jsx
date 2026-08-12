@@ -4,6 +4,11 @@ import { useToast } from './Toast';
 import { formatCnic, isCompleteCnic } from '../utils/formatters';
 
 import { XIcon } from '../components/icons';
+// Same pattern the server enforces (memberSchemas) and the public
+// registration form already checks: 03XX-XXXXXXX, +92 3XX XXXXXXX, or
+// the bare 3XXXXXXXXX. Anchored, so a number of the wrong length is
+// rejected rather than passed through to a 400 on submit.
+const PHONE_RX = /^(\+92|0)?3\d{2}[- ]?\d{7}$/;
 export default function MemberRegisterModal({ open, onClose, onSuccess }) {
   const toast = useToast();
   const [provinces, setProvinces] = useState([]);
@@ -21,6 +26,8 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
     cnic: '',
     phone: '',
     email: '',
+    password: '',
+    passwordConfirm: '',
     dateOfBirth: '',
     gender: 'MALE',
     address: '',
@@ -38,6 +45,12 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
   // Set from the server's 409 on submit. One email per member is
   // enforced by a unique index on Member.email.
   const [emailTaken, setEmailTaken] = useState(false);
+
+  // Only flags once something has been typed — an untouched field
+  // should not read as an error.
+  const phoneInvalid = !!form.phone && !PHONE_RX.test(form.phone.trim());
+  const passwordError = form.password && form.password.length < 6 ? 'At least 6 characters' : '';
+  const confirmError = form.passwordConfirm && form.password !== form.passwordConfirm ? 'Passwords do not match' : '';
 
   // Live duplicate check once all 13 digits are typed. Uses the
   // member-list search the registrar already has access to; the
@@ -109,10 +122,23 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
       setErr('A member with this CNIC already exists.');
       return;
     }
+    if (phoneInvalid) {
+      setErr('Enter a valid Pakistan mobile number (03XX-XXXXXXX).');
+      return;
+    }
+    if (!form.password || form.password.length < 6) {
+      setErr('Set a password of at least 6 characters so the member can sign in.');
+      return;
+    }
+    if (form.password !== form.passwordConfirm) {
+      setErr('Password and confirmation do not match.');
+      return;
+    }
     setBusy(true);
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => {
+        if (k === 'passwordConfirm') return; // client-side only
         if (v !== '' && v != null) fd.append(k, v);
       });
       if (photo) fd.append('photo', photo);
@@ -183,7 +209,15 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
             </div>
             <div className="field">
               <label>Phone *</label>
-              <input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="03001234567" required />
+              <input
+                value={form.phone}
+                onChange={(e) => setField('phone', e.target.value)}
+                placeholder="03001234567"
+                inputMode="tel"
+                aria-invalid={phoneInvalid ? 'true' : undefined}
+                required
+              />
+              {phoneInvalid && <div className="error">Use 03XX-XXXXXXX or +92 3XX XXXXXXX</div>}
             </div>
             <div className="field">
               <label>Email *</label>
@@ -220,6 +254,36 @@ export default function MemberRegisterModal({ open, onClose, onSuccess }) {
             <div className="field full">
               <label>Address *</label>
               <input value={form.address} onChange={(e) => setField('address', e.target.value)} required />
+            </div>
+
+            <div className="field">
+              <label>Password *</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setField('password', e.target.value)}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                placeholder="At least 6 characters"
+                aria-invalid={passwordError ? 'true' : undefined}
+              />
+              {passwordError && <div className="error">{passwordError}</div>}
+              <span className="hint">The member signs in with their CNIC and this password once approved.</span>
+            </div>
+            <div className="field">
+              <label>Confirm Password *</label>
+              <input
+                type="password"
+                value={form.passwordConfirm}
+                onChange={(e) => setField('passwordConfirm', e.target.value)}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                placeholder="Re-enter password"
+                aria-invalid={confirmError ? 'true' : undefined}
+              />
+              {confirmError && <div className="error">{confirmError}</div>}
             </div>
 
             <div className="field">

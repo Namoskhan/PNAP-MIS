@@ -25,6 +25,11 @@ const memberCreateSchema = z.object({
   cnic,
   phone,
   email,
+  // Required, same as the public registration path. Without it the
+  // member is created with no credential at all: the login path
+  // verifies against Member.passwordHash, so an admin-registered member
+  // could never sign in and every attempt returned INVALID_CREDENTIALS.
+  password: z.string().min(6, 'Password must be at least 6 characters').max(100),
   dateOfBirth: z.coerce.date().refine((d) => d <= new Date(), {
     message: 'Date of birth must be in the past',
   }),

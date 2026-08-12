@@ -97,8 +97,14 @@ exports.create = asyncHandler(async (req, res) => {
 
   const photoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
 
-  const member = await Member.create({
-    ...data,
+  // `password` is pulled out of the payload and routed through
+  // setPassword() so it is bcrypt-hashed onto Member.passwordHash —
+  // the field the login path actually verifies against. Spreading it
+  // into Member.create() would drop it silently (no such schema path)
+  // and leave the member unable to sign in.
+  const { password, ...rest } = data;
+  const member = new Member({
+    ...rest,
     photoUrl,
     areaId: unit.areaId,
     districtId: unit.districtId,
@@ -107,6 +113,8 @@ exports.create = asyncHandler(async (req, res) => {
     submittedVia: 'WEB',
     status: 'PENDING_APPROVAL',
   });
+  await member.setPassword(password);
+  await member.save();
 
   // Member Registration — credited to the officer who filed it, not
   // to the applicant (who has done no organizational work yet and is
