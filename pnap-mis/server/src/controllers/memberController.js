@@ -504,7 +504,7 @@ exports.adminResetPassword = asyncHandler(async (req, res) => {
 
   // Writing Member.passwordHash alone is right for the CNIC login, but
   // if this member also holds an admin User row WITH its own password,
-  // loginByUsername / loginByEmail check that row first — so the old
+  // loginByEmail checks that row first — so the old
   // password would survive on those paths. applyNewPassword writes
   // every store the account can actually be verified against.
   const accountService = require('../services/accountService');

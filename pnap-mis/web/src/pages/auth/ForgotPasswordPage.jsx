@@ -5,7 +5,7 @@ export default function ForgotPasswordPage() {
   return (
     <RequestLinkForm
       title="Forgot your password?"
-      subtitle="Enter the email, username or CNIC you sign in with. If we find a matching account with an email address on file, we will send a link to choose a new password."
+      subtitle="Enter the email or CNIC you sign in with. If we find a matching account with an email address on file, we will send a link to choose a new password."
       submitLabel="Send reset link"
       busyLabel="Sending…"
       successTitle="Reset link sent"

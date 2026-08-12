@@ -119,6 +119,12 @@ async function resolveAccount(rawIdentifier) {
   let user = null;
   let member = null;
 
+  // CNIC or email only — the same two identifiers the login path now
+  // accepts. Anything else resolves to null, so recovery cannot be
+  // requested for an identifier that could not be used to sign in
+  // anyway. The bootstrap Super Admin's username exception does not
+  // apply here: that account is excluded from both recovery flows by
+  // isExcluded() regardless.
   if (CNIC_RX.test(id)) {
     user = await User.findOne({ cnic: id });
     member = await Member.findOne({ cnic: id }).select('+passwordHash');
@@ -127,9 +133,7 @@ async function resolveAccount(rawIdentifier) {
     user = await User.findOne({ email });
     member = await pickMemberByEmail(email);
   } else {
-    const username = id.toLowerCase();
-    user = await User.findOne({ username });
-    member = await Member.findOne({ username }).select('+passwordHash');
+    return null;
   }
 
   // A User found by email or username may still be a member account.

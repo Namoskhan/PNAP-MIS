@@ -1,14 +1,19 @@
 import { maybeFormatCnic, looksNumeric, isCnicPaste } from '../utils/identifier';
 
-// The "Email, Username, or CNIC" input, with its CNIC auto-formatting.
-// Shared by the sign-in form and both account-recovery forms so all
-// three accept identifiers identically — the server dispatches on the
-// same three shapes, and a field that formatted differently on one page
-// would be a quiet way to make a valid CNIC un-enterable.
+// The "Email or CNIC" input, with its CNIC auto-formatting. Shared by
+// the sign-in form and both account-recovery forms so all three accept
+// identifiers identically — the server dispatches on the same two
+// shapes, and a field that formatted differently on one page would be a
+// quiet way to make a valid CNIC un-enterable.
+//
+// Username was withdrawn as a login identifier; the only account that
+// still signs in with one is the bootstrap Super Admin, which has
+// neither an email nor a CNIC. That route is deliberately undocumented
+// here rather than advertised in the placeholder.
 export default function IdentifierField({
   value,
   onChange,
-  label = 'Email, Username, or CNIC',
+  label = 'Email or CNIC',
   autoFocus = false,
   ...rest
 }) {
@@ -17,7 +22,7 @@ export default function IdentifierField({
       <label>{label}</label>
       <input
         value={value}
-        placeholder="email@example.com  ·  username  ·  XXXXX-XXXXXXX-X"
+        placeholder="email@example.com  ·  XXXXX-XXXXXXX-X"
         onChange={(e) => onChange(maybeFormatCnic(e.target.value))}
         onPaste={(e) => {
           // Format pasted CNICs immediately — without this, a pasted

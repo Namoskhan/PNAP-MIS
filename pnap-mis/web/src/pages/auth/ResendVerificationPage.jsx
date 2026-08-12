@@ -5,7 +5,7 @@ export default function ResendVerificationPage() {
   return (
     <RequestLinkForm
       title="Resend verification email"
-      subtitle="Enter the email, username or CNIC you sign in with and we will send a fresh confirmation link. Any earlier link stops working."
+      subtitle="Enter the email or CNIC you sign in with and we will send a fresh confirmation link. Any earlier link stops working."
       submitLabel="Send verification email"
       busyLabel="Sending…"
       successTitle="Verification email sent"
