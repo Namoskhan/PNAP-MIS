@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
@@ -8,6 +8,7 @@ import {
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import { useToast } from '../../components/Toast';
+import { formatCnic, isCompleteCnic } from '../../utils/formatters';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
@@ -16,6 +17,15 @@ const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR',
 const EXPENSE_CATEGORIES = ['OFFICE','TRANSPORT','PRINTING','REFRESHMENTS','STAGE_EQUIPMENT','COMMUNICATION','DONATIONS_OUT','SALARIES_STIPENDS','MISC'];
 const PAYMENT_MODES = ['CASH','BANK_TRANSFER','MOBILE_WALLET','CHEQUE'];
 const DONOR_TYPES = ['MEMBER','NON_MEMBER','CORPORATE','ANONYMOUS'];
+
+// Mirrors financeController's FIN-003 / FIN-004 rules. Kept here so the
+// form can state the limits up front instead of letting the officer
+// fill everything in and take a 400 on submit.
+const ANONYMOUS_CAP = 5000;
+const NON_MEMBER_CNIC_THRESHOLD = 50000;
+
+// Shown next to every field the server actually requires.
+const Req = () => <span className="req">*</span>;
 
 export default function FinancePage() {
   const { ctx, setCtx } = useUnit();
@@ -189,6 +199,41 @@ export default function FinancePage() {
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [ctx, canRecord]);
 
+  // Field-level validation for the two modals. Each rule mirrors a
+  // server rule so the officer sees the problem beside the input
+  // rather than as a 400 after filling the whole form in. Errors only
+  // appear once a field has been touched, so an untouched form is not
+  // covered in red.
+  const donAmount = parseFloat(donForm.amount);
+  const donErrors = useMemo(() => {
+    const e = {};
+    if (donForm.amount !== '' && !(donAmount > 0)) e.amount = 'Enter an amount greater than 0';
+    if (donForm.donorType === 'ANONYMOUS' && donAmount > ANONYMOUS_CAP) {
+      e.amount = `Anonymous donations cannot exceed ${PKR.format(ANONYMOUS_CAP)}`;
+    }
+    // CNIC is optional for a small non-member gift but mandatory above
+    // the threshold — FIN-004.
+    const cnicRequired = donForm.donorType === 'NON_MEMBER' && donAmount > NON_MEMBER_CNIC_THRESHOLD;
+    if (donForm.donorCnic && !isCompleteCnic(donForm.donorCnic)) {
+      e.donorCnic = 'Enter all 13 digits (XXXXX-XXXXXXX-X)';
+    } else if (cnicRequired && !donForm.donorCnic) {
+      e.donorCnic = `Required for non-member donations above ${PKR.format(NON_MEMBER_CNIC_THRESHOLD)}`;
+    }
+    if (!donForm.receivedAt) e.receivedAt = 'Pick the date the money was received';
+    return e;
+  }, [donForm, donAmount]);
+  const donCnicRequired = donForm.donorType === 'NON_MEMBER' && donAmount > NON_MEMBER_CNIC_THRESHOLD;
+
+  const expAmount = parseFloat(expForm.amount);
+  const expErrors = useMemo(() => {
+    const e = {};
+    if (expForm.amount !== '' && !(expAmount > 0)) e.amount = 'Enter an amount greater than 0';
+    if (expForm.description && expForm.description.trim().length < 3) {
+      e.description = 'At least 3 characters';
+    }
+    return e;
+  }, [expForm, expAmount]);
+
   async function loadMonthly() {
     if (!ctx) return;
     const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, scope: scope === 'tree' ? 'subtree' : undefined };
@@ -220,6 +265,11 @@ export default function FinancePage() {
 
   async function recordDonation() {
     setErr('');
+    // Stop here rather than round-tripping: every one of these mirrors
+    // a server rule that would come back as a 400.
+    if (!(donAmount > 0)) { setErr('Enter a donation amount greater than 0.'); return; }
+    if (!donForm.receivedAt) { setErr('Pick the date the donation was received.'); return; }
+    if (Object.keys(donErrors).length) { setErr('Please fix the highlighted fields.'); return; }
     try {
       // When the donor is a registered member, the donorMemberId link
       // is enough to credit the donation on the member's performance
@@ -252,7 +302,13 @@ export default function FinancePage() {
   async function recordExpense() {
     setErr('');
     // Validation stays inline — the modal is still open and being fixed.
+    if (!(expAmount > 0)) { setErr('Enter an expense amount greater than 0.'); return; }
+    if (!expForm.description || expForm.description.trim().length < 3) {
+      setErr('Enter a description of at least 3 characters.'); return;
+    }
+    if (!expForm.incurredAt) { setErr('Pick the date the expense was incurred.'); return; }
     if (!expEvidence) { setErr('Please attach a bill / voucher.'); return; }
+    if (Object.keys(expErrors).length) { setErr('Please fix the highlighted fields.'); return; }
     try {
       const fd = new FormData();
       Object.entries({ ...expForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId }).forEach(([k, v]) => {
@@ -328,7 +384,11 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {err && <div className="alert error">{err}</div>}
+      {/* Only page-level errors surface here. While a modal is open its
+          own copy is rendered inside the dialog — otherwise a validation
+          message would appear behind the backdrop, invisible to whoever
+          is filling the form in. */}
+      {err && !donModalOpen && !expModalOpen && <div className="alert error">{err}</div>}
 
       {summary && (
         <>
@@ -356,7 +416,7 @@ export default function FinancePage() {
         <>
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn" onClick={() => setDonModalOpen(true)}>+ Record Donation</button>
+              <button className="btn" onClick={() => { setErr(''); setDonModalOpen(true); }}>+ Record Donation</button>
             </div>
           )}
           {canRecord && donModalOpen && (
@@ -366,10 +426,22 @@ export default function FinancePage() {
               <h3 style={{ margin: 0 }}>Record a Donation</h3>
               <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
             </div>
+            {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
+            <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+              Fields marked <Req /> are required.
+            </p>
             <div className="form-grid">
-              <div className="field"><label>Amount (PKR)</label>
-                <input type="number" value={donForm.amount} onChange={(e) => setDonForm({ ...donForm, amount: e.target.value })} /></div>
-              <div className="field"><label>Donor Type</label>
+              <div className="field"><label>Amount (PKR) <Req /></label>
+                <input type="number" min="1" required value={donForm.amount}
+                  aria-invalid={donErrors.amount ? 'true' : undefined}
+                  onChange={(e) => setDonForm({ ...donForm, amount: e.target.value })} />
+                {donErrors.amount
+                  ? <div className="error">{donErrors.amount}</div>
+                  : donForm.donorType === 'ANONYMOUS'
+                    ? <div className="hint">Anonymous donations are capped at {PKR.format(ANONYMOUS_CAP)}.</div>
+                    : null}
+              </div>
+              <div className="field"><label>Donor Type <Req /></label>
                 <select value={donForm.donorType} onChange={(e) => setDonForm({ ...donForm, donorType: e.target.value })}>
                   {DONOR_TYPES.map((t) => <option key={t}>{t}</option>)}
                 </select></div>
@@ -387,18 +459,40 @@ export default function FinancePage() {
                 <>
                   <div className="field"><label>Donor Name</label>
                     <input value={donForm.donorName} onChange={(e) => setDonForm({ ...donForm, donorName: e.target.value })} /></div>
-                  <div className="field"><label>Donor CNIC</label>
-                    <input value={donForm.donorCnic} placeholder="42101-1234567-1" onChange={(e) => setDonForm({ ...donForm, donorCnic: e.target.value })} /></div>
+                  <div className="field">
+                    <label>Donor CNIC {donCnicRequired && <Req />}</label>
+                    {/* Same mask as the registration form: the officer
+                        types digits and the dashes are inserted for them. */}
+                    <input
+                      value={donForm.donorCnic}
+                      placeholder="42101-1234567-1"
+                      inputMode="numeric"
+                      aria-invalid={donErrors.donorCnic ? 'true' : undefined}
+                      onChange={(e) => setDonForm({ ...donForm, donorCnic: formatCnic(e.target.value) })}
+                    />
+                    {donErrors.donorCnic
+                      ? <div className="error">{donErrors.donorCnic}</div>
+                      : <div className="hint">
+                          {donForm.donorType === 'NON_MEMBER'
+                            ? `Required above ${PKR.format(NON_MEMBER_CNIC_THRESHOLD)}; optional below.`
+                            : 'Optional.'}
+                        </div>}
+                  </div>
                 </>
               )}
-              <div className="field"><label>Payment Mode</label>
+              <div className="field"><label>Payment Mode <Req /></label>
                 <select value={donForm.paymentMode} onChange={(e) => setDonForm({ ...donForm, paymentMode: e.target.value })}>
                   {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
                 </select></div>
-              <div className="field"><label>Received At</label>
-                <input type="date" value={donForm.receivedAt} onChange={(e) => setDonForm({ ...donForm, receivedAt: e.target.value })} /></div>
-              <div className="field full"><label>Receipt Image (optional)</label>
-                <input type="file" accept="image/*,application/pdf" onChange={(e) => setDonReceipt(e.target.files?.[0] || null)} /></div>
+              <div className="field"><label>Received At <Req /></label>
+                <input type="date" required value={donForm.receivedAt}
+                  aria-invalid={donErrors.receivedAt ? 'true' : undefined}
+                  onChange={(e) => setDonForm({ ...donForm, receivedAt: e.target.value })} />
+                {donErrors.receivedAt && <div className="error">{donErrors.receivedAt}</div>}
+              </div>
+              <div className="field full"><label>Receipt Image</label>
+                <input type="file" accept="image/*,application/pdf" onChange={(e) => setDonReceipt(e.target.files?.[0] || null)} />
+                <div className="hint">Optional.</div></div>
             </div>
             <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn secondary" type="button" onClick={() => setDonModalOpen(false)}>Cancel</button>
@@ -432,7 +526,7 @@ export default function FinancePage() {
         <>
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn" onClick={() => setExpModalOpen(true)}>+ Record Expense</button>
+              <button className="btn" onClick={() => { setErr(''); setExpModalOpen(true); }}>+ Record Expense</button>
             </div>
           )}
           {canRecord && expModalOpen && (
@@ -442,25 +536,39 @@ export default function FinancePage() {
               <h3 style={{ margin: 0 }}>Record an Expense</h3>
               <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
             </div>
+            {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
+            <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+              Fields marked <Req /> are required.
+            </p>
             <div className="form-grid">
-              <div className="field"><label>Amount (PKR)</label>
-                <input type="number" value={expForm.amount} onChange={(e) => setExpForm({ ...expForm, amount: e.target.value })} /></div>
-              <div className="field"><label>Category</label>
+              <div className="field"><label>Amount (PKR) <Req /></label>
+                <input type="number" min="1" required value={expForm.amount}
+                  aria-invalid={expErrors.amount ? 'true' : undefined}
+                  onChange={(e) => setExpForm({ ...expForm, amount: e.target.value })} />
+                {expErrors.amount && <div className="error">{expErrors.amount}</div>}
+              </div>
+              <div className="field"><label>Category <Req /></label>
                 <select value={expForm.category} onChange={(e) => setExpForm({ ...expForm, category: e.target.value })}>
                   {EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                 </select></div>
-              <div className="field full"><label>Description</label>
-                <input value={expForm.description} onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} /></div>
+              <div className="field full"><label>Description <Req /></label>
+                <input required value={expForm.description}
+                  aria-invalid={expErrors.description ? 'true' : undefined}
+                  onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} />
+                {expErrors.description && <div className="error">{expErrors.description}</div>}
+              </div>
               <div className="field"><label>Vendor / Payee</label>
-                <input value={expForm.vendor} onChange={(e) => setExpForm({ ...expForm, vendor: e.target.value })} /></div>
-              <div className="field"><label>Payment Mode</label>
+                <input value={expForm.vendor} onChange={(e) => setExpForm({ ...expForm, vendor: e.target.value })} />
+                <div className="hint">Optional.</div></div>
+              <div className="field"><label>Payment Mode <Req /></label>
                 <select value={expForm.paymentMode} onChange={(e) => setExpForm({ ...expForm, paymentMode: e.target.value })}>
                   {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
                 </select></div>
-              <div className="field"><label>Incurred At</label>
-                <input type="date" value={expForm.incurredAt} onChange={(e) => setExpForm({ ...expForm, incurredAt: e.target.value })} /></div>
-              <div className="field full"><label>Bill / Voucher (required)</label>
-                <input type="file" accept="image/*,application/pdf" onChange={(e) => setExpEvidence(e.target.files?.[0] || null)} /></div>
+              <div className="field"><label>Incurred At <Req /></label>
+                <input type="date" required value={expForm.incurredAt} onChange={(e) => setExpForm({ ...expForm, incurredAt: e.target.value })} /></div>
+              <div className="field full"><label>Bill / Voucher <Req /></label>
+                <input type="file" accept="image/*,application/pdf" onChange={(e) => setExpEvidence(e.target.files?.[0] || null)} />
+                <div className="hint">{expEvidence ? expEvidence.name : 'An expense cannot be recorded without a bill or voucher.'}</div></div>
             </div>
             <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn secondary" type="button" onClick={() => setExpModalOpen(false)}>Cancel</button>

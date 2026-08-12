@@ -16,6 +16,11 @@ import { XIcon } from '../../components/icons';
 // the catalogue without a code change.
 const DEFAULT_TYPE_CODE = 'GBM';
 
+// Mirror the server's upload.array caps so the picker never sends a
+// batch that would be silently truncated: photos 10, documents 5.
+const MAX_PHOTOS = 10;
+const MAX_DOCUMENTS = 5;
+
 const EMPTY_FORM = {
   typeCode: DEFAULT_TYPE_CODE, title: '', description: '', venue: '', startAt: '', endAt: '',
   chairpersonId: '', agenda: '', gpsLat: '', gpsLng: '',
@@ -217,10 +222,24 @@ export default function MeetingsPage() {
   // and can take a moment, so we show a sticky "uploading" toast and
   // swap it for the verdict. A rejection is a warning, not an error —
   // the meeting is fine, the photo just didn't pass the checks.
-  async function uploadPhoto(meetingId, file) {
-    if (!file) return;
-    const fd = new FormData(); fd.append('photos', file);
-    const pending = toast.info(`Uploading ${file.name}…`, { duration: 0 });
+  // Whole FileList — the route is upload.array('photos', 10), so a
+  // batch was always accepted; only the picker was single-file.
+  async function uploadPhotos(meetingId, fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (files.length > MAX_PHOTOS) {
+      toast.warning(
+        `Only ${MAX_PHOTOS} photos can be uploaded at once — the first ${MAX_PHOTOS} were sent.`,
+        { title: 'Too many selected', duration: 7000 },
+      );
+    }
+    const batch = files.slice(0, MAX_PHOTOS);
+    const fd = new FormData();
+    batch.forEach((f) => fd.append('photos', f));
+    const pending = toast.info(
+      batch.length === 1 ? `Uploading ${batch[0].name}…` : `Uploading ${batch.length} photos…`,
+      { duration: 0 },
+    );
     try {
       const r = await api.post(`/meetings/${meetingId}/photos`, fd);
       const data = r.data.data;
@@ -487,14 +506,21 @@ export default function MeetingsPage() {
                     <button className="btn ghost" onClick={() => setEditing(m)}>Edit</button>{' '}
                     <button className="btn ghost" onClick={() => setDocFor(m)}>Docs</button>{' '}
                     <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                      Photo
+                      Photos
                       {/* Reset the input's value so re-picking the same
                           file after a rejection still fires onChange. */}
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         hidden
-                        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; uploadPhoto(m._id, f); }}
+                        onChange={(e) => {
+                          // Snapshot to an array BEFORE clearing value —
+                          // resetting the input empties its live FileList.
+                          const picked = Array.from(e.target.files || []);
+                          e.target.value = '';
+                          uploadPhotos(m._id, picked);
+                        }}
                       />
                     </label>{' '}
                     <button className="btn" onClick={() => setFinalizing(m)}>Finalize</button>{' '}
@@ -1073,18 +1099,33 @@ function DocumentsDialog({ meeting, onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  async function upload(file) {
-    if (!file) return;
+  // Route is uploadAny.array('documents', 5) — a batch was always
+  // accepted server-side; only the picker was single-file.
+  async function upload(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (files.length > MAX_DOCUMENTS) {
+      toast.warning(
+        `Only ${MAX_DOCUMENTS} documents can be uploaded at once — the first ${MAX_DOCUMENTS} were sent.`,
+        { title: 'Too many selected', duration: 7000 },
+      );
+    }
+    const batch = files.slice(0, MAX_DOCUMENTS);
     setErr(''); setBusy(true);
     try {
       const fd = new FormData();
-      fd.append('documents', file);
+      batch.forEach((f) => fd.append('documents', f));
       fd.append('kind', kind);
       const r = await api.post(`/meetings/${meeting._id}/documents`, fd);
       setDocs(r.data.data.documents || []);
       // Reported here, not in onDone — that fires when the dialog is
       // closed, which happens whether or not anything was attached.
-      toast.success(`${file.name} attached.`, { title: 'Document uploaded' });
+      toast.success(
+        batch.length === 1
+          ? `${batch[0].name} attached.`
+          : `${batch.length} documents attached.`,
+        { title: 'Document uploaded' },
+      );
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Document upload failed', duration: 9000 });
     }
@@ -1113,7 +1154,18 @@ function DocumentsDialog({ meeting, onClose, onDone }) {
           </div>
           <div className="field">
             <label>Upload</label>
-            <input type="file" accept=".pdf,image/*,.doc,.docx" disabled={busy} onChange={(e) => upload(e.target.files?.[0])} />
+            <input
+              type="file"
+              accept=".pdf,image/*,.doc,.docx"
+              multiple
+              disabled={busy}
+              onChange={(e) => {
+                // Snapshot before clearing — resetting empties the FileList.
+                const picked = Array.from(e.target.files || []);
+                e.target.value = '';
+                upload(picked);
+              }}
+            />
           </div>
         </div>
 

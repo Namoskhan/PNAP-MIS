@@ -18,6 +18,10 @@ function bodySupported(level) {
 // /api/events/types (the EventTypeConfig catalogue).
 const DEFAULT_TYPE_CODE = 'CAMPAIGN';
 
+// Mirrors upload.array('photos', 10) on the server route — kept in sync
+// so the picker never sends a batch the server will truncate silently.
+const MAX_PHOTOS = 10;
+
 export default function ActivitiesPage() {
   const { ctx } = useUnit();
   const { user } = useAuth();
@@ -97,12 +101,34 @@ export default function ActivitiesPage() {
     }
   }
 
-  async function uploadPhoto(id, file) {
-    if (!file) return;
-    const fd = new FormData(); fd.append('photos', file);
+  // Takes the whole FileList: the route is upload.array('photos', 10),
+  // so the server has always accepted a batch — the picker just never
+  // offered one, which forced a separate request (and a separate
+  // reload) per photo when finalizing needs two.
+  async function uploadPhotos(id, fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (files.length > MAX_PHOTOS) {
+      toast.warning(
+        `Only ${MAX_PHOTOS} photos can be uploaded at once — the first ${MAX_PHOTOS} were sent.`,
+        { title: 'Too many selected', duration: 7000 },
+      );
+    }
+    const batch = files.slice(0, MAX_PHOTOS);
+    const fd = new FormData();
+    batch.forEach((f) => fd.append('photos', f));
+    const pending = toast.info(
+      batch.length === 1 ? `Uploading ${batch[0].name}…` : `Uploading ${batch.length} photos…`,
+      { duration: 0 },
+    );
     try {
       const r = await api.post(`/activities/${id}/photos`, fd);
       const data = r.data.data;
+      toast.dismiss(pending);
+      const okCount = batch.length - (data.rejected?.length || 0);
+      if (okCount > 0) {
+        toast.success(`${okCount} photo${okCount === 1 ? '' : 's'} uploaded.`);
+      }
       if (data.rejected?.length) {
         // Partial success — the accepted photos did upload, so this is a
         // warning rather than an error, and it lists what to re-shoot.
@@ -110,11 +136,10 @@ export default function ActivitiesPage() {
           `${data.rejected.length} photo(s) rejected: ${data.rejected.map((x) => `${x.filename} (${x.reason})`).join('; ')}`,
           { title: 'Some photos rejected', duration: 9000 }
         );
-      } else {
-        toast.success('Photo uploaded.');
       }
       reload();
     } catch (e) {
+      toast.dismiss(pending);
       toast.error(errorMessage(e), { title: 'Photo upload failed', duration: 7000 });
     }
   }
@@ -261,8 +286,22 @@ export default function ActivitiesPage() {
                 {canManage && a.state !== 'COMPLETED' && (
                   <>
                     <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                      Photo
-                      <input type="file" accept="image/*" hidden onChange={(e) => uploadPhoto(a._id, e.target.files?.[0])} />
+                      Photos
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        hidden
+                        // Snapshot to an array BEFORE clearing value:
+                        // resetting the input empties its live FileList.
+                        // The reset is what lets the same file be picked
+                        // again after a rejection.
+                        onChange={(e) => {
+                          const picked = Array.from(e.target.files || []);
+                          e.target.value = '';
+                          uploadPhotos(a._id, picked);
+                        }}
+                      />
                     </label>{' '}
                     <button className="btn" onClick={() => complete(a._id)}>Complete</button>
                   </>
