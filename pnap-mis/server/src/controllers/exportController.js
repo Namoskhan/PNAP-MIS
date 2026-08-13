@@ -174,8 +174,10 @@ function _periodLabel(from, to) {
 
 // Full-width section banner: brand-tinted bar with the title, always
 // starting on a fresh page so major sections are findable.
-function _sectionHeading(doc, title, color, { newPage = true } = {}) {
-  if (newPage) doc.addPage();
+function _sectionHeading(doc, title, color, { newPage = true, keepWith = 90 } = {}) {
+  // A banner stranded at the foot of a page reads as a mistake, so an
+  // inline heading still breaks when its section can't start here.
+  if (newPage || doc.y + 26 + keepWith > _bottom(doc)) doc.addPage();
   const L = _left(doc);
   const W = _contentWidth(doc);
   const y = doc.y;
@@ -317,6 +319,88 @@ function _dynamicFields(doc, cols, dynamicData, color) {
   doc.moveDown(0.25);
   _blockLabel(doc, 'Custom Fields', color);
   _metaLines(doc, visible.map((c) => [c.label, _formatDynamicValue(c, dyn[c.key])]));
+}
+
+// Truncate to fit a pixel width, measuring in the CURRENT font/size.
+// PDFKit's `lineBreak: false` + `ellipsis` still wraps in fixed-height
+// cells, which is how a long label ends up sitting on top of its own
+// value; measuring ourselves is the only reliable fit.
+function _clip(doc, text, width) {
+  const s = String(text);
+  if (doc.widthOfString(s) <= width) return s;
+  let lo = 0;
+  let hi = s.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (doc.widthOfString(`${s.slice(0, mid)}…`) <= width) lo = mid; else hi = mid - 1;
+  }
+  return `${s.slice(0, lo).trimEnd()}…`;
+}
+
+// Bordered identity panel — a grid of small label / bold value pairs.
+// Used for the "who is this report about" block, where a reader scans
+// for one field rather than reading top to bottom.
+function _infoCard(doc, pairs, { columns = 3, cellH = 27 } = {}) {
+  const shown = pairs.filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+  if (shown.length === 0) return;
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const rows = Math.ceil(shown.length / columns);
+  const colW = W / columns;
+  const top = doc.y;
+  const h = rows * cellH + 14;
+
+  doc.save().rect(L, top, W, h).fillAndStroke('#f8fafc', '#d5dae1').restore();
+  shown.forEach(([k, v], i) => {
+    const x = L + (i % columns) * colW;
+    const y = top + 8 + Math.floor(i / columns) * cellH;
+    doc.font('Helvetica').fontSize(7).fillColor('#6b7280')
+      .text(_clip(doc, String(k).toUpperCase(), colW - 20), x + 10, y, { lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a')
+      .text(_clip(doc, v, colW - 20), x + 10, y + 10, { lineBreak: false });
+  });
+
+  doc.y = top + h + 12;
+  _resetText(doc);
+}
+
+// Horizontal stacked bar with a legend — turns a set of counts into
+// something a reader takes in at a glance instead of comparing digits.
+// Zero-valued segments are dropped so the legend stays honest.
+function _statBar(doc, segments, { height = 16 } = {}) {
+  const shown = segments.filter((s) => Number(s.value) > 0);
+  const total = shown.reduce((a, s) => a + Number(s.value), 0);
+  if (total <= 0) return;
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const y = doc.y;
+
+  let x = L;
+  shown.forEach((s, i) => {
+    // Give the last segment the remaining pixels so rounding never
+    // leaves a sliver of background showing at the right edge.
+    const w = (i === shown.length - 1) ? (L + W - x) : (W * Number(s.value)) / total;
+    doc.save().rect(x, y, w, height).fill(s.color).restore();
+    x += w;
+  });
+  doc.save().rect(L, y, W, height).strokeColor('#d5dae1').lineWidth(0.5).stroke().restore();
+  doc.y = y + height + 7;
+
+  // Legend — a swatch, the label, the count and its share.
+  let lx = L;
+  const ly = doc.y;
+  shown.forEach((s) => {
+    const pct = Math.round((Number(s.value) / total) * 100);
+    const text = `${s.label} ${s.value} (${pct}%)`;
+    doc.font('Helvetica').fontSize(8.5);
+    const tw = doc.widthOfString(text);
+    if (lx + 10 + tw > L + W) return;
+    doc.save().rect(lx, ly + 1.5, 7, 7).fill(s.color).restore();
+    doc.fillColor('#374151').text(text, lx + 11, ly, { lineBreak: false });
+    lx += 11 + tw + 14;
+  });
+  doc.y = ly + 14;
+  _resetText(doc);
 }
 
 // Hairline separator closing a record card.
@@ -687,9 +771,9 @@ function drawKpiBand(doc, tiles, sectionColor) {
     const x = PAGE_L + i * (w + gap);
     doc.rect(x, y, w, 42).fillAndStroke('#f4f6f8', '#d5dbe0');
     doc.font('Helvetica').fontSize(7.5).fillColor('#5c6b76')
-      .text(t.label.toUpperCase(), x + 6, y + 6, { width: w - 12, lineBreak: false, ellipsis: true });
+      .text(_clip(doc, t.label.toUpperCase(), w - 12), x + 6, y + 6, { lineBreak: false });
     doc.font('Helvetica-Bold').fontSize(12).fillColor(t.color || sectionColor)
-      .text(t.value, x + 6, y + 19, { width: w - 12, lineBreak: false, ellipsis: true });
+      .text(_clip(doc, t.value, w - 12), x + 6, y + 19, { lineBreak: false });
   });
   doc.y = y + 42 + 12;
   doc.fillColor('#1a1a1a').font('Helvetica').strokeColor('#000000');
@@ -1265,34 +1349,118 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
   ]);
 
-  const branding = await _loadBrandingSafe();
+  const [branding, homeUnit] = await Promise.all([
+    _loadBrandingSafe(),
+    m.basicUnitId ? BasicUnit.findById(m.basicUnitId).select('name').lean() : null,
+  ]);
+  const sectionColor = branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary
+    || '#0a3a6e';
+
+  const absent = Math.max(0, meetingsTotal - meetingsPresent - meetingsLate);
+  // "Attended" counts LATE as attendance — arriving late is still
+  // showing up, and the unit dashboard scores it the same way.
+  const attendanceRate = meetingsTotal
+    ? Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100) : null;
+  const respTotal = respPending + respCompleted;
+  const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
+  const donCount = donAgg[0]?.count || 0;
+  const donTotal = donAgg[0]?.total || 0;
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.pdf"`);
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
   applyBrandedHeader(doc, branding, 'Member Performance Report',
-    `${m.fullName}  ·  ${m.memberId || ''}${m.cnic ? `  ·  CNIC ${m.cnic}` : ''}`);
+    `${m.fullName}  ·  ${m.memberId || ''}  ·  Period: ${_periodLabel(from, to)}`);
 
-  doc.fontSize(12);
-  doc.text(`Period: ${_periodLabel(from, to)}`);
-  doc.moveDown(0.5);
-  doc.text(`Meetings (roster, finalized): ${meetingsTotal}`);
-  doc.text(`  • Present: ${meetingsPresent}`);
-  doc.text(`  • Late: ${meetingsLate}`);
-  doc.text(`  • Absent: ${Math.max(0, meetingsTotal - meetingsPresent - meetingsLate)}`);
-  if (meetingsTotal) doc.text(`  • Attendance rate: ${Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100)}%`);
-  doc.moveDown(0.5);
-  doc.text(`Activities participated: ${activitiesPart}`);
-  doc.text(`Activities led: ${activitiesLed}`);
-  doc.moveDown(0.5);
-  doc.text(`Donations: ${donAgg[0]?.count || 0} (PKR ${(donAgg[0]?.total || 0).toLocaleString()})`);
-  doc.moveDown(0.5);
-  doc.text(`Responsibilities pending: ${respPending}`);
-  doc.text(`Responsibilities completed: ${respCompleted}`);
+  // ─── Who this report is about ─────────────────────────────────────
+  _infoCard(doc, [
+    ['Member', m.fullName],
+    ['Member ID', m.memberId || '—'],
+    ['Status', m.status || '—'],
+    ['CNIC', m.cnic],
+    ['Phone', m.phone],
+    ['Email', m.email],
+    ['Basic Unit', homeUnit?.name],
+    ['Gender', m.gender],
+  ]);
 
-  applyBrandedFooter(doc, branding);
+  // ─── Headline figures ─────────────────────────────────────────────
+  drawKpiBand(doc, [
+    { label: 'Attendance Rate',
+      value: attendanceRate === null ? 'n/a' : `${attendanceRate}%`,
+      color: attendanceRate === null ? '#6b7280'
+        : (attendanceRate >= 75 ? '#00a266' : (attendanceRate >= 50 ? '#e65f00' : '#cf2e2e')) },
+    { label: 'Meetings', value: String(meetingsTotal) },
+    { label: 'Activities', value: String(activitiesPart + activitiesLed) },
+    { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
+    { label: 'Tasks Completed',
+      value: respTotal ? `${respCompleted}/${respTotal}` : '0',
+      color: completionRate === null ? '#6b7280' : (completionRate >= 75 ? '#00a266' : '#e65f00') },
+  ], sectionColor);
+
+  // ─── Meeting attendance ───────────────────────────────────────────
+  _sectionHeading(doc, 'Meeting Attendance', sectionColor, { newPage: false });
+  if (meetingsTotal === 0) {
+    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#9aa3af')
+      .text('This member was not on the roster of any finalized meeting in this period.');
+    _resetText(doc);
+    doc.moveDown(1);
+  } else {
+    _statBar(doc, [
+      { label: 'Present', value: meetingsPresent, color: '#00a266' },
+      { label: 'Late', value: meetingsLate, color: '#e6a700' },
+      { label: 'Absent', value: absent, color: '#cf2e2e' },
+    ]);
+    _kvTable(doc, [
+      ['Finalized meetings on roster', meetingsTotal],
+      ['Present', meetingsPresent],
+      ['Late', meetingsLate],
+      ['Absent', absent],
+      ['Attendance rate (present + late)', `${attendanceRate}%`],
+    ], sectionColor, { headers: ['Measure', 'Value'] });
+  }
+
+  // ─── Activity engagement ──────────────────────────────────────────
+  _sectionHeading(doc, 'Activity Engagement', sectionColor, { newPage: false });
+  _kvTable(doc, [
+    ['Activities participated in', activitiesPart],
+    ['Activities led', activitiesLed],
+    ['Total activity involvement', activitiesPart + activitiesLed],
+  ], sectionColor, { headers: ['Measure', 'Value'] });
+
+  // ─── Contributions ────────────────────────────────────────────────
+  _sectionHeading(doc, 'Contributions', sectionColor, { newPage: false });
+  _kvTable(doc, [
+    ['Donations recorded', donCount],
+    ['Total donated', `PKR ${donTotal.toLocaleString()}`],
+    ['Average donation', donCount
+      ? `PKR ${Math.round(donTotal / donCount).toLocaleString()}` : '—'],
+  ], sectionColor, { headers: ['Measure', 'Value'] });
+
+  // ─── Responsibilities ─────────────────────────────────────────────
+  // Counted lifetime, not for the period — responsibilities carry no
+  // startAt, so the period filter above never applied to them. Say so
+  // rather than letting the figure read as period-scoped.
+  _sectionHeading(doc, 'Responsibilities', sectionColor, { newPage: false });
+  if (respTotal > 0) {
+    _statBar(doc, [
+      { label: 'Completed', value: respCompleted, color: '#00a266' },
+      { label: 'Pending', value: respPending, color: '#e65f00' },
+    ]);
+  }
+  _kvTable(doc, [
+    ['Pending', respPending],
+    ['Completed', respCompleted],
+    ['Completion rate', completionRate === null ? '—' : `${completionRate}%`],
+  ], sectionColor, { headers: ['Measure', 'Value'] });
+  doc.font('Helvetica-Oblique').fontSize(8).fillColor('#6b7280')
+    .text('Responsibility counts are lifetime totals — they are not limited to the reporting period.');
+  _resetText(doc);
+
+  _paginateFooters(doc, branding);
   doc.end();
 });
 
