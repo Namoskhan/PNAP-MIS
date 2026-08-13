@@ -41,28 +41,6 @@ export default function CabinetPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  // "Other / custom" role state (the 7th category in the SRS template).
-  const [showCustom, setShowCustom] = useState(false);
-  const [customMemberId, setCustomMemberId] = useState('');
-  const [customRoleName, setCustomRoleName] = useState('');
-  // Custom-role mode: 'catalog' picks from Role Management, 'freeform'
-  // accepts a one-off typed name (legacy "Other" path).
-  const [customMode, setCustomMode] = useState('catalog');
-  const [pickedCatalogCode, setPickedCatalogCode] = useState('');
-
-  // Catalog of dynamically-defined roles from Role Management. Anyone
-  // authenticated may read this list (the catalog endpoint returns
-  // labels + codes — only writes are Super-locked). Filtered here to
-  // non-built-in active roles for the assignment dropdown.
-  const [catalogRoles, setCatalogRoles] = useState([]);
-  useEffect(() => {
-    api.get('/admin/roles').then((r) => {
-      const data = r.data.data;
-      const list = Array.isArray(data) ? data : (data?.roles || []);
-      setCatalogRoles(list.filter((x) => !x.isSystem && x.isActive));
-    }).catch(() => setCatalogRoles([]));
-  }, []);
-
   // Inline picker so the Area Admin can switch between their area's
   // own cabinet and the cabinet of any basic unit under it without
   // hunting for a sidebar widget. List is fetched once the user is
@@ -81,6 +59,23 @@ export default function CabinetPage() {
       .then((r) => setBasicUnitsInArea(r.data.data))
       .catch(() => {});
   }, [user]);
+
+  // An Area Admin assigns cabinets for the basic units beneath them,
+  // never for the area itself (that tier is the District Admin's).
+  // UnitContext hands every Area Admin an AREA-level ctx by default,
+  // so land on the first basic unit instead — otherwise this page
+  // would open on a cabinet the picker no longer offers.
+  useEffect(() => {
+    const areaAdminOnly = !!user?.scope?.areaId
+      && user.roles?.includes('AREA_ADMIN')
+      && !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN']
+        .some((r) => user.roles.includes(r));
+    if (!areaAdminOnly) return;
+    if (!basicUnitsInArea.length) return;
+    if (ctx?.unitLevel === 'BASIC_UNIT') return;
+    const first = basicUnitsInArea[0];
+    setCtx({ unitLevel: 'BASIC_UNIT', unitId: first._id, unitName: first.name });
+  }, [user, basicUnitsInArea, ctx, setCtx]);
 
   // District Admin picker — list every Area in their district. They
   // assign the Area cabinet (Elaqai executive) for any of these.
@@ -174,19 +169,14 @@ export default function CabinetPage() {
     return () => { cancelled = true; };
   }, [ctx]);
 
+  // Area Admin picks among the BASIC UNITS under their area only —
+  // the area's own cabinet is assigned a tier up, by the District
+  // Admin, so it is deliberately not offered here.
   function pickUnit(value) {
     if (!value) return;
-    if (value === 'AREA') {
-      setCtx({
-        unitLevel: 'AREA',
-        unitId: user.scope.areaId,
-        unitName: areaName || 'My Area',
-      });
-    } else {
-      const u = basicUnitsInArea.find((b) => String(b._id) === value);
-      if (u) {
-        setCtx({ unitLevel: 'BASIC_UNIT', unitId: u._id, unitName: u.name });
-      }
+    const u = basicUnitsInArea.find((b) => String(b._id) === value);
+    if (u) {
+      setCtx({ unitLevel: 'BASIC_UNIT', unitId: u._id, unitName: u.name });
     }
   }
 
@@ -276,51 +266,6 @@ export default function CabinetPage() {
     } catch (e) {
       toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} proposal`, duration: 7000 });
     }
-  }
-
-  async function proposeCustom() {
-    if (!customMemberId) {
-      setErr('Pick a member first.'); return;
-    }
-    let payload;
-    if (customMode === 'catalog') {
-      const cat = catalogRoles.find((c) => c.code === pickedCatalogCode);
-      if (!cat) { setErr('Pick a custom role from the catalog.'); return; }
-      payload = {
-        unitLevel: ctx.unitLevel,
-        unitId: ctx.unitId,
-        memberId: customMemberId,
-        // Use the catalog's actual code so the dynamic permission
-        // resolver carries the role's grants through to the member's
-        // User.roles on next login.
-        roleCode: cat.code,
-        // Stash the human label too so the cabinet view can display
-        // it as "Custom · <Label>" without a second lookup.
-        customRoleName: cat.label,
-      };
-    } else {
-      if (!customRoleName.trim()) { setErr('Type a role name.'); return; }
-      payload = {
-        unitLevel: ctx.unitLevel,
-        unitId: ctx.unitId,
-        memberId: customMemberId,
-        roleCode: 'OTHER',
-        customRoleName: customRoleName.trim(),
-      };
-    }
-    setErr(''); setBusy(true);
-    try {
-      const r = await api.post('/roles', payload);
-      await api.post(`/roles/${r.data.data._id}/decide`, { decision: 'APPROVED' });
-      setShowCustom(false);
-      setCustomMemberId('');
-      setCustomRoleName('');
-      setPickedCatalogCode('');
-      await reload();
-      toast.success(`Custom role "${payload.customRoleName}" assigned.`, { title: 'Role assigned' });
-    } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not assign custom role', duration: 7000 });
-    } finally { setBusy(false); }
   }
 
   async function endRole(assignmentId) {
@@ -506,28 +451,21 @@ export default function CabinetPage() {
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <label style={{ fontWeight: 600 }}>Cabinet for:</label>
             <select
-              value={
-                ctx.unitLevel === 'AREA' && String(ctx.unitId) === String(user.scope.areaId)
-                  ? 'AREA'
-                  : ctx.unitLevel === 'BASIC_UNIT'
-                    ? String(ctx.unitId)
-                    : ''
-              }
+              value={ctx.unitLevel === 'BASIC_UNIT' ? String(ctx.unitId) : ''}
               onChange={(e) => pickUnit(e.target.value)}
               style={{ minWidth: 280 }}
             >
-              <option value="AREA">My Area: {areaName || 'My Area'} (area cabinet)</option>
-              <optgroup label="Basic Units in my area">
-                {basicUnitsInArea.length === 0 && <option disabled>(no basic units yet)</option>}
-                {basicUnitsInArea.map((b) => (
-                  <option key={b._id} value={String(b._id)}>{b.name}</option>
-                ))}
-              </optgroup>
+              {/* Basic units only — the Area's own cabinet is assigned by
+                  the District Admin, so it is not listed here. */}
+              {basicUnitsInArea.length === 0
+                ? <option value="">(no basic units yet)</option>
+                : ctx.unitLevel !== 'BASIC_UNIT' && <option value="">Select a basic unit…</option>}
+              {basicUnitsInArea.map((b) => (
+                <option key={b._id} value={String(b._id)}>{b.name}</option>
+              ))}
             </select>
             <span className="muted" style={{ fontSize: 13 }}>
-              {ctx.unitLevel === 'AREA'
-                ? 'Area-level cabinet (Secretary, Senior Mawin, Finance Sec., etc.).'
-                : 'Basic-Unit cabinet — assign Secretary / Senior Mawin / Finance Sec. and the optional roles.'}
+              Basic-Unit cabinet{areaName ? ` in ${areaName}` : ''} — assign Secretary / Senior Mawin / Finance Sec. and the optional roles.
             </span>
           </div>
         </div>
@@ -535,6 +473,18 @@ export default function CabinetPage() {
 
       {err && <div className="alert error">{err}</div>}
 
+      {/* An Area Admin only ever assigns a basic unit's cabinet. With no
+          basic unit selectable, ctx is still AREA-level — show the reason
+          rather than an area cabinet table they are not meant to edit. */}
+      {showAreaPicker && ctx.unitLevel !== 'BASIC_UNIT' ? (
+        <div className="card">
+          <p className="muted" style={{ margin: 0 }}>
+            No basic units exist in your area yet. Create one under{' '}
+            <strong>Manage Basic Units</strong>, then pick it above to assign its cabinet.
+          </p>
+        </div>
+      ) : (
+      <>
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Cabinet roles</h3>
         <div className="toolbar" style={{ marginBottom: 10 }}>
@@ -582,59 +532,6 @@ export default function CabinetPage() {
           </tbody>
         </table>
       </div>
-
-      {canAssignDirectly && (
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Add a one-off role</h3>
-        <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>
-          Roles defined in <strong>Role Management</strong> already appear in the table above with their own Assign buttons.
-          Use this only for one-off ad-hoc role names you don't want in the catalogue.
-        </p>
-        {!showCustom && (
-          <button className="btn secondary" onClick={() => {
-            setShowCustom(true);
-            setCustomMemberId('');
-            setCustomRoleName('');
-            setCustomMode('freeform');
-          }}>
-            + Add one-off role
-          </button>
-        )}
-        {showCustom && (
-          <div className="form-grid" style={{ alignItems: 'end' }}>
-            <div className="field">
-              <label>Member</label>
-              <select value={customMemberId} onChange={(e) => setCustomMemberId(e.target.value)}>
-                <option value="">Choose member</option>
-                {filteredMembers.map((m) => (
-                  <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>Role name</label>
-              <input
-                value={customRoleName}
-                onChange={(e) => setCustomRoleName(e.target.value)}
-                placeholder="e.g. Acting Coordinator"
-                maxLength={80}
-              />
-              <div className="hint">One-off — won't appear as a permanent slot.</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className="btn"
-                disabled={busy || !customMemberId || !customRoleName.trim()}
-                onClick={() => { setCustomMode('freeform'); proposeCustom(); }}
-              >
-                Add role
-              </button>
-              <button className="btn secondary" onClick={() => setShowCustom(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-      </div>
-      )}
 
       {ctx?.unitLevel === 'DISTRICT' && areaCabinetsBelow.length > 0 && (
         <div className="card" style={{ marginTop: 16 }}>
@@ -729,6 +626,8 @@ export default function CabinetPage() {
           </table>
         )}
       </div>
+      )}
+      </>
       )}
     </div>
   );

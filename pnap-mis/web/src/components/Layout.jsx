@@ -56,7 +56,7 @@ export default function Layout() {
   // Two sidebar entries share /admin/users and are distinguished only
   // by their query string, so active-state has to consider it —
   // NavLink matches on pathname alone.
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
   const { user, logout, allRoles, activeRole, setActiveRole } = useAuth();
   const { ctx } = useUnit();
   const branding = useBranding();
@@ -213,9 +213,18 @@ export default function Layout() {
           <>
             <div className="nav-group">My Area</div>
             <nav>
+              <NavLink to="/unit" end>Dashboard</NavLink>
               <NavLink to="/admin/manage-org">Manage Basic Units</NavLink>
               <NavLink to="/members/pending" end>Member Approvals</NavLink>
-              <NavLink to="/members">All Members</NavLink>
+              {/* "/members" is a prefix of "/members/pending", so a plain
+                  NavLink lights up alongside Member Approvals. Stay active
+                  on the list + member detail pages, but never on /pending. */}
+              <NavLink
+                to="/members"
+                className={({ isActive }) => (
+                  isActive && pathname !== '/members/pending' ? 'active' : undefined
+                )}
+              >All Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Cabinet Roles</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
             </nav>
@@ -426,20 +435,6 @@ export default function Layout() {
       <div className="main-col">
         {user && (
           <header className="topbar">
-            {/* Operating context — display-only mirror of the unit
-                the user is currently acting in (set via the Unit
-                Context card / role pinning). Fills the previously
-                empty left side of the bar. */}
-            <div className="topbar-context">
-              {ctx ? (
-                <>
-                  <span className="topbar-context-level">{ctx.unitLevel.replace('_', ' ')}</span>
-                  <span className="topbar-context-name">{ctx.unitName}</span>
-                </>
-              ) : (
-                <span className="topbar-context-name">{branding.identity?.systemName || 'PNAP-MIS'}</span>
-              )}
-            </div>
             <div className="topbar-spacer" aria-hidden="true" />
             {(() => {
               // Show the persona switcher whenever the user holds more

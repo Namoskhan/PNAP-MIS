@@ -408,31 +408,6 @@ textarea:disabled {
   z-index: 50;
 }
 .topbar-spacer { flex: 1; }
-/* Operating-context label — fills the previously empty left side of
-   the topbar with the unit the user is currently acting in. Pure
-   display; the Unit Context card remains the switching control. */
-.topbar-context { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.topbar-context-level {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, .92);
-  background: rgba(255, 255, 255, .16);
-  border: 1px solid rgba(255, 255, 255, .22);
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-.topbar-context-name {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 320px;
-}
 .topbar-role {
   display: flex;
   align-items: center;
