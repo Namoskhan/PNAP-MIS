@@ -201,6 +201,7 @@ export default function Layout() {
               <NavLink to="/unit/committee">Central Committee / Qomi Jirga</NavLink>
               <NavLink to="/unit/meetings">Central Meetings</NavLink>
               <NavLink to="/unit/activities">Central Activities</NavLink>
+              <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
               <NavLink to="/unit/finance">Central Finance</NavLink>
               <NavLink to="/unit/reports">Central Reports</NavLink>
             </nav>
@@ -216,6 +217,7 @@ export default function Layout() {
               <NavLink to="/members/pending" end>Member Approvals</NavLink>
               <NavLink to="/members">All Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
             </nav>
           </>
         )}
@@ -228,6 +230,7 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
               <NavLink to="/members">Province Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Province Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
@@ -242,6 +245,7 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Areas</NavLink>
               <NavLink to="/members">Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Area Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">Area Breakdown</NavLink>
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
@@ -256,6 +260,7 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Districts</NavLink>
               <NavLink to="/members">All Province Members</NavLink>
               <NavLink to="/unit/cabinet">Assign District Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">District Breakdown</NavLink>
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
@@ -272,6 +277,7 @@ export default function Layout() {
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
               <NavLink to="/unit/meetings">Meetings</NavLink>
               <NavLink to="/unit/activities">Activities</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
                 <NavLink to="/unit/committee">
                   {ctx.unitLevel === 'AREA' ? 'Elaqayi Committee'
@@ -300,6 +306,7 @@ export default function Layout() {
               <NavLink to="/unit/cabinet">Cabinet</NavLink>
               <NavLink to="/unit/meetings">Meetings</NavLink>
               <NavLink to="/unit/activities">Activities</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               {ctx && (ctx.unitLevel === 'AREA' || ctx.unitLevel === 'DISTRICT') && (
                 <NavLink to="/unit/committee">
                   {ctx.unitLevel === 'AREA' ? 'Elaqayi Committee' : 'Zilla Committee'}
@@ -321,6 +328,11 @@ export default function Layout() {
               <NavLink to="/unit" end>Dashboard</NavLink>
               {canFinance && <NavLink to="/unit/finance">Finance</NavLink>}
               {canFinance && <NavLink to="/unit/transfers">Fund Transfers</NavLink>}
+              {/* Not gated on MANAGE_MEETINGS: this persona cannot ASSIGN
+                  a responsibility, but a Senior Mawin can assign one TO
+                  them, and they need a way to open it and mark it done.
+                  The page hides every write control by itself. */}
+              <NavLink to="/unit/responsibilities">My Responsibilities</NavLink>
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
                 <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
               )}
@@ -336,6 +348,7 @@ export default function Layout() {
               <NavLink to="/" end>My Dashboard</NavLink>
               <NavLink to="/unit/meetings">Meetings</NavLink>
               <NavLink to="/unit/activities">Activities</NavLink>
+              <NavLink to="/unit/responsibilities">My Responsibilities</NavLink>
               {user?.memberId && (
                 <NavLink to={`/members/${user.memberId}`}>My Profile</NavLink>
               )}
@@ -354,6 +367,7 @@ export default function Layout() {
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
               <NavLink to="/unit/meetings">Meetings</NavLink>
               <NavLink to="/unit/activities">Activities</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
                 <NavLink to="/unit/committee">
                   {ctx.unitLevel === 'PROVINCE' ? 'Sobayi Committee / Jirga'
