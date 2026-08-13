@@ -715,17 +715,40 @@ const PAGE_L = 40;
 const PAGE_R = 555;
 const ROW_H = 15;
 
+// Free text in a table cell (an expense description, a donor name) has
+// no length limit, and a single 15pt row can't hold it. Columns marked
+// `wrap: true` flow onto extra lines and the row grows to fit; every
+// other column is measured and truncated so it can never bleed into
+// its neighbour. A wrapped cell is capped at WRAP_MAX_LINES so one
+// essay-length description can't push a table onto its own page.
+const WRAP_MAX_LINES = 6;
+const LINE_H = 10.2;
+
 function drawTableHeader(doc, cols, sectionColor) {
   const y = doc.y;
   doc.rect(PAGE_L, y - 2, PAGE_R - PAGE_L, ROW_H + 2).fill(sectionColor);
   doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#ffffff');
   cols.forEach((c) => {
-    doc.text(c.label, c.x + 4, y + 2, {
-      width: c.w - 8, align: c.align || 'left', lineBreak: false, ellipsis: true,
+    doc.text(_clip(doc, c.label, c.w - 8), c.x + 4, y + 2, {
+      width: c.w - 8, align: c.align || 'left', lineBreak: false,
     });
   });
   doc.y = y + ROW_H + 4;
   doc.fillColor('#1a1a1a').font('Helvetica');
+}
+
+// Height this row needs, driven by its tallest wrapping cell.
+function _rowHeight(doc, cols, cells) {
+  doc.font('Helvetica').fontSize(8.5);
+  let h = ROW_H;
+  cols.forEach((c, ci) => {
+    if (!c.wrap) return;
+    const text = String(cells[ci] ?? '');
+    if (!text) return;
+    const needed = doc.heightOfString(text, { width: c.w - 8, lineGap: 0 }) + 4;
+    h = Math.max(h, Math.min(needed, WRAP_MAX_LINES * LINE_H + 4));
+  });
+  return h;
 }
 
 function drawTable(doc, { cols, rows, sectionColor, emptyText }) {
@@ -736,24 +759,33 @@ function drawTable(doc, { cols, rows, sectionColor, emptyText }) {
   }
   drawTableHeader(doc, cols, sectionColor);
   rows.forEach((cells, i) => {
+    const h = _rowHeight(doc, cols, cells);
     // Leave room for the footer; start a fresh page with the header
     // repeated so a continued table is still readable.
-    if (doc.y > doc.page.height - 70) {
+    if (doc.y + h > doc.page.height - 70) {
       doc.addPage();
       drawTableHeader(doc, cols, sectionColor);
     }
     const y = doc.y;
     if (i % 2 === 1) {
-      doc.rect(PAGE_L, y - 2, PAGE_R - PAGE_L, ROW_H).fill('#f4f6f8');
+      doc.rect(PAGE_L, y - 2, PAGE_R - PAGE_L, h).fill('#f4f6f8');
       doc.fillColor('#1a1a1a');
     }
     doc.font('Helvetica').fontSize(8.5).fillColor('#1a1a1a');
     cols.forEach((c, ci) => {
-      doc.text(String(cells[ci] ?? ''), c.x + 4, y + 1, {
-        width: c.w - 8, align: c.align || 'left', lineBreak: false, ellipsis: true,
-      });
+      const text = String(cells[ci] ?? '');
+      const opts = { width: c.w - 8, align: c.align || 'left' };
+      if (c.wrap) {
+        // height + ellipsis clips the overflow of a very long value
+        // instead of letting it run over the row below.
+        doc.text(text, c.x + 4, y + 1, {
+          ...opts, height: h - 2, ellipsis: true,
+        });
+      } else {
+        doc.text(_clip(doc, text, c.w - 8), c.x + 4, y + 1, { ...opts, lineBreak: false });
+      }
     });
-    doc.y = y + ROW_H;
+    doc.y = y + h;
   });
   doc.strokeColor('#d5dbe0').lineWidth(0.5)
     .moveTo(PAGE_L, doc.y + 1).lineTo(PAGE_R, doc.y + 1).stroke();
@@ -791,7 +823,9 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-finance.pdf"`);
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  // Wrapped description cells make these tables span pages far more
+  // often, so the footer is stamped on every page rather than the last.
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
   const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
@@ -841,7 +875,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     cols: [
       { label: 'Receipt #', x: 40, w: 68 },
       { label: 'Date', x: 108, w: 62 },
-      { label: 'Donor', x: 170, w: 168 },
+      { label: 'Donor', x: 170, w: 168, wrap: true },
       { label: 'Mode', x: 338, w: 96 },
       { label: 'Amount (PKR)', x: 434, w: 121, align: 'right' },
     ],
@@ -873,7 +907,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     cols: [
       { label: 'Date', x: 40, w: 62 },
       { label: 'Category', x: 102, w: 98 },
-      { label: 'Description', x: 200, w: 178 },
+      { label: 'Description', x: 200, w: 178, wrap: true },
       { label: 'State', x: 378, w: 60 },
       { label: 'Amount (PKR)', x: 438, w: 117, align: 'right' },
     ],
@@ -912,7 +946,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     cols: [
       { label: 'Date', x: 40, w: 62 },
       { label: 'Direction', x: 102, w: 62 },
-      { label: 'Counterparty', x: 164, w: 176 },
+      { label: 'Counterparty', x: 164, w: 176, wrap: true },
       { label: 'Mode', x: 340, w: 88 },
       { label: 'Amount (PKR)', x: 428, w: 127, align: 'right' },
     ],
@@ -933,7 +967,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     doc.font('Helvetica').fillColor('#1a1a1a');
   }
 
-  applyBrandedFooter(doc, branding);
+  _paginateFooters(doc, branding);
   doc.end();
 });
 
