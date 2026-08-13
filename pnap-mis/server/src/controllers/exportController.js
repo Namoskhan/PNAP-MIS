@@ -116,16 +116,270 @@ function applyBrandedHeader(doc, branding, reportTitle, subtitle) {
 // Branded footer — single-line footer text from settings, drawn at
 // the bottom of the CURRENT page. Caller invokes this once per page
 // (typically right before doc.end() or before doc.addPage()).
-function applyBrandedFooter(doc, branding) {
+function applyBrandedFooter(doc, branding, pageNo, pageCount) {
   const id = branding?.identity || {};
   const report = branding?.reportBranding || {};
   const text = report.pdfFooterText
     || id.copyrightText
     || id.footerText
     || `Generated ${new Date().toLocaleString()}`;
+
+  // Writing below the bottom margin makes PDFKit spill onto a fresh
+  // page. Drop the margin for the duration of the footer write and
+  // restore it, so paginating a finished document doesn't grow it.
+  const savedBottom = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+
   doc.font('Helvetica-Oblique').fontSize(8).fillColor('#9aa3af')
-    .text(text, 40, doc.page.height - 28, { width: 515, align: 'center' });
+    .text(text, L, doc.page.height - 28, { width: W, align: 'center' });
+  if (pageNo) {
+    doc.font('Helvetica').fontSize(8).fillColor('#9aa3af')
+      .text(pageCount ? `Page ${pageNo} of ${pageCount}` : `Page ${pageNo}`,
+        L, doc.page.height - 28, { width: W, align: 'right' });
+  }
+
+  doc.page.margins.bottom = savedBottom;
   doc.fillColor('#1a1a1a');
+}
+
+// ─── PDF layout helpers ────────────────────────────────────────────
+// Geometry derives from the page's own margins rather than the
+// hardcoded 40 / 555 pair the older exports used, so a caller that
+// changes `margin` or `size` still gets aligned rules and tables.
+function _left(doc) { return doc.page.margins.left; }
+function _right(doc) { return doc.page.width - doc.page.margins.right; }
+function _contentWidth(doc) { return _right(doc) - _left(doc); }
+function _bottom(doc) { return doc.page.height - doc.page.margins.bottom; }
+
+// Reset the graphics state between blocks. PDFKit is stateful — a
+// section that ends mid-italic-grey leaks into whatever renders
+// next, which is how the old Activities heading picked up the
+// meeting loop's styling.
+function _resetText(doc) {
+  doc.font('Helvetica').fontSize(10).fillColor('#1a1a1a')
+    .strokeColor('#000000').lineWidth(1);
+  // Tables and headers position text with an explicit x; without this
+  // the next flowing paragraph starts at the last column's x instead
+  // of the margin.
+  doc.x = _left(doc);
+}
+
+// Helvetica's WinAnsi encoding has no U+2192, so a literal '→' comes
+// out as mojibake in the PDF. Use an en dash for PDF period ranges.
+function _periodLabel(from, to) {
+  return `${from || 'all'} – ${to || 'all'}`;
+}
+
+// Full-width section banner: brand-tinted bar with the title, always
+// starting on a fresh page so major sections are findable.
+function _sectionHeading(doc, title, color, { newPage = true } = {}) {
+  if (newPage) doc.addPage();
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const y = doc.y;
+  doc.save().rect(L, y, W, 26).fill(_tint(color, 0.10)).restore();
+  doc.save().rect(L, y, 4, 26).fill(color).restore();
+  doc.font('Helvetica-Bold').fontSize(14).fillColor(color)
+    .text(title, L + 12, y + 7, { width: W - 24 });
+  doc.y = y + 26;
+  doc.moveDown(0.8);
+  _resetText(doc);
+}
+
+// Sub-heading inside a record block — small caps-ish label above a
+// paragraph. Kept visually lighter than _sectionHeading.
+function _blockLabel(doc, label, color) {
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(color)
+    .text(String(label).toUpperCase(), { characterSpacing: 0.4 });
+  doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
+}
+
+// A labelled paragraph (Description / Agenda / Outcome Notes …).
+// No-ops on empty values so blocks don't sprout empty headings.
+function _paragraph(doc, label, value, color) {
+  if (value === null || value === undefined || String(value).trim() === '') return;
+  doc.moveDown(0.25);
+  _blockLabel(doc, label, color);
+  doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a')
+    .text(String(value), { align: 'justify' });
+}
+
+// Two-column key/value table with zebra rows — used for the summary
+// KPI block and the campaign-metrics block.
+function _kvTable(doc, rows, color, { keyWidth = 220, headers = ['Metric', 'Value'] } = {}) {
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const rowH = 20;
+  const valX = L + keyWidth;
+  const valW = W - keyWidth;
+
+  // Header band. Re-drawn after a page break so a long table stays
+  // readable rather than orphaning its rows.
+  const drawHeader = () => {
+    const y = doc.y;
+    doc.save().rect(L, y, W, rowH).fill(color).restore();
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#ffffff')
+      .text(headers[0], L + 8, y + 6, { width: keyWidth - 16, ellipsis: true })
+      .text(headers[1], valX + 8, y + 6, { width: valW - 16, ellipsis: true });
+    doc.y = y + rowH;
+  };
+
+  drawHeader();
+  rows.forEach(([k, v], i) => {
+    if (doc.y + rowH > _bottom(doc)) { doc.addPage(); drawHeader(); }
+    const y = doc.y;
+    if (i % 2 === 1) doc.save().rect(L, y, W, rowH).fill('#f5f7fa').restore();
+    doc.save().rect(L, y, W, rowH).strokeColor('#d5dae1').lineWidth(0.5).stroke().restore();
+    doc.font('Helvetica').fontSize(9.5).fillColor('#374151')
+      .text(String(k), L + 8, y + 6, { width: keyWidth - 16, ellipsis: true });
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#1a1a1a')
+      .text(String(v), valX + 8, y + 6, { width: valW - 16, ellipsis: true });
+    doc.y = y + rowH;
+  });
+
+  doc.moveDown(0.8);
+  _resetText(doc);
+}
+
+// Record card header — numbered title, then a muted meta strip.
+function _recordHeader(doc, index, title, metaParts, color) {
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const y = doc.y;
+  doc.save().rect(L, y, W, 0.8).fill(color).restore();
+  doc.y = y + 6;
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(color)
+    .text(`${index}. ${title}`, L, doc.y, { width: W });
+  const meta = metaParts.filter(Boolean).join('  ·  ');
+  if (meta) {
+    doc.font('Helvetica').fontSize(8.5).fillColor('#6b7280')
+      .text(meta, { width: W });
+  }
+  doc.moveDown(0.35);
+  _resetText(doc);
+}
+
+// Inline meta rows rendered as `Label: value` pairs, two per line
+// where they fit. Skips empty values.
+function _metaLines(doc, pairs) {
+  const shown = pairs.filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+  if (shown.length === 0) return;
+  doc.font('Helvetica').fontSize(9.5).fillColor('#1a1a1a');
+  shown.forEach(([k, v]) => {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#374151').text(`${k}: `, { continued: true });
+    doc.font('Helvetica').fillColor('#1a1a1a').text(String(v));
+  });
+  _resetText(doc);
+}
+
+// Embedded photographs with captions. Shared by meetings and
+// activities so both streams look identical in the output.
+function _photoBlock(doc, photos, color, label = 'Photographs') {
+  const usable = (photos || []).filter((p) => uploadDiskPath(p.url));
+  if (usable.length === 0) return;
+  const W = _contentWidth(doc);
+  doc.moveDown(0.4);
+  _blockLabel(doc, `${label} (${usable.length})`, color);
+  doc.moveDown(0.2);
+  usable.forEach((p, i) => {
+    const diskPath = uploadDiskPath(p.url);
+    // Image (200pt) + caption + spacing needs roughly 240pt of room.
+    if (doc.y > _bottom(doc) - 240) doc.addPage();
+    try {
+      doc.image(diskPath, { fit: [W - 55, 200], align: 'center', valign: 'top' });
+    } catch (err) {
+      doc.font('Helvetica-Oblique').fontSize(8).fillColor('#dc2626')
+        .text(`[Photo ${i + 1}: failed to embed — ${err.message}]`);
+    }
+    doc.moveDown(0.25);
+    const cap = `Photo ${i + 1}/${usable.length}`
+      + ` · ${p.capturedAt ? new Date(p.capturedAt).toLocaleString() : 'no timestamp'}`
+      + (p.gps?.lat != null && p.gps?.lng != null
+        ? ` · GPS ${Number(p.gps.lat).toFixed(5)}, ${Number(p.gps.lng).toFixed(5)}` : '');
+    doc.font('Helvetica').fontSize(8).fillColor('#6b7280').text(cap, { align: 'center' });
+    doc.moveDown(0.4);
+  });
+  _resetText(doc);
+}
+
+// Visible-only dynamic fields for one record, rendered from that
+// record's OWN snapshot column list (§10 pinning).
+function _dynamicFields(doc, cols, dynamicData, color) {
+  if (!cols || cols.length === 0) return;
+  const dyn = dynamicData || {};
+  const visible = cols.filter((c) => {
+    const v = dyn[c.key];
+    return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
+  });
+  if (visible.length === 0) return;
+  doc.moveDown(0.25);
+  _blockLabel(doc, 'Custom Fields', color);
+  _metaLines(doc, visible.map((c) => [c.label, _formatDynamicValue(c, dyn[c.key])]));
+}
+
+// Hairline separator closing a record card.
+function _recordSeparator(doc) {
+  doc.moveDown(0.4);
+  doc.strokeColor('#d5dae1').lineWidth(0.5)
+    .moveTo(_left(doc), doc.y).lineTo(_right(doc), doc.y).stroke();
+  doc.moveDown(0.7);
+  _resetText(doc);
+}
+
+// Mix a hex colour toward white — used for section-banner fills so
+// the banner reads as the brand colour without fighting body text.
+function _tint(hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return '#eef2f7';
+  const n = parseInt(m[1], 16);
+  const mix = (c) => Math.round(c * alpha + 255 * (1 - alpha));
+  return `#${[mix((n >> 16) & 255), mix((n >> 8) & 255), mix(n & 255)]
+    .map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
+// Stamp the branded footer + "Page n of m" on every buffered page.
+// Requires the document to have been created with bufferPages: true.
+function _paginateFooters(doc, branding) {
+  const range = doc.bufferedPageRange();
+  for (let i = 0; i < range.count; i += 1) {
+    doc.switchToPage(range.start + i);
+    applyBrandedFooter(doc, branding, i + 1, range.count);
+  }
+}
+
+// ─── XLSX styling helpers ──────────────────────────────────────────
+// ExcelJS wants ARGB without the '#'. Falls back to the brand navy
+// when a settings colour is missing or malformed.
+function _argb(hex, fallback = 'FF0A3A6E') {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  return m ? `FF${m[1].toUpperCase()}` : fallback;
+}
+
+// Brand the header row, freeze it, and switch on autofilter so a
+// reader can sort/filter without touching the layout.
+function _styleSheet(ws, headerArgb, { freezeColumns = 0 } = {}) {
+  const header = ws.getRow(1);
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  header.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+  header.height = 22;
+  header.commit?.();
+
+  ws.views = [{ state: 'frozen', xSplit: freezeColumns, ySplit: 1 }];
+  if (ws.columnCount > 0 && ws.rowCount > 1) {
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
+  }
+
+  // Zebra striping + wrapped body cells. Row 1 is the header.
+  for (let r = 2; r <= ws.rowCount; r += 1) {
+    const row = ws.getRow(r);
+    row.alignment = { vertical: 'top', wrapText: true };
+    if (r % 2 === 0) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+    }
+  }
 }
 
 // Helper — load settings safely. If the service fails (DB hiccup),
@@ -226,7 +480,12 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope }) {
       .populate('chairpersonId', 'fullName memberId')
       .populate('attendance.memberId', 'fullName memberId')
       .lean(),
-    Activity.find({ ...ownQ, ...startClause }).lean(),
+    // Lead + participants are populated so activity blocks can name
+    // people the same way meeting blocks name the chair and roster.
+    Activity.find({ ...ownQ, ...startClause })
+      .populate('leadMemberId', 'fullName memberId')
+      .populate('participants', 'fullName memberId')
+      .lean(),
     Donation.find({ ...ownQ, ...recvClause }).lean(),
     Expense.find({ ...ownQ, ...incurClause }).lean(),
     Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
@@ -460,7 +719,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
   // its Areas looks identical to one that does not unless it says so.
   const scopeLabel = scope === 'subtree' ? 'including all subordinate units' : 'this unit only';
   applyBrandedHeader(doc, branding, 'Finance Report',
-    `${data.unitLevel.replace('_', ' ')} · ${data.name}   |   ${scopeLabel}   |   Period: ${from || 'all'} → ${to || 'all'}`);
+    `${data.unitLevel.replace('_', ' ')} · ${data.name}   |   ${scopeLabel}   |   Period: ${_periodLabel(from, to)}`);
 
   // Acknowledged transfers move real money, so the report's bottom line
   // has to account for them. The previous formula was
@@ -600,21 +859,59 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
   const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
 
+  const branding = await _loadBrandingSafe();
+  const headerArgb = _argb(branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary);
+  const orgName = branding?.identity?.organizationName
+    || branding?.identity?.systemName
+    || 'PKNAP';
+
+  const DATETIME_FMT = 'dd-mmm-yyyy hh:mm';
+  const DATE_FMT = 'dd-mmm-yyyy';
+
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'PKNAP';
+  wb.creator = orgName;
   wb.created = new Date();
 
-  const sum = wb.addWorksheet('Summary');
-  sum.columns = [{ header: 'Metric', key: 'k', width: 32 }, { header: 'Value', key: 'v', width: 24 }];
-  sum.addRow({ k: 'Unit', v: `${data.unitLevel} · ${data.name}` });
-  sum.addRow({ k: 'Period', v: `${from || 'all'} → ${to || 'all'}` });
-  sum.addRow({ k: 'Active Members', v: data.members.length });
-  sum.addRow({ k: 'Meetings', v: data.meetings.length });
-  sum.addRow({ k: 'Finalized Meetings', v: data.meetings.filter((m) => m.state === 'FINALIZED').length });
-  sum.addRow({ k: 'Activities', v: data.activities.length });
-  sum.addRow({ k: 'Responsibilities Pending', v: data.responsibilities.filter((r) => r.state === 'PENDING').length });
-  sum.addRow({ k: 'Responsibilities Completed', v: data.responsibilities.filter((r) => r.state === 'COMPLETED').length });
-  sum.getRow(1).font = { bold: true };
+  // ── Summary — title block above a branded metric table ───────────
+  const sum = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] });
+  sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
+
+  sum.mergeCells('A1:B1');
+  sum.getCell('A1').value = `${orgName} — Meetings & Activities Report`;
+  sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
+  sum.getRow(1).height = 24;
+
+  sum.mergeCells('A2:B2');
+  sum.getCell('A2').value = `${data.unitLevel} · ${data.name}   ·   Period: ${from || 'all'} → ${to || 'all'}`;
+  sum.getCell('A2').font = { size: 10, color: { argb: 'FF6B7280' } };
+  sum.addRow([]);
+
+  const sumHeaderRow = sum.addRow(['Metric', 'Value']);
+  sumHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  sumHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  sumHeaderRow.height = 20;
+
+  const finalized = data.meetings.filter((m) => m.state === 'FINALIZED').length;
+  const totalPhotos = data.meetings.reduce((a, m) => a + (m.photos || []).length, 0)
+    + data.activities.reduce((a, x) => a + (x.photos || []).length, 0);
+  [
+    ['Active Members', data.members.length],
+    ['Meetings', data.meetings.length],
+    ['Finalized Meetings', finalized],
+    ['Activities', data.activities.length],
+    ['Completed Activities', data.activities.filter((a) => a.state === 'COMPLETED').length],
+    ['Photographs Attached', totalPhotos],
+    ['Responsibilities Pending', data.responsibilities.filter((r) => r.state === 'PENDING').length],
+    ['Responsibilities Completed', data.responsibilities.filter((r) => r.state === 'COMPLETED').length],
+  ].forEach(([k, v], i) => {
+    const row = sum.addRow([k, v]);
+    if (i % 2 === 1) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+    }
+    row.getCell(2).font = { bold: true };
+    row.getCell(2).alignment = { horizontal: 'left' };
+  });
 
   // Dynamic columns — union of `reporting.includeInExport` fields
   // across every snapshot referenced by the result set. Stable
@@ -626,32 +923,56 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     data.activities.map((a) => a.configSnapshotId).filter(Boolean),
   );
 
+  // ── Meetings — attendance broken out so it is sortable ───────────
   const mt = wb.addWorksheet('Meetings');
   mt.columns = [
-    { header: 'Date', key: 'd', width: 22 },
-    { header: 'Type', key: 't', width: 8 },
-    { header: 'Title', key: 'tt', width: 32 },
-    { header: 'Description', key: 'desc', width: 40 },
-    { header: 'Venue', key: 'v', width: 28 },
+    { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Type', key: 't', width: 16 },
+    { header: 'Title', key: 'tt', width: 34 },
+    { header: 'State', key: 's', width: 13 },
+    { header: 'Body', key: 'b', width: 12 },
+    { header: 'Venue', key: 'v', width: 26 },
+    { header: 'Venue GPS', key: 'g', width: 20 },
     { header: 'Chair', key: 'c', width: 24 },
-    { header: 'Attendance', key: 'a', width: 12 },
-    { header: 'Photos', key: 'p', width: 10 },
-    { header: 'State', key: 's', width: 14 },
-    { header: 'Supervisor', key: 'sup', width: 12 },
+    { header: 'Roster', key: 'r', width: 9 },
+    { header: 'Present', key: 'pr', width: 9 },
+    { header: 'Late', key: 'la', width: 8 },
+    { header: 'Absent', key: 'ab', width: 9 },
+    { header: 'Attendance %', key: 'ap', width: 13, style: { numFmt: '0%' } },
+    { header: 'Supervisor', key: 'sup', width: 11 },
+    { header: 'Photos', key: 'p', width: 9 },
+    { header: 'Description', key: 'desc', width: 46 },
+    { header: 'Agenda', key: 'ag', width: 46 },
+    { header: 'Activity Notes', key: 'an', width: 46 },
+    { header: 'Upcoming Strategy', key: 'us', width: 46 },
     ...meetingDynCols.map((c) => ({ header: c.label, key: `dyn_${c.key}`, width: 20 })),
   ];
   data.meetings.forEach((m) => {
+    const att = m.attendance || [];
+    const present = att.filter((x) => x.status === 'PRESENT').length;
+    const late = att.filter((x) => x.status === 'LATE').length;
+    const absent = att.filter((x) => x.status === 'ABSENT').length;
     const row = {
-      d: new Date(m.startAt).toLocaleString(),
+      d: m.startAt ? new Date(m.startAt) : null,
       t: m.type,
       tt: m.title || '',
-      desc: m.description || '',
-      v: m.venue,
-      c: m.chairpersonId?.fullName || '',
-      a: (m.attendance || []).filter((x) => x.status === 'PRESENT').length,
-      p: (m.photos || []).length,
       s: m.state,
+      b: m.body || '',
+      v: m.venue || '',
+      g: (m.gpsLat != null && m.gpsLng != null)
+        ? `${m.gpsLat.toFixed(6)}, ${m.gpsLng.toFixed(6)}` : '',
+      c: m.chairpersonId?.fullName || '',
+      r: att.length,
+      pr: present,
+      la: late,
+      ab: absent,
+      ap: att.length ? (present + late) / att.length : null,
       sup: m.supervisorAttended ? 'Yes' : 'No',
+      p: (m.photos || []).length,
+      desc: m.description || '',
+      ag: m.agenda || '',
+      an: m.activityNotes || '',
+      us: m.upcomingStrategy || '',
     };
     const dyn = m.dynamicData || {};
     for (const col of meetingDynCols) {
@@ -659,32 +980,62 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     }
     mt.addRow(row);
   });
-  mt.getRow(1).font = { bold: true };
+  _styleSheet(mt, headerArgb, { freezeColumns: 3 });
 
+  // ── Activities — same depth as Meetings, incl. campaign metrics ──
   const ac = wb.addWorksheet('Activities');
   ac.columns = [
-    { header: 'Date', key: 'd', width: 22 },
-    { header: 'Type', key: 't', width: 14 },
-    { header: 'Title', key: 'tt', width: 32 },
-    { header: 'Venue', key: 'v', width: 24 },
-    { header: 'Attendees Est.', key: 'ae', width: 14 },
-    { header: 'State', key: 's', width: 14 },
-    { header: 'Expected Joiners', key: 'ej', width: 14 },
-    { header: 'Actual Joiners', key: 'aj', width: 14 },
+    { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Ends', key: 'e', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Type', key: 't', width: 18 },
+    { header: 'Title', key: 'tt', width: 34 },
+    { header: 'State', key: 's', width: 13 },
+    { header: 'Body', key: 'b', width: 12 },
+    { header: 'Venue', key: 'v', width: 26 },
+    { header: 'Venue GPS', key: 'g', width: 20 },
+    { header: 'Lead', key: 'ld', width: 24 },
+    { header: 'Participants', key: 'pn', width: 12 },
+    { header: 'Participant Names', key: 'pl', width: 46 },
+    { header: 'External Attendance Est.', key: 'ae', width: 20 },
+    { header: 'Photos', key: 'ph', width: 9 },
+    { header: 'Press Links', key: 'pr', width: 40 },
+    { header: 'Households Visited', key: 'hv', width: 17 },
     { header: 'People Contacted', key: 'pc', width: 16 },
+    { header: 'Pamphlets Distributed', key: 'pd', width: 19 },
+    { header: 'Expected Joiners', key: 'ej', width: 15 },
+    { header: 'Actual Joiners', key: 'aj', width: 14 },
+    { header: 'Volunteer Hours', key: 'vh', width: 15 },
+    { header: 'Description', key: 'desc', width: 46 },
+    { header: 'Outcome Notes', key: 'on', width: 46 },
     ...activityDynCols.map((c) => ({ header: c.label, key: `dyn_${c.key}`, width: 20 })),
   ];
   data.activities.forEach((a) => {
+    const parts = a.participants || [];
+    const cmp = a.campaign || {};
     const row = {
-      d: new Date(a.startAt).toLocaleString(),
+      d: a.startAt ? new Date(a.startAt) : null,
+      e: a.endAt ? new Date(a.endAt) : null,
       t: a.type,
-      tt: a.title,
-      v: a.venue || '',
-      ae: a.externalAttendanceEstimate || 0,
+      tt: a.title || '',
       s: a.state,
-      ej: a.campaign?.expectedJoiners || '',
-      aj: a.campaign?.actualJoiners || '',
-      pc: a.campaign?.peopleContacted || '',
+      b: a.body || '',
+      v: a.venue || '',
+      g: (a.gps?.lat != null && a.gps?.lng != null)
+        ? `${Number(a.gps.lat).toFixed(6)}, ${Number(a.gps.lng).toFixed(6)}` : '',
+      ld: a.leadMemberId?.fullName || '',
+      pn: parts.length,
+      pl: parts.map((p) => p?.fullName).filter(Boolean).join(', '),
+      ae: a.externalAttendanceEstimate || 0,
+      ph: (a.photos || []).length,
+      pr: (a.pressLinks || []).join('\n'),
+      hv: cmp.householdsVisited ?? '',
+      pc: cmp.peopleContacted ?? '',
+      pd: cmp.pamphletsDistributed ?? '',
+      ej: cmp.expectedJoiners ?? '',
+      aj: cmp.actualJoiners ?? '',
+      vh: cmp.volunteerHours ?? '',
+      desc: a.description || '',
+      on: a.outcomeNotes || '',
     };
     const dyn = a.dynamicData || {};
     for (const col of activityDynCols) {
@@ -692,34 +1043,37 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     }
     ac.addRow(row);
   });
-  ac.getRow(1).font = { bold: true };
+  _styleSheet(ac, headerArgb, { freezeColumns: 4 });
 
   const mb = wb.addWorksheet('Members');
   mb.columns = [
+    { header: '#', key: 'n', width: 6 },
     { header: 'Member ID', key: 'mid', width: 28 },
     { header: 'Full Name', key: 'fn', width: 28 },
     { header: 'CNIC', key: 'c', width: 18 },
     { header: 'Phone', key: 'p', width: 16 },
   ];
-  data.members.forEach((m) => mb.addRow({ mid: m.memberId, fn: m.fullName, c: m.cnic, p: m.phone }));
-  mb.getRow(1).font = { bold: true };
+  data.members.forEach((m, i) => mb.addRow({
+    n: i + 1, mid: m.memberId, fn: m.fullName, c: m.cnic, p: m.phone,
+  }));
+  _styleSheet(mb, headerArgb, { freezeColumns: 1 });
 
   const rb = wb.addWorksheet('Responsibilities');
   rb.columns = [
-    { header: 'Title', key: 't', width: 36 },
+    { header: 'Title', key: 't', width: 40 },
     { header: 'Assigned To', key: 'a', width: 28 },
-    { header: 'Due', key: 'd', width: 16 },
+    { header: 'Due', key: 'd', width: 16, style: { numFmt: DATE_FMT } },
     { header: 'State', key: 's', width: 14 },
-    { header: 'Completed', key: 'c', width: 18 },
+    { header: 'Completed', key: 'c', width: 16, style: { numFmt: DATE_FMT } },
   ];
   data.responsibilities.forEach((r) => rb.addRow({
     t: r.title,
     a: r.assignedToMemberId?.fullName || '',
-    d: r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '',
+    d: r.dueDate ? new Date(r.dueDate) : null,
     s: r.state,
-    c: r.completedAt ? new Date(r.completedAt).toLocaleDateString() : '',
+    c: r.completedAt ? new Date(r.completedAt) : null,
   }));
-  rb.getRow(1).font = { bold: true };
+  _styleSheet(rb, headerArgb, { freezeColumns: 1 });
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-meetings.xlsx"`);
@@ -751,168 +1105,138 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-meetings.pdf"`);
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  // bufferPages lets the footer + "Page n of m" be stamped on every
+  // page once the total is known, rather than only on the last one.
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
-  applyBrandedHeader(doc, branding, 'Meetings & Activities Report',
-    `${data.unitLevel} · ${data.name}  ·  Period: ${from || 'all'} → ${to || 'all'}`);
+  const fmtDateTime = (d) => (d ? new Date(d).toLocaleString() : '—');
+  const fmtGps = (lat, lng) => ((lat != null && lng != null)
+    ? `${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}` : null);
+  const emptyNote = (text) => {
+    doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text(text);
+    _resetText(doc);
+  };
 
-  doc.fontSize(13).text('Summary', { underline: true });
-  doc.moveDown(0.3);
-  doc.fontSize(11);
-  const rows = [
+  applyBrandedHeader(doc, branding, 'Meetings & Activities Report',
+    `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+
+  // ─── Summary ──────────────────────────────────────────────────────
+  _sectionHeading(doc, 'Summary', sectionColor, { newPage: false });
+  const finalized = data.meetings.filter((m) => m.state === 'FINALIZED').length;
+  const totalPhotos = data.meetings.reduce((a, m) => a + (m.photos || []).length, 0)
+    + data.activities.reduce((a, x) => a + (x.photos || []).length, 0);
+  _kvTable(doc, [
     ['Active Members', data.members.length],
     ['Meetings', data.meetings.length],
-    ['Finalized Meetings', data.meetings.filter((m) => m.state === 'FINALIZED').length],
+    ['Finalized Meetings', finalized],
     ['Activities', data.activities.length],
+    ['Completed Activities', data.activities.filter((a) => a.state === 'COMPLETED').length],
+    ['Photographs Attached', totalPhotos],
     ['Pending Responsibilities', data.responsibilities.filter((r) => r.state === 'PENDING').length],
     ['Completed Responsibilities', data.responsibilities.filter((r) => r.state === 'COMPLETED').length],
-  ];
-  rows.forEach(([k, v]) => doc.text(`${k}: ${v}`));
-  doc.moveDown(1);
+  ], sectionColor);
 
-  // ─── Detailed per-meeting blocks with embedded photos ─────────────
-  doc.addPage();
-  doc.font('Helvetica-Bold').fontSize(16).fillColor(sectionColor).text(`Meetings (${data.meetings.length})`, { align: 'center' });
-  doc.moveDown(0.3);
-  doc.strokeColor(sectionColor).lineWidth(1).moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-  doc.moveDown(0.6);
-
-  if (data.meetings.length === 0) {
-    doc.font('Helvetica-Oblique').fontSize(11).fillColor('gray').text('No meetings recorded in this period.').fillColor('black');
-  }
+  // ─── Meetings — one detail card per meeting ───────────────────────
+  _sectionHeading(doc, `Meetings (${data.meetings.length})`, sectionColor);
+  if (data.meetings.length === 0) emptyNote('No meetings recorded in this period.');
 
   data.meetings.forEach((m, idx) => {
-    // Start each meeting on a fresh space if remaining is small.
-    if (doc.y > doc.page.height - 280) doc.addPage();
+    // Keep a card's header with at least some of its body.
+    if (doc.y > _bottom(doc) - 160) doc.addPage();
 
-    // Meeting header
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(sectionColor)
-      .text(`${idx + 1}. ${m.title || m.type}`);
-    doc.font('Helvetica').fontSize(9).fillColor('#555c66')
-      .text(`${m.type} · ${m.state} · ${new Date(m.startAt).toLocaleString()}`);
-    doc.fillColor('#1a1a1a').moveDown(0.3);
+    _recordHeader(doc, idx + 1, m.title || m.type,
+      [m.type, m.state, fmtDateTime(m.startAt)], sectionColor);
 
-    // Meta lines
-    doc.fontSize(10);
-    doc.text(`Venue: ${m.venue || '—'}`);
-    if (m.gpsLat != null && m.gpsLng != null) {
-      doc.text(`Venue GPS: ${m.gpsLat.toFixed(6)}, ${m.gpsLng.toFixed(6)}`);
-    }
-    doc.text(`Chair: ${m.chairpersonId?.fullName || '—'}`);
-    if (m.body) doc.text(`Body: ${m.body}`);
-    if (m.supervisorAttended) doc.text('Supervisor: attended');
-
-    // Attendance summary
     const att = m.attendance || [];
-    if (att.length > 0) {
-      const present = att.filter((a) => a.status === 'PRESENT').length;
-      const late = att.filter((a) => a.status === 'LATE').length;
-      const absent = att.filter((a) => a.status === 'ABSENT').length;
-      doc.text(`Attendance: ${present} present, ${late} late, ${absent} absent (of ${att.length} on roster)`);
-    }
+    const present = att.filter((a) => a.status === 'PRESENT').length;
+    const late = att.filter((a) => a.status === 'LATE').length;
+    const absent = att.filter((a) => a.status === 'ABSENT').length;
+    _metaLines(doc, [
+      ['Venue', m.venue || '—'],
+      ['Venue GPS', fmtGps(m.gpsLat, m.gpsLng)],
+      ['Chair', m.chairpersonId?.fullName || '—'],
+      ['Body', m.body],
+      ['Supervisor', m.supervisorAttended ? 'Attended' : null],
+      ['Attendance', att.length
+        ? `${present} present, ${late} late, ${absent} absent (of ${att.length} on roster)`
+        : null],
+    ]);
 
-    // Description / agenda / notes / strategy (compact)
     // Description leads: it is the meeting's own account of itself and
     // reads as the lead-in to the agenda, not as another meta line.
-    if (m.description) {
-      doc.moveDown(0.2);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Description');
-      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.description, { align: 'justify' });
-    }
-    if (m.agenda) {
-      doc.moveDown(0.2);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Agenda');
-      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.agenda, { align: 'justify' });
-    }
-    if (m.activityNotes) {
-      doc.moveDown(0.2);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Activity Notes');
-      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.activityNotes, { align: 'justify' });
-    }
-    if (m.upcomingStrategy) {
-      doc.moveDown(0.2);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Upcoming Strategy');
-      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.upcomingStrategy, { align: 'justify' });
-    }
+    _paragraph(doc, 'Description', m.description, sectionColor);
+    _paragraph(doc, 'Agenda', m.agenda, sectionColor);
+    _paragraph(doc, 'Activity Notes', m.activityNotes, sectionColor);
+    _paragraph(doc, 'Upcoming Strategy', m.upcomingStrategy, sectionColor);
 
     // Dynamic custom fields — pinned from the meeting's own snapshot
     // so historical exports keep their original column set.
-    const mDynCols = meetingPdfDynColsBySnapshot.get(String(m.configSnapshotId || ''));
-    if (mDynCols && mDynCols.length > 0) {
-      const dyn = m.dynamicData || {};
-      const visible = mDynCols.filter((c) => {
-        const v = dyn[c.key];
-        return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
-      });
-      if (visible.length > 0) {
-        doc.moveDown(0.2);
-        doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Custom Fields');
-        doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
-        for (const col of visible) {
-          const raw = _formatDynamicValue(col, dyn[col.key]);
-          doc.text(`${col.label}: ${raw}`);
-        }
-      }
-    }
+    _dynamicFields(doc, meetingPdfDynColsBySnapshot.get(String(m.configSnapshotId || '')),
+      m.dynamicData, sectionColor);
+    _photoBlock(doc, m.photos, sectionColor);
+    _recordSeparator(doc);
+  });
 
-    // Embedded photos
-    const photos = (m.photos || []).filter((p) => uploadDiskPath(p.url));
-    if (photos.length > 0) {
-      doc.moveDown(0.4);
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(sectionColor).text(`Photographs (${photos.length})`);
+  // ─── Activities — same card layout as meetings ────────────────────
+  _sectionHeading(doc, `Activities (${data.activities.length})`, sectionColor);
+  if (data.activities.length === 0) emptyNote('No activities recorded in this period.');
+
+  data.activities.forEach((a, idx) => {
+    if (doc.y > _bottom(doc) - 160) doc.addPage();
+
+    _recordHeader(doc, idx + 1, a.title || a.type,
+      [a.type, a.state, fmtDateTime(a.startAt)], sectionColor);
+
+    const parts = a.participants || [];
+    _metaLines(doc, [
+      ['Venue', a.venue || '—'],
+      ['Venue GPS', fmtGps(a.gps?.lat, a.gps?.lng)],
+      ['Lead', a.leadMemberId?.fullName || '—'],
+      ['Body', a.body],
+      ['Ends', a.endAt ? fmtDateTime(a.endAt) : null],
+      ['Participants', parts.length
+        ? `${parts.length} — ${parts.map((p) => p?.fullName).filter(Boolean).join(', ')}`
+        : null],
+      ['External Attendance (est.)', a.externalAttendanceEstimate || null],
+    ]);
+
+    _paragraph(doc, 'Description', a.description, sectionColor);
+    _paragraph(doc, 'Outcome Notes', a.outcomeNotes, sectionColor);
+
+    // Campaign metrics only exist for campaign-shaped activities;
+    // render the table only when at least one figure was recorded.
+    const cmp = a.campaign || {};
+    const campaignRows = [
+      ['Households Visited', cmp.householdsVisited],
+      ['People Contacted', cmp.peopleContacted],
+      ['Pamphlets Distributed', cmp.pamphletsDistributed],
+      ['Expected Joiners', cmp.expectedJoiners],
+      ['Actual Joiners', cmp.actualJoiners],
+      ['Volunteer Hours', cmp.volunteerHours],
+    ].filter(([, v]) => v !== null && v !== undefined && v !== '');
+    if (campaignRows.length > 0) {
+      doc.moveDown(0.3);
+      _blockLabel(doc, 'Campaign Metrics', sectionColor);
       doc.moveDown(0.2);
-      photos.forEach((p, i) => {
-        const diskPath = uploadDiskPath(p.url);
-        if (!diskPath) return;
-        // New page if not enough room for image + caption (~ 230pt).
-        if (doc.y > doc.page.height - 240) doc.addPage();
-        try {
-          doc.image(diskPath, { fit: [460, 200], align: 'center', valign: 'top' });
-        } catch (err) {
-          doc.font('Helvetica-Oblique').fontSize(8).fillColor('#dc2626')
-            .text(`[Photo ${i + 1}: failed to embed — ${err.message}]`);
-        }
-        doc.moveDown(0.25);
-        doc.font('Helvetica').fontSize(8).fillColor('#555c66');
-        const cap = `Photo ${i + 1}/${photos.length}` +
-          ` · ${p.capturedAt ? new Date(p.capturedAt).toLocaleString() : 'no timestamp'}` +
-          (p.gps?.lat != null && p.gps?.lng != null ? ` · GPS ${Number(p.gps.lat).toFixed(5)}, ${Number(p.gps.lng).toFixed(5)}` : '');
-        doc.text(cap, { align: 'center' });
-        doc.moveDown(0.4);
-        doc.fillColor('#1a1a1a');
-      });
+      _kvTable(doc, campaignRows, sectionColor, { keyWidth: 220, headers: ['Measure', 'Count'] });
     }
 
-    // Separator
-    doc.moveDown(0.4);
-    doc.strokeColor('#c9ced6').lineWidth(0.5).moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-    doc.moveDown(0.6);
-  });
-
-  doc.fontSize(13).text('Activities', { underline: true });
-  doc.moveDown(0.3);
-  doc.fontSize(10);
-  if (data.activities.length === 0) doc.fillColor('gray').text('(none)').fillColor('black');
-  data.activities.slice(0, 30).forEach((a) => {
-    doc.text(`• ${new Date(a.startAt).toLocaleDateString()} · ${a.type} · ${a.title} · ${a.state}`);
-    const aDynCols = activityPdfDynColsBySnapshot.get(String(a.configSnapshotId || ''));
-    if (aDynCols && aDynCols.length > 0) {
-      const dyn = a.dynamicData || {};
-      const visible = aDynCols.filter((c) => {
-        const v = dyn[c.key];
-        return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
-      });
-      if (visible.length > 0) {
-        doc.font('Helvetica').fontSize(9).fillColor('#374151');
-        const parts = visible.map((c) => `${c.label}: ${_formatDynamicValue(c, dyn[c.key])}`);
-        doc.text(`   ${parts.join(' · ')}`, { indent: 12 });
-        doc.fillColor('#1a1a1a').fontSize(10);
-      }
+    if ((a.pressLinks || []).length > 0) {
+      doc.moveDown(0.25);
+      _blockLabel(doc, 'Press Links', sectionColor);
+      doc.font('Helvetica').fontSize(9).fillColor('#1a4fa3');
+      a.pressLinks.forEach((link) => doc.text(String(link), { link: String(link), underline: true }));
+      _resetText(doc);
     }
+
+    _dynamicFields(doc, activityPdfDynColsBySnapshot.get(String(a.configSnapshotId || '')),
+      a.dynamicData, sectionColor);
+    _photoBlock(doc, a.photos, sectionColor);
+    _recordSeparator(doc);
   });
 
-  applyBrandedFooter(doc, branding);
+  _paginateFooters(doc, branding);
   doc.end();
 });
 
@@ -952,7 +1276,7 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     `${m.fullName}  ·  ${m.memberId || ''}${m.cnic ? `  ·  CNIC ${m.cnic}` : ''}`);
 
   doc.fontSize(12);
-  doc.text(`Period: ${from || 'all'} → ${to || 'all'}`);
+  doc.text(`Period: ${_periodLabel(from, to)}`);
   doc.moveDown(0.5);
   doc.text(`Meetings (roster, finalized): ${meetingsTotal}`);
   doc.text(`  • Present: ${meetingsPresent}`);
