@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
@@ -262,7 +263,14 @@ export default function CommitteePage() {
             </div>
             {err && <div className="alert error">{err}</div>}
 
-            {canManage && nominateOpen && (
+            {/* Portalled to <body> on purpose. A fixed-position backdrop
+                rendered inside this .card breaks the moment the card is
+                hovered: `.card:hover` sets a transform, which makes the
+                card the containing block for position:fixed, so the
+                backdrop collapses to the card's box and the modal jumps.
+                Since the backdrop is a card descendant, hovering it
+                re-triggers that hover — the modal then oscillates. */}
+            {canManage && nominateOpen && createPortal((
               <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setNominateOpen(false); }}>
               <div className="modal" style={{ maxWidth: 560 }} role="dialog" aria-modal="true" aria-label="Nominate Selective Member">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -290,7 +298,7 @@ export default function CommitteePage() {
                 </div>
               </div>
               </div>
-            )}
+            ), document.body)}
             <table className="list" style={{ marginTop: 12 }}>
               <thead><tr><th>Body</th><th>Member</th><th>Phone</th><th>Note</th>{canManage && <th></th>}</tr></thead>
               <tbody>

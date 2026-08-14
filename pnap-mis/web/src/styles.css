@@ -1732,6 +1732,16 @@ table.smart .cell-muted { color: var(--muted); }
   transform: translateY(-1px);
   border-color: var(--border-strong, var(--border));
 }
+/* Most page modals are still rendered inline inside the .card that owns
+   the section. A transform on the card makes it the containing block for
+   its own position:fixed backdrop, so the overlay collapses to the card's
+   box — and because the backdrop is a card descendant, it keeps the card
+   hovered, so the modal oscillates between the two layouts. Never lift a
+   card that currently hosts an open modal. */
+.card:has(.modal-backdrop),
+.card:has(.modal-backdrop):hover {
+  transform: none;
+}
 
 /* ── Tables: smoother row hover ─────────────────────────────── */
 table.list tbody tr,

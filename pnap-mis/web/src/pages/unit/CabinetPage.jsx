@@ -303,8 +303,11 @@ export default function CabinetPage() {
   // — the Provinces — so this card is not part of its surface.
   const showCentralPicker = roles.includes('SUPER_ADMIN');
   // Province cabinets are the Central Admin's responsibility under the
-  // one-level rule; Super Admin keeps it as break-glass.
-  const showProvinceCabinetPicker = isCentralAdminUser;
+  // one-level rule. Super Admin is deliberately excluded: its surface
+  // on this page is the Central Cabinet button above, so the same
+  // province assignment isn't offered from two personas at once.
+  const showProvinceCabinetPicker = roles.includes('CENTRAL_ADMIN')
+    && !roles.includes('SUPER_ADMIN');
   // Secretary (and higher admin) can assign roles directly via the
   // existing single-shot assign flow OR approve proposals raised by
   // Senior Mawin. SECRETARY-only users see read-only cabinet rows
