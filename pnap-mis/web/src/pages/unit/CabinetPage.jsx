@@ -137,6 +137,32 @@ export default function CabinetPage() {
       .catch(() => {});
   }, [user, isCentralAdminUser]);
 
+  // Open the Central cabinet on arrival instead of behind a button.
+  //
+  // UnitContext pins a CENTRAL_ADMIN to the Central unit on login, but
+  // that branch deliberately excludes SUPER_ADMIN — which has no home
+  // tier of its own — so a Super Admin landed here with either no
+  // context at all ("Select a unit context first") or whatever unit was
+  // last used, and had to press "Open Central Cabinet" before any role
+  // appeared. The sidebar entry that leads here is labelled "Central
+  // Cabinet", so opening it is what the click was always confirming.
+  //
+  // The ref makes this fire once per visit rather than on every render:
+  // without it, switching units from the global switcher while staying
+  // on this page would be pulled straight back to Central.
+  const isSuperAdminUser = user?.roles?.includes('SUPER_ADMIN');
+  const autoOpenedCentral = useRef(false);
+  useEffect(() => {
+    if (!isSuperAdminUser || !centralUnit || autoOpenedCentral.current) return;
+    autoOpenedCentral.current = true;
+    if (ctx?.unitLevel === 'CENTRAL') return;
+    setCtx({
+      unitLevel: 'CENTRAL',
+      unitId: centralUnit._id,
+      unitName: centralUnit.name || 'PKNAP Central',
+    });
+  }, [isSuperAdminUser, centralUnit, ctx, setCtx]);
+
   // Read-only "Area Cabinets in this district" panel — when ctx is at
   // DISTRICT level, fetch each area + its cabinet so the Province
   // Admin can see the existing area-level executives at a glance.
@@ -319,16 +345,10 @@ export default function CabinetPage() {
   // Province Admin's picker shows when they're the only writable
   // admin role on the user (mirroring District Admin pattern).
   const showProvincePicker = isProvinceAdminUser && !roles.includes('SUPER_ADMIN');
-  // Central Admin's picker — assign Province Cabinet roles per SRS
-  // §3.3 + §5.1 ("province will be structured by the Central Admin").
-  // The Central body's OWN cabinet (Chairman, Co-Chairman, …) belongs
-  // to Super Admin. A Central Admin manages the tier directly below it
-  // — the Provinces — so this card is not part of its surface.
-  const showCentralPicker = roles.includes('SUPER_ADMIN');
   // Province cabinets are the Central Admin's responsibility under the
-  // one-level rule. Super Admin is deliberately excluded: its surface
-  // on this page is the Central Cabinet button above, so the same
-  // province assignment isn't offered from two personas at once.
+  // one-level rule. Super Admin is deliberately excluded: this page
+  // opens straight onto the Central cabinet for that persona, so the
+  // same province assignment isn't offered from two personas at once.
   const showProvinceCabinetPicker = roles.includes('CENTRAL_ADMIN')
     && !roles.includes('SUPER_ADMIN');
   // Secretary (and higher admin) can assign roles directly via the
@@ -362,25 +382,6 @@ export default function CabinetPage() {
   return (
     <div>
       <div className="page-header"><h2>Cabinet · {ctx.unitName}</h2></div>
-
-      {showCentralPicker && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: 600 }}>Central Cabinet (SRS §3.4):</label>
-            <button
-              type="button"
-              className={`btn ${ctx.unitLevel === 'CENTRAL' ? '' : 'secondary'}`}
-              disabled={!centralUnit}
-              onClick={() => centralUnit && setCtx({ unitLevel: 'CENTRAL', unitId: centralUnit._id, unitName: centralUnit.name || 'PKNAP Central' })}
-            >
-              {ctx.unitLevel === 'CENTRAL' ? '✓ Open: Central Cabinet' : 'Open Central Cabinet'}
-            </button>
-            {/* <span className="muted" style={{ fontSize: 13 }}>
-              Assign the Central Executive (Chairman, Co-Chairman, Sr.&nbsp;Vice Chairman, Vice Chairman, Secretary General, First Secretary, Finance Secretary, etc.) — auto-forms the Central Committee + unlocks the Qomi Jirga tab on first approval.
-            </span> */}
-          </div>
-        </div>
-      )}
 
       {/* Central Admin picks a Province and assigns its Sobayi
           cabinet — the exact shape of the District picker below it
