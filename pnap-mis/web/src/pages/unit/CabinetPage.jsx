@@ -352,9 +352,9 @@ export default function CabinetPage() {
             >
               {ctx.unitLevel === 'CENTRAL' ? '✓ Open: Central Cabinet' : 'Open Central Cabinet'}
             </button>
-            <span className="muted" style={{ fontSize: 13 }}>
+            {/* <span className="muted" style={{ fontSize: 13 }}>
               Assign the Central Executive (Chairman, Co-Chairman, Sr.&nbsp;Vice Chairman, Vice Chairman, Secretary General, First Secretary, Finance Secretary, etc.) — auto-forms the Central Committee + unlocks the Qomi Jirga tab on first approval.
-            </span>
+            </span> */}
           </div>
         </div>
       )}
