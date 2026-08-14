@@ -163,6 +163,40 @@ export default function CabinetPage() {
     });
   }, [isSuperAdminUser, centralUnit, ctx, setCtx]);
 
+  // Same idea one tier at a time, for the admins whose picker sits above.
+  //
+  // Under the one-level rule each admin ASSIGNS the tier below them, and
+  // that is what their picker lists — but UnitContext pins them to their
+  // OWN unit, whose cabinet the tier above assigns. So the page opened
+  // showing a cabinet outside their remit while the picker still read
+  // "— pick a province —": a Central Admin landed on the Central cabinet
+  // (Chairman, Co-Chairman — Super Admin's work), a Province Admin on
+  // their province cabinet, a District Admin on their district's. It
+  // looked like the previous session's roles had leaked across the
+  // logout; nothing had, the context was simply one tier too high.
+  //
+  // Landing on the first option makes the table and the picker agree on
+  // arrival, and every other unit is still one dropdown away. The Area
+  // Admin equivalent is the effect above, which has always done this.
+  const autoPickedUnit = useRef(false);
+  useEffect(() => {
+    if (autoPickedUnit.current) return;
+    const roles = user?.roles || [];
+    if (roles.includes('SUPER_ADMIN')) return;   // handled by the Central branch above
+    // Precedence mirrors the render conditions below, so the tier that
+    // gets auto-picked is always the one whose picker is on screen.
+    const target = roles.includes('CENTRAL_ADMIN')
+      ? { level: 'PROVINCE', list: allProvinces }
+      : roles.includes('PROVINCE_ADMIN')
+        ? { level: 'DISTRICT', list: districtsInProvince }
+        : (roles.includes('DISTRICT_ADMIN') ? { level: 'AREA', list: areasInDistrict } : null);
+    if (!target || !target.list.length) return;
+    autoPickedUnit.current = true;
+    if (ctx?.unitLevel === target.level) return;
+    const first = target.list[0];
+    setCtx({ unitLevel: target.level, unitId: first._id, unitName: first.name });
+  }, [user, allProvinces, districtsInProvince, areasInDistrict, ctx, setCtx]);
+
   // Read-only "Area Cabinets in this district" panel — when ctx is at
   // DISTRICT level, fetch each area + its cabinet so the Province
   // Admin can see the existing area-level executives at a glance.

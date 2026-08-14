@@ -27,13 +27,20 @@ const EMPTY_FORM = {
   dynamicData: {},
 };
 
-// SRS §3.1 — at Area+ levels, two distinct bodies meet: the Executive
-// (cabinet only) and the full Committee (executive + BU office-holders
-// + permanent members). The toggle filters meetings into the two
-// streams. Below Area level there's only one body, so the toggle is
-// hidden.
+// SRS §3.1 — two distinct bodies meet: the Executive (cabinet only)
+// and the full Committee (executive + office-holders + permanent
+// members). The toggle filters meetings into the two streams.
+//
+// BASIC_UNIT is included by product directive: a Basic Unit Senior
+// Mawin runs both kinds of meeting and needs the same two streams the
+// Area and District Senior Mawin get. The server puts no unit-level
+// restriction on `body` (see meetingController.list / create), and
+// records written before this toggle existed carry no `body` field —
+// the Executive filter matches those explicitly, so nothing that was
+// visible at BU level disappears from the list.
 function bodySupported(level) {
-  return level === 'AREA' || level === 'DISTRICT' || level === 'PROVINCE' || level === 'CENTRAL';
+  return level === 'BASIC_UNIT' || level === 'AREA' || level === 'DISTRICT'
+    || level === 'PROVINCE' || level === 'CENTRAL';
 }
 
 // Friendly labels for the owning-unit tier, shown to members when a
