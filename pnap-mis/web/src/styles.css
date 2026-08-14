@@ -4574,6 +4574,56 @@ html { scroll-behavior: smooth; }
   margin-top: 20px;
 }
 
+/* ---- Choice dialog (dialog.choose) ----
+   One tappable row per option, so picking a fixed value never means
+   typing it. Full-width rows rather than a button strip: the labels are
+   uneven in length and each carries a hint line, which a horizontal row
+   would either truncate or wrap raggedly. */
+.dlg-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.dlg-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.dlg-choice:hover {
+  background: var(--primary-tint);
+  border-color: var(--primary);
+  /* Nudge only — a hover that changes height would reflow the list and
+     shift the row out from under the pointer. */
+  transform: translateX(2px);
+}
+.dlg-choice:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+.dlg-choice-label { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.dlg-choice-hint { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+/* Consequential outcomes read as consequential before they're clicked. */
+.dlg-choice.danger .dlg-choice-label { color: var(--danger); }
+.dlg-choice.danger:hover {
+  background: var(--danger-bg, var(--primary-tint));
+  border-color: var(--danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dlg-choice, .dlg-choice:hover { transform: none; transition: background var(--t-fast), border-color var(--t-fast); }
+}
+
 /* ---- Province matrix: filter + pager ---- */
 .pm-toolbar {
   display: flex;

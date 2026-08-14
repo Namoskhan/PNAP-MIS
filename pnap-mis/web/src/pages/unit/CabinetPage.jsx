@@ -28,6 +28,19 @@ const ROLE_LABEL = {
   OTHER: 'Other',
 };
 
+// Mirrors the endReason enum in server validators/unitSchemas.js. Ordered
+// by how often a term actually ends this way, not alphabetically — the
+// common answers sit under the cursor and the irreversible-sounding ones
+// sit last.
+const END_REASONS = [
+  { value: 'RESIGNED', label: 'Resigned', hint: 'Stepped down of their own accord' },
+  { value: 'TERM_ENDED', label: 'Term ended', hint: 'Served the full term' },
+  { value: 'TRANSFERRED', label: 'Transferred', hint: 'Moved to another unit' },
+  { value: 'REPLACED', label: 'Replaced', hint: 'Someone else has taken the office' },
+  { value: 'EXPELLED', label: 'Expelled', hint: 'Removed on disciplinary grounds', tone: 'danger' },
+  { value: 'DECEASED', label: 'Deceased', hint: 'Passed away', tone: 'danger' },
+];
+
 export default function CabinetPage() {
   const { ctx, setCtx } = useUnit();
   const { user } = useAuth();
@@ -268,13 +281,23 @@ export default function CabinetPage() {
     }
   }
 
-  async function endRole(assignmentId) {
-    const reason = await dialog.prompt('End reason (RESIGNED, EXPELLED, TERM_ENDED, TRANSFERRED, DECEASED, REPLACED):');
+  async function endRole(assignmentId, roleName, memberName) {
+    // One tap per reason. The server validates endReason against a fixed
+    // enum, so a free-text field could only ever produce the same six
+    // values — or a 400 for a typo.
+    const reason = await dialog.choose(
+      memberName && roleName
+        ? `Why is ${memberName} leaving the ${roleName} office?`
+        : 'Why is this role ending?',
+      END_REASONS,
+      { title: 'End role' }
+    );
     if (!reason) return;
+    const label = END_REASONS.find((r) => r.value === reason)?.label || reason;
     try {
-      await api.post(`/roles/${assignmentId}/end`, { endReason: reason.toUpperCase() });
+      await api.post(`/roles/${assignmentId}/end`, { endReason: reason });
       await reload();
-      toast.success(`Role ended (${reason.toUpperCase()}).`, { title: 'Role ended' });
+      toast.success(`Role ended — ${label.toLowerCase()}.`, { title: 'Role ended' });
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Could not end role', duration: 7000 });
     }
@@ -529,7 +552,11 @@ export default function CabinetPage() {
                 onAssignClick={() => { setAssignFor(row.roleCode); setPickedMemberId(''); }}
                 onCancelAssign={() => { setAssignFor(null); setPickedMemberId(''); }}
                 onConfirmAssign={() => propose(row.roleCode, pickedMemberId)}
-                onEnd={() => endRole(row.assignment._id)}
+                onEnd={() => endRole(
+                  row.assignment._id,
+                  ROLE_LABEL[row.roleCode] || row.customRoleName || row.roleCode,
+                  row.member?.fullName,
+                )}
               />
             ))}
           </tbody>
