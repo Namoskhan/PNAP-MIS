@@ -308,15 +308,22 @@ export default function MeetingsPage() {
     }
   }
 
-  function exportPdf() {
+  // Body travels with the download alongside scope, so the exported
+  // report covers exactly the stream the user is looking at.
+  function exportParams() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (scope === 'tree') params.set('scope', 'subtree');
-    downloadAuthed(`/api/exports/unit/meetings/pdf?${params}`, `${ctx.unitName}-meetings.pdf`).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
+    if (showBodyToggle) params.set('body', body);
+    return params;
+  }
+  function exportName(ext) {
+    return `${ctx.unitName}${showBodyToggle ? `-${body.toLowerCase()}` : ''}-meetings.${ext}`;
+  }
+  function exportPdf() {
+    downloadAuthed(`/api/exports/unit/meetings/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
   function exportXlsx() {
-    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    if (scope === 'tree') params.set('scope', 'subtree');
-    downloadAuthed(`/api/exports/unit/meetings/xlsx?${params}`, `${ctx.unitName}-meetings.xlsx`).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
+    downloadAuthed(`/api/exports/unit/meetings/xlsx?${exportParams()}`, exportName('xlsx')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -325,7 +332,7 @@ export default function MeetingsPage() {
     <div>
       <div className="page-header">
         <h2>
-          {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee Meetings' : 'Executive Meetings') : 'Meetings'} · {ctx.unitName}
+          {body === 'COMMITTEE' ? 'Committee Meetings' : 'Executive Meetings'} · {ctx.unitName}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* At BU level the only option would be "This unit only" —
@@ -341,24 +348,11 @@ export default function MeetingsPage() {
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && (
             <button className="btn" onClick={() => setShowCreate(true)}>
-              + Schedule {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee ' : 'Executive ') : ''}Meeting
+              {body === 'COMMITTEE' ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'}
             </button>
           )}
         </div>
       </div>
-
-      {showBodyToggle && (
-        <div className="toolbar" style={{ marginBottom: 12 }}>
-          <button
-            className={`btn ${body === 'EXECUTIVE' ? '' : 'secondary'}`}
-            onClick={() => setBody('EXECUTIVE')}
-          >Executive Meetings</button>
-          <button
-            className={`btn ${body === 'COMMITTEE' ? '' : 'secondary'}`}
-            onClick={() => setBody('COMMITTEE')}
-          >Committee Meetings</button>
-        </div>
-      )}
 
       {showCreate && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}>

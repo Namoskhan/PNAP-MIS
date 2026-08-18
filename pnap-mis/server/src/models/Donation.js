@@ -17,6 +17,21 @@ const donationSchema = new mongoose.Schema(
     districtId: { type: mongoose.Schema.Types.ObjectId, ref: 'District', index: true },
     provinceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Province', index: true },
 
+    // SRS §3.1 — which body's books this donation belongs to. Same
+    // field, enum and default as Meeting.js / Activity.js: a tag
+    // applied from whichever UI hub the record was created in, not an
+    // eligibility check on the recorder (a Finance Secretary sits on
+    // both the Executive and the Committee by construction). Records
+    // written before this field existed carry no value and are read
+    // back as EXECUTIVE by the `$exists: false` fallback in every
+    // filter that uses it.
+    body: {
+      type: String,
+      enum: ['EXECUTIVE', 'COMMITTEE'],
+      default: 'EXECUTIVE',
+      index: true,
+    },
+
     receiptNo: { type: String, required: true, index: true },
     fiscalYear: { type: Number, required: true, index: true },
 

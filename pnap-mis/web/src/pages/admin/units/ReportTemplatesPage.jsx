@@ -458,6 +458,11 @@ function RenderDialog({ template, onClose }) {
   const [format, setFormat] = useState(
     template.format === 'BOTH' ? 'PDF' : template.format,
   );
+  // SRS §3.1 — which body's records the report covers. '' means
+  // Combined: the param is omitted and the renderer pools both, which
+  // is exactly how this dialog behaved before the split existed, so
+  // it stays the default.
+  const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -467,14 +472,17 @@ function RenderDialog({ template, onClose }) {
       const params = new URLSearchParams({ unitLevel, unitId, format });
       if (from) params.set('from', from);
       if (to) params.set('to', to);
+      if (body) params.set('body', body);
       const url = `/api/reports/templates/${template._id}/render?${params}`;
       const token = localStorage.getItem('pnap_token');
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error?.message || `Render failed (${res.status})`);
+        // Renamed off `body` — that identifier is now the body-filter
+        // state above, and shadowing it here reads as a bug.
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody?.error?.message || `Render failed (${res.status})`);
       }
       const blob = await res.blob();
       const dlUrl = URL.createObjectURL(blob);
@@ -526,6 +534,18 @@ function RenderDialog({ template, onClose }) {
               <option value="PDF">PDF</option>
               <option value="XLSX">XLSX</option>
             </select>
+          </div>
+          <div className="field">
+            <label>Body</label>
+            <select value={body} onChange={(e) => setBody(e.target.value)}>
+              <option value="">Combined</option>
+              <option value="EXECUTIVE">Executive</option>
+              <option value="COMMITTEE">Committee</option>
+            </select>
+            <div className="hint">
+              Filters meetings, activities, donations, expenses and transfers.
+              Combined pools both bodies.
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>

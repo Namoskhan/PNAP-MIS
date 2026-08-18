@@ -523,7 +523,37 @@ async function unitName(unitLevel, unitId) {
   return doc?.name || unitLevel;
 }
 
-async function gatherUnitData({ unitLevel, unitId, from, to, scope }) {
+// SRS §3.1 body separation — same fragment as
+// financeController.bodyClause / transferController.bodyClause. The
+// EXECUTIVE branch matches `$exists: false` so records predating the
+// field still report under Executive. Returns null when `body` is
+// omitted, which is what every existing caller does — their results
+// stay pooled and byte-identical to before.
+function bodyClause(body) {
+  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  return null;
+}
+
+// Human label for a body filter, used in report titles and filenames
+// so a printed Committee report says on its face which body it
+// covers. Returns '' when `body` is absent, and every call site is
+// written so that '' reproduces the original wording exactly — a
+// combined report is byte-identical to what it was before the split.
+function bodyLabel(body) {
+  if (body === 'COMMITTEE') return 'Committee';
+  if (body === 'EXECUTIVE') return 'Executive';
+  return '';
+}
+// Filename fragment: '-committee' / '-executive' / '' so the two
+// downloads don't overwrite each other in the browser's Downloads
+// folder.
+function bodySuffix(body) {
+  const l = bodyLabel(body);
+  return l ? `-${l.toLowerCase()}` : '';
+}
+
+async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
   const chain = unitLevel === 'CENTRAL' ? {} : await resolveUnitChain(unitLevel, unitId);
   if (unitLevel !== 'CENTRAL' && !chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
   const memberQ = memberFilter(unitLevel, chain);
@@ -537,6 +567,11 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope }) {
   const recvClause = (Object.keys(dateFilter).length) ? { receivedAt: dateFilter } : {};
   const incurClause = (Object.keys(dateFilter).length) ? { incurredAt: dateFilter } : {};
   const xferClause = (Object.keys(dateFilter).length) ? { transferredAt: dateFilter } : {};
+  // Applied only to the five body-tagged collections below. Members
+  // and Responsibilities carry no `body` field, so they stay whole —
+  // a Committee report still names the unit's full roster. `{}` when
+  // the caller omits `body`, which spreads to nothing.
+  const bodyQ = bodyClause(body) || {};
 
   // Fund transfers are their OWN ledger — initiating one does not create
   // an Expense, and acknowledging one does not approve an expense. They
@@ -554,24 +589,24 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope }) {
     try { return new mongoose.Types.ObjectId(String(v)); } catch { return null; }
   };
   const unitOid = oid(unitId);
-  const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause };
-  const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause };
+  const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...bodyQ };
+  const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...bodyQ };
 
   const [members, meetings, activities, donations, expenses, responsibilities,
     transfersOut, transfersIn] = await Promise.all([
     Member.find({ ...memberQ, status: 'ACTIVE' }).select('fullName memberId cnic phone').lean(),
-    Meeting.find({ ...ownQ, ...startClause })
+    Meeting.find({ ...ownQ, ...startClause, ...bodyQ })
       .populate('chairpersonId', 'fullName memberId')
       .populate('attendance.memberId', 'fullName memberId')
       .lean(),
     // Lead + participants are populated so activity blocks can name
     // people the same way meeting blocks name the chair and roster.
-    Activity.find({ ...ownQ, ...startClause })
+    Activity.find({ ...ownQ, ...startClause, ...bodyQ })
       .populate('leadMemberId', 'fullName memberId')
       .populate('participants', 'fullName memberId')
       .lean(),
-    Donation.find({ ...ownQ, ...recvClause }).lean(),
-    Expense.find({ ...ownQ, ...incurClause }).lean(),
+    Donation.find({ ...ownQ, ...recvClause, ...bodyQ }).lean(),
+    Expense.find({ ...ownQ, ...incurClause, ...bodyQ }).lean(),
     Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
     unitOid ? FundTransfer.find(outFilter).lean() : [],
     unitOid ? FundTransfer.find(inFilter).lean() : [],
@@ -586,9 +621,9 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope }) {
 
 // ─── FINANCE-only Excel — Summary + Donations + Expenses ───────────
 exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to, scope } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
 
   const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
   const expApproved = data.expenses.filter((e) => e.state === 'APPROVED').reduce((a, e) => a + (e.amount || 0), 0);
@@ -608,6 +643,9 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   sum.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 26 }];
   sum.addRow({ k: 'Unit', v: `${data.unitLevel} · ${data.name}` });
   sum.addRow({ k: 'Scope', v: scope === 'subtree' ? 'Including all subordinate units' : 'This unit only' });
+  // Only emitted when the caller asked for one body, so a combined
+  // export keeps exactly the rows it had before.
+  if (bodyLabel(body)) sum.addRow({ k: 'Body', v: `${bodyLabel(body)} only` });
   sum.addRow({ k: 'Period', v: `${from || 'all'} → ${to || 'all'}` });
   sum.addRow({ k: 'Donations Count', v: data.donations.length });
   sum.addRow({ k: 'Donations Total (PKR)', v: donTotal });
@@ -694,7 +732,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   xf.getRow(1).font = { bold: true };
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-finance.xlsx"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-finance.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
 });
@@ -813,16 +851,16 @@ function drawKpiBand(doc, tiles, sectionColor) {
 
 // ─── FINANCE-only PDF — summary + donations table + expenses table
 exports.unitFinancePdf = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to, scope } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
   const branding = await _loadBrandingSafe();
   const sectionColor = branding?.reportBranding?.pdfHeaderColor
     || branding?.theme?.light?.primary
     || '#0a3a6e';
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-finance.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-finance.pdf"`);
   // Wrapped description cells make these tables span pages far more
   // often, so the footer is stamped on every page rather than the last.
   const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
@@ -836,7 +874,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
   // The scope is stated explicitly — a District report that aggregates
   // its Areas looks identical to one that does not unless it says so.
   const scopeLabel = scope === 'subtree' ? 'including all subordinate units' : 'this unit only';
-  applyBrandedHeader(doc, branding, 'Finance Report',
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Finance Report`,
     `${data.unitLevel.replace('_', ' ')} · ${data.name}   |   ${scopeLabel}   |   Period: ${_periodLabel(from, to)}`);
 
   // Acknowledged transfers move real money, so the report's bottom line
@@ -973,9 +1011,9 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
 
 // ─── MEETINGS-only Excel — Summary + Meetings + Activities + Members + Responsibilities
 exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to, scope } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
 
   const branding = await _loadBrandingSafe();
   const headerArgb = _argb(branding?.reportBranding?.pdfHeaderColor
@@ -996,7 +1034,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
 
   sum.mergeCells('A1:B1');
-  sum.getCell('A1').value = `${orgName} — Meetings & Activities Report`;
+  sum.getCell('A1').value = `${orgName} — ${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`;
   sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
   sum.getRow(1).height = 24;
 
@@ -1194,16 +1232,16 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   _styleSheet(rb, headerArgb, { freezeColumns: 1 });
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-meetings.xlsx"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-meetings.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
 });
 
 // ─── MEETINGS-only PDF — full per-meeting detail with embedded photos
 exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to, scope } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
   const branding = await _loadBrandingSafe();
   const sectionColor = branding?.reportBranding?.pdfHeaderColor
     || branding?.theme?.light?.primary
@@ -1222,7 +1260,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
   }
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-meetings.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-meetings.pdf"`);
   // bufferPages lets the footer + "Page n of m" be stamped on every
   // page once the total is known, rather than only on the last one.
   const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
@@ -1236,7 +1274,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
     _resetText(doc);
   };
 
-  applyBrandedHeader(doc, branding, 'Meetings & Activities Report',
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`,
     `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
 
   // ─── Summary ──────────────────────────────────────────────────────
@@ -1354,6 +1392,173 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
     _recordSeparator(doc);
   });
 
+  _paginateFooters(doc, branding);
+  doc.end();
+});
+
+// ─── ACTIVITIES-only Excel / PDF ─────────────────────────────────
+exports.unitActivitiesXlsx = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PKNAP';
+  wb.created = new Date();
+
+  const ac = wb.addWorksheet('Activities');
+  ac.columns = [
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Date', key: 'd', width: 14 },
+    { header: 'Type', key: 't', width: 18 },
+    { header: 'Title', key: 'ti', width: 36 },
+    { header: 'Lead', key: 'l', width: 26 },
+    { header: 'Participants', key: 'p', width: 40 },
+    { header: 'Venue', key: 'v', width: 26 },
+    { header: 'State', key: 's', width: 14 },
+  ];
+  data.activities.slice().sort((a, b) => new Date(b.startAt) - new Date(a.startAt)).forEach((a, i) => ac.addRow({
+    n: i + 1,
+    d: a.startAt ? new Date(a.startAt).toLocaleDateString() : '',
+    t: a.type || '',
+    ti: a.title || '',
+    l: a.leadMemberId?.fullName || '',
+    p: (a.participants || []).map((p) => p?.fullName).filter(Boolean).join(', '),
+    v: a.venue || '',
+    s: a.state || '',
+  }));
+  ac.getRow(1).font = { bold: true };
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-activities.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+exports.unitActivitiesPdf = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+  const branding = await _loadBrandingSafe();
+  const sectionColor = branding?.reportBranding?.pdfHeaderColor || branding?.theme?.light?.primary || '#0a3a6e';
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-activities.pdf"`);
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
+  doc.pipe(res);
+
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Activities Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  _sectionHeading(doc, `Activities (${data.activities.length})`, sectionColor, { newPage: false });
+  if (data.activities.length === 0) {
+    doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No activities recorded in this period.');
+  }
+  data.activities.forEach((a, idx) => {
+    if (doc.y > _bottom(doc) - 120) doc.addPage();
+    _recordHeader(doc, idx + 1, a.title || a.type, [a.type, a.state, a.startAt ? new Date(a.startAt).toLocaleString() : ''], sectionColor);
+    _metaLines(doc, [
+      ['Venue', a.venue || '—'],
+      ['Lead', a.leadMemberId?.fullName || '—'],
+      ['Participants', (a.participants || []).map((p) => p?.fullName).filter(Boolean).join(', ') || null],
+      ['Body', a.body],
+    ]);
+    _paragraph(doc, 'Description', a.description, sectionColor);
+    _paragraph(doc, 'Outcome Notes', a.outcomeNotes, sectionColor);
+    _recordSeparator(doc);
+  });
+  _paginateFooters(doc, branding);
+  doc.end();
+});
+
+// ─── TRANSFERS-only Excel / PDF ──────────────────────────────────
+exports.unitTransfersXlsx = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PKNAP';
+  wb.created = new Date();
+
+  const out = wb.addWorksheet('Transfers Out');
+  out.columns = [
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Date', key: 'd', width: 18 },
+    { header: 'Amount', key: 'a', width: 16 },
+    { header: 'Destination', key: 'dest', width: 30 },
+    { header: 'State', key: 's', width: 14 },
+    { header: 'Note', key: 'note', width: 40 },
+  ];
+  data.transfersOut.slice().sort((a, b) => new Date(b.transferredAt) - new Date(a.transferredAt)).forEach((t, i) => out.addRow({
+    n: i + 1,
+    d: t.transferredAt ? new Date(t.transferredAt).toLocaleString() : '',
+    a: t.amount || 0,
+    dest: `${t.destinationLevel || ''} · ${t.destinationUnitId || ''}`,
+    s: t.state || '',
+    note: t.note || '',
+  }));
+  out.getRow(1).font = { bold: true };
+
+  const inn = wb.addWorksheet('Transfers In');
+  inn.columns = [
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Date', key: 'd', width: 18 },
+    { header: 'Amount', key: 'a', width: 16 },
+    { header: 'Source', key: 'src', width: 30 },
+    { header: 'State', key: 's', width: 14 },
+    { header: 'Note', key: 'note', width: 40 },
+  ];
+  data.transfersIn.slice().sort((a, b) => new Date(b.transferredAt) - new Date(a.transferredAt)).forEach((t, i) => inn.addRow({
+    n: i + 1,
+    d: t.transferredAt ? new Date(t.transferredAt).toLocaleString() : '',
+    a: t.amount || 0,
+    src: `${t.sourceLevel || ''} · ${t.sourceUnitId || ''}`,
+    s: t.state || '',
+    note: t.note || '',
+  }));
+  inn.getRow(1).font = { bold: true };
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-transfers.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+exports.unitTransfersPdf = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+  const branding = await _loadBrandingSafe();
+  const sectionColor = branding?.reportBranding?.pdfHeaderColor || branding?.theme?.light?.primary || '#0a3a6e';
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-transfers.pdf"`);
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
+  doc.pipe(res);
+
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Transfers Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  _sectionHeading(doc, `Transfers Out (${data.transfersOut.length})`, sectionColor, { newPage: false });
+  if (data.transfersOut.length === 0) doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No outgoing transfers in this period.');
+  data.transfersOut.forEach((t, i) => {
+    if (doc.y > _bottom(doc) - 120) doc.addPage();
+    _recordHeader(doc, i + 1, `${t.amount || 0} PKR`, [t.state, t.transferredAt ? new Date(t.transferredAt).toLocaleString() : ''], sectionColor);
+    _metaLines(doc, [
+      ['Destination', `${t.destinationLevel || ''} · ${t.destinationUnitId || ''}`],
+      ['Note', t.note || ''],
+    ]);
+    _recordSeparator(doc);
+  });
+
+  _sectionHeading(doc, `Transfers In (${data.transfersIn.length})`, sectionColor);
+  if (data.transfersIn.length === 0) doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No incoming transfers in this period.');
+  data.transfersIn.forEach((t, i) => {
+    if (doc.y > _bottom(doc) - 120) doc.addPage();
+    _recordHeader(doc, i + 1, `${t.amount || 0} PKR`, [t.state, t.transferredAt ? new Date(t.transferredAt).toLocaleString() : ''], sectionColor);
+    _metaLines(doc, [
+      ['Source', `${t.sourceLevel || ''} · ${t.sourceUnitId || ''}`],
+      ['Note', t.note || ''],
+    ]);
+    _recordSeparator(doc);
+  });
   _paginateFooters(doc, branding);
   doc.end();
 });

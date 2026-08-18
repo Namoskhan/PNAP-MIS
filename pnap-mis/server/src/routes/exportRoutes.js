@@ -13,6 +13,10 @@ router.get('/unit/finance/xlsx', FIN_READ, ctrl.unitFinanceXlsx);
 router.get('/unit/finance/pdf', FIN_READ, ctrl.unitFinancePdf);
 router.get('/unit/meetings/xlsx', ctrl.unitMeetingsXlsx);
 router.get('/unit/meetings/pdf', ctrl.unitMeetingsPdf);
+router.get('/unit/activities/xlsx', ctrl.unitActivitiesXlsx);
+router.get('/unit/activities/pdf', ctrl.unitActivitiesPdf);
+router.get('/unit/transfers/xlsx', FIN_READ, ctrl.unitTransfersXlsx);
+router.get('/unit/transfers/pdf', FIN_READ, ctrl.unitTransfersPdf);
 router.get('/member/:id/pdf', ctrl.memberPerformancePdf);
 router.get('/meeting/:id/pdf', ctrl.meetingPdf);
 

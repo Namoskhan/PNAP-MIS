@@ -154,15 +154,48 @@ export default function ActivitiesPage() {
     }
   }
 
+  // Download helper used by other units pages — object URL approach
+  // so an authenticated fetch can surface in the browser's Downloads.
+  function downloadAuthed(path, filename) {
+    const token = localStorage.getItem('pnap_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      return fetch(path, { headers })
+        .then(async (res) => {
+          if (!res.ok) throw new Error('Export failed');
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+        });
+    }
+
+  function exportParams() {
+    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+    if (scope === 'tree') params.set('scope', 'subtree');
+    if (showBodyToggle) params.set('body', body);
+    return params;
+  }
+  function exportName(ext) {
+      return `${ctx.unitName}${showBodyToggle ? ('-' + body.toLowerCase()) : ''}-activities.${ext}`;
+  }
+  function exportPdf() {
+    downloadAuthed(`/api/exports/unit/activities/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
+  }
+  function exportXlsx() {
+    downloadAuthed(`/api/exports/unit/activities/xlsx?${exportParams()}`, exportName('xlsx')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
+  }
+
   if (!ctx) return <p>Select a unit context first.</p>;
 
   return (
     <div>
       <div className="page-header">
         <h2>
-          {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee Activities' : 'Executive Activities') : 'Activities'} · {ctx.unitName}
+          {body === 'COMMITTEE' ? 'Committee Activities' : 'Executive Activities'} · {ctx.unitName}
         </h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* Single-option select at BU level — hide for everyone there. */}
           {!isPureMember && ctx.unitLevel !== 'BASIC_UNIT' && (
             <select value={scope} onChange={(e) => setScope(e.target.value)}>
@@ -170,24 +203,13 @@ export default function ActivitiesPage() {
               <option value="tree">Including subordinates</option>
             </select>
           )}
+          <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
+          <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && <button className="btn" onClick={() => setShow(true)}>
-            + Record {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee ' : 'Executive ') : ''}Activity
+            {body === 'COMMITTEE' ? '+ Record Committee Activity' : '+ Record Activity'}
           </button>}
         </div>
       </div>
-
-      {showBodyToggle && (
-        <div className="toolbar" style={{ marginBottom: 12 }}>
-          <button
-            className={`btn ${body === 'EXECUTIVE' ? '' : 'secondary'}`}
-            onClick={() => setBody('EXECUTIVE')}
-          >Executive Activities</button>
-          <button
-            className={`btn ${body === 'COMMITTEE' ? '' : 'secondary'}`}
-            onClick={() => setBody('COMMITTEE')}
-          >Committee Activities</button>
-        </div>
-      )}
 
 
       {show && (

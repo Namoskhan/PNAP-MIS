@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
@@ -24,12 +25,30 @@ const DONOR_TYPES = ['MEMBER','NON_MEMBER','CORPORATE','ANONYMOUS'];
 const ANONYMOUS_CAP = 5000;
 const NON_MEMBER_CNIC_THRESHOLD = 50000;
 
+// SRS §3.1 — the Executive and the full Committee keep separate
+// books. `body` is a tag applied at creation time from whichever hub
+// the record was entered in, not an eligibility check on the officer
+// (a Finance Secretary sits on both bodies by construction). Omitting
+// it entirely gives the pooled view, which is what whole-unit
+// oversight roles need.
+//
+// Level list copied verbatim from MeetingsPage / ActivitiesPage,
+// BASIC_UNIT included. Note that composition() says a Basic Unit has
+// no committee body — that inconsistency is already live in the
+// Meetings and Activities toggles today, so this matches rather than
+// silently diverging from them.
+function bodySupported(level) {
+  return level === 'BASIC_UNIT' || level === 'AREA' || level === 'DISTRICT'
+    || level === 'PROVINCE' || level === 'CENTRAL';
+}
+
 // Shown next to every field the server actually requires.
 const Req = () => <span className="req">*</span>;
 
 export default function FinancePage() {
   const { ctx, setCtx } = useUnit();
   const { user } = useAuth();
+  const location = useLocation();
   const toast = useToast();
   const canRecord = canManageFinance(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   const canApprove = canApproveExpense(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
@@ -92,6 +111,10 @@ export default function FinancePage() {
       .catch(() => {});
   }, [user?.memberId, user?.roles?.join(',')]);
   const [scope, setScope] = useState('own');
+  // Default body — read once from URL so a "Committee Finance" link
+  // from the dashboard lands on the right tab.
+  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
+  const [body, setBody] = useState(initialBody);
   const [summary, setSummary] = useState(null);
   const [donations, setDonations] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -127,12 +150,17 @@ export default function FinancePage() {
   // ours is still the latest.
   const fetchIdRef = useRef(0);
 
+  const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
+
   async function reload() {
     if (!ctx) return;
     const myId = ++fetchIdRef.current;
     setRefreshing(true);
     try {
       const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, scope: scope === 'tree' ? 'subtree' : undefined };
+      // Sent only when the toggle is shown, so a level without the
+      // split keeps requesting the pooled figures it gets today.
+      if (showBodyToggle) params.body = body;
       const [s, d, e] = await Promise.all([
         api.get('/finance/summary', { params }),
         api.get('/finance/donations', { params }),
@@ -159,7 +187,7 @@ export default function FinancePage() {
       if (myId === fetchIdRef.current) setRefreshing(false);
     }
   }
-  useEffect(() => { reload(); }, [ctx, scope]);
+  useEffect(() => { reload(); }, [ctx, scope, body]);
 
   // Auto-refresh everything (KPI cards + donations + expenses tables)
   // every 15s. Skips when the tab is hidden so we're not burning the
@@ -180,7 +208,7 @@ export default function FinancePage() {
       window.removeEventListener('focus', onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, ctx, scope]);
+  }, [autoRefresh, ctx, scope, body]);
 
   // Members for the donor picker (donor-type=MEMBER) — scoped to the
   // selected unit so a Finance Secretary picks from their own roster.
@@ -237,12 +265,13 @@ export default function FinancePage() {
   async function loadMonthly() {
     if (!ctx) return;
     const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, scope: scope === 'tree' ? 'subtree' : undefined };
+    if (showBodyToggle) params.body = body;
     if (monthFrom) params.from = monthFrom;
     if (monthTo) params.to = monthTo;
     const r = await api.get('/finance/monthly', { params });
     setMonthly(r.data.data);
   }
-  useEffect(() => { if (tab === 'monthly') loadMonthly(); }, [tab, ctx, scope, monthFrom, monthTo]);
+  useEffect(() => { if (tab === 'monthly') loadMonthly(); }, [tab, ctx, scope, body, monthFrom, monthTo]);
 
   function applyQuickRange(kind) {
     const today = new Date();
@@ -277,6 +306,7 @@ export default function FinancePage() {
       // auto-fill donorCnic — stored CNICs may not match the strict
       // ##### -####### -# zod regex, which would 400 the request.
       const payload = { ...donForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
+      if (showBodyToggle) payload.body = body;
       if (donForm.donorType === 'MEMBER' && donForm.donorMemberId) {
         const m = members.find((x) => x._id === donForm.donorMemberId);
         if (m) payload.donorName = m.fullName;
@@ -311,7 +341,9 @@ export default function FinancePage() {
     if (Object.keys(expErrors).length) { setErr('Please fix the highlighted fields.'); return; }
     try {
       const fd = new FormData();
-      Object.entries({ ...expForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId }).forEach(([k, v]) => {
+      const payload = { ...expForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
+      if (showBodyToggle) payload.body = body;
+      Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v != null) fd.append(k, v);
       });
       fd.append('evidence', expEvidence);
@@ -346,8 +378,12 @@ export default function FinancePage() {
     // and the page can never disagree.
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (scope === 'tree') params.set('scope', 'subtree');
+    // Body travels with the download for the same reason scope does:
+    // the report and the figures on screen must never disagree.
+    if (showBodyToggle) params.set('body', body);
     const ext = format === 'pdf' ? 'pdf' : 'xlsx';
-    const filename = `${ctx.unitName || 'unit'}-finance.${ext}`;
+    const bodyPart = showBodyToggle ? `-${body.toLowerCase()}` : '';
+    const filename = `${ctx.unitName || 'unit'}${bodyPart}-finance.${ext}`;
     const token = localStorage.getItem('pnap_token');
     fetch(`/api/exports/unit/finance/${format}?${params.toString()}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -378,7 +414,9 @@ export default function FinancePage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Finance · {ctx.unitName}</h2>
+          <h2>
+            {body === 'COMMITTEE' ? 'Committee Finance' : 'Executive Finance'} · {ctx.unitName}
+          </h2>
           <div className="subtitle">{ctx.unitLevel.replace('_', ' ')}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -396,10 +434,6 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Only page-level errors surface here. While a modal is open its
-          own copy is rendered inside the dialog — otherwise a validation
-          message would appear behind the backdrop, invisible to whoever
-          is filling the form in. */}
       {err && !donModalOpen && !expModalOpen && <div className="alert error">{err}</div>}
 
       {summary && (
@@ -428,7 +462,9 @@ export default function FinancePage() {
         <>
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn" onClick={() => { setErr(''); setDonModalOpen(true); }}>+ Record Donation</button>
+              <button className="btn" onClick={() => { setErr(''); setDonModalOpen(true); }}>
+                          {body === 'COMMITTEE' ? '+ Record Committee Donation' : '+ Record Donation'}
+              </button>
             </div>
           )}
           {canRecord && donModalOpen && (
@@ -538,7 +574,9 @@ export default function FinancePage() {
         <>
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn" onClick={() => { setErr(''); setExpModalOpen(true); }}>+ Record Expense</button>
+              <button className="btn" onClick={() => { setErr(''); setExpModalOpen(true); }}>
+                {body === 'COMMITTEE' ? '+ Record Committee Expense' : '+ Record Expense'}
+              </button>
             </div>
           )}
           {canRecord && expModalOpen && (

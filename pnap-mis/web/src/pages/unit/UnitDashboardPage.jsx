@@ -874,8 +874,8 @@ export default function UnitDashboardPage() {
                 <Link className="btn secondary" to="/unit/committee">Committee</Link>
                 <Link className="btn secondary" to="/unit/meetings?body=COMMITTEE">Committee Meetings</Link>
                 <Link className="btn secondary" to="/unit/activities?body=COMMITTEE">Committee Activities</Link>
-                <Link className="btn secondary" to="/unit/meetings?body=EXECUTIVE">Executive Meetings</Link>
-                <Link className="btn secondary" to="/unit/activities?body=EXECUTIVE">Executive Activities</Link>
+                <Link className="btn secondary" to="/unit/finance?body=COMMITTEE">Committee Finance</Link>
+                <Link className="btn secondary" to="/unit/transfers?body=COMMITTEE">Committee Transfers</Link>
                 <Link className="btn secondary" to="/unit/reports">Reports</Link>
               </div>
             </div>

@@ -71,24 +71,45 @@ async function authorizeAck(user, transfer) {
     `Only the Finance Secretary or Senior Mawin of the destination ${transfer.destinationLevel} (or its admin) may decide on this transfer`);
 }
 
+// SRS §3.1 body separation — identical fragment to
+// financeController.bodyClause / activityController.list. The
+// EXECUTIVE branch matches `$exists: false` so transfers written
+// before the field existed keep showing under Executive. Returns null
+// when `body` is omitted (pooled view — today's behavior).
+function bodyClause(body) {
+  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  return null;
+}
+
 exports.list = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, direction, state } = req.query;
+  const { unitLevel, unitId, direction, state, body } = req.query;
   const filter = {};
   if (state) filter.state = state;
+
+  // Merged per-clause below rather than once at the top: the
+  // no-direction branch already owns `filter.$or` for the
+  // source/destination union, and the EXECUTIVE fragment carries its
+  // own `$or`. Nesting it inside each union arm keeps both intact.
+  const bc = bodyClause(body);
 
   if (unitLevel && unitId) {
     if (direction === 'incoming') {
       filter.destinationLevel = unitLevel;
       filter.destinationUnitId = unitId;
+      if (bc) Object.assign(filter, bc);
     } else if (direction === 'outgoing') {
       filter.sourceLevel = unitLevel;
       filter.sourceUnitId = unitId;
+      if (bc) Object.assign(filter, bc);
     } else {
       filter.$or = [
-        { sourceLevel: unitLevel, sourceUnitId: unitId },
-        { destinationLevel: unitLevel, destinationUnitId: unitId },
+        { sourceLevel: unitLevel, sourceUnitId: unitId, ...(bc || {}) },
+        { destinationLevel: unitLevel, destinationUnitId: unitId, ...(bc || {}) },
       ];
     }
+  } else if (bc) {
+    Object.assign(filter, bc);
   }
 
   const items = await FundTransfer.find(filter)
@@ -125,6 +146,12 @@ exports.initiate = asyncHandler(async (req, res) => {
     throw new ApiError(403, 'FORBIDDEN', 'Only Finance Secretary / Admin may initiate transfers');
   }
   const { sourceLevel, sourceUnitId, destinationId, mode, reference, note } = req.body;
+  // SRS §3.1 — which body's books this movement belongs to. Same
+  // coercion as activityController's `requestedBody`: anything that
+  // isn't COMMITTEE is EXECUTIVE, so a caller that omits it gets
+  // today's behavior. This route has no zod schema, so the value
+  // arrives raw off the multipart form.
+  const body = (req.body.body === 'COMMITTEE') ? 'COMMITTEE' : 'EXECUTIVE';
   // Multipart payload — amount comes through as a string from the form.
   const amount = parseFloat(req.body.amount);
   if (!amount || amount <= 0) throw new ApiError(400, 'VALIDATION_ERROR', 'amount must be positive');
@@ -167,6 +194,7 @@ exports.initiate = asyncHandler(async (req, res) => {
     destinationName: destination.name,
     direction,
     ...chain,
+    body,
     amount, mode, reference, note,
     receiptImageUrl: `/uploads/${req.file.filename}`,
     initiatedBy: req.user._id,

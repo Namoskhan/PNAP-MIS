@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { api, errorMessage } from '../../api/client';
 
@@ -20,8 +21,26 @@ function downloadAuthed(path, filename) {
     });
 }
 
+function downloadAuthed2(path, filename) {
+  const token = localStorage.getItem('pnap_token');
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  return fetch(path, { headers })
+    .then(async (res) => {
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+}
+
 export default function ReportsPage() {
+  const location = useLocation();
+  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : '';
   const { ctx } = useUnit();
+  const [body, setBody] = useState(initialBody);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [members, setMembers] = useState([]);
@@ -63,16 +82,17 @@ export default function ReportsPage() {
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
-    return p.toString();
-  }
+      if (typeof body !== 'undefined' && body) p.set('body', body);
+      return p.toString();
+    }
 
   async function downloadUnit(kind, format) {
     setErr(''); setBusy(true);
     try {
       const ext = format === 'pdf' ? 'pdf' : 'xlsx';
-      await downloadAuthed(
+      await downloadAuthed2(
         `/api/exports/unit/${kind}/${format}?${unitParams()}`,
-        `${ctx.unitLevel}-${ctx.unitName}-${kind}.${ext}`,
+              `${ctx.unitLevel}-${ctx.unitName}-${kind}${body ? `-${body.toLowerCase()}` : ''}.${ext}`,
       );
     } catch (e) { setErr('Export failed: ' + (e.message || 'unknown')); }
     finally { setBusy(false); }
@@ -85,7 +105,7 @@ export default function ReportsPage() {
       const p = new URLSearchParams();
       if (from) p.set('from', from);
       if (to) p.set('to', to);
-      await downloadAuthed(
+      await downloadAuthed2(
         `/api/exports/member/${memberId}/pdf?${p.toString()}`,
         `member-${memberId}-performance.pdf`,
       );
@@ -116,7 +136,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Meetings & Activities Report</h3>
+        <h3 style={{ marginTop: 0 }}>{body === 'COMMITTEE' ? 'Committee Meetings & Activities Report' : 'Meetings & Activities Report'}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
           Roster, meetings (with embedded photos), activities, and pending/completed responsibilities.
         </p>
@@ -127,7 +147,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Finance Report</h3>
+        <h3 style={{ marginTop: 0 }}>{body === 'COMMITTEE' ? 'Committee Finance Report' : 'Finance Report'}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
           Donations ledger, expenses ledger, and the unit's net balance for the period.
         </p>

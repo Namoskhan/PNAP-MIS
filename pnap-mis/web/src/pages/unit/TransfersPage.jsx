@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
@@ -19,10 +20,28 @@ const LEVEL_LABEL = {
 };
 const DIRECTION_LABEL = { UP: 'Upward', DOWN: 'Downward', SAME_TIER: 'Same tier' };
 
+// SRS §3.1 — the Executive and the full Committee keep separate
+// books, transfers included. `body` tags a transfer with whichever
+// hub it was initiated from; it is not an eligibility check on the
+// sender. Omitting it gives the pooled view.
+//
+// Level list copied verbatim from MeetingsPage / ActivitiesPage,
+// BASIC_UNIT included — see the note in FinancePage on why that stays
+// consistent with the existing toggles rather than with composition().
+function bodySupported(level) {
+  return level === 'BASIC_UNIT' || level === 'AREA' || level === 'DISTRICT'
+    || level === 'PROVINCE' || level === 'CENTRAL';
+}
+
 export default function TransfersPage() {
   const { ctx } = useUnit();
+  const location = useLocation();
   const toast = useToast();
   const [tab, setTab] = useState('outgoing');
+  // Default body — read once from URL so a "Committee Transfers" link
+  // from the dashboard lands on the right tab.
+  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
+  const [body, setBody] = useState(initialBody);
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
   const [receipt, setReceipt] = useState(null);
@@ -39,14 +58,18 @@ export default function TransfersPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
+
   async function reload() {
     if (!ctx) return;
-    const r = await api.get('/transfers', {
-      params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab },
-    });
+    const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab };
+    // Sent only when the toggle is shown, so a level without the split
+    // keeps requesting the pooled history it gets today.
+    if (showBodyToggle) params.body = body;
+    const r = await api.get('/transfers', { params });
     setItems(r.data.data);
   }
-  useEffect(() => { reload(); }, [ctx, tab]);
+  useEffect(() => { reload(); }, [ctx, tab, body]);
 
   // Switching unit context invalidates any pending selection.
   useEffect(() => { resetSelection(); }, [ctx]);
@@ -88,6 +111,7 @@ export default function TransfersPage() {
       // The only routing input the server accepts — an opaque id it
       // re-resolves and re-validates on its own.
       fd.append('destinationId', preview.destination.id);
+      if (showBodyToggle) fd.append('body', body);
       fd.append('amount', form.amount);
       fd.append('mode', form.mode);
       if (form.reference) fd.append('reference', form.reference);
@@ -140,6 +164,38 @@ export default function TransfersPage() {
     }
   }
 
+  // Download helper used by other units pages — object URL approach
+  // so an authenticated fetch can surface in the browser's Downloads.
+  function downloadAuthed(path, filename) {
+    const token = localStorage.getItem('pnap_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      return fetch(path, { headers })
+        .then(async (res) => {
+          if (!res.ok) throw new Error('Export failed');
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+        });
+    }
+
+  function exportParams() {
+    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab });
+    if (showBodyToggle) params.set('body', body);
+    return params;
+  }
+  function exportName(ext) {
+      return `${ctx.unitName}${showBodyToggle ? ('-' + body.toLowerCase()) : ''}-transfers.${ext}`;
+  }
+  function exportPdf() {
+    downloadAuthed(`/api/exports/unit/transfers/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
+  }
+  function exportXlsx() {
+    downloadAuthed(`/api/exports/unit/transfers/xlsx?${exportParams()}`, exportName('xlsx')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
+  }
+
   const { user } = useAuth();
   if (!ctx) return <p>Select a unit context first.</p>;
   // Server enforces this too (403) — the guard just renders a clear
@@ -160,11 +216,19 @@ export default function TransfersPage() {
   return (
     <div>
       <div className="page-header">
-        <h2>Fund Transfers · {ctx.unitName}</h2>
-        {canSend && (
-          <button className="btn" onClick={() => setTransferModalOpen(true)}>+ Initiate Fund Transfer</button>
-        )}
-      </div>
+          <h2>
+            {body === 'COMMITTEE' ? 'Committee Transfers' : 'Executive Transfers'} · {ctx.unitName}
+          </h2>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
+            <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
+            {canSend && (
+              <button className="btn" onClick={() => setTransferModalOpen(true)}>
+                {body === 'COMMITTEE' ? '+ Initiate Committee Fund Transfer' : '+ Initiate Fund Transfer'}
+              </button>
+            )}
+          </div>
+        </div>
 
       {err && !transferModalOpen && <div className="alert error">{err}</div>}
 

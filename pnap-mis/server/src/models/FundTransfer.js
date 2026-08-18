@@ -57,6 +57,23 @@ const fundTransferSchema = new mongoose.Schema(
     districtId: { type: mongoose.Schema.Types.ObjectId, ref: 'District' },
     provinceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Province' },
 
+    // SRS §3.1 — which body's books this transfer belongs to. Same
+    // field, enum and default as Meeting.js / Activity.js: a tag
+    // applied from whichever UI hub the transfer was initiated in, not
+    // an eligibility check on the sender (a Finance Secretary sits on
+    // both the Executive and the Committee by construction). Tagged
+    // from the SENDER's side only — the destination's own view of an
+    // incoming transfer inherits the same tag, since one record serves
+    // both ledgers. Records written before this field existed carry no
+    // value and are read back as EXECUTIVE by the `$exists: false`
+    // fallback in every filter that uses it.
+    body: {
+      type: String,
+      enum: ['EXECUTIVE', 'COMMITTEE'],
+      default: 'EXECUTIVE',
+      index: true,
+    },
+
     amount: { type: Number, required: true, min: 0 },
     currency: { type: String, default: 'PKR' },
     mode: { type: String, enum: ['CASH', 'BANK_TRANSFER', 'MOBILE_WALLET', 'CHEQUE'], required: true },

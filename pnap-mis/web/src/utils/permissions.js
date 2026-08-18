@@ -10,7 +10,9 @@
 export const HIGHER_ADMIN_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'];
 
 export function hasRole(user, ...roles) {
-  return !!user?.roles?.some((r) => roles.includes(r));
+  if (!user?.roles) return false;
+  const userRoles = (user.roles || []).map((r) => String(r).toUpperCase());
+  return roles.some((role) => userRoles.includes(String(role).toUpperCase()));
 }
 
 // True if the current user holds the given permission code (e.g.
