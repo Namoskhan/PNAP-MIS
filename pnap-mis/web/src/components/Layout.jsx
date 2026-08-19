@@ -400,7 +400,9 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
             </div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
+              <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
+                {user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}
+              </NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
               {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
               {/* Not gated on MANAGE_MEETINGS: this persona cannot ASSIGN
@@ -444,7 +446,9 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Province'}
             </div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
+              <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
+                {user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}
+              </NavLink>
               <NavLink to="/members">Members</NavLink>
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
               <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
@@ -460,18 +464,22 @@ export default function Layout() {
 
         {!isSuperAdmin && !isCentralAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
           <>
-            <div className="nav-group">Global</div>
+            <div className="nav-group">
+              {user?.canViewExecutiveDashboard ? 'CENTRAL · PKNAP CENTRAL' : 'Global'}
+            </div>
             <nav>
-              <NavLink to="/" end>Dashboard</NavLink>
+              <NavLink to="/" end>{user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}</NavLink>
               <NavLink to="/members">Members</NavLink>
               {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
               {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
             </nav>
-            <div className="nav-group">
-              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
-            </div>
+            {!user?.canViewExecutiveDashboard && (
+              <div className="nav-group">
+                {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+              </div>
+            )}
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
+              {!user?.canViewExecutiveDashboard && <NavLink to="/unit" end>Dashboard</NavLink>}
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
               <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
               <UnitNavLink to="/unit/activities">Activities</UnitNavLink>

@@ -20,15 +20,13 @@ export default function DashboardPage() {
   // member portal even though their role list includes 'MEMBER'.
   const isPureMember = isPureMemberFn(user);
 
-  // The system-wide overview is Super Admin territory. Every other
-  // signed-in persona (Secretary, Senior Mawin, Finance Secretary,
-  // President, Area/District/Province admin, custom roles) operates
-  // within a unit domain — send them to the unit dashboard that
-  // UnitContext has already pinned to their role's unit.
-  const isSuperAdmin = !!user?.roles?.includes('SUPER_ADMIN');
-  const redirectToUnit = !isPureMember && !isSuperAdmin;
+  // The system-wide overview is available to Super Admin and approved
+  // Central Cabinet officeholders. Every other signed-in officeholder
+  // operates within a unit domain and is sent to that unit dashboard.
+  const canViewExecutiveDashboard = !!user?.canViewExecutiveDashboard;
+  const redirectToUnit = !isPureMember && !canViewExecutiveDashboard;
 
-  // Only the member portal loads anything here now. Super Admin goes
+  // Only the member portal loads anything here now. Executive viewers go
   // straight to ExecutiveAnalytics, which owns its own fetching and
   // its own 60s refresh — the /members/stats call and the 25s poll
   // that fed the old System Overview are gone with it.
@@ -161,12 +159,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Super Admin lands directly on the Executive National MIS. The old
+  // Executive viewers land directly on the Executive National MIS. The old
   // System Overview block that sat above it (status KPIs, distribution
   // bars, active-share donut, quick actions) is gone: the analytics
   // below answer the same questions with more depth, and its three
   // quick-action links already live in the sidebar.
-  // Super Admin lands on the Command Centre. The previous section-based
+  // Executive viewers land on the Command Centre. The previous section-based
   // view is untouched at components/dashboard/ExecutiveAnalytics.jsx —
   // swapping this one import back restores it.
   return <CommandCenter />;

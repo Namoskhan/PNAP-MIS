@@ -49,6 +49,8 @@ async function buildRoleMaps(userRoles) {
 async function shapeUser(user) {
   const obj = typeof user.toJSON === 'function' ? user.toJSON() : { ...user };
   obj.permissions = userPermissions(user);
+  const { canViewExecutiveDashboard } = require('../utils/centralCabinetDashboard');
+  obj.canViewExecutiveDashboard = await canViewExecutiveDashboard(user);
   const { labels, userPerms } = await buildRoleMaps(obj.roles);
   obj.roleLabels = labels;
   obj.rolePermissions = userPerms;

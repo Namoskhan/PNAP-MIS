@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
@@ -362,6 +362,11 @@ export default function UnitDashboardPage() {
   );
 
   const firstName = user?.fullName?.split(' ')[0] || '';
+  // Central Cabinet officeholders use the Central Dashboard as their
+  // only dashboard. Keep this redirect so an old bookmark to /unit
+  // cannot reopen the previous unit dashboard.
+  if (user?.canViewExecutiveDashboard) return <Navigate to="/" replace />;
+
   return (
     <div>
       <HeroBanner
