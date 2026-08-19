@@ -3,7 +3,10 @@ import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 const STATE_LABEL = {
   PENDING: 'Pending',
   IN_PROGRESS: 'In Progress',
@@ -14,6 +17,7 @@ const STATE_LABEL = {
 export default function ResponsibilitiesPage() {
   const { ctx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -21,7 +25,6 @@ export default function ResponsibilitiesPage() {
   const [show, setShow] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', dueDate: '', assignedToMemberId: '' });
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   async function reload() {
     if (!ctx) return;
@@ -40,11 +43,15 @@ export default function ResponsibilitiesPage() {
     else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
     else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
     else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+    // Central has no unit key on Member; scope:'all' is the explicit
+    // opt-in the members endpoint requires when no unit filter is sent.
+    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [ctx]);
 
   async function create() {
-    setErr(''); setMsg('');
+    setErr('');
+    // Validation stays inline — the form is open and being corrected.
     if (!form.title.trim() || !form.assignedToMemberId) {
       setErr('Pick a member and enter a title.');
       return;
@@ -52,27 +59,41 @@ export default function ResponsibilitiesPage() {
     try {
       const payload = { ...form, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
+      const assignee = members.find((m) => m._id === form.assignedToMemberId);
       await api.post('/responsibilities', payload);
-      setMsg('Responsibility assigned.');
       setForm({ title: '', description: '', dueDate: '', assignedToMemberId: '' });
       setShow(false);
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(
+        assignee ? `"${payload.title}" assigned to ${assignee.fullName}.` : `"${payload.title}" assigned.`,
+        { title: 'Responsibility assigned' }
+      );
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not assign responsibility', duration: 7000 });
+    }
   }
 
   async function update(id, patch) {
     try {
       await api.patch(`/responsibilities/${id}`, patch);
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+      // Callers pass { state: 'IN_PROGRESS' | 'COMPLETED' | … }; reuse
+      // the same labels the table shows rather than raw enum codes.
+      toast.success(patch.state ? `Marked ${(STATE_LABEL[patch.state] || patch.state).toLowerCase()}.` : 'Responsibility updated.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not update responsibility', duration: 7000 });
+    }
   }
 
   async function remove(id) {
-    if (!confirm('Delete this responsibility?')) return;
+    if (!await dialog.confirm('Delete this responsibility?')) return;
     try {
       await api.delete(`/responsibilities/${id}`);
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+      toast.success('Responsibility deleted.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not delete responsibility', duration: 7000 });
+    }
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -91,14 +112,13 @@ export default function ResponsibilitiesPage() {
       </div>
 
       {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {show && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}>
         <div className="modal" style={{ maxWidth: 640 }} role="dialog" aria-modal="true" aria-label="Assign Responsibility">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Assign a responsibility</h3>
-            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
           <div className="form-grid">
             <div className="field full">
@@ -144,8 +164,8 @@ export default function ResponsibilitiesPage() {
               <td style={{ whiteSpace: 'nowrap' }}>
                 {canManage && r.state === 'PENDING' && <button className="btn secondary" onClick={() => update(r._id, { state: 'IN_PROGRESS' })}>Start</button>}{' '}
                 {canManage && r.state !== 'COMPLETED' && r.state !== 'CANCELLED' && (
-                  <button className="btn" onClick={() => {
-                    const note = prompt('Completion note (optional):') || '';
+                  <button className="btn" onClick={async () => {
+                    const note = await dialog.prompt('Completion note (optional):') || '';
                     update(r._id, { state: 'COMPLETED', completionNote: note });
                   }}>Mark Done</button>
                 )}{' '}

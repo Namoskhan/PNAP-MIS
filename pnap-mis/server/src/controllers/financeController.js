@@ -8,6 +8,7 @@ const { ok, created, ApiError } = require('../utils/response');
 const { canManageFinance, canApprove, resolveUnitChain } = require('../utils/unitScope');
 const policyEngine = require('../services/policyEngine');
 const workflowEngine = require('../services/workflowEngine');
+const activityService = require('../services/activityService');
 
 // Mongoose's `find` auto-casts query strings to ObjectId; aggregate's
 // $match does NOT. Cast every ObjectId-typed field explicitly when
@@ -40,6 +41,28 @@ async function nextReceiptNo(unitId, fy) {
   return `${fy}-${String(seq).padStart(5, '0')}`;
 }
 
+// SRS §3.1 body separation — mirrors activityController.list /
+// meetingController.list exactly. Returns a filter fragment to merge,
+// or null when the caller omitted `body` (pooled Executive+Committee
+// view — today's behavior, and what whole-unit oversight roles like
+// the Senior Mawin Secretary need).
+//
+// The EXECUTIVE branch matches `$exists: false` as well: records
+// written before `body` was added to these models carry no field at
+// all and must keep appearing under Executive so nothing that used to
+// be visible disappears.
+function bodyClause(body) {
+  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  return null;
+}
+
+// Write-side coercion, same style as activityController's
+// `requestedBody` — anything that isn't COMMITTEE is EXECUTIVE.
+function requestedBody(raw) {
+  return raw === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
+}
+
 function applyScopeFilter(filter, unitLevel, unitId, scope, chain) {
   if (scope === 'subtree') {
     if (unitLevel === 'BASIC_UNIT') filter.basicUnitId = toOid(chain.basicUnitId);
@@ -54,7 +77,7 @@ function applyScopeFilter(filter, unitLevel, unitId, scope, chain) {
 
 // ---------- Donations ----------
 exports.listDonations = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, scope, from, to } = req.query;
+  const { unitLevel, unitId, scope, from, to, body } = req.query;
   const filter = {};
   if (unitLevel && unitId) {
     const chain = await resolveUnitChain(unitLevel, unitId);
@@ -66,6 +89,8 @@ exports.listDonations = asyncHandler(async (req, res) => {
     if (from) filter.receivedAt.$gte = new Date(from);
     if (to) filter.receivedAt.$lte = new Date(to);
   }
+  const bc = bodyClause(body);
+  if (bc) Object.assign(filter, bc);
   const items = await Donation.find(filter).sort({ receivedAt: -1 }).limit(500);
   ok(res, items);
 });
@@ -93,6 +118,9 @@ exports.recordDonation = asyncHandler(async (req, res) => {
   const doc = await Donation.create({
     ...d,
     ...chain,
+    // Tag AFTER the spread so an unrecognised client value normalises
+    // to EXECUTIVE rather than reaching the model.
+    body: requestedBody(d.body),
     receiptNo,
     fiscalYear: fy,
     receiptImageUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
@@ -103,7 +131,7 @@ exports.recordDonation = asyncHandler(async (req, res) => {
 
 // ---------- Expenses ----------
 exports.listExpenses = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, scope, state, from, to } = req.query;
+  const { unitLevel, unitId, scope, state, from, to, body } = req.query;
   const filter = {};
   if (unitLevel && unitId) {
     const chain = await resolveUnitChain(unitLevel, unitId);
@@ -116,6 +144,8 @@ exports.listExpenses = asyncHandler(async (req, res) => {
     if (from) filter.incurredAt.$gte = new Date(from);
     if (to) filter.incurredAt.$lte = new Date(to);
   }
+  const bc = bodyClause(body);
+  if (bc) Object.assign(filter, bc);
   const items = await Expense.find(filter).sort({ incurredAt: -1 }).limit(500);
   ok(res, items);
 });
@@ -141,12 +171,29 @@ exports.recordExpense = asyncHandler(async (req, res) => {
   const doc = await Expense.create({
     ...d,
     ...chain,
+    // Tag AFTER the spread so an unrecognised client value normalises
+    // to EXECUTIVE rather than reaching the model.
+    body: requestedBody(d.body),
     evidenceUrl: `/uploads/${req.file.filename}`,
     state: requiresApproval ? 'PENDING' : 'APPROVED',
     approvedBy: requiresApproval ? undefined : req.user._id,
     approvedAt: requiresApproval ? undefined : new Date(),
     recordedBy: req.user._id,
   });
+
+  // Report Submission — filing a voucher-backed expense return is the
+  // unit's financial reporting duty.
+  activityService.record({
+    action: 'REPORT_SUBMITTED',
+    req,
+    chain,
+    unitLevel: d.unitLevel,
+    unitId: d.unitId,
+    targetType: 'Expense',
+    targetId: doc._id,
+    targetLabel: doc.category,
+  }).catch(() => {});
+
   created(res, doc);
 });
 
@@ -239,12 +286,30 @@ exports.decideExpense = asyncHandler(async (req, res) => {
     }).catch(() => {});
   }
 
+  // Report Approval. Fires on every decision, including intermediate
+  // multi-stage ones — each approver did the work of reviewing it.
+  activityService.record({
+    action: 'REPORT_APPROVED',
+    req,
+    chain: {
+      basicUnitId: e.basicUnitId,
+      areaId: e.areaId,
+      districtId: e.districtId,
+      provinceId: e.provinceId,
+    },
+    unitLevel: e.unitLevel,
+    unitId: e.unitId,
+    targetType: 'Expense',
+    targetId: e._id,
+    targetLabel: e.category,
+  }).catch(() => {});
+
   ok(res, e);
 });
 
 // ---------- Summary ----------
 exports.summary = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, scope } = req.query;
+  const { unitLevel, unitId, scope, body } = req.query;
   if (!unitLevel || !unitId) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId required');
   const chain = await resolveUnitChain(unitLevel, unitId);
   if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
@@ -268,6 +333,17 @@ exports.summary = asyncHandler(async (req, res) => {
     destinationUnitId: toOid(unitId),
     state: 'ACKNOWLEDGED',
   };
+
+  // Optional body split — every one of the four ledgers narrows
+  // together so the KPI tiles and the Net Balance stay internally
+  // consistent. Omitted `body` leaves all four untouched (pooled).
+  const bc = bodyClause(body);
+  if (bc) {
+    Object.assign(dFilter, bc);
+    Object.assign(eFilter, bc);
+    Object.assign(outFilter, bc);
+    Object.assign(inFilter, bc);
+  }
 
   const [donAgg, expAgg, outAgg, inAgg] = await Promise.all([
     Donation.aggregate([{ $match: dFilter }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
@@ -294,7 +370,7 @@ exports.summary = asyncHandler(async (req, res) => {
 // calendar month for the requested period. Used by the Finance
 // Secretary's Monthly Statements view + monthly statement export.
 exports.monthlyStatements = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, scope, from, to } = req.query;
+  const { unitLevel, unitId, scope, from, to, body } = req.query;
   if (!unitLevel || !unitId) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId required');
   const chain = await resolveUnitChain(unitLevel, unitId);
   if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
@@ -306,6 +382,16 @@ exports.monthlyStatements = asyncHandler(async (req, res) => {
   eFilter.state = 'APPROVED';
   const outFilter = { sourceLevel: unitLevel, sourceUnitId: toOid(unitId), state: 'ACKNOWLEDGED' };
   const inFilter = { destinationLevel: unitLevel, destinationUnitId: toOid(unitId), state: 'ACKNOWLEDGED' };
+
+  // Same optional body split as summary() — all four ledgers narrow
+  // together so a month's Net Balance can't mix the two bodies.
+  const bc = bodyClause(body);
+  if (bc) {
+    Object.assign(dFilter, bc);
+    Object.assign(eFilter, bc);
+    Object.assign(outFilter, bc);
+    Object.assign(inFilter, bc);
+  }
 
   const dateRange = {};
   if (from) dateRange.$gte = new Date(from);

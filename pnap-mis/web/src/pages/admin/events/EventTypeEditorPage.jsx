@@ -6,8 +6,7 @@ import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
 import {
   ClipboardIcon, TargetIcon, CameraIcon, RepeatIcon,
-  PuzzleIcon, InfoIcon, UsersIcon, TrashIcon,
-} from '../../../components/icons';
+  PuzzleIcon, InfoIcon, UsersIcon, TrashIcon, XIcon } from '../../../components/icons';
 
 // Full editor for a single EventTypeConfig — basic info, body
 // applicability, photo policy, workflow extras, and field selection.
@@ -192,7 +191,7 @@ export default function EventTypeEditorPage() {
     finally { setSaving(false); }
   }
 
-  async function showSnapshot() {
+  function showSnapshot() {
     setSnapshotOpen(true);
   }
 
@@ -563,7 +562,7 @@ function SnapshotPreviewDialog({ typeId, onClose }) {
       <div className="modal" style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Snapshot preview</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
           Exactly what will be frozen into <code>EventConfigSnapshot</code> on the next record using this type.

@@ -5,8 +5,9 @@ const UnitPolicy = require('../models/UnitPolicy');
 // The values here PRESERVE the system's pre-PR-U3 hardcoded behavior:
 //   • Expense second-approver threshold: 10000 (matches
 //     financeController's EXPENSE_APPROVAL_THRESHOLD)
-//   • Transfers: UP-only (matches transferController's PARENT_LEVEL
-//     enforcement)
+//   • Transfers: all three directions (matches transferController —
+//     the sender names any active unit in the organization, so DOWN
+//     and SAME_TIER are ordinary cases, not exceptions)
 //   • Meeting quorum: not enforced (no constraint existed)
 //   • Donation CNIC: not enforced via this policy (the existing
 //     SRS §9.1 rule lives in the donation controller)
@@ -29,7 +30,11 @@ async function seedUnitPolicies() {
     if (!existing.isSystem) { existing.isSystem = true; dirty = true; }
     if (existing.isActive !== true) { existing.isActive = true; dirty = true; }
     if (dirty) await existing.save();
-    return { inserted: 0, reconciled: dirty ? 1 : 0 };
+    return {
+      inserted: 0,
+      reconciled: dirty ? 1 : 0,
+      widenedDirections: await _widenTransferDirections(),
+    };
   }
 
   await UnitPolicy.create({
@@ -56,14 +61,46 @@ async function seedUnitPolicies() {
       expenseRequireSecondApproverAbove: 10000,
     },
     transfer: {
-      // Upward-only — matches transferController's PARENT_LEVEL
-      // hardcoded routing. Admin can extend to ['UP', 'DOWN', 'SAME_TIER']
-      // once the controller learns to handle the other directions.
-      allowedDirections: ['UP'],
+      // All three directions. Destinations are chosen from the whole
+      // organization tree, so a District paying one of its Areas
+      // (DOWN) and KPK paying Punjab (SAME_TIER) are both legitimate.
+      // Admin can narrow this list to re-restrict the flow.
+      allowedDirections: ['UP', 'DOWN', 'SAME_TIER'],
     },
   });
 
-  return { inserted: 1, reconciled: 0 };
+  return { inserted: 1, reconciled: 0, widenedDirections: false };
+}
+
+// One-time widening of the transfer-direction rule on databases seeded
+// before the destination policy changed. Without this, every existing
+// deployment keeps allowedDirections: ['UP'] and policyEngine rejects
+// the downward and same-tier transfers the new rule is meant to allow.
+//
+// Guarded like the seeder itself: it only rewrites the pristine
+// shipped row — system-owned, never edited by an admin
+// (policyVersion 1), and still carrying exactly the old ['UP'] value.
+// An admin who has deliberately set a direction list keeps it.
+//
+// Idempotent twice over: the version bump takes the row past the
+// policyVersion === 1 guard, and the value it looks for is gone once
+// rewritten.
+async function _widenTransferDirections() {
+  const doc = await UnitPolicy.findOne({ scope: 'GLOBAL' });
+  if (!doc || !doc.isSystem) return false;
+  if ((doc.policyVersion || 1) !== 1) return false;
+
+  const current = doc.transfer?.allowedDirections || [];
+  if (current.length !== 1 || current[0] !== 'UP') return false;
+
+  doc.transfer.allowedDirections = ['UP', 'DOWN', 'SAME_TIER'];
+  doc.markModified('transfer');
+  doc.policyVersion = 2;
+  await doc.save();
+
+  // Drop the resolved-policy cache so a long-lived process picks it up.
+  require('../services/policyEngine').invalidate('GLOBAL');
+  return true;
 }
 
 module.exports = { seedUnitPolicies };

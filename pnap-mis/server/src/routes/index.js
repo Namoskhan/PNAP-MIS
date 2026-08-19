@@ -7,6 +7,9 @@ router.use('/public', require('./publicRoutes'));
 router.use('/public', require('./publicBrandingRoutes'));
 router.use('/auth', require('./authRoutes'));
 router.use('/org', require('./orgRoutes'));
+// Read-only hierarchy navigation (fund-transfer destination picker).
+// Separate mount from /org — see organizationRoutes for why.
+router.use('/organization', require('./organizationRoutes'));
 router.use('/members', require('./memberRoutes'));
 router.use('/roles', require('./roleRoutes'));
 router.use('/meetings', require('./meetingRoutes'));

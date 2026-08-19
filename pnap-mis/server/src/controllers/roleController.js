@@ -6,10 +6,12 @@ const { ok, created, ApiError } = require('../utils/response');
 const {
   canDecideRole,
   canInitiateRole,
+  canReadUnitRoles,
   unitWithinAreaAdminScope,
   resolveUnitChain,
 } = require('../utils/unitScope');
 const workflowEngine = require('../services/workflowEngine');
+const activityService = require('../services/activityService');
 
 // SUPER_ADMIN can initiate or decide role assignments at any tier
 // (NATIONAL_ADMIN was removed; Super took over its Central-tier
@@ -45,6 +47,25 @@ exports.list = asyncHandler(async (req, res) => {
   if (state) filter.state = state;
   if (memberId) filter.memberId = memberId;
 
+  // Read scope. This endpoint used to answer any query from any
+  // authenticated caller, which made every unit's cabinet roster
+  // world-readable. Three shapes are legitimate:
+  //   • a member asking about their own assignments;
+  //   • a unit-scoped query the caller is entitled to see;
+  //   • the cross-unit queue, which only Super Admin may pull.
+  const isSuper = !!req.user?.roles?.includes('SUPER_ADMIN');
+  const isSelfQuery = memberId && req.user?.memberId
+    && String(memberId) === String(req.user.memberId);
+  if (!isSuper && !isSelfQuery) {
+    if (!unitLevel || !unitId) {
+      throw new ApiError(400, 'UNSCOPED_QUERY',
+        'Role queries must name a unit (unitLevel + unitId) or your own memberId.');
+    }
+    if (!(await canReadUnitRoles(req.user, unitLevel, unitId))) {
+      throw new ApiError(403, 'OUT_OF_SCOPE', 'This unit is outside your hierarchy.');
+    }
+  }
+
   const items = await RoleAssignment.find(filter)
     .sort({ createdAt: -1 })
     .populate('memberId', 'fullName cnic photoUrl memberId')
@@ -57,6 +78,9 @@ exports.cabinet = asyncHandler(async (req, res) => {
   const { unitLevel, unitId } = req.query;
   if (!unitLevel || !unitId) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId required');
+  }
+  if (!(await canReadUnitRoles(req.user, unitLevel, unitId))) {
+    throw new ApiError(403, 'OUT_OF_SCOPE', 'This unit is outside your hierarchy.');
   }
 
   // Make sure the slot rows exist for this unit (idempotent — does
@@ -236,6 +260,33 @@ exports.decide = asyncHandler(async (req, res) => {
   // read `decision === 'APPROVED'`, which is fine because they only
   // mean to fire when the FINAL state is APPROVED; rebind here so
   // the existing block doesn't need restructuring.
+  // Cabinet Role Assignment — credited both to the officer who
+  // decided and to the member who took office. Taking a cabinet seat
+  // is the clearest possible signal that someone is engaged, and it
+  // also seeds a brand-new office bearer's activity so their unit
+  // isn't reported dormant from the day its cabinet was formed.
+  activityService.record({
+    action: 'CABINET_ROLE_ASSIGNED',
+    req,
+    unitLevel: ra.unitLevel,
+    unitId: ra.unitId,
+    targetType: 'RoleAssignment',
+    targetId: ra._id,
+    targetLabel: ra.roleCode,
+  }).catch(() => {});
+  if (finalState === 'APPROVED') {
+    activityService.record({
+      action: 'CABINET_ROLE_ASSIGNED',
+      req,
+      memberId: ra.memberId,
+      unitLevel: ra.unitLevel,
+      unitId: ra.unitId,
+      targetType: 'RoleAssignment',
+      targetId: ra._id,
+      targetLabel: ra.roleCode,
+    }).catch(() => {});
+  }
+
   // eslint-disable-next-line no-param-reassign
   if (finalState !== 'APPROVED') return ok(res, ra);
 

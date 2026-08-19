@@ -11,6 +11,7 @@ const Area = require('../models/Area');
 const District = require('../models/District');
 const { ok, ApiError } = require('../utils/response');
 const { resolveUnitChain } = require('../utils/unitScope');
+const analyticsService = require('../services/analyticsService');
 
 // Member roster filter — uses the denormalized chain id because
 // Member records live at BU level only (an Area has no direct
@@ -402,6 +403,90 @@ async function countSubordinateUnits(unitLevel, chain) {
   }
   return {};
 }
+
+// ─── Executive analytics (Super Admin) ─────────────────────────────
+//
+// Thin by design: parse the query into a filter, delegate to
+// analyticsService, respond. No aggregation lives in this file — see
+// services/analyticsService.js for every pipeline behind these six
+// endpoints. Authorization is the route's job (dashboardRoutes gates
+// all of them on SUPER_ADMIN).
+
+exports.executiveSummary = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.summary(f));
+});
+
+// Kept at its original path and original response shape (a bare
+// province array) so anything already calling it is unaffected.
+exports.provinceBreakdown = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.provinceBreakdown(f));
+});
+
+// Drill-down sibling of the above: returns the children of whatever
+// scope the filters describe, so one endpoint serves every level of
+// the Pakistan → Province → District → Area → Basic Unit walk.
+exports.orgBreakdown = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.orgBreakdown(f));
+});
+
+exports.scope = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.scopePath(f));
+});
+
+exports.membership = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.membershipAnalytics(f));
+});
+
+exports.meetings = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.meetingsAnalytics(f, {
+    // Calendar vs the project's existing Pakistani fiscal year.
+    yearBasis: req.query.yearBasis,
+    years: req.query.years,
+  }));
+});
+
+exports.campaigns = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.campaignsAnalytics(f));
+});
+
+exports.reports = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.reportsAnalytics(f));
+});
+
+exports.activityFeed = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.recentActivity(f, req.query.limit));
+});
+
+exports.activityTrend = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.activityTrend(f, req.query.months));
+});
+
+exports.inactiveMembers = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.inactiveMembers(f, {
+    page: req.query.page,
+    limit: req.query.limit,
+  }));
+});
+
+exports.inactiveUnits = asyncHandler(async (req, res) => {
+  const f = analyticsService.parseFilters(req.query);
+  ok(res, await analyticsService.inactiveUnits(f, {
+    level: req.query.level,
+    page: req.query.page,
+    limit: req.query.limit,
+  }));
+});
 
 exports.subordinateBreakdown = asyncHandler(async (req, res) => {
   const { unitLevel, unitId } = req.query;

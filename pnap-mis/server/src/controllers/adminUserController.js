@@ -2,9 +2,31 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const { ok, ApiError } = require('../utils/response');
 const { audit } = require('../utils/audit');
+const { creatableRoles, canManageAdminUser, adminTierOf } = require('../utils/adminHierarchy');
+const accountService = require('../services/accountService');
 
-// Super Admin god-mode user management. All endpoints in this file
-// are gated by requireRole('SUPER_ADMIN') in the route layer.
+// Tier-admin account management. Creation and credential actions both
+// follow the one-level rule in utils/adminHierarchy: an administrator
+// administers the tier directly below them and no other. Super Admin
+// keeps blanket authority as the break-glass operator.
+
+// Shared gate for the credential endpoints (rename / reset password /
+// activate / deactivate). These used to be SUPER_ADMIN-only, which
+// forced every password reset in the organization through one account;
+// they are now delegated one level down, consistent with how admin
+// creation has always worked.
+async function assertCanManage(actor, targetId) {
+  const target = await User.findById(targetId);
+  if (!target) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+  if (!canManageAdminUser(actor, target)) {
+    const tier = adminTierOf(actor);
+    throw new ApiError(403, 'FORBIDDEN',
+      String(actor._id) === String(target._id)
+        ? 'Manage your own account from your profile, not the admin directory'
+        : `A ${tier || 'user'} may only administer the administrators of the tier directly below it`);
+  }
+  return target;
+}
 
 // Refuse to demote / deactivate / delete the only remaining
 // SUPER_ADMIN — otherwise the system locks itself out of god mode.
@@ -18,10 +40,13 @@ async function isLastSuperAdmin(userId) {
 }
 
 // POST /api/admin/users — create a tier admin user.
-// Hierarchy enforced:
-//   SUPER_ADMIN can create PROVINCE_ADMIN (must include scope.provinceId)
-//   PROVINCE_ADMIN can create DISTRICT_ADMIN within their own province
-//   DISTRICT_ADMIN can create AREA_ADMIN within their own district
+// Hierarchy enforced (utils/adminHierarchy.creatableRoles):
+//   SUPER_ADMIN    → CENTRAL_ADMIN  (national; no scope)
+//                    …and PROVINCE_ADMIN as break-glass, so a database
+//                    with no Central Admin yet can still be structured
+//   CENTRAL_ADMIN  → PROVINCE_ADMIN (must include scope.provinceId)
+//   PROVINCE_ADMIN → DISTRICT_ADMIN within their own province
+//   DISTRICT_ADMIN → AREA_ADMIN     within their own district
 //   AREA_ADMIN cannot use this endpoint (creates Basic Units instead).
 // Body: { fullName, email|cnic|username, password, role, scope }
 exports.create = asyncHandler(async (req, res) => {
@@ -36,27 +61,25 @@ exports.create = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'VALIDATION_ERROR', 'At least one of email / cnic / username is required');
   }
 
-  // Hierarchy creator → role allowlist
-  const HIERARCHY = {
-    SUPER_ADMIN:    ['PROVINCE_ADMIN'],
-    PROVINCE_ADMIN: ['DISTRICT_ADMIN'],
-    DISTRICT_ADMIN: ['AREA_ADMIN'],
-  };
-  const allowed = (() => {
-    if (myRoles.includes('SUPER_ADMIN')) return HIERARCHY.SUPER_ADMIN;
-    if (myRoles.includes('PROVINCE_ADMIN')) return HIERARCHY.PROVINCE_ADMIN;
-    if (myRoles.includes('DISTRICT_ADMIN')) return HIERARCHY.DISTRICT_ADMIN;
-    return [];
-  })();
+  // Hierarchy creator → role allowlist, from the shared one-level map.
+  const allowed = creatableRoles(me);
   if (!allowed.includes(role)) {
     throw new ApiError(403, 'FORBIDDEN', `Your role cannot create a ${role}`);
   }
 
   // Scope validation per tier
   const cleanScope = {};
-  if (role === 'PROVINCE_ADMIN') {
+  if (role === 'CENTRAL_ADMIN') {
+    // National tier — responsible for every province, so it carries no
+    // territorial scope key at all (same shape as SUPER_ADMIN). Any
+    // scope sent by the client is ignored rather than stored, so a
+    // Central Admin can never end up accidentally clamped to one branch.
+  } else if (role === 'PROVINCE_ADMIN') {
     if (!scope?.provinceId) throw new ApiError(400, 'VALIDATION_ERROR', 'scope.provinceId required for PROVINCE_ADMIN');
-    cleanScope.provinceId = scope.provinceId;
+    const Province = require('../models/Province');
+    const p = await Province.findById(scope.provinceId);
+    if (!p) throw new ApiError(400, 'INVALID_PROVINCE', 'Province not found');
+    cleanScope.provinceId = p._id;
   } else if (role === 'DISTRICT_ADMIN') {
     if (!scope?.districtId) throw new ApiError(400, 'VALIDATION_ERROR', 'scope.districtId required for DISTRICT_ADMIN');
     if (!myRoles.includes('SUPER_ADMIN')) {
@@ -112,6 +135,16 @@ exports.create = asyncHandler(async (req, res) => {
     target: { kind: 'User', id: user._id },
     detail: { role, scope: cleanScope },
   }).catch(() => {});
+
+  // Ask the new admin to confirm their address, so the account can be
+  // recovered later without an out-of-band reset. Fire-and-forget: an
+  // SMTP outage must not fail the account creation the caller just
+  // performed, and the link can always be re-requested.
+  if (user.email) {
+    require('../services/verificationService')
+      .requestVerification(user.email)
+      .catch(() => {});
+  }
 
   const obj = user.toJSON();
   ok(res, obj, 201);
@@ -185,8 +218,7 @@ exports.getOne = asyncHandler(async (req, res) => {
 });
 
 exports.update = asyncHandler(async (req, res) => {
-  const u = await User.findById(req.params.id);
-  if (!u) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+  const u = await assertCanManage(req.user, req.params.id);
 
   const before = {
     username: u.username, email: u.email, cnic: u.cnic, fullName: u.fullName,
@@ -240,13 +272,23 @@ exports.update = asyncHandler(async (req, res) => {
 });
 
 exports.resetPassword = asyncHandler(async (req, res) => {
-  const u = await User.findById(req.params.id);
-  if (!u) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+  const u = await assertCanManage(req.user, req.params.id);
   const newPassword = String(req.body?.newPassword || '');
   if (newPassword.length < 6) {
     throw new ApiError(400, 'WEAK_PASSWORD', 'Password must be at least 6 characters.');
   }
-  await u.setPassword(newPassword);
+
+  // Routed through accountService rather than writing User.passwordHash
+  // directly. For a MEMBER account the login path verifies against
+  // Member.passwordHash — the User row is only a JWT-subject + role
+  // cache and usually carries no password at all. Setting it here
+  // reported success, changed nothing the member's login reads, and
+  // left their OLD password working while the new one was rejected as
+  // invalid credentials. applyNewPassword owns the rule about which
+  // document actually holds the credential; see the header comment in
+  // services/accountService.
+  const account = await accountService.accountForUser(u);
+  const written = await accountService.applyNewPassword(account, newPassword);
   await u.save();
 
   await audit({
@@ -255,15 +297,14 @@ exports.resetPassword = asyncHandler(async (req, res) => {
     targetType: 'User',
     targetId: u._id,
     targetLabel: u.fullName,
-    note: 'New password set by Super Admin',
+    note: `New password set by ${req.user?.fullName || 'an administrator'} (stores: ${written.join(', ')})`,
   });
 
   ok(res, { ok: true });
 });
 
 exports.deactivate = asyncHandler(async (req, res) => {
-  const u = await User.findById(req.params.id);
-  if (!u) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+  const u = await assertCanManage(req.user, req.params.id);
   if (u.roles?.includes('SUPER_ADMIN') && await isLastSuperAdmin(u._id)) {
     throw new ApiError(409, 'LAST_SUPER_ADMIN',
       'Cannot deactivate the last remaining Super Admin.');
@@ -313,8 +354,7 @@ exports.deactivate = asyncHandler(async (req, res) => {
 });
 
 exports.activate = asyncHandler(async (req, res) => {
-  const u = await User.findById(req.params.id);
-  if (!u) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+  const u = await assertCanManage(req.user, req.params.id);
   u.isActive = true;
   await u.save();
   await audit({

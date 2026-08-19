@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 // SRS §3.3 / §3.4 — at province and central, two distinct bodies
 // coexist with the same composition rules but separate Permanent
 // Member lists. Title flips per (level, body) pair.
@@ -32,6 +36,7 @@ const OWN_HEADING = {
 export default function CommitteePage() {
   const { ctx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const [data, setData] = useState(null);
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
@@ -96,13 +101,19 @@ export default function CommitteePage() {
     if (resolved.unitLevel === 'AREA') params.areaId = resolved.unitId;
     if (resolved.unitLevel === 'DISTRICT') params.districtId = resolved.unitId;
     if (resolved.unitLevel === 'PROVINCE') params.provinceId = resolved.unitId;
+    // Central (and Basic Unit, which never had a branch here either)
+    // send no unit key — scope:'all' is the explicit opt-in the
+    // members endpoint requires when no unit filter is present.
+    if (resolved.unitLevel === 'CENTRAL' || resolved.unitLevel === 'BASIC_UNIT') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [resolved]);
 
   async function nominate() {
     setErr('');
+    // Validation stays inline — the nominate form is still open.
     if (!memberId) { setErr('Pick a member.'); return; }
     try {
+      const nominee = members.find((m) => m._id === memberId);
       await api.post('/committee/permanent', {
         unitLevel: resolved.unitLevel, unitId: resolved.unitId,
         memberId, bodyType, nominationNote: note,
@@ -110,15 +121,24 @@ export default function CommitteePage() {
       setMemberId(''); setNote('');
       setNominateOpen(false);
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(
+        nominee ? `${nominee.fullName} nominated as a permanent member.` : 'Permanent member nominated.',
+        { title: 'Nomination recorded' }
+      );
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not nominate member', duration: 7000 });
+    }
   }
 
   async function removePerm(id) {
-    if (!confirm('Remove this permanent member?')) return;
+    if (!await dialog.confirm('Remove this permanent member?')) return;
     try {
       await api.post(`/committee/permanent/${id}/remove`);
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+      toast.success('Permanent member removed.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not remove member', duration: 7000 });
+    }
   }
 
   // Members already in groups (a) or (b) shouldn't be re-nominated as
@@ -243,12 +263,19 @@ export default function CommitteePage() {
             </div>
             {err && <div className="alert error">{err}</div>}
 
-            {canManage && nominateOpen && (
+            {/* Portalled to <body> on purpose. A fixed-position backdrop
+                rendered inside this .card breaks the moment the card is
+                hovered: `.card:hover` sets a transform, which makes the
+                card the containing block for position:fixed, so the
+                backdrop collapses to the card's box and the modal jumps.
+                Since the backdrop is a card descendant, hovering it
+                re-triggers that hover — the modal then oscillates. */}
+            {canManage && nominateOpen && createPortal((
               <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setNominateOpen(false); }}>
               <div className="modal" style={{ maxWidth: 560 }} role="dialog" aria-modal="true" aria-label="Nominate Selective Member">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <h3 style={{ margin: 0 }}>Nominate Selective Member</h3>
-                  <button type="button" className="btn secondary" onClick={() => setNominateOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+                  <button type="button" className="btn secondary" onClick={() => setNominateOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
                 <div className="form-grid">
                   <div className="field full">
@@ -271,7 +298,7 @@ export default function CommitteePage() {
                 </div>
               </div>
               </div>
-            )}
+            ), document.body)}
             <table className="list" style={{ marginTop: 12 }}>
               <thead><tr><th>Body</th><th>Member</th><th>Phone</th><th>Note</th>{canManage && <th></th>}</tr></thead>
               <tbody>

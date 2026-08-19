@@ -40,6 +40,7 @@ const meetingCreateSchema = z.object({
   typeCode: eventTypeCodePattern.optional(),
   body: z.enum(['EXECUTIVE', 'COMMITTEE']).optional(),
   title: z.string().max(200).optional(),
+  description: z.string().max(5000).optional(),
   venue: z.string().min(2).max(200),
   startAt: z.coerce.date(),
   endAt: z.coerce.date(),
@@ -77,6 +78,7 @@ const meetingFinalizeSchema = z.object({
 
 const meetingUpdateSchema = z.object({
   title: z.string().max(200).optional(),
+  description: z.string().max(5000).optional(),
   venue: z.string().min(2).max(200).optional(),
   type: eventTypeCodePattern.optional(),
   typeCode: eventTypeCodePattern.optional(),
@@ -138,6 +140,11 @@ const activityCreateSchema = z.object({
 const donationCreateSchema = z.object({
   unitLevel,
   unitId: objectId,
+  // SRS §3.1 — optional body tag, same shape as meeting/activity.
+  // Must be declared here: validate() replaces req.body with the
+  // parsed result, and zod strips undeclared keys, so an undeclared
+  // `body` would silently never reach the controller.
+  body: z.enum(['EXECUTIVE', 'COMMITTEE']).optional(),
   amount: z.coerce.number().positive(),
   donorType: z.enum(['MEMBER', 'NON_MEMBER', 'CORPORATE', 'ANONYMOUS']),
   donorMemberId: objectId.optional(),
@@ -155,6 +162,8 @@ const donationCreateSchema = z.object({
 const expenseCreateSchema = z.object({
   unitLevel,
   unitId: objectId,
+  // See donationCreateSchema — declared so validate() doesn't strip it.
+  body: z.enum(['EXECUTIVE', 'COMMITTEE']).optional(),
   category: z.enum([
     'OFFICE', 'TRANSPORT', 'PRINTING', 'REFRESHMENTS', 'STAGE_EQUIPMENT',
     'COMMUNICATION', 'DONATIONS_OUT', 'SALARIES_STIPENDS', 'MISC',

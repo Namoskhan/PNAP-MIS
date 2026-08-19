@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useUnit } from '../../context/UnitContext';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
+import dialog from '../../components/dialog';
 const ROLE_LABEL = {
   SECRETARY: 'Secretary',
   SENIOR_MAWIN: 'Senior Mawin Secretary',
@@ -23,10 +25,9 @@ const ROLE_LABEL = {
 // Chairman / Co-Chairman approve.
 export default function PendingRoleApprovalsPage() {
   const { ctx } = useUnit();
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   async function reload() {
     if (!ctx) return;
@@ -39,13 +40,13 @@ export default function PendingRoleApprovalsPage() {
   useEffect(() => { reload(); }, [ctx]);
 
   async function decide(id, decision) {
-    if (!confirm(`${decision === 'APPROVED' ? 'Approve' : 'Reject'} this role assignment?`)) return;
-    setBusy(true); setErr(''); setMsg('');
+    if (!await dialog.confirm(`${decision === 'APPROVED' ? 'Approve' : 'Reject'} this role assignment?`)) return;
+    setBusy(true);
     try {
       await api.post(`/roles/${id}/decide`, { decision });
-      setMsg(`Role ${decision.toLowerCase()}.`);
+      toast.success(`Role ${decision.toLowerCase()}.`);
       await reload();
-    } catch (e) { setErr(errorMessage(e)); }
+    } catch (e) { toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} role`, duration: 7000 }); }
     finally { setBusy(false); }
   }
 
@@ -58,8 +59,6 @@ export default function PendingRoleApprovalsPage() {
         Role assignments proposed by the Senior Mawin Secretary (or higher initiator) waiting for your decision.
       </p>
 
-      {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {items.length === 0 ? (
         <div className="card"><p className="muted" style={{ margin: 0 }}>No proposals waiting. New ones will appear here.</p></div>

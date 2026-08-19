@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
+import { useToast } from '../components/Toast';
 
 const SEV_LABEL = { INFO: 'Info', SUCCESS: 'Success', WARNING: 'Warning', DANGER: 'Critical' };
 
 export default function NotificationsPage() {
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('all');
   const [busy, setBusy] = useState(false);
@@ -59,12 +61,26 @@ export default function NotificationsPage() {
     }
     if (n.link) navigate(n.link);
   }
+  // Marking a single notification read (in `open` above) stays silent —
+  // it is a side effect of navigating, and the row updates in place.
+  // These two are deliberate actions, so they report.
   async function markAllRead() {
-    try { await api.post('/notifications/mark-all-read'); load(); } catch (e) { setErr(errorMessage(e)); }
+    try {
+      await api.post('/notifications/mark-all-read');
+      load();
+      toast.success('All notifications marked as read.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not mark all read', duration: 7000 });
+    }
   }
   async function remove(id) {
-    try { await api.delete(`/notifications/${id}`); setItems((prev) => prev.filter((x) => x._id !== id)); }
-    catch (e) { setErr(errorMessage(e)); }
+    try {
+      await api.delete(`/notifications/${id}`);
+      setItems((prev) => prev.filter((x) => x._id !== id));
+      toast.success('Notification deleted.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not delete notification', duration: 7000 });
+    }
   }
 
   const unreadCount = visibleItems.filter((x) => !x.read).length;

@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { BarChartIcon, GlobeIcon, ScaleIcon, TagIcon, TrashIcon } from '../../../components/icons';
+import { BarChartIcon, GlobeIcon, ScaleIcon, TagIcon, TrashIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Performance Rules — list + full create/edit dialog (PR F2).
 // Default GLOBAL ruleset uses SRS §10 weights. Component editor
 // enforces weight-sum=1.0 with a normalize helper so admins don't
@@ -48,7 +49,7 @@ export default function PerformanceRuleSetsPage() {
 
   async function deleteOne(r) {
     if (r.isSystem) return;
-    if (!confirm(`Delete TIER ruleset for ${r.tierCode}?`)) return;
+    if (!await dialog.confirm(`Delete TIER ruleset for ${r.tierCode}?`)) return;
     try {
       await api.delete(`/admin/units/performance-rulesets/${r._id}`);
       toast.success?.('Ruleset deleted.');
@@ -302,7 +303,7 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
           <h3 style={{ margin: 0 }}>
             {isEdit ? `Edit ruleset · ${ruleset.scope}${ruleset.tierCode ? ' · ' + ruleset.tierCode : ''}` : 'New TIER ruleset'}
           </h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 

@@ -5,6 +5,8 @@ import { useUnit } from '../context/UnitContext';
 import { hasRole, canPostAnnouncement } from '../utils/permissions';
 import { useToast } from '../components/Toast';
 
+import dialog from '../components/dialog';
+import { XIcon } from '../components/icons';
 // Audience modes — drives both the form and the visibility/payload
 // the backend receives. PERSON = direct message, others = broadcast.
 const AUDIENCE_MODES = [
@@ -89,7 +91,9 @@ export default function AnnouncementsPage() {
   useEffect(() => {
     if (!composeOpen || form.mode !== 'PERSON' || members.length > 0 || membersLoading) return;
     setMembersLoading(true);
-    api.get('/members', { params: { status: 'ACTIVE', limit: 500 } })
+    // scope:'all' — explicit opt-in for the unfiltered roster. The
+    // server clamps scoped users to their own hierarchy regardless.
+    api.get('/members', { params: { status: 'ACTIVE', limit: 500, scope: 'all' } })
       .then((r) => setMembers(r.data.data || []))
       .catch(() => setMembers([]))
       .finally(() => setMembersLoading(false));
@@ -138,15 +142,21 @@ export default function AnnouncementsPage() {
       setComposeOpen(false);
       load();
     } catch (e) {
-      setErr(errorMessage(e));
-      toast.error?.('Could not post announcement.');
+      // Carry the server's actual reason — the previous fixed string
+      // hid things the user can act on, like a rejected target member.
+      toast.error(errorMessage(e), { title: 'Could not post announcement', duration: 9000 });
     }
   }
 
   async function remove(id) {
-    if (!confirm('Delete this announcement?')) return;
-    try { await api.delete(`/announcements/${id}`); load(); }
-    catch (e) { setErr(errorMessage(e)); }
+    if (!await dialog.confirm('Delete this announcement?')) return;
+    try {
+      await api.delete(`/announcements/${id}`);
+      load();
+      toast.success('Announcement deleted.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not delete announcement', duration: 7000 });
+    }
   }
 
   function openCompose() {
@@ -225,7 +235,7 @@ export default function AnnouncementsPage() {
           <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Post Announcement">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>{form.mode === 'PERSON' ? 'Send Direct Message' : 'Post Announcement'}</h3>
-              <button type="button" className="btn secondary" onClick={() => setComposeOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+              <button type="button" className="btn secondary" onClick={() => setComposeOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
             </div>
 
             <div className="field full" style={{ marginBottom: 12 }}>

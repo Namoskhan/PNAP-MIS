@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { BuildingIcon, GlobeIcon, ScaleIcon, TagIcon, TrashIcon } from '../../../components/icons';
+import { BuildingIcon, GlobeIcon, ScaleIcon, TagIcon, TrashIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Unit Policies — full CRUD over GLOBAL / TIER / UNIT scopes.
 // Editor exposes the four slices (member / meeting / finance /
 // transfer); each is rendered as a small focused field group.
@@ -36,7 +37,7 @@ export default function UnitPoliciesPage() {
 
   async function deletePolicy(p) {
     if (p.isSystem) return;
-    if (!confirm(`Delete this ${p.scope} policy? Records resolving to it will fall back to GLOBAL.`)) return;
+    if (!await dialog.confirm(`Delete this ${p.scope} policy? Records resolving to it will fall back to GLOBAL.`)) return;
     try {
       await api.delete(`/admin/units/policies/${p._id}`);
       toast.success?.('Policy deleted.');
@@ -223,7 +224,7 @@ function PolicyDialog({ mode, policy, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 720, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{isEdit ? 'Edit policy' : 'New policy override'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 

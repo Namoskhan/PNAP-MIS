@@ -60,6 +60,10 @@ const meetingSchema = new mongoose.Schema(
       index: true,
     },
     title: { type: String, trim: true },
+    // Free-form blurb set at schedule time — the "what this meeting is
+    // about" summary. Distinct from `agenda` (the item list) and from
+    // `notes` / `decisions`, which are captured at finalize.
+    description: { type: String, trim: true },
     venue: { type: String, required: true, trim: true },
     gps: { lat: Number, lng: Number },
 

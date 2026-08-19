@@ -7,7 +7,7 @@
 module.exports = {
   kind: 'MEETINGS_LIST',
   label: 'Meetings list',
-  description: 'Table of meetings (date, type, venue, chairperson, state, attendance).',
+  description: 'Table of meetings (date, type, venue, chairperson, state, attendance). The XLSX form also carries each meeting\'s description; the PDF table has no room for prose.',
   defaultTitle: 'Meetings',
   defaultConfig: { limit: 100, includeAttendance: true, stateFilter: null },
 
@@ -67,6 +67,7 @@ module.exports = {
       { header: 'Date',        key: 'date',        width: 14 },
       { header: 'Type',        key: 'type',        width: 10 },
       { header: 'Title',       key: 'title',       width: 30 },
+      { header: 'Description', key: 'description', width: 40 },
       { header: 'Venue',       key: 'venue',       width: 24 },
       { header: 'Chairperson', key: 'chair',       width: 24 },
       { header: 'State',       key: 'state',       width: 14 },
@@ -77,6 +78,7 @@ module.exports = {
         date:    m.startAt ? new Date(m.startAt) : null,
         type:    m.type || m.typeCode || '',
         title:   m.title || '',
+        description: m.description || '',
         venue:   m.venue || '',
         chair:   m.chairpersonId?.fullName || '',
         state:   m.state || '',

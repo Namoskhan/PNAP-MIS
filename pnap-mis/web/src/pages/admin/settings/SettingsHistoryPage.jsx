@@ -8,6 +8,7 @@ import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
 import { ClockIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Settings History — append-only timeline of every branding change.
 // Each row is a SettingsVersion document with a precomputed diff
 // captured at save time. Restoring inserts a new row pointing at an
@@ -48,7 +49,7 @@ export default function SettingsHistoryPage() {
     const confirmText = `Restore branding to version v${v.versionNumber}?\n\n` +
       `This creates a NEW version (history is preserved). The current theme + identity will be replaced ` +
       `with the snapshot from this point in time.`;
-    if (!confirm(confirmText)) return;
+    if (!await dialog.confirm(confirmText)) return;
     try {
       await restoreVersion(v.versionNumber, { changeNote: `Manual rollback to v${v.versionNumber}` });
       toast.success?.(`Restored from v${v.versionNumber}.`);

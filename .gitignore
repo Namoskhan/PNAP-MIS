@@ -1,0 +1,33 @@
+# Environment files — these hold real credentials (SMTP passwords,
+# JWT secrets, database URIs) and must never be committed.
+# .env.example is the tracked template and carries placeholders only.
+.env
+.env.*
+!.env.example
+
+# Dependencies — reinstall with `npm install`, never commit.
+# Matches at any depth: pnap-mis/, pnap-mis/web/, pnap-mis/server/.
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+.vite/
+*.tsbuildinfo
+
+# Test / tooling caches
+coverage/
+.eslintcache
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+./pnap-mis/node_modules

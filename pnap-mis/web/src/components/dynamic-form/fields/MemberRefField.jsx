@@ -12,10 +12,17 @@ import { FieldShell } from '../FieldShell';
 let _cache = null;
 let _inflight = null;
 
+// MUST stay async even though nothing here awaits: the caller does
+// loadMembers().then(...), and on a warm cache this returns the plain
+// array. `async` is what wraps that back into a Promise.
 async function loadMembers() {
   if (_cache) return _cache;
   if (_inflight) return _inflight;
-  _inflight = api.get('/members', { params: { status: 'ACTIVE', limit: 500 } })
+  // `scope: 'all'` is the explicit opt-in the members endpoint now
+  // requires from callers that pass no unit filter. Scoped users are
+  // still clamped to their own hierarchy server-side; only Super Admin
+  // actually receives the unrestricted roster.
+  _inflight = api.get('/members', { params: { status: 'ACTIVE', limit: 500, scope: 'all' } })
     .then((r) => {
       _cache = r.data?.data || [];
       return _cache;

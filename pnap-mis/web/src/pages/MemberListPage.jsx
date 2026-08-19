@@ -32,7 +32,9 @@ export default function MemberListPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [sort, setSort] = useState({ key: null, dir: 'asc' });
 
-  const isHigherAdmin = ['SUPER_ADMIN'].some((r) => user?.roles?.includes(r));
+  // Super and Central are the two unbounded tiers — mirrors
+  // server/src/utils/adminHierarchy.GLOBAL_TIERS.
+  const isHigherAdmin = ['SUPER_ADMIN', 'CENTRAL_ADMIN'].some((r) => user?.roles?.includes(r));
   const scopeParams = (() => {
     if (isHigherAdmin) return {};
     if (user?.scope?.areaId) return { areaId: user.scope.areaId };
@@ -45,7 +47,10 @@ export default function MemberListPage() {
     setLoading(true);
     try {
       const res = await api.get('/members', {
-        params: { q, status, page, limit: 20, ...scopeParams },
+        // scope:'all' is the explicit opt-in for the browse-everything
+        // case (Super Admin with no scopeParams and no search term).
+        // Ignored server-side for anyone who has a territorial scope.
+        params: { q, status, page, limit: 20, scope: 'all', ...scopeParams },
       });
       setItems(res.data.data);
       setMeta(res.data.meta);
@@ -108,8 +113,8 @@ export default function MemberListPage() {
       <MemberRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
-        onSuccess={(member) => {
-          toast.success(`${member?.fullName || 'Member'} submitted for approval`, { title: 'Registration received' });
+        onSuccess={() => {
+          // The modal raises its own "submitted for approval" toast.
           setPage(1);
           load();
         }}

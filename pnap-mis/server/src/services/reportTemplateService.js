@@ -22,7 +22,7 @@ const { ApiError } = require('../utils/response');
 // embed an error notice into the document, then continue with
 // remaining sections.
 
-async function _gatherCtx({ template, unitLevel, unitId, from, to }) {
+async function _gatherCtx({ template, unitLevel, unitId, from, to, body }) {
   // Currently only entity=UNIT is supported. Future entities
   // (MEMBER, MEETING) would dispatch on `template.entity` to
   // different gather functions.
@@ -30,8 +30,12 @@ async function _gatherCtx({ template, unitLevel, unitId, from, to }) {
     throw new ApiError(400, 'UNSUPPORTED_ENTITY',
       `entity ${template.entity} is not yet supported by the renderer`);
   }
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
-  return { ...data, template, from, to, unitLevel, unitId };
+  // SRS §3.1 — `body` narrows the gathered ledgers to one body before
+  // any section renderer sees them. Section renderers need no change:
+  // they receive an already-filtered ctx. Omitted (the "Combined"
+  // choice) leaves the report pooled, exactly as before.
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, body });
+  return { ...data, template, from, to, unitLevel, unitId, body };
 }
 
 function _orderedSections(template) {
@@ -110,7 +114,7 @@ async function renderXlsxBuffer(template, ctx) {
 // ─── Public render entrypoint ─────────────────────────────────────
 
 // render(templateId, scopeContext, format)
-//   scopeContext = { unitLevel, unitId, from?, to?, user? }
+//   scopeContext = { unitLevel, unitId, from?, to?, body?, user? }
 //   format       = 'PDF' | 'XLSX'
 // Returns { buffer, contentType, filename }.
 async function render(templateId, scopeContext, format) {
@@ -133,6 +137,7 @@ async function render(templateId, scopeContext, format) {
     unitId: scopeContext.unitId,
     from: scopeContext.from,
     to: scopeContext.to,
+    body: scopeContext.body,
   });
 
   const safeName = (template.name || 'report').replace(/[^a-z0-9]+/gi, '-').toLowerCase();

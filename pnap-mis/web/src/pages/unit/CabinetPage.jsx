@@ -6,7 +6,9 @@ import {
   isPresidentPersona, isOperatorPersona, roleLabel,
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 
+import dialog from '../../components/dialog';
 const ROLE_LABEL = {
   SECRETARY: 'Secretary',
   SENIOR_MAWIN: 'Senior Mawin Secretary',
@@ -26,9 +28,23 @@ const ROLE_LABEL = {
   OTHER: 'Other',
 };
 
+// Mirrors the endReason enum in server validators/unitSchemas.js. Ordered
+// by how often a term actually ends this way, not alphabetically — the
+// common answers sit under the cursor and the irreversible-sounding ones
+// sit last.
+const END_REASONS = [
+  { value: 'RESIGNED', label: 'Resigned', hint: 'Stepped down of their own accord' },
+  { value: 'TERM_ENDED', label: 'Term ended', hint: 'Served the full term' },
+  { value: 'TRANSFERRED', label: 'Transferred', hint: 'Moved to another unit' },
+  { value: 'REPLACED', label: 'Replaced', hint: 'Someone else has taken the office' },
+  { value: 'EXPELLED', label: 'Expelled', hint: 'Removed on disciplinary grounds', tone: 'danger' },
+  { value: 'DECEASED', label: 'Deceased', hint: 'Passed away', tone: 'danger' },
+];
+
 export default function CabinetPage() {
   const { ctx, setCtx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const [cabinet, setCabinet] = useState([]);
   const [pending, setPending] = useState([]);
   const [members, setMembers] = useState([]);
@@ -37,29 +53,6 @@ export default function CabinetPage() {
   const [pickedMemberId, setPickedMemberId] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
-
-  // "Other / custom" role state (the 7th category in the SRS template).
-  const [showCustom, setShowCustom] = useState(false);
-  const [customMemberId, setCustomMemberId] = useState('');
-  const [customRoleName, setCustomRoleName] = useState('');
-  // Custom-role mode: 'catalog' picks from Role Management, 'freeform'
-  // accepts a one-off typed name (legacy "Other" path).
-  const [customMode, setCustomMode] = useState('catalog');
-  const [pickedCatalogCode, setPickedCatalogCode] = useState('');
-
-  // Catalog of dynamically-defined roles from Role Management. Anyone
-  // authenticated may read this list (the catalog endpoint returns
-  // labels + codes — only writes are Super-locked). Filtered here to
-  // non-built-in active roles for the assignment dropdown.
-  const [catalogRoles, setCatalogRoles] = useState([]);
-  useEffect(() => {
-    api.get('/admin/roles').then((r) => {
-      const data = r.data.data;
-      const list = Array.isArray(data) ? data : (data?.roles || []);
-      setCatalogRoles(list.filter((x) => !x.isSystem && x.isActive));
-    }).catch(() => setCatalogRoles([]));
-  }, []);
 
   // Inline picker so the Area Admin can switch between their area's
   // own cabinet and the cabinet of any basic unit under it without
@@ -79,6 +72,23 @@ export default function CabinetPage() {
       .then((r) => setBasicUnitsInArea(r.data.data))
       .catch(() => {});
   }, [user]);
+
+  // An Area Admin assigns cabinets for the basic units beneath them,
+  // never for the area itself (that tier is the District Admin's).
+  // UnitContext hands every Area Admin an AREA-level ctx by default,
+  // so land on the first basic unit instead — otherwise this page
+  // would open on a cabinet the picker no longer offers.
+  useEffect(() => {
+    const areaAdminOnly = !!user?.scope?.areaId
+      && user.roles?.includes('AREA_ADMIN')
+      && !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN']
+        .some((r) => user.roles.includes(r));
+    if (!areaAdminOnly) return;
+    if (!basicUnitsInArea.length) return;
+    if (ctx?.unitLevel === 'BASIC_UNIT') return;
+    const first = basicUnitsInArea[0];
+    setCtx({ unitLevel: 'BASIC_UNIT', unitId: first._id, unitName: first.name });
+  }, [user, basicUnitsInArea, ctx, setCtx]);
 
   // District Admin picker — list every Area in their district. They
   // assign the Area cabinet (Elaqai executive) for any of these.
@@ -111,7 +121,12 @@ export default function CabinetPage() {
   // these and also manages the Central Cabinet per SRS §3.4.
   const [allProvinces, setAllProvinces] = useState([]);
   const [centralUnit, setCentralUnit] = useState(null);
-  const isCentralAdminUser = user?.roles?.includes('SUPER_ADMIN');
+  // The national tier: CENTRAL_ADMIN, with SUPER_ADMIN retained as
+  // break-glass. This was defined as SUPER_ADMIN alone — a leftover
+  // from the period when the CENTRAL_ADMIN role did not exist — which
+  // is why a real Central Admin saw no province surfaces at all.
+  const isCentralAdminUser = user?.roles?.includes('CENTRAL_ADMIN')
+    || user?.roles?.includes('SUPER_ADMIN');
   useEffect(() => {
     if (!isCentralAdminUser) return;
     api.get('/org/provinces')
@@ -121,6 +136,66 @@ export default function CabinetPage() {
       .then((r) => setCentralUnit(r.data.data))
       .catch(() => {});
   }, [user, isCentralAdminUser]);
+
+  // Open the Central cabinet on arrival instead of behind a button.
+  //
+  // UnitContext pins a CENTRAL_ADMIN to the Central unit on login, but
+  // that branch deliberately excludes SUPER_ADMIN — which has no home
+  // tier of its own — so a Super Admin landed here with either no
+  // context at all ("Select a unit context first") or whatever unit was
+  // last used, and had to press "Open Central Cabinet" before any role
+  // appeared. The sidebar entry that leads here is labelled "Central
+  // Cabinet", so opening it is what the click was always confirming.
+  //
+  // The ref makes this fire once per visit rather than on every render:
+  // without it, switching units from the global switcher while staying
+  // on this page would be pulled straight back to Central.
+  const isSuperAdminUser = user?.roles?.includes('SUPER_ADMIN');
+  const autoOpenedCentral = useRef(false);
+  useEffect(() => {
+    if (!isSuperAdminUser || !centralUnit || autoOpenedCentral.current) return;
+    autoOpenedCentral.current = true;
+    if (ctx?.unitLevel === 'CENTRAL') return;
+    setCtx({
+      unitLevel: 'CENTRAL',
+      unitId: centralUnit._id,
+      unitName: centralUnit.name || 'PKNAP Central',
+    });
+  }, [isSuperAdminUser, centralUnit, ctx, setCtx]);
+
+  // Same idea one tier at a time, for the admins whose picker sits above.
+  //
+  // Under the one-level rule each admin ASSIGNS the tier below them, and
+  // that is what their picker lists — but UnitContext pins them to their
+  // OWN unit, whose cabinet the tier above assigns. So the page opened
+  // showing a cabinet outside their remit while the picker still read
+  // "— pick a province —": a Central Admin landed on the Central cabinet
+  // (Chairman, Co-Chairman — Super Admin's work), a Province Admin on
+  // their province cabinet, a District Admin on their district's. It
+  // looked like the previous session's roles had leaked across the
+  // logout; nothing had, the context was simply one tier too high.
+  //
+  // Landing on the first option makes the table and the picker agree on
+  // arrival, and every other unit is still one dropdown away. The Area
+  // Admin equivalent is the effect above, which has always done this.
+  const autoPickedUnit = useRef(false);
+  useEffect(() => {
+    if (autoPickedUnit.current) return;
+    const roles = user?.roles || [];
+    if (roles.includes('SUPER_ADMIN')) return;   // handled by the Central branch above
+    // Precedence mirrors the render conditions below, so the tier that
+    // gets auto-picked is always the one whose picker is on screen.
+    const target = roles.includes('CENTRAL_ADMIN')
+      ? { level: 'PROVINCE', list: allProvinces }
+      : roles.includes('PROVINCE_ADMIN')
+        ? { level: 'DISTRICT', list: districtsInProvince }
+        : (roles.includes('DISTRICT_ADMIN') ? { level: 'AREA', list: areasInDistrict } : null);
+    if (!target || !target.list.length) return;
+    autoPickedUnit.current = true;
+    if (ctx?.unitLevel === target.level) return;
+    const first = target.list[0];
+    setCtx({ unitLevel: target.level, unitId: first._id, unitName: first.name });
+  }, [user, allProvinces, districtsInProvince, areasInDistrict, ctx, setCtx]);
 
   // Read-only "Area Cabinets in this district" panel — when ctx is at
   // DISTRICT level, fetch each area + its cabinet so the Province
@@ -167,19 +242,14 @@ export default function CabinetPage() {
     return () => { cancelled = true; };
   }, [ctx]);
 
+  // Area Admin picks among the BASIC UNITS under their area only —
+  // the area's own cabinet is assigned a tier up, by the District
+  // Admin, so it is deliberately not offered here.
   function pickUnit(value) {
     if (!value) return;
-    if (value === 'AREA') {
-      setCtx({
-        unitLevel: 'AREA',
-        unitId: user.scope.areaId,
-        unitName: areaName || 'My Area',
-      });
-    } else {
-      const u = basicUnitsInArea.find((b) => String(b._id) === value);
-      if (u) {
-        setCtx({ unitLevel: 'BASIC_UNIT', unitId: u._id, unitName: u.name });
-      }
+    const u = basicUnitsInArea.find((b) => String(b._id) === value);
+    if (u) {
+      setCtx({ unitLevel: 'BASIC_UNIT', unitId: u._id, unitName: u.name });
     }
   }
 
@@ -213,6 +283,11 @@ export default function CabinetPage() {
     else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
     else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
     else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+    // Central has no unit key of its own on Member — every member is
+    // eligible for a Central seat (Chairman, Co-Chairman, Sr./Vice
+    // Chairman, First Secretary). scope:'all' is the explicit opt-in
+    // the members endpoint requires when no unit filter is sent.
+    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
     api.get('/members', { params })
       .then((r) => setMembers(r.data.data))
       .catch((e) => setErr(errorMessage(e)));
@@ -232,7 +307,7 @@ export default function CabinetPage() {
   }, [memberSearch, members]);
 
   async function propose(roleCode, memberId) {
-    setErr(''); setMsg(''); setBusy(true);
+    setErr(''); setBusy(true);
     try {
       // Single-shot assign: propose then immediately approve. Admins
       // can do both since canInitiateRole + canApprove cover them.
@@ -243,75 +318,49 @@ export default function CabinetPage() {
         roleCode,
       });
       await api.post(`/roles/${r.data.data._id}/decide`, { decision: 'APPROVED' });
-      setMsg(`${ROLE_LABEL[roleCode] || roleLabel(user, roleCode)} assigned. The member can now log in with their CNIC.`);
       setAssignFor(null);
       setPickedMemberId('');
       await reload();
+      toast.success(
+        `${ROLE_LABEL[roleCode] || roleLabel(user, roleCode)} assigned. The member can now log in with their CNIC.`,
+        { title: 'Role assigned', duration: 7000 }
+      );
     } catch (e) {
-      setErr(errorMessage(e));
+      toast.error(errorMessage(e), { title: 'Could not assign role', duration: 7000 });
     } finally { setBusy(false); }
   }
 
   async function decide(id, decision) {
-    if (!confirm(`Confirm ${decision}?`)) return;
+    if (!await dialog.confirm(`Confirm ${decision}?`)) return;
     try {
       await api.post(`/roles/${id}/decide`, { decision });
       await reload();
-    } catch (e) { alert(errorMessage(e)); }
-  }
-
-  async function proposeCustom() {
-    if (!customMemberId) {
-      setErr('Pick a member first.'); return;
-    }
-    let payload;
-    if (customMode === 'catalog') {
-      const cat = catalogRoles.find((c) => c.code === pickedCatalogCode);
-      if (!cat) { setErr('Pick a custom role from the catalog.'); return; }
-      payload = {
-        unitLevel: ctx.unitLevel,
-        unitId: ctx.unitId,
-        memberId: customMemberId,
-        // Use the catalog's actual code so the dynamic permission
-        // resolver carries the role's grants through to the member's
-        // User.roles on next login.
-        roleCode: cat.code,
-        // Stash the human label too so the cabinet view can display
-        // it as "Custom · <Label>" without a second lookup.
-        customRoleName: cat.label,
-      };
-    } else {
-      if (!customRoleName.trim()) { setErr('Type a role name.'); return; }
-      payload = {
-        unitLevel: ctx.unitLevel,
-        unitId: ctx.unitId,
-        memberId: customMemberId,
-        roleCode: 'OTHER',
-        customRoleName: customRoleName.trim(),
-      };
-    }
-    setErr(''); setMsg(''); setBusy(true);
-    try {
-      const r = await api.post('/roles', payload);
-      await api.post(`/roles/${r.data.data._id}/decide`, { decision: 'APPROVED' });
-      setMsg(`Custom role "${payload.customRoleName}" assigned.`);
-      setShowCustom(false);
-      setCustomMemberId('');
-      setCustomRoleName('');
-      setPickedCatalogCode('');
-      await reload();
+      toast.success(`Role proposal ${decision.toLowerCase()}.`);
     } catch (e) {
-      setErr(errorMessage(e));
-    } finally { setBusy(false); }
+      toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} proposal`, duration: 7000 });
+    }
   }
 
-  async function endRole(assignmentId) {
-    const reason = prompt('End reason (RESIGNED, EXPELLED, TERM_ENDED, TRANSFERRED, DECEASED, REPLACED):');
+  async function endRole(assignmentId, roleName, memberName) {
+    // One tap per reason. The server validates endReason against a fixed
+    // enum, so a free-text field could only ever produce the same six
+    // values — or a 400 for a typo.
+    const reason = await dialog.choose(
+      memberName && roleName
+        ? `Why is ${memberName} leaving the ${roleName} office?`
+        : 'Why is this role ending?',
+      END_REASONS,
+      { title: 'End role' }
+    );
     if (!reason) return;
+    const label = END_REASONS.find((r) => r.value === reason)?.label || reason;
     try {
-      await api.post(`/roles/${assignmentId}/end`, { endReason: reason.toUpperCase() });
+      await api.post(`/roles/${assignmentId}/end`, { endReason: reason });
       await reload();
-    } catch (e) { alert(errorMessage(e)); }
+      toast.success(`Role ended — ${label.toLowerCase()}.`, { title: 'Role ended' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not end role', duration: 7000 });
+    }
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -322,7 +371,7 @@ export default function CabinetPage() {
   // hold the SENIOR_MAWIN assignment in). Higher admins use the
   // global UnitSwitcher on the dashboard.
   const roles = user?.roles || [];
-  const hasHigherAdmin = ['SUPER_ADMIN','PROVINCE_ADMIN','DISTRICT_ADMIN']
+  const hasHigherAdmin = ['SUPER_ADMIN','CENTRAL_ADMIN','PROVINCE_ADMIN','DISTRICT_ADMIN']
     .some((r) => roles.includes(r));
   const showAreaPicker = !!user?.scope?.areaId &&
     roles.includes('AREA_ADMIN') &&
@@ -330,9 +379,12 @@ export default function CabinetPage() {
   // Province Admin's picker shows when they're the only writable
   // admin role on the user (mirroring District Admin pattern).
   const showProvincePicker = isProvinceAdminUser && !roles.includes('SUPER_ADMIN');
-  // Central Admin's picker — assign Province Cabinet roles per SRS
-  // §3.3 + §5.1 ("province will be structured by the Central Admin").
-  const showCentralPicker = isCentralAdminUser;
+  // Province cabinets are the Central Admin's responsibility under the
+  // one-level rule. Super Admin is deliberately excluded: this page
+  // opens straight onto the Central cabinet for that persona, so the
+  // same province assignment isn't offered from two personas at once.
+  const showProvinceCabinetPicker = roles.includes('CENTRAL_ADMIN')
+    && !roles.includes('SUPER_ADMIN');
   // Secretary (and higher admin) can assign roles directly via the
   // existing single-shot assign flow OR approve proposals raised by
   // Senior Mawin. SECRETARY-only users see read-only cabinet rows
@@ -365,20 +417,36 @@ export default function CabinetPage() {
     <div>
       <div className="page-header"><h2>Cabinet · {ctx.unitName}</h2></div>
 
-      {showCentralPicker && (
+      {/* Central Admin picks a Province and assigns its Sobayi
+          cabinet — the exact shape of the District picker below it
+          and the Area picker below that, one tier up. `allProvinces`
+          was already being fetched here but never rendered, so the
+          page fell through to the Central cabinet and showed Chairman
+          / Co-Chairman instead of the Province roles. */}
+      {showProvinceCabinetPicker && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: 600 }}>Central Cabinet (SRS §3.4):</label>
-            <button
-              type="button"
-              className={`btn ${ctx.unitLevel === 'CENTRAL' ? '' : 'secondary'}`}
-              disabled={!centralUnit}
-              onClick={() => centralUnit && setCtx({ unitLevel: 'CENTRAL', unitId: centralUnit._id, unitName: centralUnit.name || 'PKNAP Central' })}
+            <label style={{ fontWeight: 600 }}>Assign Province Cabinet for:</label>
+            <select
+              value={ctx.unitLevel === 'PROVINCE' ? String(ctx.unitId) : ''}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (!id) return;
+                const p = allProvinces.find((x) => String(x._id) === id);
+                if (p) setCtx({ unitLevel: 'PROVINCE', unitId: p._id, unitName: p.name });
+              }}
+              style={{ minWidth: 280 }}
             >
-              {ctx.unitLevel === 'CENTRAL' ? '✓ Open: Central Cabinet' : 'Open Central Cabinet'}
-            </button>
+              <option value="">— pick a province —</option>
+              {allProvinces.length === 0 && <option disabled>(no provinces yet)</option>}
+              {allProvinces.map((p) => (
+                <option key={p._id} value={String(p._id)}>{p.name}{p.code ? ` (${p.code})` : ''}</option>
+              ))}
+            </select>
             <span className="muted" style={{ fontSize: 13 }}>
-              Assign the Central Executive (Chairman, Co-Chairman, Sr.&nbsp;Vice Chairman, Vice Chairman, Secretary General, First Secretary, Finance Secretary, etc.) — auto-forms the Central Committee + unlocks the Qomi Jirga tab on first approval.
+              Pick a Province to assign its Sobayi cabinet (President / Saddar, Senior Vice President,
+              Vice President, General Secretary, Finance Sec., etc.). Members shown are everyone
+              registered under any district / area / BU within that province.
             </span>
           </div>
         </div>
@@ -444,36 +512,40 @@ export default function CabinetPage() {
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <label style={{ fontWeight: 600 }}>Cabinet for:</label>
             <select
-              value={
-                ctx.unitLevel === 'AREA' && String(ctx.unitId) === String(user.scope.areaId)
-                  ? 'AREA'
-                  : ctx.unitLevel === 'BASIC_UNIT'
-                    ? String(ctx.unitId)
-                    : ''
-              }
+              value={ctx.unitLevel === 'BASIC_UNIT' ? String(ctx.unitId) : ''}
               onChange={(e) => pickUnit(e.target.value)}
               style={{ minWidth: 280 }}
             >
-              <option value="AREA">My Area: {areaName || 'My Area'} (area cabinet)</option>
-              <optgroup label="Basic Units in my area">
-                {basicUnitsInArea.length === 0 && <option disabled>(no basic units yet)</option>}
-                {basicUnitsInArea.map((b) => (
-                  <option key={b._id} value={String(b._id)}>{b.name}</option>
-                ))}
-              </optgroup>
+              {/* Basic units only — the Area's own cabinet is assigned by
+                  the District Admin, so it is not listed here. */}
+              {basicUnitsInArea.length === 0
+                ? <option value="">(no basic units yet)</option>
+                : ctx.unitLevel !== 'BASIC_UNIT' && <option value="">Select a basic unit…</option>}
+              {basicUnitsInArea.map((b) => (
+                <option key={b._id} value={String(b._id)}>{b.name}</option>
+              ))}
             </select>
             <span className="muted" style={{ fontSize: 13 }}>
-              {ctx.unitLevel === 'AREA'
-                ? 'Area-level cabinet (Secretary, Senior Mawin, Finance Sec., etc.).'
-                : 'Basic-Unit cabinet — assign Secretary / Senior Mawin / Finance Sec. and the optional roles.'}
+              Basic-Unit cabinet{areaName ? ` in ${areaName}` : ''} — assign Secretary / Senior Mawin / Finance Sec. and the optional roles.
             </span>
           </div>
         </div>
       )}
 
       {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
+      {/* An Area Admin only ever assigns a basic unit's cabinet. With no
+          basic unit selectable, ctx is still AREA-level — show the reason
+          rather than an area cabinet table they are not meant to edit. */}
+      {showAreaPicker && ctx.unitLevel !== 'BASIC_UNIT' ? (
+        <div className="card">
+          <p className="muted" style={{ margin: 0 }}>
+            No basic units exist in your area yet. Create one under{' '}
+            <strong>Manage Basic Units</strong>, then pick it above to assign its cabinet.
+          </p>
+        </div>
+      ) : (
+      <>
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Cabinet roles</h3>
         <div className="toolbar" style={{ marginBottom: 10 }}>
@@ -515,65 +587,16 @@ export default function CabinetPage() {
                 onAssignClick={() => { setAssignFor(row.roleCode); setPickedMemberId(''); }}
                 onCancelAssign={() => { setAssignFor(null); setPickedMemberId(''); }}
                 onConfirmAssign={() => propose(row.roleCode, pickedMemberId)}
-                onEnd={() => endRole(row.assignment._id)}
+                onEnd={() => endRole(
+                  row.assignment._id,
+                  ROLE_LABEL[row.roleCode] || row.customRoleName || row.roleCode,
+                  row.member?.fullName,
+                )}
               />
             ))}
           </tbody>
         </table>
       </div>
-
-      {canAssignDirectly && (
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Add a one-off role</h3>
-        <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>
-          Roles defined in <strong>Role Management</strong> already appear in the table above with their own Assign buttons.
-          Use this only for one-off ad-hoc role names you don't want in the catalogue.
-        </p>
-        {!showCustom && (
-          <button className="btn secondary" onClick={() => {
-            setShowCustom(true);
-            setCustomMemberId('');
-            setCustomRoleName('');
-            setCustomMode('freeform');
-          }}>
-            + Add one-off role
-          </button>
-        )}
-        {showCustom && (
-          <div className="form-grid" style={{ alignItems: 'end' }}>
-            <div className="field">
-              <label>Member</label>
-              <select value={customMemberId} onChange={(e) => setCustomMemberId(e.target.value)}>
-                <option value="">Choose member</option>
-                {filteredMembers.map((m) => (
-                  <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>Role name</label>
-              <input
-                value={customRoleName}
-                onChange={(e) => setCustomRoleName(e.target.value)}
-                placeholder="e.g. Acting Coordinator"
-                maxLength={80}
-              />
-              <div className="hint">One-off — won't appear as a permanent slot.</div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                className="btn"
-                disabled={busy || !customMemberId || !customRoleName.trim()}
-                onClick={() => { setCustomMode('freeform'); proposeCustom(); }}
-              >
-                Add role
-              </button>
-              <button className="btn secondary" onClick={() => setShowCustom(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-      </div>
-      )}
 
       {ctx?.unitLevel === 'DISTRICT' && areaCabinetsBelow.length > 0 && (
         <div className="card" style={{ marginTop: 16 }}>
@@ -668,6 +691,8 @@ export default function CabinetPage() {
           </table>
         )}
       </div>
+      )}
+      </>
       )}
     </div>
   );

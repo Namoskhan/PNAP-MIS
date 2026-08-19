@@ -9,8 +9,9 @@ import { useToast } from '../../../components/Toast';
 import ColorPicker from '../../../components/branding/ColorPicker';
 import ThemePreviewPane from '../../../components/branding/ThemePreviewPane';
 import PresetGallery from '../../../components/branding/PresetGallery';
-import { CameraIcon, FolderIcon, MoonIcon, PaletteIcon, TargetIcon } from '../../../components/icons';
+import { CameraIcon, FolderIcon, MoonIcon, PaletteIcon, TargetIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Theme Manager — full color editor + light/dark mode toggle + preset
 // gallery + side-by-side preview. Color tokens are grouped by purpose
 // (Brand / Surfaces / Text / Borders / Status / Tiers) so admins can
@@ -59,6 +60,23 @@ const TOKEN_GROUPS = [
   ]},
 ];
 
+// The settings endpoints do NOT all answer in the same shape:
+//
+//   PATCH /settings                     -> { settings, versionNumber, diffSize }
+//   POST  /settings/theme/apply-preset  -> { settings, versionNumber }
+//
+// Reading `res.theme` off either of those yields undefined, and feeding
+// that back into state used to blank the page — the render guard below
+// treats a missing theme as "still loading", so the editor would sit on
+// its spinner forever even though the save had succeeded and the new
+// colors were already live. Every response is funnelled through here so
+// one endpoint changing shape can never wedge the editor again.
+function themeFromResponse(res) {
+  return res?.settings?.theme || res?.theme || null;
+}
+
+const EMPTY_THEME = { activeMode: 'LIGHT', presetName: 'PKNAP_DEFAULT', light: {}, dark: {} };
+
 export default function ThemeManagerPage() {
   const { user } = useAuth();
   const branding = useBranding();
@@ -66,6 +84,9 @@ export default function ThemeManagerPage() {
   const canWrite = hasPermission(user, 'MANAGE_SYSTEM_BRANDING');
 
   const [theme, setTheme] = useState(null); // { activeMode, presetName, light, dark }
+  // The last palette known to be persisted. Compared against `theme` to
+  // decide whether Save has anything to do.
+  const [savedTheme, setSavedTheme] = useState(null);
   const [presets, setPresets] = useState([]);
   const [editingMode, setEditingMode] = useState('LIGHT'); // which palette tab is being edited
   const [busy, setBusy] = useState(true);
@@ -74,16 +95,47 @@ export default function ThemeManagerPage() {
   const [err, setErr] = useState('');
   const [importOpen, setImportOpen] = useState(false);
 
+  // Commit a theme that came back from the server. Refuses to install a
+  // null — a write that answered in an unexpected shape leaves the
+  // admin's current edits on screen with an error, rather than wiping
+  // the editor.
+  function commitTheme(next, context) {
+    if (!next) {
+      setErr(
+        `The server saved your changes but answered in an unexpected shape (${context}). ` +
+        'Press Refresh to reload the stored theme.'
+      );
+      return false;
+    }
+    setTheme(next);
+    setSavedTheme(next);
+    return true;
+  }
+
   async function load() {
     setBusy(true); setErr(''); setServerErrors([]);
     try {
       const [s, p] = await Promise.all([fetchSettings(), listPresets()]);
-      setTheme(s?.theme || { activeMode: 'LIGHT', presetName: 'PKNAP_DEFAULT', light: {}, dark: {} });
+      const t = s?.theme || EMPTY_THEME;
+      setTheme(t);
+      setSavedTheme(t);
       setPresets(p);
-    } catch (e) { setErr(errorMessage(e)); }
+    } catch (e) {
+      setErr(errorMessage(e));
+      // Without this the catch would leave `theme` null and the render
+      // guard would show "Loading theme…" instead of the error we just
+      // set — a failed fetch has to look like a failure, not a hang.
+      setTheme((prev) => prev || EMPTY_THEME);
+    }
     finally { setBusy(false); }
   }
   useEffect(() => { load(); }, []);
+
+  // Save is only meaningful when the editor differs from what is stored.
+  const dirty = useMemo(
+    () => Boolean(theme && savedTheme) && JSON.stringify(theme) !== JSON.stringify(savedTheme),
+    [theme, savedTheme]
+  );
 
   // Map of token key → array of error messages, indexed by editing mode
   const errorsByToken = useMemo(() => {
@@ -116,11 +168,12 @@ export default function ThemeManagerPage() {
   }
 
   async function applyPresetByCode(code) {
-    if (!confirm(`Apply preset "${code}"? This overwrites the current theme. You can rollback from Settings History after saving.`)) return;
+    if (!await dialog.confirm(`Apply preset "${code}"? This overwrites the current theme. You can rollback from Settings History after saving.`)) return;
     setSaving(true); setServerErrors([]);
     try {
       const updated = await applyPreset(code);
-      setTheme(updated.theme);
+      // apply-preset answers { settings, versionNumber } — NOT { theme }.
+      commitTheme(themeFromResponse(updated), 'apply preset');
       branding.refresh?.();
       toast.success?.(`Preset "${code}" applied.`);
     } catch (e) {
@@ -178,7 +231,7 @@ export default function ThemeManagerPage() {
         },
         changeNote: 'Theme imported from JSON',
       });
-      setTheme(updated.settings.theme);
+      commitTheme(themeFromResponse(updated), 'import theme');
       branding.refresh?.();
       toast.success?.('Theme imported & saved.');
       setImportOpen(false);
@@ -207,7 +260,7 @@ export default function ThemeManagerPage() {
         },
         changeNote: 'Theme updated',
       });
-      setTheme(updated.settings.theme);
+      commitTheme(themeFromResponse(updated), 'save theme');
       branding.refresh?.();
       toast.success?.('Theme saved.');
     } catch (e) {
@@ -224,11 +277,29 @@ export default function ThemeManagerPage() {
     } finally { setSaving(false); }
   }
 
-  if (busy || !theme) {
+  // The spinner is tied to an in-flight load and NOTHING else. It used
+  // to also fire on `!theme`, which meant any write that returned an
+  // unrecognised shape put the page into a "loading" state it could
+  // never leave — the request had already finished, so nothing was ever
+  // going to clear it.
+  if (busy) {
     return (
       <div className="rm-loading">
         <span className="scope-spinner" aria-hidden="true" />
         <span className="muted">Loading theme…</span>
+      </div>
+    );
+  }
+
+  if (!theme) {
+    return (
+      <div className="rm-card">
+        <div className="rm-card-body">
+          <div className="alert error" style={{ marginBottom: 12 }}>
+            {err || 'The theme could not be loaded.'}
+          </div>
+          <button className="rm-hero-btn outline" onClick={load}>⟳ Retry</button>
+        </div>
       </div>
     );
   }
@@ -408,8 +479,20 @@ export default function ThemeManagerPage() {
 
       {canWrite && (
         <div className="rm-footer">
+          {/* Whether Save will do anything is otherwise invisible: the
+              editor looks identical before and after a successful save,
+              so without this the only way to tell was to press it and
+              watch for a toast. */}
+          <span className="muted" style={{ marginRight: 'auto', fontSize: 12.5, alignSelf: 'center' }}>
+            {dirty ? 'Unsaved changes' : 'All changes saved'}
+          </span>
           <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>× Cancel</Link>
-          <button className="rm-hero-btn solid" disabled={saving} onClick={save}>
+          <button
+            className="rm-hero-btn solid"
+            disabled={saving || !dirty}
+            onClick={save}
+            title={dirty ? 'Save the current palette' : 'No changes to save'}
+          >
             {saving ? 'Saving…' : '✓ Save theme'}
           </button>
         </div>
@@ -464,7 +547,7 @@ function ThemeImportDialog({ onClose, onApply, busy }) {
       <div className="modal" style={{ maxWidth: 560 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Import theme</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 

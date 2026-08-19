@@ -115,6 +115,69 @@ h3 { font-size: 16px; font-weight: 600; }
 a { color: var(--primary-dark); }
 a:hover { color: var(--primary); }
 
+/* The base rule for .muted. It was missing entirely: the class is used
+   ~290 times across the app, but the only rules for it were scoped to
+   the login card, the public card, the sidebar user box and the hero —
+   so everywhere else "muted" text rendered at full body colour. That is
+   why so many components carry an inline color: var(--muted) instead. */
+.muted { color: var(--muted); }
+
+/* ---------- Focus ----------
+   A default visible focus ring for every interactive element. There were
+   11 component-specific :focus-visible rules and no fallback, so anything
+   not on that list — most links, menu items and icon buttons — left
+   keyboard users with no idea where they were.
+
+   Wrapped in :where() so it carries ZERO specificity: every existing
+   component rule still wins, and this only fills the gaps. */
+:where(a, button, summary, [tabindex]:not([tabindex="-1"]),
+       input, select, textarea):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Base form controls ----------
+   Until now the ONLY input styling was `.field input`, so any control
+   rendered outside a .field wrapper fell back to browser defaults. That
+   is exactly how the Users search box ended up as a raw input sitting
+   beside a fully designed select.
+
+   Style the ELEMENTS here; `.field` is then only responsible for layout.
+   Checkboxes, radios, ranges, files and colour pickers keep their native
+   appearance — box styling makes them worse, not better. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="submit"]):not([type="button"]),
+select,
+textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+input::placeholder,
+textarea::placeholder { color: var(--muted-soft); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):hover,
+select:hover,
+textarea:hover { border-color: var(--muted-soft); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--surface-alt);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 ::selection { background: var(--primary-light); color: var(--primary-dark); }
 
 /* Scrollbars */
@@ -194,43 +257,77 @@ a:hover { color: var(--primary); }
   border-radius: 3px;
 }
 
-.sidebar nav { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
+/* ── Sidebar nav items ───────────────────────────────────────
+   Single source of truth for the nav link. There used to be a second
+   block further down that re-declared the hover and the active bar and,
+   being later in the file, quietly won — see the note where it was. */
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; }
 .sidebar nav a {
   display: flex;
   align-items: center;
-  padding: 9px 14px;
-  margin: 0 4px;
-  color: rgba(255, 255, 255, .82);
+  gap: 10px;
+  /* Left padding leaves room for the active bar, and is applied to EVERY
+     item so labels do not shift by 4px the moment one becomes active. */
+  padding: 9px 12px 9px 16px;
+  color: rgba(255, 255, 255, .78);
   text-decoration: none;
-  border-radius: var(--radius-sm);
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
   font-weight: 500;
+  line-height: 1.35;
   position: relative;
-  transition: background var(--t-fast), color var(--t-fast);
+  transition:
+    background-color .16s ease,
+    color .16s ease,
+    transform .16s cubic-bezier(.16, 1, .3, 1);
 }
 .sidebar nav a:hover {
-  background: rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .09);
+  color: #fff;
+  /* Nudge with a transform, never padding: padding is a layout property,
+     so animating it reflowed the item and made the label jump. */
+  transform: translateX(2px);
+}
+.sidebar nav a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
   color: #fff;
 }
 .sidebar nav a.active {
   background: #fff;
   color: var(--primary-dark);
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .16), 0 6px 14px -8px rgba(0, 0, 0, .45);
 }
+/* The pill does not slide — only unselected items respond to hover. */
+.sidebar nav a.active:hover { transform: none; }
 .sidebar nav a.active::before {
   content: "";
   position: absolute;
-  left: -4px;
-  top: 6px;
-  bottom: 6px;
+  left: 6px;
+  top: 9px;
+  bottom: 9px;
   width: 3px;
   border-radius: 2px;
-  background: #fff;
+  /* Brand blue, NOT #fff — this bar sits inside the white active pill,
+     so a white bar was invisible. */
+  background: var(--primary);
+  animation: navActiveIn .25s cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes navActiveIn {
+  from { transform: scaleY(0); opacity: 0; }
+  to   { transform: scaleY(1); opacity: 1; }
+}
+/* Navigation must not move for anyone who has asked motion to stop —
+   the states still read through colour, weight and the accent bar. */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar nav a { transition: background-color .16s ease, color .16s ease; }
+  .sidebar nav a:hover { transform: none; }
+  .sidebar nav a.active::before { animation: none; }
 }
 
 .nav-group {
-  margin: 16px 18px 6px;
+  margin: 18px 18px 6px;
   font-size: 11px;
   letter-spacing: .1em;
   text-transform: uppercase;
@@ -250,7 +347,7 @@ a:hover { color: var(--primary); }
 }
 .sidebar .user-box strong { color: #fff; font-size: 14px; display: block; line-height: 1.3; }
 .sidebar .user-box .user-sub { color: rgba(255, 255, 255, .65); }
-.sidebar .user-box .muted { color: rgba(255, 255, 255, .65) !important; }
+.sidebar .user-box .muted { color: rgba(255, 255, 255, .65); }
 .sidebar .user-box button {
   margin-top: 12px;
   width: 100%;
@@ -311,31 +408,6 @@ a:hover { color: var(--primary); }
   z-index: 50;
 }
 .topbar-spacer { flex: 1; }
-/* Operating-context label — fills the previously empty left side of
-   the topbar with the unit the user is currently acting in. Pure
-   display; the Unit Context card remains the switching control. */
-.topbar-context { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.topbar-context-level {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, .92);
-  background: rgba(255, 255, 255, .16);
-  border: 1px solid rgba(255, 255, 255, .22);
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-.topbar-context-name {
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 320px;
-}
 .topbar-role {
   display: flex;
   align-items: center;
@@ -624,6 +696,7 @@ a:hover { color: var(--primary); }
   width: 100%;
   min-width: 0;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 654 */
 .field { display: flex; flex-direction: column; }
 .field.full { grid-column: 1 / -1; }
 .field label {
@@ -665,6 +738,41 @@ a:hover { color: var(--primary); }
 }
 .field .error { color: var(--danger); font-size: 12px; margin-top: 5px; font-weight: 500; }
 .field .hint { color: var(--muted); font-size: 12px; margin-top: 5px; }
+
+/* ---------- Password field with show/hide toggle ---------- */
+/* The wrapper only positions the button; the input keeps every one of
+   its normal .field styles, including the focus ring, so a password
+   field is visually identical to any other input until you look for
+   the eye. */
+.pw-wrap { position: relative; display: flex; flex-direction: column; }
+/* Room for the button, so a long password never runs underneath it. */
+.pw-wrap input { padding-right: 40px; }
+.pw-toggle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 1px;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  transition: color var(--t-fast);
+}
+.pw-toggle:hover { color: var(--text); }
+.pw-toggle:active { color: var(--primary); }
+/* The toggle is real functionality, so it stays in the tab order and
+   needs a focus indicator a keyboard user can actually see. */
+.pw-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  color: var(--text);
+}
 
 /* ---------- Tables ---------- */
 table.list {
@@ -1393,6 +1501,7 @@ table.smart .cell-strong { font-weight: 600; color: var(--text); }
 table.smart .cell-muted { color: var(--muted); }
 
 /* ---------- Smart forms ---------- */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 686 */
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
@@ -1405,6 +1514,7 @@ table.smart .cell-muted { color: var(--muted); }
   border-color: var(--danger);
   box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 700 */
 .field .error {
   color: var(--danger);
   font-size: 12px;
@@ -1431,6 +1541,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ---------- Smart button states ---------- */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 589 */
 .btn { transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast); }
 .btn:not(:disabled):hover { transform: translateY(-1px); }
 .btn:not(:disabled):active { transform: translateY(0); }
@@ -1480,6 +1591,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ---------- Page transitions ---------- */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 556 */
 .main > * { animation: pageIn .25s cubic-bezier(.4, 0, .2, 1); }
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(4px); }
@@ -1519,11 +1631,13 @@ table.smart .cell-muted { color: var(--muted); }
    ============================================================ */
 
 /* ── Modal: backdrop blur + softer dialog spring ────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1054 */
 .modal-backdrop {
   animation: modalBackdropIn .22s cubic-bezier(.4, 0, .2, 1);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1062 */
 .modal {
   animation: modalDialogIn .28s cubic-bezier(.16, 1, .3, 1);
   transform-origin: center top;
@@ -1540,6 +1654,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ── Buttons: lift, glow, press feedback ────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 589 */
 .btn {
   transition:
     transform .16s cubic-bezier(.34, 1.56, .64, 1),
@@ -1551,11 +1666,13 @@ table.smart .cell-muted { color: var(--muted); }
   position: relative;
   overflow: hidden;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1504 */
 .btn:not(:disabled):hover {
   transform: translateY(-1.5px);
   box-shadow: 0 4px 10px -2px rgba(30, 64, 175, .25), 0 2px 4px -1px rgba(15, 23, 42, .06);
   filter: brightness(1.04);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1505 */
 .btn:not(:disabled):active {
   transform: translateY(0) scale(.98);
   box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
@@ -1570,6 +1687,7 @@ table.smart .cell-muted { color: var(--muted); }
 .btn.ghost:not(:disabled):hover { transform: none; box-shadow: none; filter: none; }
 
 /* Focus ring fades in instead of snapping */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 611 */
 .btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--ring), 0 4px 10px -2px rgba(30, 64, 175, .25);
@@ -1577,6 +1695,7 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ── Form inputs: smoother focus glow ───────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 669 */
 .field input,
 .field select,
 .field textarea {
@@ -1585,12 +1704,14 @@ table.smart .cell-muted { color: var(--muted); }
     box-shadow .18s ease,
     background-color .15s ease;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 686 */
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
   box-shadow: 0 0 0 3px var(--ring), 0 1px 2px rgba(15, 23, 42, .04);
   outline: none;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 663 */
 .field label {
   transition: color .15s ease;
 }
@@ -1599,15 +1720,27 @@ table.smart .cell-muted { color: var(--muted); }
 }
 
 /* ── Cards: subtler hover lift ──────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 576 */
 .card {
   transition:
     box-shadow .25s ease,
     transform .25s cubic-bezier(.4, 0, .2, 1),
     border-color .2s ease;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 584 */
 .card:hover {
   transform: translateY(-1px);
   border-color: var(--border-strong, var(--border));
+}
+/* Most page modals are still rendered inline inside the .card that owns
+   the section. A transform on the card makes it the containing block for
+   its own position:fixed backdrop, so the overlay collapses to the card's
+   box — and because the backdrop is a card descendant, it keeps the card
+   hovered, so the modal oscillates between the two layouts. Never lift a
+   card that currently hosts an open modal. */
+.card:has(.modal-backdrop),
+.card:has(.modal-backdrop):hover {
+  transform: none;
 }
 
 /* ── Tables: smoother row hover ─────────────────────────────── */
@@ -1620,28 +1753,9 @@ table.smart tbody tr:hover {
   background: var(--surface-alt);
 }
 
-/* ── Sidebar nav: animated active indicator ─────────────────── */
-.sidebar nav a {
-  transition:
-    background-color .18s ease,
-    color .18s ease,
-    padding-left .2s cubic-bezier(.4, 0, .2, 1);
-  position: relative;
-}
-.sidebar nav a:hover { padding-left: 18px; }
-.sidebar nav a.active::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 8px; bottom: 8px;
-  width: 3px;
-  background: #fff;
-  border-radius: 0 3px 3px 0;
-  animation: navActiveIn .25s cubic-bezier(.16, 1, .3, 1);
-}
-@keyframes navActiveIn {
-  from { transform: scaleY(0); opacity: 0; }
-  to   { transform: scaleY(1); opacity: 1; }
-}
+/* Sidebar nav lived here as a second, later-winning override of the block
+   near the top of this file. Merged up there so there is one definition;
+   don't re-add nav rules below that point. */
 
 /* ── Toolbar tab buttons: smooth transition between tabs ────── */
 .toolbar .btn {
@@ -1652,6 +1766,7 @@ table.smart tbody tr:hover {
 }
 
 /* ── KPIs: slightly springier hover ─────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 886 */
 .kpi {
   transition:
     transform .22s cubic-bezier(.16, 1, .3, 1),
@@ -1667,6 +1782,7 @@ table.smart tbody tr:hover {
 }
 
 /* ── Alerts: slide in from above ────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 864 */
 .alert {
   animation: alertIn .26s cubic-bezier(.16, 1, .3, 1);
 }
@@ -1681,6 +1797,7 @@ input[type="file"]::file-selector-button {
 }
 
 /* ── Badges: subtle pop-in ──────────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 769 */
 .badge {
   transition: transform .12s ease, box-shadow .15s ease;
 }
@@ -2002,7 +2119,7 @@ html { scroll-behavior: smooth; }
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   color: rgba(255, 255, 255, 0.85);
 }
-.hero-actions .muted { color: rgba(255, 255, 255, 0.7) !important; }
+.hero-actions .muted { color: rgba(255, 255, 255, 0.7); }
 
 /* Live data indicator chip — sits in hero-actions */
 .hero-live-chip {
@@ -2089,6 +2206,7 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Polished SmartKpi — top accent strip + soft glow on hover */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1333 */
 .skpi {
   position: relative;
 }
@@ -2111,6 +2229,7 @@ html { scroll-behavior: smooth; }
     0 2px 4px rgba(15, 23, 42, .04);
   border-color: rgba(30, 64, 175, 0.25);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1358 */
 .skpi-icon {
   background: linear-gradient(135deg, rgba(30, 64, 175, 0.10), rgba(30, 64, 175, 0.05)) !important;
   box-shadow: 0 2px 6px -2px rgba(30, 64, 175, 0.15);
@@ -2119,6 +2238,7 @@ html { scroll-behavior: smooth; }
 .skpi:hover .skpi-icon { transform: scale(1.08) rotate(-4deg); }
 
 /* ── Polished chart cards — top accent + gentle hover ───────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1386 */
 .chart-card {
   position: relative;
   transition: box-shadow .25s ease, transform .25s cubic-bezier(.16, 1, .3, 1), border-color .2s ease;
@@ -2138,9 +2258,11 @@ html { scroll-behavior: smooth; }
   box-shadow: var(--shadow-md);
   border-color: rgba(30, 64, 175, 0.18);
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1399 */
 .chart-card-title {
   display: inline-flex; align-items: center; gap: 6px;
 }
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 1406 */
 .chart-card-meta {
   display: inline-flex; align-items: center; gap: 5px;
   background: rgba(30, 64, 175, 0.08);
@@ -2188,33 +2310,62 @@ html { scroll-behavior: smooth; }
 }
 .users-search-icon {
   position: absolute;
-  left: 12px; top: 50%;
+  left: 13px; top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
+  display: inline-flex;
   pointer-events: none;
-  opacity: .65;
+  color: var(--muted);
+  transition: color .15s ease;
 }
+/* This input sits beside .users-filter-select and had NO styling of its
+   own — only the two padding overrides — so it rendered as a bare
+   browser input next to a designed control, at a different height. It
+   now matches that select exactly: same height, border, radius and ring. */
 .users-search-input {
   width: 100%;
-  padding-left: 36px !important;
-  padding-right: 36px !important;
+  height: 40px;
+  padding: 0 38px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+.users-search-input::placeholder { color: var(--muted-soft); }
+.users-search-input:hover { border-color: var(--muted-soft); }
+.users-search-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.12);
+}
+/* The magnifier lights up with the field it belongs to. */
+.users-search-wrap:focus-within .users-search-icon { color: var(--primary); }
+/* type="search" draws its own cancel button in WebKit, which would sit
+   under the custom clear button as a second, differently-styled X. */
+.users-search-input::-webkit-search-cancel-button,
+.users-search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+
 .users-search-clear {
   position: absolute;
-  right: 8px; top: 50%;
+  right: 9px; top: 50%;
   transform: translateY(-50%);
   width: 22px; height: 22px;
   border: 0;
+  padding: 0;
   background: var(--surface-alt);
   color: var(--text-soft);
   border-radius: 50%;
   cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
   transition: background-color .15s ease, color .15s ease;
 }
 .users-search-clear:hover { background: var(--primary); color: #fff; }
+.users-search-clear:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
 .users-toolbar-filters {
   display: flex; gap: 8px; align-items: center;
 }
@@ -2476,6 +2627,7 @@ html { scroll-behavior: smooth; }
 .exec-actions .btn:first-child { margin-left: 0; }
 
 /* ── User avatar ────────────────────────────────────────────── */
+/* stylelint-disable-next-line no-duplicate-selectors -- layered on purpose over the base rule at line 307 */
 .user-avatar {
   border-radius: 50%;
   display: inline-flex;
@@ -2533,23 +2685,39 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Sidebar collapsible nav group ──────────────────────────── */
-.nav-collapsible { margin-bottom: 4px; }
+.nav-collapsible { margin-bottom: 2px; }
 .nav-collapsible-head {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%;
+  display: flex; align-items: center; gap: 9px;
+  /* Inset to match the nav links below it, so the group reads as a
+     heading over its own items instead of a floating label. */
+  width: calc(100% - 20px);
+  margin: 8px 10px 2px;
   background: transparent;
   border: 0;
+  border-radius: 8px;
   color: rgba(255, 255, 255, .55);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
-  padding: 12px 18px 6px;
+  padding: 8px 12px 8px 16px;
   cursor: pointer;
   text-align: left;
-  transition: color .15s ease;
+  transition: color .15s ease, background-color .15s ease;
 }
-.nav-collapsible-head:hover { color: #fff; }
+.nav-collapsible-head:hover {
+  color: #fff;
+  /* The whole row is the hit target, so it needs to look like one. */
+  background: rgba(255, 255, 255, .06);
+}
+.nav-collapsible-head:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  color: #fff;
+}
+/* An open group is a heading with content under it — give it more
+   presence than a collapsed one. */
+.nav-collapsible.open > .nav-collapsible-head { color: rgba(255, 255, 255, .82); }
 .nav-collapsible-icon {
   display: inline-flex;
   align-items: center;
@@ -2708,6 +2876,14 @@ html { scroll-behavior: smooth; }
 }
 .rm-hero-btn.solid:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); }
 .rm-hero-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+/* The .solid:hover rule is more specific than :disabled, so without
+   these a disabled button still lifts and recolors under the cursor —
+   it reads as clickable when it isn't. */
+.rm-hero-btn:disabled:hover { transform: none; box-shadow: none; }
+.rm-footer .rm-hero-btn.solid:disabled:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
 
 /* ── Roles list card ─────────────────────────────────────────── */
 .rm-card {
@@ -3326,4 +3502,1247 @@ html { scroll-behavior: smooth; }
     transition-duration: .001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+
+/* ── Fund Transfers — destination picker ────────────────────────
+ * Presentation for the organization-tree destination selector and
+ * the resolved-destination panel. Purely visual: the backend
+ * re-resolves and re-validates the destination on every create.
+ */
+
+/* Section wrappers inside the initiate / confirm dialogs */
+.tr-section + .tr-section { margin-top: 20px; }
+.tr-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+/* The initiate dialog is a FIXED-height frame, not a growing page:
+   header and footer are pinned, and the two panes between them scroll
+   on their own. That is what keeps the tree's scrollbar usable — the
+   tree box is always fully on screen, so expanding a branch scrolls
+   the tree rather than pushing the dialog down. The dialog itself
+   never scrolls, hence overflow: hidden. */
+.modal.tr-modal {
+  max-width: 1040px;
+  width: 100%;
+  height: min(88vh, 780px);
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tr-modal-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+/* Two independent scroll regions. min-height: 0 is load-bearing —
+   without it a flex child refuses to shrink below its content and
+   the inner scrollbars never appear. */
+.tr-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  gap: 22px;
+}
+.tr-pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+/* Tree pane: the tree fills the pane and owns the scrolling. */
+.tr-pane-tree > .orgtree {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tr-pane-tree .orgtree-scroll { flex: 1 1 auto; min-height: 0; max-height: none; }
+/* Form pane scrolls independently of the tree. */
+.tr-pane-form { overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.tr-pane-form > .tr-section:first-child { margin-top: 0; }
+
+.tr-modal-actions {
+  flex: 0 0 auto;
+  margin-top: 16px;
+  padding-top: 14px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* From / To cards */
+.tr-endpoint {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  min-width: 0;
+}
+.tr-endpoint.from { border-left: 3px solid var(--success); }
+.tr-endpoint.to   { border-left: 3px solid var(--primary); background: var(--primary-tint); border-color: var(--primary-light); }
+/* Nothing chosen yet — stays neutral rather than implying a
+   destination the sender has not picked. */
+.tr-endpoint.to.empty {
+  background: var(--surface-alt);
+  /* border-color must come FIRST: as a shorthand it resets all four
+     sides, so when it sat below border-left-color that declaration was
+     dead and the left edge quietly took the generic border colour. */
+  border-color: var(--border);
+  border-left-style: dashed;
+  border-left-color: var(--border-strong);
+}
+.tr-endpoint-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+.tr-endpoint-level {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-soft);
+}
+.tr-endpoint.to .tr-endpoint-level { border-color: var(--primary-light); color: var(--primary-dark); }
+.tr-endpoint-name {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* ── Organization tree ──────────────────────────────────────── */
+/* Tier accent, resolved once per row from data-level and reused by
+   the badge, the hierarchy dots and the selected-row rail. */
+.orgtree-badge[data-level="CENTRAL"],    .dh-step[data-level="CENTRAL"]    { --tier: var(--tier-central); }
+.orgtree-badge[data-level="PROVINCE"],   .dh-step[data-level="PROVINCE"]   { --tier: var(--tier-province); }
+.orgtree-badge[data-level="DISTRICT"],   .dh-step[data-level="DISTRICT"]   { --tier: var(--tier-district); }
+.orgtree-badge[data-level="AREA"],       .dh-step[data-level="AREA"]       { --tier: var(--tier-area); }
+.orgtree-badge[data-level="BASIC_UNIT"], .dh-step[data-level="BASIC_UNIT"] { --tier: var(--tier-basic-unit); }
+
+.orgtree {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--shadow-xs);
+}
+.orgtree-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-alt);
+}
+.orgtree-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+}
+.orgtree-search input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.orgtree-status {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+/* Bounded height so the tree never pushes the form off screen —
+   the branch list scrolls inside its own box. */
+.orgtree-scroll { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; }
+.orgtree-list { list-style: none; margin: 0; padding: 6px 0; }
+.orgtree-rootlabel {
+  padding: 6px 14px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+
+/* Row — a full-width, comfortably tall hit target. */
+.orgtree-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px 7px 8px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  color: var(--text);
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.orgtree-row:hover { background: var(--surface-alt); }
+.orgtree-row:focus-visible {
+  outline: none;
+  background: var(--surface-alt);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+.orgtree-row.selected {
+  background: var(--primary-tint);
+  border-left-color: var(--primary);
+}
+.orgtree-row.selected .orgtree-name { color: var(--primary-dark); font-weight: 700; }
+/* The sender's own unit — visible for orientation, not selectable. */
+.orgtree-row.disabled { cursor: not-allowed; opacity: .55; }
+.orgtree-row.disabled:hover { background: transparent; }
+/* A node that matched the search, as opposed to an ancestor shown
+   only to give it context. */
+.orgtree-row.match .orgtree-name { font-weight: 700; }
+.orgtree-row.match { background: var(--warning-bg); }
+.orgtree-row.match.selected { background: var(--primary-tint); }
+
+.orgtree-caret {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: transform var(--t-fast), background var(--t-fast), color var(--t-fast);
+}
+.orgtree-caret:hover { background: var(--border); color: var(--text); }
+.orgtree-caret.placeholder { cursor: default; }
+/* One chevron, rotated — no glyph swap, so it animates open/closed. */
+.orgtree-row[aria-expanded="true"] > .orgtree-caret { transform: rotate(90deg); }
+
+/* Tier badge — a letter in a coloured disc. Large enough to read and
+   to carry the tier colour on its own. */
+.orgtree-badge {
+  flex: 0 0 auto;
+  width: 26px; height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: var(--tier, var(--muted));
+  /* Plain values first so a browser without color-mix still gets a
+     legible disc; the tinted pair overrides where supported. Each
+     fallback sits directly above the value that supersedes it — the
+     pairs used to be interleaved, which reads as an accidental repeat. */
+  background: var(--surface-alt);
+  background: color-mix(in srgb, var(--tier, var(--muted)) 12%, var(--surface));
+  border: 1px solid var(--border-strong);
+  border: 1px solid color-mix(in srgb, var(--tier, var(--muted)) 28%, transparent);
+}
+.orgtree-row.selected .orgtree-badge {
+  color: #fff;
+  background: var(--tier, var(--primary));
+  border-color: var(--tier, var(--primary));
+}
+
+.orgtree-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.orgtree-name {
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.orgtree-level {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.orgtree-note { flex: 0 0 auto; font-size: 11px; font-style: italic; color: var(--muted-soft); }
+
+/* Pick-one affordance. Empty ring by default, filled tick when
+   chosen — so a row's state is readable without relying on the
+   background tint alone. */
+.orgtree-radio {
+  flex: 0 0 auto;
+  width: 20px; height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: transparent;
+  transition: all var(--t-fast);
+}
+.orgtree-row:hover .orgtree-radio { border-color: var(--muted-soft); }
+.orgtree-row.selected .orgtree-radio {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+.orgtree-more { margin: 2px 0 6px; font-size: 12px; }
+
+/* ── Destination hierarchy ──────────────────────────────────── */
+.dh-chain { list-style: none; margin: 8px 0 0; padding: 0; }
+.dh-step { display: flex; gap: 12px; align-items: stretch; }
+.dh-marker {
+  flex: 0 0 auto;
+  width: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.dh-dot {
+  flex: 0 0 auto;
+  width: 12px; height: 12px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--tier, var(--border-strong));
+}
+.dh-line { flex: 1 1 auto; width: 2px; min-height: 14px; background: var(--border-strong); margin: 3px 0; }
+.dh-body { flex: 1 1 auto; min-width: 0; padding-bottom: 10px; }
+.dh-step:last-child .dh-body { padding-bottom: 0; }
+.dh-name { font-size: 13px; color: var(--text-soft); overflow-wrap: anywhere; }
+.dh-level {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.dh-step.root .dh-dot { border-color: var(--border-strong); }
+.dh-step.root .dh-name { color: var(--muted); }
+/* The destination itself — a filled, larger dot and a bold name. */
+.dh-step.destination .dh-dot {
+  width: 16px; height: 16px;
+  margin-top: 3px; margin-left: -2px;
+  background: var(--tier, var(--primary));
+  border-color: var(--tier, var(--primary));
+  box-shadow: 0 0 0 4px var(--primary-light);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tier, var(--primary)) 18%, transparent);
+}
+.dh-step.destination .dh-name { color: var(--text); font-weight: 700; font-size: 14px; }
+
+.dh-inline { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.dh-inline-node.destination { color: var(--primary-dark); font-weight: 650; }
+.dh-inline-sep { color: var(--muted-soft); }
+
+/* Page-level banner stating the rule */
+.tr-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--info-border);
+  background: var(--info-bg);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--info-strong);
+}
+.tr-banner strong { font-weight: 650; }
+
+/* Confirmation dialog summary rows */
+.tr-summary { display: grid; gap: 10px; }
+.tr-summary-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+.tr-summary-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.tr-summary-key {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+.tr-summary-val { font-size: 14px; color: var(--text); overflow-wrap: anywhere; }
+.tr-summary-val.amount { font-size: 18px; font-weight: 700; color: var(--text); }
+
+/* Below the two-pane threshold the panes stack, and the body becomes
+   the single scroll region — but the tree keeps a bounded box of its
+   own, so a deep branch still scrolls inside the tree rather than
+   stretching the dialog. */
+@media (max-width: 900px) {
+  .modal.tr-modal { height: min(92vh, 780px); }
+  .tr-modal-body {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .tr-pane-tree { margin-bottom: 18px; }
+  .tr-pane-tree > .orgtree { flex: 0 0 auto; }
+  .tr-pane-tree .orgtree-scroll { flex: 0 0 auto; max-height: 300px; }
+  .tr-pane-form { overflow: visible; padding-right: 0; }
+}
+
+@media (max-width: 640px) {
+  .tr-pane-tree .orgtree-scroll { max-height: 260px; }
+  /* Tier now reads from the badge and the stacked sub-label, so the
+     trailing note is the only thing worth dropping for width. */
+  .orgtree-note { display: none; }
+  .orgtree-row { gap: 8px; padding-right: 8px; }
+  .tr-summary-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* Touch input — widen the rows so a fingertip lands on one reliably. */
+@media (pointer: coarse) {
+  .orgtree-row { padding-top: 10px; padding-bottom: 10px; }
+  .orgtree-caret { width: 28px; height: 28px; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Executive dashboard — collapsible sections
+   ──────────────────────────────────────────────────────────────
+   The national MIS dashboard carries far more than fits on one
+   screen, so it is split into sections that open one at a time.
+   Only the Executive Summary is expanded by default; every other
+   section mounts its content lazily on first open, so a closed
+   section costs neither a request nor a render.
+   ══════════════════════════════════════════════════════════════ */
+.dash-section {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 16px -12px rgba(15, 23, 42, .10);
+}
+.dash-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px 0;
+}
+.dash-section-heading { flex: 1; min-width: 0; }
+.dash-section-title {
+  margin: 0;
+  font-weight: 650;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.dash-section-sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+/* ---------- Stacked horizontal bars (composition per row) ---------- */
+.shb { display: flex; flex-direction: column; gap: 12px; }
+.shb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.shb-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.shb-swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+
+.shb-rows { display: flex; flex-direction: column; gap: 10px; }
+.shb-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.3fr) 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+.shb-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The track is the full width of the biggest row; the stack inside it
+   is this row's share of that. Two elements, so bar LENGTH stays
+   comparable across rows while the split stays readable within one. */
+.shb-track {
+  height: 22px;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.shb-stack {
+  display: flex;
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: width .45s cubic-bezier(.16, 1, .3, 1);
+}
+.shb-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  transition: width .45s cubic-bezier(.16, 1, .3, 1);
+}
+/* A number wider than its segment would spill into the neighbouring
+   colour and misattribute itself. Clipped rather than shrunk — the
+   value is always available on hover and in the total column. */
+.shb-seg-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  padding: 0 5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.shb-total {
+  min-width: 74px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.shb-note {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+@media (max-width: 560px) {
+  .shb-row { grid-template-columns: 1fr auto; }
+  /* The label takes its own line rather than being squeezed to three
+     characters next to the bar. */
+  .shb-label { grid-column: 1 / -1; }
+  .shb-track { grid-column: 1; }
+}
+
+/* ---------- Manage Units: drill row + tier badge ---------- */
+/* The whole name is the control. A chevron sits after it so a row that
+   opens looks openable before it is hovered — a text arrow read as
+   decoration rather than an affordance. */
+.unit-drill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--primary-dark);
+  cursor: pointer;
+  text-align: left;
+}
+.unit-drill:hover { color: var(--primary); }
+.unit-drill svg { flex-shrink: 0; transition: transform var(--t-fast); }
+.unit-drill:hover svg { transform: translateX(2px); }
+.unit-drill:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Tier identity. Reuses the --tier-* tokens the scope tree already
+   uses, so a Province reads the same colour everywhere in the app
+   rather than being a fifth thing to learn. */
+.unit-type {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  color: var(--tier, var(--muted));
+  background: color-mix(in srgb, var(--tier, var(--muted)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tier, var(--muted)) 30%, transparent);
+}
+.unit-type.PROVINCE   { --tier: var(--tier-province); }
+.unit-type.DISTRICT   { --tier: var(--tier-district); }
+.unit-type.AREA       { --tier: var(--tier-area); }
+.unit-type.BASIC_UNIT { --tier: var(--tier-basic-unit); }
+
+.dash-section-badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  background: var(--primary-tint);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+}
+
+/* Animating to `auto` height is not possible directly; a 0fr → 1fr
+   grid row is the one technique that does it without hard-coding a
+   max-height that would clip a tall section. */
+/* The 0fr → 1fr collapse animation that lived here is gone — nothing
+   collapses any more. */
+.dash-section-wrap-unused {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .24s ease;
+}
+.dash-section-body { padding: 16px 20px 20px; }
+/* Reserves height for a section that has scrolled near but not yet
+   mounted, so the page does not jump as each one arrives. */
+.dash-section-placeholder { min-height: 120px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-section-placeholder { min-height: 0; }
+}
+
+/* The scope bar rides along as the user scrolls the long page, so the
+   way back up the hierarchy is always one click away — drilling
+   happens from cards far below the fold, and a trail that has scrolled
+   out of view is a hierarchy with no exit.
+   52px clears the sticky .topbar; z-index stays below it so the topbar
+   always wins an overlap.
+
+   Note: the Executive Summary is deliberately NOT the sticky element.
+   Expanded it is taller than the viewport, and pinning a block that
+   size buries the page behind it instead of keeping context visible. */
+.dash-scope-bar {
+  position: sticky;
+  top: 52px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 9px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+}
+@media (max-width: 860px) {
+  .dash-scope-bar { position: static; }
+}
+
+/* Recent-activity feed. The list grows with the page size, which
+   would otherwise stretch this card far past the trend chart beside
+   it and leave the row lopsided. Cap it and scroll instead; the
+   global scrollbar styling above applies automatically. */
+.dash-feed {
+  max-height: 260px;
+  overflow-y: auto;
+  /* Room for the scrollbar so the last column of text isn't clipped. */
+  padding-right: 4px;
+  /* Contain overscroll so reaching the end of the feed doesn't start
+     scrolling the whole dashboard behind it. */
+  overscroll-behavior: contain;
+}
+
+/* ── Breadcrumb scope trail ─────────────────────────────────── */
+.dash-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.dash-crumb {
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--primary-dark);
+  cursor: pointer;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  transition: background var(--t-fast);
+}
+.dash-crumb:hover { background: var(--primary-tint); }
+.dash-crumb.current {
+  color: var(--text);
+  font-weight: 600;
+  cursor: default;
+}
+.dash-crumb.current:hover { background: none; }
+.dash-crumb-sep { color: var(--muted-soft); }
+
+/* ── Drill-down unit cards ──────────────────────────────────── */
+.dash-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+.dash-unit-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 13px 14px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+}
+.dash-unit-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.dash-unit-card.leaf { cursor: default; }
+.dash-unit-card.leaf:hover { transform: none; box-shadow: none; border-color: var(--border); }
+.dash-unit-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.dash-unit-card-name {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-unit-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  font-size: 12.5px;
+}
+.dash-unit-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+.dash-unit-stat span { color: var(--muted); }
+.dash-unit-stat strong { font-variant-numeric: tabular-nums; }
+.dash-unit-card-foot {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* ================= Command Centre dashboard ================= */
+.cc { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---- Scroll reveal ---- */
+.cc-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .5s cubic-bezier(.16, 1, .3, 1),
+              transform .5s cubic-bezier(.16, 1, .3, 1);
+  will-change: opacity, transform;
+}
+.cc-reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cc-reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ---- Masthead ---- */
+.cc-masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+}
+.cc-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--primary);
+  margin-bottom: 5px;
+}
+.cc-title { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.cc-lede { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); max-width: 62ch; }
+.cc-live {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: var(--success);
+  background: var(--success-bg);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+}
+.cc-live-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--success);
+  animation: cc-pulse 2.4s ease-in-out infinite;
+}
+@keyframes cc-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, .45); }
+  50%      { opacity: .65; box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .cc-live-dot { animation: none; } }
+
+/* ---- Acts ---- */
+.cc-act { margin-top: 18px; }
+.cc-act-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 0 2px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+/* The numbered marker is what makes the page read as a sequence rather
+   than a pile of unrelated panels. */
+.cc-act-marker {
+  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary); color: #fff;
+  font-size: 14px; font-weight: 700;
+}
+.cc-act-heading { flex: 1; min-width: 0; }
+.cc-act-title { margin: 3px 0 0; font-size: 18px; font-weight: 650; letter-spacing: -0.012em; }
+.cc-act-lead { margin: 5px 0 0; font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 74ch; }
+.cc-act-meta {
+  flex-shrink: 0; align-self: center;
+  font-size: 12.5px; font-weight: 600; color: var(--primary-dark);
+  background: var(--primary-tint);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+}
+
+/* ---- Act 1 standing strip ---- */
+.cc-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+.cc-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 12px;
+  padding: 16px 18px;
+  height: 100%;
+}
+.cc-stat.tone-good { border-left-color: var(--success); }
+.cc-stat.tone-warn { border-left-color: var(--warning); }
+.cc-stat-value {
+  font-size: 30px; font-weight: 700; line-height: 1.05;
+  letter-spacing: -0.025em; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cc-stat-label { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--text-soft); }
+.cc-stat-sub { margin-top: 4px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+/* ---- Act 2 province matrix ---- */
+.pm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+}
+.pm-card-wrap { height: 100%; }
+.pm-card {
+  height: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 16px -12px rgba(15, 23, 42, .10);
+  transition: box-shadow .25s ease, transform .25s cubic-bezier(.16, 1, .3, 1);
+}
+.pm-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, .05), 0 12px 26px -14px rgba(15, 23, 42, .2);
+}
+/* A silent province is dimmed, not hidden — it is still a province. */
+.pm-card.dormant { background: var(--surface-alt); }
+.pm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.pm-name {
+  border: 0; background: none; padding: 0;
+  font: inherit; font-size: 16px; font-weight: 700;
+  color: var(--primary-dark); cursor: pointer; text-align: left;
+  letter-spacing: -0.01em;
+}
+.pm-name:hover { text-decoration: underline; }
+.pm-flag {
+  flex-shrink: 0;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .03em;
+  padding: 3px 9px; border-radius: var(--radius-pill);
+}
+.pm-flag.on  { background: var(--success-bg); color: var(--success); }
+.pm-flag.off { background: var(--surface-alt); color: var(--muted); }
+
+.pm-members { margin-bottom: 15px; }
+.pm-members-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.pm-members-label { font-size: 12.5px; color: var(--muted); margin-left: 6px; }
+.pm-members-split { display: block; margin-top: 3px; font-size: 12px; color: var(--text-soft); }
+.pm-members-track {
+  margin-top: 8px; height: 5px; border-radius: 3px;
+  background: var(--surface-alt); overflow: hidden;
+}
+.pm-members-fill {
+  height: 100%; border-radius: 3px; background: var(--success);
+  transition: width .6s cubic-bezier(.16, 1, .3, 1);
+}
+
+.pm-tiers { display: flex; flex-direction: column; gap: 10px; }
+.pm-tier-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.pm-tier-label { font-size: 12px; color: var(--text-soft); font-weight: 500; }
+.pm-tier-num { font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
+.pm-tier-of { color: var(--muted); font-weight: 400; }
+.pm-tier-track { height: 6px; border-radius: 3px; background: var(--surface-alt); overflow: hidden; }
+.pm-tier-fill { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.16, 1, .3, 1); }
+
+.pm-officer {
+  margin-top: 15px; padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  font-size: 12.5px; color: var(--text-soft);
+}
+.pm-officer-label {
+  display: block; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 2px;
+}
+.pm-officer-role { color: var(--muted); margin-left: 6px; }
+.pm-officer-none { color: var(--muted); font-style: italic; }
+
+@media (max-width: 640px) {
+  .cc-title { font-size: 21px; }
+  .cc-act-head { gap: 11px; }
+  .cc-act-marker { width: 26px; height: 26px; font-size: 13px; }
+}
+
+/* ================= Chart legend & heatmap ================= */
+
+/* Legend text wears text tokens, never the series colour — the swatch
+   beside it is what carries identity. */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend-swatch {
+  width: 11px; height: 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ---- Heatmap ---- */
+.hm-scroll { width: 100%; overflow-x: auto; }
+.hm {
+  border-collapse: separate;
+  /* 2px of surface between cells — without it adjacent shades merge into
+     one block and the matrix stops reading as discrete cells. */
+  border-spacing: 2px;
+  width: 100%;
+  font-size: 12px;
+}
+.hm-corner { background: none; }
+.hm-colhead,
+.hm-rowhead {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-align: center;
+  padding: 4px 6px;
+  white-space: nowrap;
+  background: none;
+}
+.hm-rowhead { text-align: left; padding-right: 10px; }
+.hm-colhead span,
+.hm-rowhead span { display: block; }
+.hm-sub {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.hm-cell {
+  /* Same relief as the columns: the palest steps would otherwise lose
+     their edge against the surface. */
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .10);
+  min-width: 46px;
+  height: 34px;
+  text-align: center;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-alt);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+/* The two darkest steps need light ink to stay legible. */
+.hm-cell.on-dark { color: #fff; }
+/* An empty cell is deliberately unshaded — see shadeFor(). */
+.hm-cell.empty { background: var(--surface-alt); opacity: .55; }
+.hm-cell:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 2px var(--surface), 0 2px 8px -2px rgba(15, 23, 42, .3);
+  position: relative;
+  z-index: 1;
+}
+
+.hm-scale {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.hm-scale-chip { width: 20px; height: 9px; border-radius: 2px; }
+.hm-scale-label { font-variant-numeric: tabular-nums; }
+.hm-scale-label:first-child { margin-right: 3px; }
+.hm-scale-label:last-child { margin-left: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-cell:hover { transform: none; }
+}
+
+/* ---- Standing tile: figure beside its share gauge ---- */
+.cc-stat-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cc-stat-main { min-width: 0; }
+.cc-stat-gauge { flex-shrink: 0; margin-top: 2px; }
+
+/* ---- Reports: stacked bars beside the overall gauge ---- */
+.rep-gauge-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 0 4px;
+}
+.rep-gauge-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  /* The gauge is a companion to the bars, not a column of its own. */
+  .rep-grid { grid-template-columns: 1fr !important; }
+}
+
+/* The password field's styles live with the other form controls near the
+   top of this file (.pw-wrap / .pw-toggle). A second copy lived here and,
+   being later in the cascade, silently restyled the sign-in page's toggle
+   — which is the whole reason stylelint's no-duplicate-selectors is on. */
+
+/* ---------- App dialogs (window.confirm / prompt / alert replacements) ---------- */
+.modal.dlg { max-width: 420px; }
+.dlg-title { margin: 0 0 8px; font-size: 17px; font-weight: 650; }
+.dlg-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-soft);
+  /* Native alerts preserved newlines; several call sites still pass
+     multi-line strings, so keep them readable. */
+  white-space: pre-wrap;
+}
+.dlg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ---- Choice dialog (dialog.choose) ----
+   One tappable row per option, so picking a fixed value never means
+   typing it. Full-width rows rather than a button strip: the labels are
+   uneven in length and each carries a hint line, which a horizontal row
+   would either truncate or wrap raggedly. */
+.dlg-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.dlg-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 14px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.dlg-choice:hover {
+  background: var(--primary-tint);
+  border-color: var(--primary);
+  /* Nudge only — a hover that changes height would reflow the list and
+     shift the row out from under the pointer. */
+  transform: translateX(2px);
+}
+.dlg-choice:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+.dlg-choice-label { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.dlg-choice-hint { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+/* Consequential outcomes read as consequential before they're clicked. */
+.dlg-choice.danger .dlg-choice-label { color: var(--danger); }
+.dlg-choice.danger:hover {
+  background: var(--danger-bg, var(--primary-tint));
+  border-color: var(--danger);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dlg-choice, .dlg-choice:hover { transform: none; transition: background var(--t-fast), border-color var(--t-fast); }
+}
+
+/* ---- Province matrix: filter + pager ---- */
+.pm-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.pm-search { position: relative; flex: 1 1 260px; max-width: 380px; min-width: 0; }
+.pm-search input {
+  width: 100%;
+  height: 38px;
+  padding: 0 34px;
+  font-size: 13px;
+}
+.pm-search-icon {
+  position: absolute;
+  left: 11px; top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  pointer-events: none;
+  color: var(--muted);
+  transition: color .15s ease;
+}
+.pm-search:focus-within .pm-search-icon { color: var(--primary); }
+/* type="search" draws its own cancel button in WebKit, which would sit
+   under the custom clear button as a second, differently styled X. */
+.pm-search input::-webkit-search-cancel-button,
+.pm-search input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.pm-search-clear {
+  position: absolute;
+  right: 8px; top: 50%;
+  transform: translateY(-50%);
+  width: 20px; height: 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; border: 0;
+  border-radius: 50%;
+  background: var(--surface-alt);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+.pm-search-clear:hover { background: var(--primary); color: #fff; }
+
+.pm-count {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- Scroll box ----
+   Bounded height so the section stays predictable however many units
+   exist; the grid scrolls inside it. --pm-scroll-h is the one knob:
+   raise it to show more rows before scrolling. */
+.pm-scroll.on {
+  max-height: var(--pm-scroll-h, min(72vh, 900px));
+  overflow-y: auto;
+  /* Room for the scrollbar so cards do not sit underneath it, and for
+     the card hover lift so it is not clipped at the edges. */
+  padding: 4px 10px 4px 4px;
+  margin: -4px -4px -4px -4px;
+  /* Fades the last row instead of slicing it, which is what tells the
+     eye there is more below. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-soft) transparent;
+}
+.pm-scroll.on::-webkit-scrollbar { width: 10px; }
+.pm-scroll.on::-webkit-scrollbar-track { background: transparent; }
+.pm-scroll.on::-webkit-scrollbar-thumb {
+  background: var(--muted-soft);
+  border-radius: 6px;
+  border: 3px solid var(--surface);
+}
+.pm-scroll.on::-webkit-scrollbar-thumb:hover { background: var(--text-soft); }
+/* The mask hides the focus ring of a card scrolled to the very bottom,
+   so drop it when someone is navigating by keyboard. */
+.pm-scroll.on:focus-within {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+
+/* ---- Stacked bar list: scroll once it outgrows the panel ----
+   The membership chart renders one row per unit, which is 352 rows at the
+   basic-unit level. Bound the ROWS only — .shb-legend sits above this and
+   must stay visible while they scroll. */
+.shb-rows.scroll {
+  max-height: var(--shb-scroll-h, min(58vh, 620px));
+  overflow-y: auto;
+  padding-right: 8px;
+  /* Fades the last row rather than slicing it, which is what tells the
+     eye there is more below. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-soft) transparent;
+}
+.shb-rows.scroll::-webkit-scrollbar { width: 10px; }
+.shb-rows.scroll::-webkit-scrollbar-track { background: transparent; }
+.shb-rows.scroll::-webkit-scrollbar-thumb {
+  background: var(--muted-soft);
+  border-radius: 6px;
+  border: 3px solid var(--surface);
+}
+.shb-rows.scroll::-webkit-scrollbar-thumb:hover { background: var(--text-soft); }
+/* The mask would hide the focus ring of a row at the very bottom, so drop
+   it while the region is being driven from the keyboard. */
+.shb-rows.scroll:focus-visible,
+.shb-rows.scroll:focus-within {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.shb-rows.scroll:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 4px;
 }

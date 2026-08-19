@@ -145,21 +145,25 @@ exports.remove = asyncHandler(async (req, res) => {
 
 // ─── Public render endpoint ───────────────────────────────────────
 
-// GET /reports/templates/:id/render?unitLevel=AREA&unitId=...&from=...&to=...&format=PDF
+// GET /reports/templates/:id/render?unitLevel=AREA&unitId=...&from=...&to=...&body=COMMITTEE&format=PDF
 //
 // Streams the rendered file to the client. Authenticated only —
 // scope authorization piggy-backs on the underlying gatherUnitData
 // (which fails on bad unitLevel/unitId pairs). Future hardening
 // could narrow further by user's tier scope.
+//
+// `body` (EXECUTIVE | COMMITTEE) is optional — omitting it renders
+// the combined report, which is what every caller predating the body
+// split sends.
 exports.render = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to, format } = req.query;
+  const { unitLevel, unitId, from, to, format, body } = req.query;
   if (!unitLevel || !unitId) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId are required');
   }
 
   const result = await reportTemplateService.render(
     req.params.id,
-    { unitLevel, unitId, from, to, user: req.user },
+    { unitLevel, unitId, from, to, body, user: req.user },
     format,
   );
 

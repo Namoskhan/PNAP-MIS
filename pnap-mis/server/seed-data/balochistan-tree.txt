@@ -1,0 +1,535 @@
+Balochistan
+├── Mastung
+│   ├── Mastung
+│   │   ├── Mastung Unit 1
+│   │   └── Mastung Unit 2
+│   ├── Khad Koocha
+│   │   ├── Khad Koocha Unit 1
+│   │   └── Khad Koocha Unit 2
+│   ├── Kardigap
+│   │   ├── Kardigap Unit 1
+│   │   └── Kardigap Unit 2
+│   └── Dasht (Mastung)
+│       ├── Dasht (Mastung) Unit 1
+│       └── Dasht (Mastung) Unit 2
+├── Quetta East
+│   ├── Quetta Saddar
+│   │   ├── Quetta Saddar Unit 1
+│   │   └── Quetta Saddar Unit 2
+│   ├── Quetta City
+│   │   ├── Quetta City Unit 1
+│   │   └── Quetta City Unit 2
+│   └── Sariab
+│       ├── Sariab Unit 1
+│       └── Sariab Unit 2
+├── Quetta West
+│   ├── Kuchlak
+│   │   ├── Kuchlak Unit 1
+│   │   └── Kuchlak Unit 2
+│   ├── Brewery
+│   │   ├── Brewery Unit 1
+│   │   └── Brewery Unit 2
+│   └── Panjpai
+│       ├── Panjpai Unit 1
+│       └── Panjpai Unit 2
+├── Barshor
+│   ├── Barshore
+│   │   ├── Barshore Unit 1
+│   │   └── Barshore Unit 2
+│   └── Toba Kakari
+│       ├── Toba Kakari Unit 1
+│       └── Toba Kakari Unit 2
+├── Chaman
+│   ├── Chaman
+│   │   ├── Chaman Unit 1
+│   │   └── Chaman Unit 2
+│   └── Chaman Saddar
+│       ├── Chaman Saddar Unit 1
+│       └── Chaman Saddar Unit 2
+├── Pishin
+│   ├── Hurramzai
+│   │   ├── Hurramzai Unit 1
+│   │   └── Hurramzai Unit 2
+│   ├── Pishin
+│   │   ├── Pishin Unit 1
+│   │   └── Pishin Unit 2
+│   ├── Saranan
+│   │   ├── Saranan Unit 1
+│   │   └── Saranan Unit 2
+│   └── Bostan
+│       ├── Bostan Unit 1
+│       └── Bostan Unit 2
+├── Qilla Abdullah
+│   ├── Gulistan
+│   │   ├── Gulistan Unit 1
+│   │   └── Gulistan Unit 2
+│   ├── Qilla Abdullah
+│   │   ├── Qilla Abdullah Unit 1
+│   │   └── Qilla Abdullah Unit 2
+│   └── Dobandi
+│       ├── Dobandi Unit 1
+│       └── Dobandi Unit 2
+├── Musakhel
+│   ├── Darug
+│   │   ├── Darug Unit 1
+│   │   └── Darug Unit 2
+│   ├── Kingri
+│   │   ├── Kingri Unit 1
+│   │   └── Kingri Unit 2
+│   ├── Musakhel
+│   │   ├── Musakhel Unit 1
+│   │   └── Musakhel Unit 2
+│   ├── Tiyar Essot
+│   │   ├── Tiyar Essot Unit 1
+│   │   └── Tiyar Essot Unit 2
+│   ├── Toisar
+│   │   ├── Toisar Unit 1
+│   │   └── Toisar Unit 2
+│   └── Zimri Plaseen
+│       ├── Zimri Plaseen Unit 1
+│       └── Zimri Plaseen Unit 2
+├── Qila Saifullah
+│   ├── Killa Saifullah
+│   │   ├── Killa Saifullah Unit 1
+│   │   └── Killa Saifullah Unit 2
+│   ├── Loiband
+│   │   ├── Loiband Unit 1
+│   │   └── Loiband Unit 2
+│   ├── Muslim Bagh
+│   │   ├── Muslim Bagh Unit 1
+│   │   └── Muslim Bagh Unit 2
+│   ├── Badini
+│   │   ├── Badini Unit 1
+│   │   └── Badini Unit 2
+│   ├── Kan Mehtarzai
+│   │   ├── Kan Mehtarzai Unit 1
+│   │   └── Kan Mehtarzai Unit 2
+│   └── Shinki
+│       ├── Shinki Unit 1
+│       └── Shinki Unit 2
+├── Sherani
+│   └── Sherani
+│       ├── Sherani Unit 1
+│       └── Sherani Unit 2
+├── Zhob
+│   ├── Qamar Din Karez
+│   │   ├── Qamar Din Karez Unit 1
+│   │   └── Qamar Din Karez Unit 2
+│   ├── Zhob
+│   │   ├── Zhob Unit 1
+│   │   └── Zhob Unit 2
+│   ├── Ashwat
+│   │   ├── Ashwat Unit 1
+│   │   └── Ashwat Unit 2
+│   ├── Kashatu
+│   │   ├── Kashatu Unit 1
+│   │   └── Kashatu Unit 2
+│   └── Sambaza
+│       ├── Sambaza Unit 1
+│       └── Sambaza Unit 2
+├── Duki
+│   ├── Duki
+│   │   ├── Duki Unit 1
+│   │   └── Duki Unit 2
+│   ├── Luni
+│   │   ├── Luni Unit 1
+│   │   └── Luni Unit 2
+│   ├── Talao
+│   │   ├── Talao Unit 1
+│   │   └── Talao Unit 2
+│   └── Thal Chutyali
+│       ├── Thal Chutyali Unit 1
+│       └── Thal Chutyali Unit 2
+├── Loralai
+│   ├── Bori
+│   │   ├── Bori Unit 1
+│   │   └── Bori Unit 2
+│   └── Mekhtar
+│       ├── Mekhtar Unit 1
+│       └── Mekhtar Unit 2
+├── Ziarat
+│   ├── Ziarat
+│   │   ├── Ziarat Unit 1
+│   │   └── Ziarat Unit 2
+│   └── Sinjawi
+│       ├── Sinjawi Unit 1
+│       └── Sinjawi Unit 2
+├── Kalat
+│   ├── Kalat
+│   │   ├── Kalat Unit 1
+│   │   └── Kalat Unit 2
+│   ├── Mangocher
+│   │   ├── Mangocher Unit 1
+│   │   └── Mangocher Unit 2
+│   ├── Gazg
+│   │   ├── Gazg Unit 1
+│   │   └── Gazg Unit 2
+│   └── Johan
+│       ├── Johan Unit 1
+│       └── Johan Unit 2
+├── Khuzdar
+│   ├── Khuzdar
+│   │   ├── Khuzdar Unit 1
+│   │   └── Khuzdar Unit 2
+│   ├── Baghbana
+│   │   ├── Baghbana Unit 1
+│   │   └── Baghbana Unit 2
+│   ├── Aranji
+│   │   ├── Aranji Unit 1
+│   │   └── Aranji Unit 2
+│   ├── Gresha
+│   │   ├── Gresha Unit 1
+│   │   └── Gresha Unit 2
+│   ├── Karkh
+│   │   ├── Karkh Unit 1
+│   │   └── Karkh Unit 2
+│   ├── Moola
+│   │   ├── Moola Unit 1
+│   │   └── Moola Unit 2
+│   └── Saroona
+│       ├── Saroona Unit 1
+│       └── Saroona Unit 2
+├── Surab
+│   ├── Dasht e Goran
+│   │   ├── Dasht e Goran Unit 1
+│   │   └── Dasht e Goran Unit 2
+│   ├── Gidder
+│   │   ├── Gidder Unit 1
+│   │   └── Gidder Unit 2
+│   ├── Shaheed meharabad zehri
+│   │   ├── Shaheed meharabad zehri Unit 1
+│   │   └── Shaheed meharabad zehri Unit 2
+│   ├── Surab
+│   │   ├── Surab Unit 1
+│   │   └── Surab Unit 2
+│   └── Zehri
+│       ├── Zehri Unit 1
+│       └── Zehri Unit 2
+├── Wadh
+│   ├── Wadh
+│   │   ├── Wadh Unit 1
+│   │   └── Wadh Unit 2
+│   ├── Ornach
+│   │   ├── Ornach Unit 1
+│   │   └── Ornach Unit 2
+│   └── Nal
+│       ├── Nal Unit 1
+│       └── Nal Unit 2
+├── Dera Bugti
+│   ├── Dera Bugti
+│   │   ├── Dera Bugti Unit 1
+│   │   └── Dera Bugti Unit 2
+│   ├── Phelawagh
+│   │   ├── Phelawagh Unit 1
+│   │   └── Phelawagh Unit 2
+│   └── Sui
+│       ├── Sui Unit 1
+│       └── Sui Unit 2
+├── Harnai
+│   ├── Harnai
+│   │   ├── Harnai Unit 1
+│   │   └── Harnai Unit 2
+│   ├── Shahrig
+│   │   ├── Shahrig Unit 1
+│   │   └── Shahrig Unit 2
+│   └── Khost
+│       ├── Khost Unit 1
+│       └── Khost Unit 2
+├── Kachhi
+│   ├── Khattan
+│   │   ├── Khattan Unit 1
+│   │   └── Khattan Unit 2
+│   ├── Dhadar
+│   │   ├── Dhadar Unit 1
+│   │   └── Dhadar Unit 2
+│   ├── Balanari
+│   │   ├── Balanari Unit 1
+│   │   └── Balanari Unit 2
+│   ├── Bhag
+│   │   ├── Bhag Unit 1
+│   │   └── Bhag Unit 2
+│   ├── Machh
+│   │   ├── Machh Unit 1
+│   │   └── Machh Unit 2
+│   └── Sani
+│       ├── Sani Unit 1
+│       └── Sani Unit 2
+├── Sibi
+│   ├── Sibi
+│   │   ├── Sibi Unit 1
+│   │   └── Sibi Unit 2
+│   ├── Kutmandai
+│   │   ├── Kutmandai Unit 1
+│   │   └── Kutmandai Unit 2
+│   ├── Sangan
+│   │   ├── Sangan Unit 1
+│   │   └── Sangan Unit 2
+│   └── Lehri
+│       ├── Lehri Unit 1
+│       └── Lehri Unit 2
+├── Barkhan
+│   └── Barkhan
+│       ├── Barkhan Unit 1
+│       └── Barkhan Unit 2
+├── Kohlu
+│   ├── Kahan
+│   │   ├── Kahan Unit 1
+│   │   └── Kahan Unit 2
+│   ├── Kohlu
+│   │   ├── Kohlu Unit 1
+│   │   └── Kohlu Unit 2
+│   ├── Maiwand
+│   │   ├── Maiwand Unit 1
+│   │   └── Maiwand Unit 2
+│   ├── Shaheed Jahangir Abad
+│   │   ├── Shaheed Jahangir Abad Unit 1
+│   │   └── Shaheed Jahangir Abad Unit 2
+│   ├── Grisani
+│   │   ├── Grisani Unit 1
+│   │   └── Grisani Unit 2
+│   └── Tamboo (Kohlu)
+│       ├── Tamboo (Kohlu) Unit 1
+│       └── Tamboo (Kohlu) Unit 2
+├── North Dera Bugti
+│   └── Baiker
+│       ├── Baiker Unit 1
+│       └── Baiker Unit 2
+├── Jafarabad
+│   ├── Jaffarabad
+│   │   ├── Jaffarabad Unit 1
+│   │   └── Jaffarabad Unit 2
+│   ├── Jhatpat
+│   │   ├── Jhatpat Unit 1
+│   │   └── Jhatpat Unit 2
+│   └── Khanpur
+│       ├── Khanpur Unit 1
+│       └── Khanpur Unit 2
+├── Jhal Magsi
+│   ├── Gandavah
+│   │   ├── Gandavah Unit 1
+│   │   └── Gandavah Unit 2
+│   ├── Jhal Magsi
+│   │   ├── Jhal Magsi Unit 1
+│   │   └── Jhal Magsi Unit 2
+│   └── Mirpur
+│       ├── Mirpur Unit 1
+│       └── Mirpur Unit 2
+├── Nasirabad
+│   ├── Baba Kot
+│   │   ├── Baba Kot Unit 1
+│   │   └── Baba Kot Unit 2
+│   ├── Dera Murad Jamali
+│   │   ├── Dera Murad Jamali Unit 1
+│   │   └── Dera Murad Jamali Unit 2
+│   ├── Landhi
+│   │   ├── Landhi Unit 1
+│   │   └── Landhi Unit 2
+│   ├── Chattar
+│   │   ├── Chattar Unit 1
+│   │   └── Chattar Unit 2
+│   ├── Meer Hassan
+│   │   ├── Meer Hassan Unit 1
+│   │   └── Meer Hassan Unit 2
+│   └── Tamboo (Nasirabad)
+│       ├── Tamboo (Nasirabad) Unit 1
+│       └── Tamboo (Nasirabad) Unit 2
+├── Sohbatpur
+│   ├── Faridabad
+│   │   ├── Faridabad Unit 1
+│   │   └── Faridabad Unit 2
+│   ├── Hayrvi
+│   │   ├── Hayrvi Unit 1
+│   │   └── Hayrvi Unit 2
+│   ├── Manjipur
+│   │   ├── Manjipur Unit 1
+│   │   └── Manjipur Unit 2
+│   ├── Saeed Muhammad Kanrani
+│   │   ├── Saeed Muhammad Kanrani Unit 1
+│   │   └── Saeed Muhammad Kanrani Unit 2
+│   ├── Panhwar
+│   │   ├── Panhwar Unit 1
+│   │   └── Panhwar Unit 2
+│   ├── Sohbatpur
+│   │   ├── Sohbatpur Unit 1
+│   │   └── Sohbatpur Unit 2
+│   └── Jia Khan
+│       ├── Jia Khan Unit 1
+│       └── Jia Khan Unit 2
+├── Usta Muhammad
+│   ├── Usta Muhammad
+│   │   ├── Usta Muhammad Unit 1
+│   │   └── Usta Muhammad Unit 2
+│   └── Gandakha
+│       ├── Gandakha Unit 1
+│       └── Gandakha Unit 2
+├── Gwadar
+│   ├── Gwadar
+│   │   ├── Gwadar Unit 1
+│   │   └── Gwadar Unit 2
+│   ├── Jiwani
+│   │   ├── Jiwani Unit 1
+│   │   └── Jiwani Unit 2
+│   ├── Ormara
+│   │   ├── Ormara Unit 1
+│   │   └── Ormara Unit 2
+│   ├── Pasni
+│   │   ├── Pasni Unit 1
+│   │   └── Pasni Unit 2
+│   └── Suntsar
+│       ├── Suntsar Unit 1
+│       └── Suntsar Unit 2
+├── Kech
+│   ├── Mand
+│   │   ├── Mand Unit 1
+│   │   └── Mand Unit 2
+│   ├── Turbat
+│   │   ├── Turbat Unit 1
+│   │   └── Turbat Unit 2
+│   ├── Balnigor
+│   │   ├── Balnigor Unit 1
+│   │   └── Balnigor Unit 2
+│   ├── Buleda
+│   │   ├── Buleda Unit 1
+│   │   └── Buleda Unit 2
+│   ├── Hoshab
+│   │   ├── Hoshab Unit 1
+│   │   └── Hoshab Unit 2
+│   ├── Zamuran
+│   │   ├── Zamuran Unit 1
+│   │   └── Zamuran Unit 2
+│   ├── Gayab
+│   │   ├── Gayab Unit 1
+│   │   └── Gayab Unit 2
+│   ├── Solband
+│   │   ├── Solband Unit 1
+│   │   └── Solband Unit 2
+│   └── Dasht (Kech)
+│       ├── Dasht (Kech) Unit 1
+│       └── Dasht (Kech) Unit 2
+├── Panjgur
+│   ├── Gowargo
+│   │   ├── Gowargo Unit 1
+│   │   └── Gowargo Unit 2
+│   ├── Panjgur
+│   │   ├── Panjgur Unit 1
+│   │   └── Panjgur Unit 2
+│   ├── Paroom
+│   │   ├── Paroom Unit 1
+│   │   └── Paroom Unit 2
+│   ├── Gichk
+│   │   ├── Gichk Unit 1
+│   │   └── Gichk Unit 2
+│   └── Kallag
+│       ├── Kallag Unit 1
+│       └── Kallag Unit 2
+├── Tump
+│   └── Tump
+│       ├── Tump Unit 1
+│       └── Tump Unit 2
+├── Chagai
+│   ├── Dalbandin
+│   │   ├── Dalbandin Unit 1
+│   │   └── Dalbandin Unit 2
+│   ├── Chagai
+│   │   ├── Chagai Unit 1
+│   │   └── Chagai Unit 2
+│   ├── Amuri
+│   │   ├── Amuri Unit 1
+│   │   └── Amuri Unit 2
+│   ├── Chilgazi
+│   │   ├── Chilgazi Unit 1
+│   │   └── Chilgazi Unit 2
+│   └── Yakmach
+│       ├── Yakmach Unit 1
+│       └── Yakmach Unit 2
+├── Kharan
+│   ├── Kharan
+│   │   ├── Kharan Unit 1
+│   │   └── Kharan Unit 2
+│   ├── Sar-Kharan
+│   │   ├── Sar-Kharan Unit 1
+│   │   └── Sar-Kharan Unit 2
+│   ├── Tohumulk
+│   │   ├── Tohumulk Unit 1
+│   │   └── Tohumulk Unit 2
+│   └── Patkain
+│       ├── Patkain Unit 1
+│       └── Patkain Unit 2
+├── Nushki
+│   ├── Nushki
+│   │   ├── Nushki Unit 1
+│   │   └── Nushki Unit 2
+│   └── Dak
+│       ├── Dak Unit 1
+│       └── Dak Unit 2
+├── Taftan
+│   ├── Taftan
+│   │   ├── Taftan Unit 1
+│   │   └── Taftan Unit 2
+│   ├── Nok Kundi
+│   │   ├── Nok Kundi Unit 1
+│   │   └── Nok Kundi Unit 2
+│   └── Mashkel
+│       ├── Mashkel Unit 1
+│       └── Mashkel Unit 2
+├── Washuk
+│   ├── Besima
+│   │   ├── Besima Unit 1
+│   │   └── Besima Unit 2
+│   ├── Washuk
+│   │   ├── Washuk Unit 1
+│   │   └── Washuk Unit 2
+│   ├── Nag
+│   │   ├── Nag Unit 1
+│   │   └── Nag Unit 2
+│   └── Shahgori
+│       ├── Shahgori Unit 1
+│       └── Shahgori Unit 2
+├── Awaran
+│   ├── Awaran
+│   │   ├── Awaran Unit 1
+│   │   └── Awaran Unit 2
+│   ├── Gishkaur
+│   │   ├── Gishkaur Unit 1
+│   │   └── Gishkaur Unit 2
+│   ├── Jhal Jhao
+│   │   ├── Jhal Jhao Unit 1
+│   │   └── Jhal Jhao Unit 2
+│   ├── Korak Jhao
+│   │   ├── Korak Jhao Unit 1
+│   │   └── Korak Jhao Unit 2
+│   └── Mashkay
+│       ├── Mashkay Unit 1
+│       └── Mashkay Unit 2
+├── Hub
+│   ├── Gadani
+│   │   ├── Gadani Unit 1
+│   │   └── Gadani Unit 2
+│   ├── Sonmiani
+│   │   ├── Sonmiani Unit 1
+│   │   └── Sonmiani Unit 2
+│   ├── Hub
+│   │   ├── Hub Unit 1
+│   │   └── Hub Unit 2
+│   ├── Sakran
+│   │   ├── Sakran Unit 1
+│   │   └── Sakran Unit 2
+│   └── Dureji
+│       ├── Dureji Unit 1
+│       └── Dureji Unit 2
+└── Lasbela
+    ├── Uthal
+    │   ├── Uthal Unit 1
+    │   └── Uthal Unit 2
+    ├── Lakhra
+    │   ├── Lakhra Unit 1
+    │   └── Lakhra Unit 2
+    ├── Bela
+    │   ├── Bela Unit 1
+    │   └── Bela Unit 2
+    ├── Kanraj
+    │   ├── Kanraj Unit 1
+    │   └── Kanraj Unit 2
+    └── Liari
+        ├── Liari Unit 1
+        └── Liari Unit 2

@@ -351,3 +351,49 @@ export function InfoIcon(props) {
     </Svg>
   );
 }
+
+// Password visibility toggle. The two states are deliberately distinct
+// in silhouette, not just in one small detail: at 16px a difference
+// that relies on a thin slash alone is easy to miss, so the "hidden"
+// variant also breaks the eye outline.
+export function EyeIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </Svg>
+  );
+}
+
+export function EyeOffIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M10.6 6.2A9.9 9.9 0 0 1 12 6c6.4 0 10 6 10 6a18.5 18.5 0 0 1-3.2 4" />
+      <path d="M6.6 6.8A18.6 18.6 0 0 0 2 12s3.6 6 10 6a9.7 9.7 0 0 0 4.5-1.1" />
+      <path d="M14.1 14.1a3 3 0 0 1-4.2-4.2" />
+      <path d="m3 3 18 18" />
+    </Svg>
+  );
+}
+
+// Search / clear. The users filter used the 🔍 and × characters, which
+// this icon set exists to replace — emoji pick up the platform's own
+// colour and metrics, so they neither match the text beside them nor
+// respond to focus.
+export function SearchIcon(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </Svg>
+  );
+}
+
+export function XIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </Svg>
+  );
+}

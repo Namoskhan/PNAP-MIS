@@ -4,10 +4,15 @@ import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
+import { DialogHost } from './components/dialog';
 import { BrandingProvider } from './context/BrandingContext';
 import CommandPalette from './components/CommandPalette';
 import MemberRegisterModal from './components/MemberRegisterModal';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage';
+import ResendVerificationPage from './pages/auth/ResendVerificationPage';
 import DashboardPage from './pages/DashboardPage';
 import MemberListPage from './pages/MemberListPage';
 import MemberDetailPage from './pages/MemberDetailPage';
@@ -95,8 +100,20 @@ export default function App() {
     <ErrorBoundary>
       <BrandingProvider>
       <ToastProvider>
+        {/* One host for every dialog.confirm/prompt/alert in the app. */}
+        <DialogHost />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          {/* Account recovery. These MUST sit outside ProtectedRoute —
+              someone following a reset link has no session by
+              definition, and the catch-all redirect below lives inside
+              the guard, so an unguarded route registered there would
+              bounce every one of these visitors to /login and discard
+              the token. */}
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+          <Route path="/resend-verification" element={<ResendVerificationPage />} />
           <Route
             element={
               <ProtectedRoute>

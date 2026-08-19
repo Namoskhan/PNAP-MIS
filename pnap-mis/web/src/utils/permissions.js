@@ -6,10 +6,13 @@
 // predicates remain role-code based since those describe *who you
 // are*, not *what you can do*.
 
-export const HIGHER_ADMIN_ROLES = ['SUPER_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'];
+// Mirrors server/src/utils/unitScope.HIGHER_ADMIN_ROLES.
+export const HIGHER_ADMIN_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'];
 
 export function hasRole(user, ...roles) {
-  return !!user?.roles?.some((r) => roles.includes(r));
+  if (!user?.roles) return false;
+  const userRoles = (user.roles || []).map((r) => String(r).toUpperCase());
+  return roles.some((role) => userRoles.includes(String(role).toUpperCase()));
 }
 
 // True if the current user holds the given permission code (e.g.
@@ -27,6 +30,7 @@ export function hasPermission(user, perm) {
 // non-authed surfaces still render meaningful names.
 const BUILTIN_ROLE_LABELS = {
   SUPER_ADMIN: 'Super Admin',
+  CENTRAL_ADMIN: 'Central Admin',
   PROVINCE_ADMIN: 'Province Admin',
   DISTRICT_ADMIN: 'District Admin',
   AREA_ADMIN: 'Area Admin',
@@ -212,7 +216,8 @@ export function isFinanceOnly(user) {
 
 export function isProvinceAdminOnly(user) {
   return hasRole(user, 'PROVINCE_ADMIN')
-    && !hasRole(user, 'SUPER_ADMIN');
+    && !hasRole(user, 'SUPER_ADMIN')
+    && !hasRole(user, 'CENTRAL_ADMIN');
 }
 
 export function isDistrictAdminOnly(user) {
@@ -221,6 +226,11 @@ export function isDistrictAdminOnly(user) {
     && !hasRole(user, 'PROVINCE_ADMIN');
 }
 
-// CENTRAL_ADMIN role removed — kept as a no-op for backward
-// compatibility (always returns false).
-export function isCentralAdminOnly() { return false; }
+// CENTRAL_ADMIN — the national tier between Super Admin and Province
+// Admin. Responsible for structuring Provinces and administering
+// Province Admins; see server/src/utils/adminHierarchy. This used to
+// be a no-op stub from the period when the role did not exist.
+export function isCentralAdminOnly(user) {
+  return hasRole(user, 'CENTRAL_ADMIN')
+    && !hasRole(user, 'SUPER_ADMIN');
+}

@@ -1,4 +1,5 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
@@ -8,6 +9,7 @@ const Meeting = require('../models/Meeting');
 const Activity = require('../models/Activity');
 const Donation = require('../models/Donation');
 const Expense = require('../models/Expense');
+const FundTransfer = require('../models/FundTransfer');
 const BasicUnit = require('../models/BasicUnit');
 const Area = require('../models/Area');
 const District = require('../models/District');
@@ -114,16 +116,354 @@ function applyBrandedHeader(doc, branding, reportTitle, subtitle) {
 // Branded footer — single-line footer text from settings, drawn at
 // the bottom of the CURRENT page. Caller invokes this once per page
 // (typically right before doc.end() or before doc.addPage()).
-function applyBrandedFooter(doc, branding) {
+function applyBrandedFooter(doc, branding, pageNo, pageCount) {
   const id = branding?.identity || {};
   const report = branding?.reportBranding || {};
   const text = report.pdfFooterText
     || id.copyrightText
     || id.footerText
     || `Generated ${new Date().toLocaleString()}`;
+
+  // Writing below the bottom margin makes PDFKit spill onto a fresh
+  // page. Drop the margin for the duration of the footer write and
+  // restore it, so paginating a finished document doesn't grow it.
+  const savedBottom = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+
   doc.font('Helvetica-Oblique').fontSize(8).fillColor('#9aa3af')
-    .text(text, 40, doc.page.height - 28, { width: 515, align: 'center' });
+    .text(text, L, doc.page.height - 28, { width: W, align: 'center' });
+  if (pageNo) {
+    doc.font('Helvetica').fontSize(8).fillColor('#9aa3af')
+      .text(pageCount ? `Page ${pageNo} of ${pageCount}` : `Page ${pageNo}`,
+        L, doc.page.height - 28, { width: W, align: 'right' });
+  }
+
+  doc.page.margins.bottom = savedBottom;
   doc.fillColor('#1a1a1a');
+}
+
+// ─── PDF layout helpers ────────────────────────────────────────────
+// Geometry derives from the page's own margins rather than the
+// hardcoded 40 / 555 pair the older exports used, so a caller that
+// changes `margin` or `size` still gets aligned rules and tables.
+function _left(doc) { return doc.page.margins.left; }
+function _right(doc) { return doc.page.width - doc.page.margins.right; }
+function _contentWidth(doc) { return _right(doc) - _left(doc); }
+function _bottom(doc) { return doc.page.height - doc.page.margins.bottom; }
+
+// Reset the graphics state between blocks. PDFKit is stateful — a
+// section that ends mid-italic-grey leaks into whatever renders
+// next, which is how the old Activities heading picked up the
+// meeting loop's styling.
+function _resetText(doc) {
+  doc.font('Helvetica').fontSize(10).fillColor('#1a1a1a')
+    .strokeColor('#000000').lineWidth(1);
+  // Tables and headers position text with an explicit x; without this
+  // the next flowing paragraph starts at the last column's x instead
+  // of the margin.
+  doc.x = _left(doc);
+}
+
+// Helvetica's WinAnsi encoding has no U+2192, so a literal '→' comes
+// out as mojibake in the PDF. Use an en dash for PDF period ranges.
+function _periodLabel(from, to) {
+  return `${from || 'all'} – ${to || 'all'}`;
+}
+
+// Full-width section banner: brand-tinted bar with the title, always
+// starting on a fresh page so major sections are findable.
+function _sectionHeading(doc, title, color, { newPage = true, keepWith = 90 } = {}) {
+  // A banner stranded at the foot of a page reads as a mistake, so an
+  // inline heading still breaks when its section can't start here.
+  if (newPage || doc.y + 26 + keepWith > _bottom(doc)) doc.addPage();
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const y = doc.y;
+  doc.save().rect(L, y, W, 26).fill(_tint(color, 0.10)).restore();
+  doc.save().rect(L, y, 4, 26).fill(color).restore();
+  doc.font('Helvetica-Bold').fontSize(14).fillColor(color)
+    .text(title, L + 12, y + 7, { width: W - 24 });
+  doc.y = y + 26;
+  doc.moveDown(0.8);
+  _resetText(doc);
+}
+
+// Sub-heading inside a record block — small caps-ish label above a
+// paragraph. Kept visually lighter than _sectionHeading.
+function _blockLabel(doc, label, color) {
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(color)
+    .text(String(label).toUpperCase(), { characterSpacing: 0.4 });
+  doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
+}
+
+// A labelled paragraph (Description / Agenda / Outcome Notes …).
+// No-ops on empty values so blocks don't sprout empty headings.
+function _paragraph(doc, label, value, color) {
+  if (value === null || value === undefined || String(value).trim() === '') return;
+  doc.moveDown(0.25);
+  _blockLabel(doc, label, color);
+  doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a')
+    .text(String(value), { align: 'justify' });
+}
+
+// Two-column key/value table with zebra rows — used for the summary
+// KPI block and the campaign-metrics block.
+function _kvTable(doc, rows, color, { keyWidth = 220, headers = ['Metric', 'Value'] } = {}) {
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const rowH = 20;
+  const valX = L + keyWidth;
+  const valW = W - keyWidth;
+
+  // Header band. Re-drawn after a page break so a long table stays
+  // readable rather than orphaning its rows.
+  const drawHeader = () => {
+    const y = doc.y;
+    doc.save().rect(L, y, W, rowH).fill(color).restore();
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#ffffff')
+      .text(headers[0], L + 8, y + 6, { width: keyWidth - 16, ellipsis: true })
+      .text(headers[1], valX + 8, y + 6, { width: valW - 16, ellipsis: true });
+    doc.y = y + rowH;
+  };
+
+  drawHeader();
+  rows.forEach(([k, v], i) => {
+    if (doc.y + rowH > _bottom(doc)) { doc.addPage(); drawHeader(); }
+    const y = doc.y;
+    if (i % 2 === 1) doc.save().rect(L, y, W, rowH).fill('#f5f7fa').restore();
+    doc.save().rect(L, y, W, rowH).strokeColor('#d5dae1').lineWidth(0.5).stroke().restore();
+    doc.font('Helvetica').fontSize(9.5).fillColor('#374151')
+      .text(String(k), L + 8, y + 6, { width: keyWidth - 16, ellipsis: true });
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#1a1a1a')
+      .text(String(v), valX + 8, y + 6, { width: valW - 16, ellipsis: true });
+    doc.y = y + rowH;
+  });
+
+  doc.moveDown(0.8);
+  _resetText(doc);
+}
+
+// Record card header — numbered title, then a muted meta strip.
+function _recordHeader(doc, index, title, metaParts, color) {
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const y = doc.y;
+  doc.save().rect(L, y, W, 0.8).fill(color).restore();
+  doc.y = y + 6;
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(color)
+    .text(`${index}. ${title}`, L, doc.y, { width: W });
+  const meta = metaParts.filter(Boolean).join('  ·  ');
+  if (meta) {
+    doc.font('Helvetica').fontSize(8.5).fillColor('#6b7280')
+      .text(meta, { width: W });
+  }
+  doc.moveDown(0.35);
+  _resetText(doc);
+}
+
+// Inline meta rows rendered as `Label: value` pairs, two per line
+// where they fit. Skips empty values.
+function _metaLines(doc, pairs) {
+  const shown = pairs.filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+  if (shown.length === 0) return;
+  doc.font('Helvetica').fontSize(9.5).fillColor('#1a1a1a');
+  shown.forEach(([k, v]) => {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#374151').text(`${k}: `, { continued: true });
+    doc.font('Helvetica').fillColor('#1a1a1a').text(String(v));
+  });
+  _resetText(doc);
+}
+
+// Embedded photographs with captions. Shared by meetings and
+// activities so both streams look identical in the output.
+function _photoBlock(doc, photos, color, label = 'Photographs') {
+  const usable = (photos || []).filter((p) => uploadDiskPath(p.url));
+  if (usable.length === 0) return;
+  const W = _contentWidth(doc);
+  doc.moveDown(0.4);
+  _blockLabel(doc, `${label} (${usable.length})`, color);
+  doc.moveDown(0.2);
+  usable.forEach((p, i) => {
+    const diskPath = uploadDiskPath(p.url);
+    // Image (200pt) + caption + spacing needs roughly 240pt of room.
+    if (doc.y > _bottom(doc) - 240) doc.addPage();
+    try {
+      doc.image(diskPath, { fit: [W - 55, 200], align: 'center', valign: 'top' });
+    } catch (err) {
+      doc.font('Helvetica-Oblique').fontSize(8).fillColor('#dc2626')
+        .text(`[Photo ${i + 1}: failed to embed — ${err.message}]`);
+    }
+    doc.moveDown(0.25);
+    const cap = `Photo ${i + 1}/${usable.length}`
+      + ` · ${p.capturedAt ? new Date(p.capturedAt).toLocaleString() : 'no timestamp'}`
+      + (p.gps?.lat != null && p.gps?.lng != null
+        ? ` · GPS ${Number(p.gps.lat).toFixed(5)}, ${Number(p.gps.lng).toFixed(5)}` : '');
+    doc.font('Helvetica').fontSize(8).fillColor('#6b7280').text(cap, { align: 'center' });
+    doc.moveDown(0.4);
+  });
+  _resetText(doc);
+}
+
+// Visible-only dynamic fields for one record, rendered from that
+// record's OWN snapshot column list (§10 pinning).
+function _dynamicFields(doc, cols, dynamicData, color) {
+  if (!cols || cols.length === 0) return;
+  const dyn = dynamicData || {};
+  const visible = cols.filter((c) => {
+    const v = dyn[c.key];
+    return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
+  });
+  if (visible.length === 0) return;
+  doc.moveDown(0.25);
+  _blockLabel(doc, 'Custom Fields', color);
+  _metaLines(doc, visible.map((c) => [c.label, _formatDynamicValue(c, dyn[c.key])]));
+}
+
+// Truncate to fit a pixel width, measuring in the CURRENT font/size.
+// PDFKit's `lineBreak: false` + `ellipsis` still wraps in fixed-height
+// cells, which is how a long label ends up sitting on top of its own
+// value; measuring ourselves is the only reliable fit.
+function _clip(doc, text, width) {
+  const s = String(text);
+  if (doc.widthOfString(s) <= width) return s;
+  let lo = 0;
+  let hi = s.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (doc.widthOfString(`${s.slice(0, mid)}…`) <= width) lo = mid; else hi = mid - 1;
+  }
+  return `${s.slice(0, lo).trimEnd()}…`;
+}
+
+// Bordered identity panel — a grid of small label / bold value pairs.
+// Used for the "who is this report about" block, where a reader scans
+// for one field rather than reading top to bottom.
+function _infoCard(doc, pairs, { columns = 3, cellH = 27 } = {}) {
+  const shown = pairs.filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '');
+  if (shown.length === 0) return;
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const rows = Math.ceil(shown.length / columns);
+  const colW = W / columns;
+  const top = doc.y;
+  const h = rows * cellH + 14;
+
+  doc.save().rect(L, top, W, h).fillAndStroke('#f8fafc', '#d5dae1').restore();
+  shown.forEach(([k, v], i) => {
+    const x = L + (i % columns) * colW;
+    const y = top + 8 + Math.floor(i / columns) * cellH;
+    doc.font('Helvetica').fontSize(7).fillColor('#6b7280')
+      .text(_clip(doc, String(k).toUpperCase(), colW - 20), x + 10, y, { lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a')
+      .text(_clip(doc, v, colW - 20), x + 10, y + 10, { lineBreak: false });
+  });
+
+  doc.y = top + h + 12;
+  _resetText(doc);
+}
+
+// Horizontal stacked bar with a legend — turns a set of counts into
+// something a reader takes in at a glance instead of comparing digits.
+// Zero-valued segments are dropped so the legend stays honest.
+function _statBar(doc, segments, { height = 16 } = {}) {
+  const shown = segments.filter((s) => Number(s.value) > 0);
+  const total = shown.reduce((a, s) => a + Number(s.value), 0);
+  if (total <= 0) return;
+  const L = _left(doc);
+  const W = _contentWidth(doc);
+  const y = doc.y;
+
+  let x = L;
+  shown.forEach((s, i) => {
+    // Give the last segment the remaining pixels so rounding never
+    // leaves a sliver of background showing at the right edge.
+    const w = (i === shown.length - 1) ? (L + W - x) : (W * Number(s.value)) / total;
+    doc.save().rect(x, y, w, height).fill(s.color).restore();
+    x += w;
+  });
+  doc.save().rect(L, y, W, height).strokeColor('#d5dae1').lineWidth(0.5).stroke().restore();
+  doc.y = y + height + 7;
+
+  // Legend — a swatch, the label, the count and its share.
+  let lx = L;
+  const ly = doc.y;
+  shown.forEach((s) => {
+    const pct = Math.round((Number(s.value) / total) * 100);
+    const text = `${s.label} ${s.value} (${pct}%)`;
+    doc.font('Helvetica').fontSize(8.5);
+    const tw = doc.widthOfString(text);
+    if (lx + 10 + tw > L + W) return;
+    doc.save().rect(lx, ly + 1.5, 7, 7).fill(s.color).restore();
+    doc.fillColor('#374151').text(text, lx + 11, ly, { lineBreak: false });
+    lx += 11 + tw + 14;
+  });
+  doc.y = ly + 14;
+  _resetText(doc);
+}
+
+// Hairline separator closing a record card.
+function _recordSeparator(doc) {
+  doc.moveDown(0.4);
+  doc.strokeColor('#d5dae1').lineWidth(0.5)
+    .moveTo(_left(doc), doc.y).lineTo(_right(doc), doc.y).stroke();
+  doc.moveDown(0.7);
+  _resetText(doc);
+}
+
+// Mix a hex colour toward white — used for section-banner fills so
+// the banner reads as the brand colour without fighting body text.
+function _tint(hex, alpha) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  if (!m) return '#eef2f7';
+  const n = parseInt(m[1], 16);
+  const mix = (c) => Math.round(c * alpha + 255 * (1 - alpha));
+  return `#${[mix((n >> 16) & 255), mix((n >> 8) & 255), mix(n & 255)]
+    .map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
+// Stamp the branded footer + "Page n of m" on every buffered page.
+// Requires the document to have been created with bufferPages: true.
+function _paginateFooters(doc, branding) {
+  const range = doc.bufferedPageRange();
+  for (let i = 0; i < range.count; i += 1) {
+    doc.switchToPage(range.start + i);
+    applyBrandedFooter(doc, branding, i + 1, range.count);
+  }
+}
+
+// ─── XLSX styling helpers ──────────────────────────────────────────
+// ExcelJS wants ARGB without the '#'. Falls back to the brand navy
+// when a settings colour is missing or malformed.
+function _argb(hex, fallback = 'FF0A3A6E') {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  return m ? `FF${m[1].toUpperCase()}` : fallback;
+}
+
+// Brand the header row, freeze it, and switch on autofilter so a
+// reader can sort/filter without touching the layout.
+function _styleSheet(ws, headerArgb, { freezeColumns = 0 } = {}) {
+  const header = ws.getRow(1);
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  header.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+  header.height = 22;
+  header.commit?.();
+
+  ws.views = [{ state: 'frozen', xSplit: freezeColumns, ySplit: 1 }];
+  if (ws.columnCount > 0 && ws.rowCount > 1) {
+    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
+  }
+
+  // Zebra striping + wrapped body cells. Row 1 is the header.
+  for (let r = 2; r <= ws.rowCount; r += 1) {
+    const row = ws.getRow(r);
+    row.alignment = { vertical: 'top', wrapText: true };
+    if (r % 2 === 0) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+    }
+  }
 }
 
 // Helper — load settings safely. If the service fails (DB hiccup),
@@ -158,6 +498,24 @@ function ownFilter(unitLevel, unitId) {
   return { unitLevel, unitId };
 }
 
+// Records carry BOTH their owning unit (unitLevel + unitId) and the
+// denormalized chain they sit under (areaId / districtId / provinceId).
+// `own` matches only what was recorded AT this unit; `subtree` matches
+// everything beneath it by chain key — which is how a District report
+// picks up the donations its Areas and Basic Units recorded.
+//
+// Deliberately mirrors financeController.applyScopeFilter so the report
+// and the on-screen figures can never disagree about what a scope means.
+function scopeFilter(unitLevel, unitId, scope, chain) {
+  if (scope !== 'subtree') return ownFilter(unitLevel, unitId);
+  if (unitLevel === 'BASIC_UNIT') return { basicUnitId: chain.basicUnitId };
+  if (unitLevel === 'AREA') return { areaId: chain.areaId };
+  if (unitLevel === 'DISTRICT') return { districtId: chain.districtId };
+  if (unitLevel === 'PROVINCE') return { provinceId: chain.provinceId };
+  // CENTRAL heads the organization, so its subtree is everything.
+  return {};
+}
+
 async function unitName(unitLevel, unitId) {
   const M = { BASIC_UNIT: BasicUnit, AREA: Area, DISTRICT: District, PROVINCE: Province }[unitLevel];
   if (!M) return 'CENTRAL';
@@ -165,39 +523,107 @@ async function unitName(unitLevel, unitId) {
   return doc?.name || unitLevel;
 }
 
-async function gatherUnitData({ unitLevel, unitId, from, to }) {
+// SRS §3.1 body separation — same fragment as
+// financeController.bodyClause / transferController.bodyClause. The
+// EXECUTIVE branch matches `$exists: false` so records predating the
+// field still report under Executive. Returns null when `body` is
+// omitted, which is what every existing caller does — their results
+// stay pooled and byte-identical to before.
+function bodyClause(body) {
+  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  return null;
+}
+
+// Human label for a body filter, used in report titles and filenames
+// so a printed Committee report says on its face which body it
+// covers. Returns '' when `body` is absent, and every call site is
+// written so that '' reproduces the original wording exactly — a
+// combined report is byte-identical to what it was before the split.
+function bodyLabel(body) {
+  if (body === 'COMMITTEE') return 'Committee';
+  if (body === 'EXECUTIVE') return 'Executive';
+  return '';
+}
+// Filename fragment: '-committee' / '-executive' / '' so the two
+// downloads don't overwrite each other in the browser's Downloads
+// folder.
+function bodySuffix(body) {
+  const l = bodyLabel(body);
+  return l ? `-${l.toLowerCase()}` : '';
+}
+
+async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
   const chain = unitLevel === 'CENTRAL' ? {} : await resolveUnitChain(unitLevel, unitId);
   if (unitLevel !== 'CENTRAL' && !chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
   const memberQ = memberFilter(unitLevel, chain);
-  const ownQ = ownFilter(unitLevel, unitId);
+  // `ownQ` is the scoped record filter — named for history, but it now
+  // widens to the whole subtree when the caller asks for it.
+  const ownQ = scopeFilter(unitLevel, unitId, scope, chain);
   const dateFilter = {};
   if (from) dateFilter.$gte = new Date(from);
   if (to) dateFilter.$lte = new Date(to);
   const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
   const recvClause = (Object.keys(dateFilter).length) ? { receivedAt: dateFilter } : {};
   const incurClause = (Object.keys(dateFilter).length) ? { incurredAt: dateFilter } : {};
+  const xferClause = (Object.keys(dateFilter).length) ? { transferredAt: dateFilter } : {};
+  // Applied only to the five body-tagged collections below. Members
+  // and Responsibilities carry no `body` field, so they stay whole —
+  // a Committee report still names the unit's full roster. `{}` when
+  // the caller omits `body`, which spreads to nothing.
+  const bodyQ = bodyClause(body) || {};
 
-  const [members, meetings, activities, donations, expenses, responsibilities] = await Promise.all([
+  // Fund transfers are their OWN ledger — initiating one does not create
+  // an Expense, and acknowledging one does not approve an expense. They
+  // move money between units, so they only count once the receiving unit
+  // has acknowledged: until then the amount is still on the sender's
+  // books.
+  //
+  // Matched on the exact unit rather than the subtree, mirroring
+  // financeController's summary. Rolling them up would double-count any
+  // transfer INTERNAL to the subtree (an Area sending to its own
+  // District would appear as both an outflow and an inflow), and the
+  // schema denormalizes only the SOURCE chain, so the incoming side
+  // could not be rolled up symmetrically anyway.
+  const oid = (v) => {
+    try { return new mongoose.Types.ObjectId(String(v)); } catch { return null; }
+  };
+  const unitOid = oid(unitId);
+  const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...bodyQ };
+  const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...bodyQ };
+
+  const [members, meetings, activities, donations, expenses, responsibilities,
+    transfersOut, transfersIn] = await Promise.all([
     Member.find({ ...memberQ, status: 'ACTIVE' }).select('fullName memberId cnic phone').lean(),
-    Meeting.find({ ...ownQ, ...startClause })
+    Meeting.find({ ...ownQ, ...startClause, ...bodyQ })
       .populate('chairpersonId', 'fullName memberId')
       .populate('attendance.memberId', 'fullName memberId')
       .lean(),
-    Activity.find({ ...ownQ, ...startClause }).lean(),
-    Donation.find({ ...ownQ, ...recvClause }).lean(),
-    Expense.find({ ...ownQ, ...incurClause }).lean(),
+    // Lead + participants are populated so activity blocks can name
+    // people the same way meeting blocks name the chair and roster.
+    Activity.find({ ...ownQ, ...startClause, ...bodyQ })
+      .populate('leadMemberId', 'fullName memberId')
+      .populate('participants', 'fullName memberId')
+      .lean(),
+    Donation.find({ ...ownQ, ...recvClause, ...bodyQ }).lean(),
+    Expense.find({ ...ownQ, ...incurClause, ...bodyQ }).lean(),
     Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
+    unitOid ? FundTransfer.find(outFilter).lean() : [],
+    unitOid ? FundTransfer.find(inFilter).lean() : [],
   ]);
 
   const name = await unitName(unitLevel, unitId);
-  return { name, unitLevel, members, meetings, activities, donations, expenses, responsibilities };
+  return {
+    name, unitLevel, members, meetings, activities, donations, expenses,
+    responsibilities, transfersOut, transfersIn,
+  };
 }
 
 // ─── FINANCE-only Excel — Summary + Donations + Expenses ───────────
 exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
 
   const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
   const expApproved = data.expenses.filter((e) => e.state === 'APPROVED').reduce((a, e) => a + (e.amount || 0), 0);
@@ -207,15 +633,27 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   wb.creator = 'PKNAP';
   wb.created = new Date();
 
+  // Acknowledged transfers are real movements of money and belong in
+  // the bottom line — the previous Net Balance ignored them and so
+  // disagreed with the Finance page.
+  const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
+  const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
+
   const sum = wb.addWorksheet('Summary');
-  sum.columns = [{ header: 'Metric', key: 'k', width: 32 }, { header: 'Value', key: 'v', width: 24 }];
+  sum.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 26 }];
   sum.addRow({ k: 'Unit', v: `${data.unitLevel} · ${data.name}` });
+  sum.addRow({ k: 'Scope', v: scope === 'subtree' ? 'Including all subordinate units' : 'This unit only' });
+  // Only emitted when the caller asked for one body, so a combined
+  // export keeps exactly the rows it had before.
+  if (bodyLabel(body)) sum.addRow({ k: 'Body', v: `${bodyLabel(body)} only` });
   sum.addRow({ k: 'Period', v: `${from || 'all'} → ${to || 'all'}` });
   sum.addRow({ k: 'Donations Count', v: data.donations.length });
   sum.addRow({ k: 'Donations Total (PKR)', v: donTotal });
+  sum.addRow({ k: 'Transfers In (PKR)', v: xferInTotal });
   sum.addRow({ k: 'Expenses Approved (PKR)', v: expApproved });
   sum.addRow({ k: 'Expenses Pending (PKR)', v: expPending });
-  sum.addRow({ k: 'Net Balance (PKR)', v: donTotal - expApproved });
+  sum.addRow({ k: 'Transfers Out (PKR)', v: xferOutTotal });
+  sum.addRow({ k: 'Net Balance (PKR)', v: donTotal + xferInTotal - expApproved - xferOutTotal });
   sum.getRow(1).font = { bold: true };
 
   const don = wb.addWorksheet('Donations');
@@ -266,25 +704,166 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     }));
   exp.getRow(1).font = { bold: true };
 
+  // Transfers get their own sheet rather than being folded into
+  // Expenses — a transfer is not an expense, and conflating them would
+  // double-count against the donation ledger.
+  const xf = wb.addWorksheet('Fund Transfers');
+  xf.columns = [
+    { header: 'Date', key: 'd', width: 14 },
+    { header: 'Direction', key: 'dir', width: 12 },
+    { header: 'Counterparty', key: 'p', width: 32 },
+    { header: 'Mode', key: 'm', width: 18 },
+    { header: 'State', key: 's', width: 16 },
+    { header: 'Amount (PKR)', key: 'a', width: 16 },
+  ];
+  [
+    ...data.transfersIn.map((t) => ({ t, dir: 'Incoming', party: t.sourceName || t.sourceLevel })),
+    ...data.transfersOut.map((t) => ({ t, dir: 'Outgoing', party: t.destinationName || t.destinationLevel })),
+  ]
+    .sort((a, b) => new Date(b.t.transferredAt || b.t.createdAt) - new Date(a.t.transferredAt || a.t.createdAt))
+    .forEach(({ t, dir, party }) => xf.addRow({
+      d: new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
+      dir,
+      p: party || '',
+      m: t.mode || '',
+      s: t.state || '',
+      a: t.amount || 0,
+    }));
+  xf.getRow(1).font = { bold: true };
+
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-finance.xlsx"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-finance.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
 });
 
+// ─── PDF table renderer ───────────────────────────────────────────
+//
+// Replaces the previous approach of padEnd()-ing strings into fixed
+// widths: that only lines up in a monospaced font, and these reports
+// are set in Helvetica, so every column drifted out of alignment as
+// soon as a value contained wide or narrow glyphs. Here each cell is
+// drawn at an explicit x with its own width, so columns are straight
+// regardless of content, numbers right-align under each other, and
+// overlong values ellipsize instead of being sliced mid-word.
+//
+// Also repeats the header band after a page break — previously a
+// table continuing onto page 2 lost its headings entirely.
+const PAGE_L = 40;
+const PAGE_R = 555;
+const ROW_H = 15;
+
+// Free text in a table cell (an expense description, a donor name) has
+// no length limit, and a single 15pt row can't hold it. Columns marked
+// `wrap: true` flow onto extra lines and the row grows to fit; every
+// other column is measured and truncated so it can never bleed into
+// its neighbour. A wrapped cell is capped at WRAP_MAX_LINES so one
+// essay-length description can't push a table onto its own page.
+const WRAP_MAX_LINES = 6;
+const LINE_H = 10.2;
+
+function drawTableHeader(doc, cols, sectionColor) {
+  const y = doc.y;
+  doc.rect(PAGE_L, y - 2, PAGE_R - PAGE_L, ROW_H + 2).fill(sectionColor);
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#ffffff');
+  cols.forEach((c) => {
+    doc.text(_clip(doc, c.label, c.w - 8), c.x + 4, y + 2, {
+      width: c.w - 8, align: c.align || 'left', lineBreak: false,
+    });
+  });
+  doc.y = y + ROW_H + 4;
+  doc.fillColor('#1a1a1a').font('Helvetica');
+}
+
+// Height this row needs, driven by its tallest wrapping cell.
+function _rowHeight(doc, cols, cells) {
+  doc.font('Helvetica').fontSize(8.5);
+  let h = ROW_H;
+  cols.forEach((c, ci) => {
+    if (!c.wrap) return;
+    const text = String(cells[ci] ?? '');
+    if (!text) return;
+    const needed = doc.heightOfString(text, { width: c.w - 8, lineGap: 0 }) + 4;
+    h = Math.max(h, Math.min(needed, WRAP_MAX_LINES * LINE_H + 4));
+  });
+  return h;
+}
+
+function drawTable(doc, { cols, rows, sectionColor, emptyText }) {
+  if (!rows.length) {
+    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#6b7280').text(emptyText);
+    doc.fillColor('#1a1a1a').font('Helvetica');
+    return;
+  }
+  drawTableHeader(doc, cols, sectionColor);
+  rows.forEach((cells, i) => {
+    const h = _rowHeight(doc, cols, cells);
+    // Leave room for the footer; start a fresh page with the header
+    // repeated so a continued table is still readable.
+    if (doc.y + h > doc.page.height - 70) {
+      doc.addPage();
+      drawTableHeader(doc, cols, sectionColor);
+    }
+    const y = doc.y;
+    if (i % 2 === 1) {
+      doc.rect(PAGE_L, y - 2, PAGE_R - PAGE_L, h).fill('#f4f6f8');
+      doc.fillColor('#1a1a1a');
+    }
+    doc.font('Helvetica').fontSize(8.5).fillColor('#1a1a1a');
+    cols.forEach((c, ci) => {
+      const text = String(cells[ci] ?? '');
+      const opts = { width: c.w - 8, align: c.align || 'left' };
+      if (c.wrap) {
+        // height + ellipsis clips the overflow of a very long value
+        // instead of letting it run over the row below.
+        doc.text(text, c.x + 4, y + 1, {
+          ...opts, height: h - 2, ellipsis: true,
+        });
+      } else {
+        doc.text(_clip(doc, text, c.w - 8), c.x + 4, y + 1, { ...opts, lineBreak: false });
+      }
+    });
+    doc.y = y + h;
+  });
+  doc.strokeColor('#d5dbe0').lineWidth(0.5)
+    .moveTo(PAGE_L, doc.y + 1).lineTo(PAGE_R, doc.y + 1).stroke();
+  doc.y += 5;
+}
+
+// Summary figures as a row of labelled boxes rather than a plain list
+// of "key: value" lines — the headline numbers are what a reader looks
+// for first, so they get the visual weight.
+function drawKpiBand(doc, tiles, sectionColor) {
+  const y = doc.y;
+  const gap = 8;
+  const w = (PAGE_R - PAGE_L - gap * (tiles.length - 1)) / tiles.length;
+  tiles.forEach((t, i) => {
+    const x = PAGE_L + i * (w + gap);
+    doc.rect(x, y, w, 42).fillAndStroke('#f4f6f8', '#d5dbe0');
+    doc.font('Helvetica').fontSize(7.5).fillColor('#5c6b76')
+      .text(_clip(doc, t.label.toUpperCase(), w - 12), x + 6, y + 6, { lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(t.color || sectionColor)
+      .text(_clip(doc, t.value, w - 12), x + 6, y + 19, { lineBreak: false });
+  });
+  doc.y = y + 42 + 12;
+  doc.fillColor('#1a1a1a').font('Helvetica').strokeColor('#000000');
+}
+
 // ─── FINANCE-only PDF — summary + donations table + expenses table
 exports.unitFinancePdf = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
   const branding = await _loadBrandingSafe();
   const sectionColor = branding?.reportBranding?.pdfHeaderColor
     || branding?.theme?.light?.primary
     || '#0a3a6e';
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-finance.pdf"`);
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-finance.pdf"`);
+  // Wrapped description cells make these tables span pages far more
+  // often, so the footer is stamped on every page rather than the last.
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
   const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
@@ -292,103 +871,203 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
   const expPending = data.expenses.filter((e) => e.state === 'PENDING').reduce((a, e) => a + (e.amount || 0), 0);
 
   // Branded header replaces the hardcoded "PKNAP Finance Report" title.
-  applyBrandedHeader(doc, branding, 'Finance Report',
-    `${data.unitLevel} · ${data.name}  ·  Period: ${from || 'all'} → ${to || 'all'}`);
+  // The scope is stated explicitly — a District report that aggregates
+  // its Areas looks identical to one that does not unless it says so.
+  const scopeLabel = scope === 'subtree' ? 'including all subordinate units' : 'this unit only';
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Finance Report`,
+    `${data.unitLevel.replace('_', ' ')} · ${data.name}   |   ${scopeLabel}   |   Period: ${_periodLabel(from, to)}`);
 
-  doc.fontSize(13).text('Summary', { underline: true });
-  doc.moveDown(0.3);
-  doc.fontSize(11);
-  [
-    ['Donations (count)', data.donations.length],
-    ['Donations Total (PKR)', donTotal.toLocaleString()],
-    ['Approved Expenses (PKR)', expApproved.toLocaleString()],
-    ['Pending Expenses (PKR)', expPending.toLocaleString()],
-    ['Net Balance (PKR)', (donTotal - expApproved).toLocaleString()],
-  ].forEach(([k, v]) => doc.text(`${k}: ${v}`));
-  doc.moveDown(1);
+  // Acknowledged transfers move real money, so the report's bottom line
+  // has to account for them. The previous formula was
+  // donations - approvedExpenses, which ignored both sides entirely and
+  // disagreed with the Net Balance shown on the Finance page.
+  const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
+  const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
+  const net = donTotal + xferInTotal - expApproved - xferOutTotal;
 
-  doc.font('Helvetica-Bold').fontSize(14).fillColor(sectionColor).text(`Donations (${data.donations.length})`);
-  doc.strokeColor(sectionColor).lineWidth(1).moveTo(40, doc.y + 2).lineTo(555, doc.y + 2).stroke();
-  doc.moveDown(0.4);
-  if (data.donations.length === 0) {
-    doc.font('Helvetica-Oblique').fontSize(10).fillColor('gray').text('No donations recorded in this period.');
-    doc.fillColor('#1a1a1a').font('Helvetica');
-  } else {
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor);
-    doc.text('Receipt #          Date          Donor                              Mode               Amount (PKR)');
-    doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
-    data.donations
+  drawKpiBand(doc, [
+    { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
+    { label: 'Transfers In', value: `PKR ${xferInTotal.toLocaleString()}`, color: '#00a266' },
+    { label: 'Approved Expenses', value: `PKR ${expApproved.toLocaleString()}` },
+    { label: 'Transfers Out', value: `PKR ${xferOutTotal.toLocaleString()}`, color: '#e65f00' },
+    { label: 'Net Balance', value: `PKR ${net.toLocaleString()}`, color: net < 0 ? '#cf2e2e' : '#00a266' },
+  ], sectionColor);
+  if (expPending) {
+    doc.font('Helvetica-Oblique').fontSize(8.5).fillColor('#5c6b76')
+      .text(`Pending expenses awaiting approval: PKR ${expPending.toLocaleString()} (not included in Net Balance)`,
+        PAGE_L, doc.y, { width: PAGE_R - PAGE_L });
+    doc.moveDown(0.6);
+    doc.font('Helvetica').fillColor('#1a1a1a');
+  }
+
+  function sectionTitle(text) {
+    doc.font('Helvetica-Bold').fontSize(13).fillColor('#1a1a1a').text(text, PAGE_L, doc.y);
+    doc.moveDown(0.35);
+    doc.font('Helvetica').fillColor('#1a1a1a');
+  }
+
+  sectionTitle(`Donations (${data.donations.length})`);
+  drawTable(doc, {
+    sectionColor,
+    emptyText: 'No donations recorded in this period.',
+    cols: [
+      { label: 'Receipt #', x: 40, w: 68 },
+      { label: 'Date', x: 108, w: 62 },
+      { label: 'Donor', x: 170, w: 168, wrap: true },
+      { label: 'Mode', x: 338, w: 96 },
+      { label: 'Amount (PKR)', x: 434, w: 121, align: 'right' },
+    ],
+    rows: data.donations
       .slice()
       .sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt))
-      .forEach((d) => {
-        if (doc.y > doc.page.height - 60) doc.addPage();
-        const receipt = (d.receiptNo || '—').padEnd(18).slice(0, 18);
-        const date = new Date(d.receivedAt).toLocaleDateString().padEnd(12).slice(0, 12);
-        const donorRaw = d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)');
-        const donor = donorRaw.padEnd(34).slice(0, 34);
-        const mode = (d.paymentMode || '—').padEnd(18).slice(0, 18);
-        doc.text(`${receipt} ${date} ${donor} ${mode} ${(d.amount || 0).toLocaleString()}`);
+      .map((d) => [
+        d.receiptNo || '—',
+        new Date(d.receivedAt).toLocaleDateString(),
+        d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)'),
+        d.paymentMode || '—',
+        (d.amount || 0).toLocaleString(),
+      ]),
+  });
+  if (data.donations.length) {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
+      .text(`Total Donations: PKR ${donTotal.toLocaleString()}`, PAGE_L, doc.y, {
+        width: PAGE_R - PAGE_L, align: 'right',
       });
-    doc.moveDown(0.3);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(sectionColor).text(`Total Donations: PKR ${donTotal.toLocaleString()}`);
     doc.font('Helvetica').fillColor('#1a1a1a');
   }
 
-  if (doc.y > doc.page.height - 200) doc.addPage(); else doc.moveDown(1);
-  doc.font('Helvetica-Bold').fontSize(14).fillColor(sectionColor).text(`Expenses (${data.expenses.length})`);
-  doc.strokeColor(sectionColor).lineWidth(1).moveTo(40, doc.y + 2).lineTo(555, doc.y + 2).stroke();
-  doc.moveDown(0.4);
-  if (data.expenses.length === 0) {
-    doc.font('Helvetica-Oblique').fontSize(10).fillColor('gray').text('No expenses recorded in this period.');
-    doc.fillColor('#1a1a1a').font('Helvetica');
-  } else {
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor);
-    doc.text('Date          Category               Description                          State        Amount (PKR)');
-    doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
-    data.expenses
+  if (doc.y > doc.page.height - 220) doc.addPage(); else doc.moveDown(1.2);
+
+  sectionTitle(`Expenses (${data.expenses.length})`);
+  drawTable(doc, {
+    sectionColor,
+    emptyText: 'No expenses recorded in this period.',
+    cols: [
+      { label: 'Date', x: 40, w: 62 },
+      { label: 'Category', x: 102, w: 98 },
+      { label: 'Description', x: 200, w: 178, wrap: true },
+      { label: 'State', x: 378, w: 60 },
+      { label: 'Amount (PKR)', x: 438, w: 117, align: 'right' },
+    ],
+    rows: data.expenses
       .slice()
       .sort((a, b) => new Date(b.incurredAt) - new Date(a.incurredAt))
-      .forEach((e) => {
-        if (doc.y > doc.page.height - 60) doc.addPage();
-        const date = new Date(e.incurredAt).toLocaleDateString().padEnd(12).slice(0, 12);
-        const category = (e.category || '—').padEnd(22).slice(0, 22);
-        const desc = (e.description || e.vendor || '—').padEnd(36).slice(0, 36);
-        const state = (e.state || '—').padEnd(12).slice(0, 12);
-        doc.text(`${date} ${category} ${desc} ${state} ${(e.amount || 0).toLocaleString()}`);
-      });
-    doc.moveDown(0.3);
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(sectionColor).text(
-      `Total Approved: PKR ${expApproved.toLocaleString()}` +
-      (expPending ? `   ·   Pending: PKR ${expPending.toLocaleString()}` : '')
-    );
+      .map((e) => [
+        new Date(e.incurredAt).toLocaleDateString(),
+        e.category || '—',
+        e.description || e.vendor || '—',
+        e.state || '—',
+        (e.amount || 0).toLocaleString(),
+      ]),
+  });
+  if (data.expenses.length) {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
+      .text(
+        `Total Approved: PKR ${expApproved.toLocaleString()}`
+        + (expPending ? `   ·   Pending: PKR ${expPending.toLocaleString()}` : ''),
+        PAGE_L, doc.y, { width: PAGE_R - PAGE_L, align: 'right' },
+      );
     doc.font('Helvetica').fillColor('#1a1a1a');
   }
 
-  applyBrandedFooter(doc, branding);
+  // ── Fund transfers — their own ledger, not expenses ─────────────
+  const xfers = [
+    ...data.transfersIn.map((t) => ({ ...t, _dir: 'IN', _party: t.sourceName || t.sourceLevel })),
+    ...data.transfersOut.map((t) => ({ ...t, _dir: 'OUT', _party: t.destinationName || t.destinationLevel })),
+  ].sort((a, b) => new Date(b.transferredAt || b.createdAt) - new Date(a.transferredAt || a.createdAt));
+
+  if (doc.y > doc.page.height - 220) doc.addPage(); else doc.moveDown(1.2);
+  sectionTitle(`Fund Transfers (${xfers.length})`);
+  drawTable(doc, {
+    sectionColor,
+    emptyText: 'No acknowledged fund transfers in this period.',
+    cols: [
+      { label: 'Date', x: 40, w: 62 },
+      { label: 'Direction', x: 102, w: 62 },
+      { label: 'Counterparty', x: 164, w: 176, wrap: true },
+      { label: 'Mode', x: 340, w: 88 },
+      { label: 'Amount (PKR)', x: 428, w: 127, align: 'right' },
+    ],
+    rows: xfers.map((t) => [
+      new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
+      t._dir === 'IN' ? 'Incoming' : 'Outgoing',
+      t._party || '—',
+      t.mode || '—',
+      (t.amount || 0).toLocaleString(),
+    ]),
+  });
+  if (xfers.length) {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
+      .text(
+        `In: PKR ${xferInTotal.toLocaleString()}   ·   Out: PKR ${xferOutTotal.toLocaleString()}`,
+        PAGE_L, doc.y, { width: PAGE_R - PAGE_L, align: 'right' },
+      );
+    doc.font('Helvetica').fillColor('#1a1a1a');
+  }
+
+  _paginateFooters(doc, branding);
   doc.end();
 });
 
 // ─── MEETINGS-only Excel — Summary + Meetings + Activities + Members + Responsibilities
 exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+
+  const branding = await _loadBrandingSafe();
+  const headerArgb = _argb(branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary);
+  const orgName = branding?.identity?.organizationName
+    || branding?.identity?.systemName
+    || 'PKNAP';
+
+  const DATETIME_FMT = 'dd-mmm-yyyy hh:mm';
+  const DATE_FMT = 'dd-mmm-yyyy';
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'PKNAP';
+  wb.creator = orgName;
   wb.created = new Date();
 
-  const sum = wb.addWorksheet('Summary');
-  sum.columns = [{ header: 'Metric', key: 'k', width: 32 }, { header: 'Value', key: 'v', width: 24 }];
-  sum.addRow({ k: 'Unit', v: `${data.unitLevel} · ${data.name}` });
-  sum.addRow({ k: 'Period', v: `${from || 'all'} → ${to || 'all'}` });
-  sum.addRow({ k: 'Active Members', v: data.members.length });
-  sum.addRow({ k: 'Meetings', v: data.meetings.length });
-  sum.addRow({ k: 'Finalized Meetings', v: data.meetings.filter((m) => m.state === 'FINALIZED').length });
-  sum.addRow({ k: 'Activities', v: data.activities.length });
-  sum.addRow({ k: 'Responsibilities Pending', v: data.responsibilities.filter((r) => r.state === 'PENDING').length });
-  sum.addRow({ k: 'Responsibilities Completed', v: data.responsibilities.filter((r) => r.state === 'COMPLETED').length });
-  sum.getRow(1).font = { bold: true };
+  // ── Summary — title block above a branded metric table ───────────
+  const sum = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] });
+  sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
+
+  sum.mergeCells('A1:B1');
+  sum.getCell('A1').value = `${orgName} — ${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`;
+  sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
+  sum.getRow(1).height = 24;
+
+  sum.mergeCells('A2:B2');
+  sum.getCell('A2').value = `${data.unitLevel} · ${data.name}   ·   Period: ${from || 'all'} → ${to || 'all'}`;
+  sum.getCell('A2').font = { size: 10, color: { argb: 'FF6B7280' } };
+  sum.addRow([]);
+
+  const sumHeaderRow = sum.addRow(['Metric', 'Value']);
+  sumHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  sumHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  sumHeaderRow.height = 20;
+
+  const finalized = data.meetings.filter((m) => m.state === 'FINALIZED').length;
+  const totalPhotos = data.meetings.reduce((a, m) => a + (m.photos || []).length, 0)
+    + data.activities.reduce((a, x) => a + (x.photos || []).length, 0);
+  [
+    ['Active Members', data.members.length],
+    ['Meetings', data.meetings.length],
+    ['Finalized Meetings', finalized],
+    ['Activities', data.activities.length],
+    ['Completed Activities', data.activities.filter((a) => a.state === 'COMPLETED').length],
+    ['Photographs Attached', totalPhotos],
+    ['Responsibilities Pending', data.responsibilities.filter((r) => r.state === 'PENDING').length],
+    ['Responsibilities Completed', data.responsibilities.filter((r) => r.state === 'COMPLETED').length],
+  ].forEach(([k, v], i) => {
+    const row = sum.addRow([k, v]);
+    if (i % 2 === 1) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+    }
+    row.getCell(2).font = { bold: true };
+    row.getCell(2).alignment = { horizontal: 'left' };
+  });
 
   // Dynamic columns — union of `reporting.includeInExport` fields
   // across every snapshot referenced by the result set. Stable
@@ -400,30 +1079,56 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     data.activities.map((a) => a.configSnapshotId).filter(Boolean),
   );
 
+  // ── Meetings — attendance broken out so it is sortable ───────────
   const mt = wb.addWorksheet('Meetings');
   mt.columns = [
-    { header: 'Date', key: 'd', width: 22 },
-    { header: 'Type', key: 't', width: 8 },
-    { header: 'Title', key: 'tt', width: 32 },
-    { header: 'Venue', key: 'v', width: 28 },
+    { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Type', key: 't', width: 16 },
+    { header: 'Title', key: 'tt', width: 34 },
+    { header: 'State', key: 's', width: 13 },
+    { header: 'Body', key: 'b', width: 12 },
+    { header: 'Venue', key: 'v', width: 26 },
+    { header: 'Venue GPS', key: 'g', width: 20 },
     { header: 'Chair', key: 'c', width: 24 },
-    { header: 'Attendance', key: 'a', width: 12 },
-    { header: 'Photos', key: 'p', width: 10 },
-    { header: 'State', key: 's', width: 14 },
-    { header: 'Supervisor', key: 'sup', width: 12 },
+    { header: 'Roster', key: 'r', width: 9 },
+    { header: 'Present', key: 'pr', width: 9 },
+    { header: 'Late', key: 'la', width: 8 },
+    { header: 'Absent', key: 'ab', width: 9 },
+    { header: 'Attendance %', key: 'ap', width: 13, style: { numFmt: '0%' } },
+    { header: 'Supervisor', key: 'sup', width: 11 },
+    { header: 'Photos', key: 'p', width: 9 },
+    { header: 'Description', key: 'desc', width: 46 },
+    { header: 'Agenda', key: 'ag', width: 46 },
+    { header: 'Activity Notes', key: 'an', width: 46 },
+    { header: 'Upcoming Strategy', key: 'us', width: 46 },
     ...meetingDynCols.map((c) => ({ header: c.label, key: `dyn_${c.key}`, width: 20 })),
   ];
   data.meetings.forEach((m) => {
+    const att = m.attendance || [];
+    const present = att.filter((x) => x.status === 'PRESENT').length;
+    const late = att.filter((x) => x.status === 'LATE').length;
+    const absent = att.filter((x) => x.status === 'ABSENT').length;
     const row = {
-      d: new Date(m.startAt).toLocaleString(),
+      d: m.startAt ? new Date(m.startAt) : null,
       t: m.type,
       tt: m.title || '',
-      v: m.venue,
-      c: m.chairpersonId?.fullName || '',
-      a: (m.attendance || []).filter((x) => x.status === 'PRESENT').length,
-      p: (m.photos || []).length,
       s: m.state,
+      b: m.body || '',
+      v: m.venue || '',
+      g: (m.gpsLat != null && m.gpsLng != null)
+        ? `${m.gpsLat.toFixed(6)}, ${m.gpsLng.toFixed(6)}` : '',
+      c: m.chairpersonId?.fullName || '',
+      r: att.length,
+      pr: present,
+      la: late,
+      ab: absent,
+      ap: att.length ? (present + late) / att.length : null,
       sup: m.supervisorAttended ? 'Yes' : 'No',
+      p: (m.photos || []).length,
+      desc: m.description || '',
+      ag: m.agenda || '',
+      an: m.activityNotes || '',
+      us: m.upcomingStrategy || '',
     };
     const dyn = m.dynamicData || {};
     for (const col of meetingDynCols) {
@@ -431,32 +1136,62 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     }
     mt.addRow(row);
   });
-  mt.getRow(1).font = { bold: true };
+  _styleSheet(mt, headerArgb, { freezeColumns: 3 });
 
+  // ── Activities — same depth as Meetings, incl. campaign metrics ──
   const ac = wb.addWorksheet('Activities');
   ac.columns = [
-    { header: 'Date', key: 'd', width: 22 },
-    { header: 'Type', key: 't', width: 14 },
-    { header: 'Title', key: 'tt', width: 32 },
-    { header: 'Venue', key: 'v', width: 24 },
-    { header: 'Attendees Est.', key: 'ae', width: 14 },
-    { header: 'State', key: 's', width: 14 },
-    { header: 'Expected Joiners', key: 'ej', width: 14 },
-    { header: 'Actual Joiners', key: 'aj', width: 14 },
+    { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Ends', key: 'e', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Type', key: 't', width: 18 },
+    { header: 'Title', key: 'tt', width: 34 },
+    { header: 'State', key: 's', width: 13 },
+    { header: 'Body', key: 'b', width: 12 },
+    { header: 'Venue', key: 'v', width: 26 },
+    { header: 'Venue GPS', key: 'g', width: 20 },
+    { header: 'Lead', key: 'ld', width: 24 },
+    { header: 'Participants', key: 'pn', width: 12 },
+    { header: 'Participant Names', key: 'pl', width: 46 },
+    { header: 'External Attendance Est.', key: 'ae', width: 20 },
+    { header: 'Photos', key: 'ph', width: 9 },
+    { header: 'Press Links', key: 'pr', width: 40 },
+    { header: 'Households Visited', key: 'hv', width: 17 },
     { header: 'People Contacted', key: 'pc', width: 16 },
+    { header: 'Pamphlets Distributed', key: 'pd', width: 19 },
+    { header: 'Expected Joiners', key: 'ej', width: 15 },
+    { header: 'Actual Joiners', key: 'aj', width: 14 },
+    { header: 'Volunteer Hours', key: 'vh', width: 15 },
+    { header: 'Description', key: 'desc', width: 46 },
+    { header: 'Outcome Notes', key: 'on', width: 46 },
     ...activityDynCols.map((c) => ({ header: c.label, key: `dyn_${c.key}`, width: 20 })),
   ];
   data.activities.forEach((a) => {
+    const parts = a.participants || [];
+    const cmp = a.campaign || {};
     const row = {
-      d: new Date(a.startAt).toLocaleString(),
+      d: a.startAt ? new Date(a.startAt) : null,
+      e: a.endAt ? new Date(a.endAt) : null,
       t: a.type,
-      tt: a.title,
-      v: a.venue || '',
-      ae: a.externalAttendanceEstimate || 0,
+      tt: a.title || '',
       s: a.state,
-      ej: a.campaign?.expectedJoiners || '',
-      aj: a.campaign?.actualJoiners || '',
-      pc: a.campaign?.peopleContacted || '',
+      b: a.body || '',
+      v: a.venue || '',
+      g: (a.gps?.lat != null && a.gps?.lng != null)
+        ? `${Number(a.gps.lat).toFixed(6)}, ${Number(a.gps.lng).toFixed(6)}` : '',
+      ld: a.leadMemberId?.fullName || '',
+      pn: parts.length,
+      pl: parts.map((p) => p?.fullName).filter(Boolean).join(', '),
+      ae: a.externalAttendanceEstimate || 0,
+      ph: (a.photos || []).length,
+      pr: (a.pressLinks || []).join('\n'),
+      hv: cmp.householdsVisited ?? '',
+      pc: cmp.peopleContacted ?? '',
+      pd: cmp.pamphletsDistributed ?? '',
+      ej: cmp.expectedJoiners ?? '',
+      aj: cmp.actualJoiners ?? '',
+      vh: cmp.volunteerHours ?? '',
+      desc: a.description || '',
+      on: a.outcomeNotes || '',
     };
     const dyn = a.dynamicData || {};
     for (const col of activityDynCols) {
@@ -464,46 +1199,49 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     }
     ac.addRow(row);
   });
-  ac.getRow(1).font = { bold: true };
+  _styleSheet(ac, headerArgb, { freezeColumns: 4 });
 
   const mb = wb.addWorksheet('Members');
   mb.columns = [
+    { header: '#', key: 'n', width: 6 },
     { header: 'Member ID', key: 'mid', width: 28 },
     { header: 'Full Name', key: 'fn', width: 28 },
     { header: 'CNIC', key: 'c', width: 18 },
     { header: 'Phone', key: 'p', width: 16 },
   ];
-  data.members.forEach((m) => mb.addRow({ mid: m.memberId, fn: m.fullName, c: m.cnic, p: m.phone }));
-  mb.getRow(1).font = { bold: true };
+  data.members.forEach((m, i) => mb.addRow({
+    n: i + 1, mid: m.memberId, fn: m.fullName, c: m.cnic, p: m.phone,
+  }));
+  _styleSheet(mb, headerArgb, { freezeColumns: 1 });
 
   const rb = wb.addWorksheet('Responsibilities');
   rb.columns = [
-    { header: 'Title', key: 't', width: 36 },
+    { header: 'Title', key: 't', width: 40 },
     { header: 'Assigned To', key: 'a', width: 28 },
-    { header: 'Due', key: 'd', width: 16 },
+    { header: 'Due', key: 'd', width: 16, style: { numFmt: DATE_FMT } },
     { header: 'State', key: 's', width: 14 },
-    { header: 'Completed', key: 'c', width: 18 },
+    { header: 'Completed', key: 'c', width: 16, style: { numFmt: DATE_FMT } },
   ];
   data.responsibilities.forEach((r) => rb.addRow({
     t: r.title,
     a: r.assignedToMemberId?.fullName || '',
-    d: r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '',
+    d: r.dueDate ? new Date(r.dueDate) : null,
     s: r.state,
-    c: r.completedAt ? new Date(r.completedAt).toLocaleDateString() : '',
+    c: r.completedAt ? new Date(r.completedAt) : null,
   }));
-  rb.getRow(1).font = { bold: true };
+  _styleSheet(rb, headerArgb, { freezeColumns: 1 });
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-meetings.xlsx"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-meetings.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
 });
 
 // ─── MEETINGS-only PDF — full per-meeting detail with embedded photos
 exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, from, to } = req.query;
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to });
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
   const branding = await _loadBrandingSafe();
   const sectionColor = branding?.reportBranding?.pdfHeaderColor
     || branding?.theme?.light?.primary
@@ -522,162 +1260,306 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
   }
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}-meetings.pdf"`);
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-meetings.pdf"`);
+  // bufferPages lets the footer + "Page n of m" be stamped on every
+  // page once the total is known, rather than only on the last one.
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
-  applyBrandedHeader(doc, branding, 'Meetings & Activities Report',
-    `${data.unitLevel} · ${data.name}  ·  Period: ${from || 'all'} → ${to || 'all'}`);
+  const fmtDateTime = (d) => (d ? new Date(d).toLocaleString() : '—');
+  const fmtGps = (lat, lng) => ((lat != null && lng != null)
+    ? `${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}` : null);
+  const emptyNote = (text) => {
+    doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text(text);
+    _resetText(doc);
+  };
 
-  doc.fontSize(13).text('Summary', { underline: true });
-  doc.moveDown(0.3);
-  doc.fontSize(11);
-  const rows = [
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`,
+    `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+
+  // ─── Summary ──────────────────────────────────────────────────────
+  _sectionHeading(doc, 'Summary', sectionColor, { newPage: false });
+  const finalized = data.meetings.filter((m) => m.state === 'FINALIZED').length;
+  const totalPhotos = data.meetings.reduce((a, m) => a + (m.photos || []).length, 0)
+    + data.activities.reduce((a, x) => a + (x.photos || []).length, 0);
+  _kvTable(doc, [
     ['Active Members', data.members.length],
     ['Meetings', data.meetings.length],
-    ['Finalized Meetings', data.meetings.filter((m) => m.state === 'FINALIZED').length],
+    ['Finalized Meetings', finalized],
     ['Activities', data.activities.length],
+    ['Completed Activities', data.activities.filter((a) => a.state === 'COMPLETED').length],
+    ['Photographs Attached', totalPhotos],
     ['Pending Responsibilities', data.responsibilities.filter((r) => r.state === 'PENDING').length],
     ['Completed Responsibilities', data.responsibilities.filter((r) => r.state === 'COMPLETED').length],
-  ];
-  rows.forEach(([k, v]) => doc.text(`${k}: ${v}`));
-  doc.moveDown(1);
+  ], sectionColor);
 
-  // ─── Detailed per-meeting blocks with embedded photos ─────────────
-  doc.addPage();
-  doc.font('Helvetica-Bold').fontSize(16).fillColor(sectionColor).text(`Meetings (${data.meetings.length})`, { align: 'center' });
-  doc.moveDown(0.3);
-  doc.strokeColor(sectionColor).lineWidth(1).moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-  doc.moveDown(0.6);
-
-  if (data.meetings.length === 0) {
-    doc.font('Helvetica-Oblique').fontSize(11).fillColor('gray').text('No meetings recorded in this period.').fillColor('black');
-  }
+  // ─── Meetings — one detail card per meeting ───────────────────────
+  _sectionHeading(doc, `Meetings (${data.meetings.length})`, sectionColor);
+  if (data.meetings.length === 0) emptyNote('No meetings recorded in this period.');
 
   data.meetings.forEach((m, idx) => {
-    // Start each meeting on a fresh space if remaining is small.
-    if (doc.y > doc.page.height - 280) doc.addPage();
+    // Keep a card's header with at least some of its body.
+    if (doc.y > _bottom(doc) - 160) doc.addPage();
 
-    // Meeting header
-    doc.font('Helvetica-Bold').fontSize(13).fillColor(sectionColor)
-      .text(`${idx + 1}. ${m.title || m.type}`);
-    doc.font('Helvetica').fontSize(9).fillColor('#555c66')
-      .text(`${m.type} · ${m.state} · ${new Date(m.startAt).toLocaleString()}`);
-    doc.fillColor('#1a1a1a').moveDown(0.3);
+    _recordHeader(doc, idx + 1, m.title || m.type,
+      [m.type, m.state, fmtDateTime(m.startAt)], sectionColor);
 
-    // Meta lines
-    doc.fontSize(10);
-    doc.text(`Venue: ${m.venue || '—'}`);
-    if (m.gpsLat != null && m.gpsLng != null) {
-      doc.text(`Venue GPS: ${m.gpsLat.toFixed(6)}, ${m.gpsLng.toFixed(6)}`);
-    }
-    doc.text(`Chair: ${m.chairpersonId?.fullName || '—'}`);
-    if (m.body) doc.text(`Body: ${m.body}`);
-    if (m.supervisorAttended) doc.text('Supervisor: attended');
-
-    // Attendance summary
     const att = m.attendance || [];
-    if (att.length > 0) {
-      const present = att.filter((a) => a.status === 'PRESENT').length;
-      const late = att.filter((a) => a.status === 'LATE').length;
-      const absent = att.filter((a) => a.status === 'ABSENT').length;
-      doc.text(`Attendance: ${present} present, ${late} late, ${absent} absent (of ${att.length} on roster)`);
-    }
+    const present = att.filter((a) => a.status === 'PRESENT').length;
+    const late = att.filter((a) => a.status === 'LATE').length;
+    const absent = att.filter((a) => a.status === 'ABSENT').length;
+    _metaLines(doc, [
+      ['Venue', m.venue || '—'],
+      ['Venue GPS', fmtGps(m.gpsLat, m.gpsLng)],
+      ['Chair', m.chairpersonId?.fullName || '—'],
+      ['Body', m.body],
+      ['Supervisor', m.supervisorAttended ? 'Attended' : null],
+      ['Attendance', att.length
+        ? `${present} present, ${late} late, ${absent} absent (of ${att.length} on roster)`
+        : null],
+    ]);
 
-    // Agenda / notes / strategy (compact)
-    if (m.agenda) {
-      doc.moveDown(0.2);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Agenda');
-      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.agenda, { align: 'justify' });
-    }
-    if (m.activityNotes) {
-      doc.moveDown(0.2);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Activity Notes');
-      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.activityNotes, { align: 'justify' });
-    }
-    if (m.upcomingStrategy) {
-      doc.moveDown(0.2);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Upcoming Strategy');
-      doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a').text(m.upcomingStrategy, { align: 'justify' });
-    }
+    // Description leads: it is the meeting's own account of itself and
+    // reads as the lead-in to the agenda, not as another meta line.
+    _paragraph(doc, 'Description', m.description, sectionColor);
+    _paragraph(doc, 'Agenda', m.agenda, sectionColor);
+    _paragraph(doc, 'Activity Notes', m.activityNotes, sectionColor);
+    _paragraph(doc, 'Upcoming Strategy', m.upcomingStrategy, sectionColor);
 
     // Dynamic custom fields — pinned from the meeting's own snapshot
     // so historical exports keep their original column set.
-    const mDynCols = meetingPdfDynColsBySnapshot.get(String(m.configSnapshotId || ''));
-    if (mDynCols && mDynCols.length > 0) {
-      const dyn = m.dynamicData || {};
-      const visible = mDynCols.filter((c) => {
-        const v = dyn[c.key];
-        return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
-      });
-      if (visible.length > 0) {
-        doc.moveDown(0.2);
-        doc.font('Helvetica-Bold').fontSize(9).fillColor(sectionColor).text('Custom Fields');
-        doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
-        for (const col of visible) {
-          const raw = _formatDynamicValue(col, dyn[col.key]);
-          doc.text(`${col.label}: ${raw}`);
-        }
-      }
-    }
+    _dynamicFields(doc, meetingPdfDynColsBySnapshot.get(String(m.configSnapshotId || '')),
+      m.dynamicData, sectionColor);
+    _photoBlock(doc, m.photos, sectionColor);
+    _recordSeparator(doc);
+  });
 
-    // Embedded photos
-    const photos = (m.photos || []).filter((p) => uploadDiskPath(p.url));
-    if (photos.length > 0) {
-      doc.moveDown(0.4);
-      doc.font('Helvetica-Bold').fontSize(10).fillColor(sectionColor).text(`Photographs (${photos.length})`);
+  // ─── Activities — same card layout as meetings ────────────────────
+  _sectionHeading(doc, `Activities (${data.activities.length})`, sectionColor);
+  if (data.activities.length === 0) emptyNote('No activities recorded in this period.');
+
+  data.activities.forEach((a, idx) => {
+    if (doc.y > _bottom(doc) - 160) doc.addPage();
+
+    _recordHeader(doc, idx + 1, a.title || a.type,
+      [a.type, a.state, fmtDateTime(a.startAt)], sectionColor);
+
+    const parts = a.participants || [];
+    _metaLines(doc, [
+      ['Venue', a.venue || '—'],
+      ['Venue GPS', fmtGps(a.gps?.lat, a.gps?.lng)],
+      ['Lead', a.leadMemberId?.fullName || '—'],
+      ['Body', a.body],
+      ['Ends', a.endAt ? fmtDateTime(a.endAt) : null],
+      ['Participants', parts.length
+        ? `${parts.length} — ${parts.map((p) => p?.fullName).filter(Boolean).join(', ')}`
+        : null],
+      ['External Attendance (est.)', a.externalAttendanceEstimate || null],
+    ]);
+
+    _paragraph(doc, 'Description', a.description, sectionColor);
+    _paragraph(doc, 'Outcome Notes', a.outcomeNotes, sectionColor);
+
+    // Campaign metrics only exist for campaign-shaped activities;
+    // render the table only when at least one figure was recorded.
+    const cmp = a.campaign || {};
+    const campaignRows = [
+      ['Households Visited', cmp.householdsVisited],
+      ['People Contacted', cmp.peopleContacted],
+      ['Pamphlets Distributed', cmp.pamphletsDistributed],
+      ['Expected Joiners', cmp.expectedJoiners],
+      ['Actual Joiners', cmp.actualJoiners],
+      ['Volunteer Hours', cmp.volunteerHours],
+    ].filter(([, v]) => v !== null && v !== undefined && v !== '');
+    if (campaignRows.length > 0) {
+      doc.moveDown(0.3);
+      _blockLabel(doc, 'Campaign Metrics', sectionColor);
       doc.moveDown(0.2);
-      photos.forEach((p, i) => {
-        const diskPath = uploadDiskPath(p.url);
-        if (!diskPath) return;
-        // New page if not enough room for image + caption (~ 230pt).
-        if (doc.y > doc.page.height - 240) doc.addPage();
-        try {
-          doc.image(diskPath, { fit: [460, 200], align: 'center', valign: 'top' });
-        } catch (err) {
-          doc.font('Helvetica-Oblique').fontSize(8).fillColor('#dc2626')
-            .text(`[Photo ${i + 1}: failed to embed — ${err.message}]`);
-        }
-        doc.moveDown(0.25);
-        doc.font('Helvetica').fontSize(8).fillColor('#555c66');
-        const cap = `Photo ${i + 1}/${photos.length}` +
-          ` · ${p.capturedAt ? new Date(p.capturedAt).toLocaleString() : 'no timestamp'}` +
-          (p.gps?.lat != null && p.gps?.lng != null ? ` · GPS ${Number(p.gps.lat).toFixed(5)}, ${Number(p.gps.lng).toFixed(5)}` : '');
-        doc.text(cap, { align: 'center' });
-        doc.moveDown(0.4);
-        doc.fillColor('#1a1a1a');
-      });
+      _kvTable(doc, campaignRows, sectionColor, { keyWidth: 220, headers: ['Measure', 'Count'] });
     }
 
-    // Separator
-    doc.moveDown(0.4);
-    doc.strokeColor('#c9ced6').lineWidth(0.5).moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-    doc.moveDown(0.6);
-  });
-
-  doc.fontSize(13).text('Activities', { underline: true });
-  doc.moveDown(0.3);
-  doc.fontSize(10);
-  if (data.activities.length === 0) doc.fillColor('gray').text('(none)').fillColor('black');
-  data.activities.slice(0, 30).forEach((a) => {
-    doc.text(`• ${new Date(a.startAt).toLocaleDateString()} · ${a.type} · ${a.title} · ${a.state}`);
-    const aDynCols = activityPdfDynColsBySnapshot.get(String(a.configSnapshotId || ''));
-    if (aDynCols && aDynCols.length > 0) {
-      const dyn = a.dynamicData || {};
-      const visible = aDynCols.filter((c) => {
-        const v = dyn[c.key];
-        return v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0);
-      });
-      if (visible.length > 0) {
-        doc.font('Helvetica').fontSize(9).fillColor('#374151');
-        const parts = visible.map((c) => `${c.label}: ${_formatDynamicValue(c, dyn[c.key])}`);
-        doc.text(`   ${parts.join(' · ')}`, { indent: 12 });
-        doc.fillColor('#1a1a1a').fontSize(10);
-      }
+    if ((a.pressLinks || []).length > 0) {
+      doc.moveDown(0.25);
+      _blockLabel(doc, 'Press Links', sectionColor);
+      doc.font('Helvetica').fontSize(9).fillColor('#1a4fa3');
+      a.pressLinks.forEach((link) => doc.text(String(link), { link: String(link), underline: true }));
+      _resetText(doc);
     }
+
+    _dynamicFields(doc, activityPdfDynColsBySnapshot.get(String(a.configSnapshotId || '')),
+      a.dynamicData, sectionColor);
+    _photoBlock(doc, a.photos, sectionColor);
+    _recordSeparator(doc);
   });
 
-  applyBrandedFooter(doc, branding);
+  _paginateFooters(doc, branding);
+  doc.end();
+});
+
+// ─── ACTIVITIES-only Excel / PDF ─────────────────────────────────
+exports.unitActivitiesXlsx = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PKNAP';
+  wb.created = new Date();
+
+  const ac = wb.addWorksheet('Activities');
+  ac.columns = [
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Date', key: 'd', width: 14 },
+    { header: 'Type', key: 't', width: 18 },
+    { header: 'Title', key: 'ti', width: 36 },
+    { header: 'Lead', key: 'l', width: 26 },
+    { header: 'Participants', key: 'p', width: 40 },
+    { header: 'Venue', key: 'v', width: 26 },
+    { header: 'State', key: 's', width: 14 },
+  ];
+  data.activities.slice().sort((a, b) => new Date(b.startAt) - new Date(a.startAt)).forEach((a, i) => ac.addRow({
+    n: i + 1,
+    d: a.startAt ? new Date(a.startAt).toLocaleDateString() : '',
+    t: a.type || '',
+    ti: a.title || '',
+    l: a.leadMemberId?.fullName || '',
+    p: (a.participants || []).map((p) => p?.fullName).filter(Boolean).join(', '),
+    v: a.venue || '',
+    s: a.state || '',
+  }));
+  ac.getRow(1).font = { bold: true };
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-activities.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+exports.unitActivitiesPdf = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+  const branding = await _loadBrandingSafe();
+  const sectionColor = branding?.reportBranding?.pdfHeaderColor || branding?.theme?.light?.primary || '#0a3a6e';
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-activities.pdf"`);
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
+  doc.pipe(res);
+
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Activities Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  _sectionHeading(doc, `Activities (${data.activities.length})`, sectionColor, { newPage: false });
+  if (data.activities.length === 0) {
+    doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No activities recorded in this period.');
+  }
+  data.activities.forEach((a, idx) => {
+    if (doc.y > _bottom(doc) - 120) doc.addPage();
+    _recordHeader(doc, idx + 1, a.title || a.type, [a.type, a.state, a.startAt ? new Date(a.startAt).toLocaleString() : ''], sectionColor);
+    _metaLines(doc, [
+      ['Venue', a.venue || '—'],
+      ['Lead', a.leadMemberId?.fullName || '—'],
+      ['Participants', (a.participants || []).map((p) => p?.fullName).filter(Boolean).join(', ') || null],
+      ['Body', a.body],
+    ]);
+    _paragraph(doc, 'Description', a.description, sectionColor);
+    _paragraph(doc, 'Outcome Notes', a.outcomeNotes, sectionColor);
+    _recordSeparator(doc);
+  });
+  _paginateFooters(doc, branding);
+  doc.end();
+});
+
+// ─── TRANSFERS-only Excel / PDF ──────────────────────────────────
+exports.unitTransfersXlsx = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PKNAP';
+  wb.created = new Date();
+
+  const out = wb.addWorksheet('Transfers Out');
+  out.columns = [
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Date', key: 'd', width: 18 },
+    { header: 'Amount', key: 'a', width: 16 },
+    { header: 'Destination', key: 'dest', width: 30 },
+    { header: 'State', key: 's', width: 14 },
+    { header: 'Note', key: 'note', width: 40 },
+  ];
+  data.transfersOut.slice().sort((a, b) => new Date(b.transferredAt) - new Date(a.transferredAt)).forEach((t, i) => out.addRow({
+    n: i + 1,
+    d: t.transferredAt ? new Date(t.transferredAt).toLocaleString() : '',
+    a: t.amount || 0,
+    dest: `${t.destinationLevel || ''} · ${t.destinationUnitId || ''}`,
+    s: t.state || '',
+    note: t.note || '',
+  }));
+  out.getRow(1).font = { bold: true };
+
+  const inn = wb.addWorksheet('Transfers In');
+  inn.columns = [
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Date', key: 'd', width: 18 },
+    { header: 'Amount', key: 'a', width: 16 },
+    { header: 'Source', key: 'src', width: 30 },
+    { header: 'State', key: 's', width: 14 },
+    { header: 'Note', key: 'note', width: 40 },
+  ];
+  data.transfersIn.slice().sort((a, b) => new Date(b.transferredAt) - new Date(a.transferredAt)).forEach((t, i) => inn.addRow({
+    n: i + 1,
+    d: t.transferredAt ? new Date(t.transferredAt).toLocaleString() : '',
+    a: t.amount || 0,
+    src: `${t.sourceLevel || ''} · ${t.sourceUnitId || ''}`,
+    s: t.state || '',
+    note: t.note || '',
+  }));
+  inn.getRow(1).font = { bold: true };
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-transfers.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+exports.unitTransfersPdf = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, from, to, scope, body } = req.query;
+  if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+  const branding = await _loadBrandingSafe();
+  const sectionColor = branding?.reportBranding?.pdfHeaderColor || branding?.theme?.light?.primary || '#0a3a6e';
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-transfers.pdf"`);
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
+  doc.pipe(res);
+
+  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Transfers Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  _sectionHeading(doc, `Transfers Out (${data.transfersOut.length})`, sectionColor, { newPage: false });
+  if (data.transfersOut.length === 0) doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No outgoing transfers in this period.');
+  data.transfersOut.forEach((t, i) => {
+    if (doc.y > _bottom(doc) - 120) doc.addPage();
+    _recordHeader(doc, i + 1, `${t.amount || 0} PKR`, [t.state, t.transferredAt ? new Date(t.transferredAt).toLocaleString() : ''], sectionColor);
+    _metaLines(doc, [
+      ['Destination', `${t.destinationLevel || ''} · ${t.destinationUnitId || ''}`],
+      ['Note', t.note || ''],
+    ]);
+    _recordSeparator(doc);
+  });
+
+  _sectionHeading(doc, `Transfers In (${data.transfersIn.length})`, sectionColor);
+  if (data.transfersIn.length === 0) doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No incoming transfers in this period.');
+  data.transfersIn.forEach((t, i) => {
+    if (doc.y > _bottom(doc) - 120) doc.addPage();
+    _recordHeader(doc, i + 1, `${t.amount || 0} PKR`, [t.state, t.transferredAt ? new Date(t.transferredAt).toLocaleString() : ''], sectionColor);
+    _metaLines(doc, [
+      ['Source', `${t.sourceLevel || ''} · ${t.sourceUnitId || ''}`],
+      ['Note', t.note || ''],
+    ]);
+    _recordSeparator(doc);
+  });
+  _paginateFooters(doc, branding);
   doc.end();
 });
 
@@ -706,34 +1588,118 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
   ]);
 
-  const branding = await _loadBrandingSafe();
+  const [branding, homeUnit] = await Promise.all([
+    _loadBrandingSafe(),
+    m.basicUnitId ? BasicUnit.findById(m.basicUnitId).select('name').lean() : null,
+  ]);
+  const sectionColor = branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary
+    || '#0a3a6e';
+
+  const absent = Math.max(0, meetingsTotal - meetingsPresent - meetingsLate);
+  // "Attended" counts LATE as attendance — arriving late is still
+  // showing up, and the unit dashboard scores it the same way.
+  const attendanceRate = meetingsTotal
+    ? Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100) : null;
+  const respTotal = respPending + respCompleted;
+  const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
+  const donCount = donAgg[0]?.count || 0;
+  const donTotal = donAgg[0]?.total || 0;
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.pdf"`);
-  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
   applyBrandedHeader(doc, branding, 'Member Performance Report',
-    `${m.fullName}  ·  ${m.memberId || ''}${m.cnic ? `  ·  CNIC ${m.cnic}` : ''}`);
+    `${m.fullName}  ·  ${m.memberId || ''}  ·  Period: ${_periodLabel(from, to)}`);
 
-  doc.fontSize(12);
-  doc.text(`Period: ${from || 'all'} → ${to || 'all'}`);
-  doc.moveDown(0.5);
-  doc.text(`Meetings (roster, finalized): ${meetingsTotal}`);
-  doc.text(`  • Present: ${meetingsPresent}`);
-  doc.text(`  • Late: ${meetingsLate}`);
-  doc.text(`  • Absent: ${Math.max(0, meetingsTotal - meetingsPresent - meetingsLate)}`);
-  if (meetingsTotal) doc.text(`  • Attendance rate: ${Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100)}%`);
-  doc.moveDown(0.5);
-  doc.text(`Activities participated: ${activitiesPart}`);
-  doc.text(`Activities led: ${activitiesLed}`);
-  doc.moveDown(0.5);
-  doc.text(`Donations: ${donAgg[0]?.count || 0} (PKR ${(donAgg[0]?.total || 0).toLocaleString()})`);
-  doc.moveDown(0.5);
-  doc.text(`Responsibilities pending: ${respPending}`);
-  doc.text(`Responsibilities completed: ${respCompleted}`);
+  // ─── Who this report is about ─────────────────────────────────────
+  _infoCard(doc, [
+    ['Member', m.fullName],
+    ['Member ID', m.memberId || '—'],
+    ['Status', m.status || '—'],
+    ['CNIC', m.cnic],
+    ['Phone', m.phone],
+    ['Email', m.email],
+    ['Basic Unit', homeUnit?.name],
+    ['Gender', m.gender],
+  ]);
 
-  applyBrandedFooter(doc, branding);
+  // ─── Headline figures ─────────────────────────────────────────────
+  drawKpiBand(doc, [
+    { label: 'Attendance Rate',
+      value: attendanceRate === null ? 'n/a' : `${attendanceRate}%`,
+      color: attendanceRate === null ? '#6b7280'
+        : (attendanceRate >= 75 ? '#00a266' : (attendanceRate >= 50 ? '#e65f00' : '#cf2e2e')) },
+    { label: 'Meetings', value: String(meetingsTotal) },
+    { label: 'Activities', value: String(activitiesPart + activitiesLed) },
+    { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
+    { label: 'Tasks Completed',
+      value: respTotal ? `${respCompleted}/${respTotal}` : '0',
+      color: completionRate === null ? '#6b7280' : (completionRate >= 75 ? '#00a266' : '#e65f00') },
+  ], sectionColor);
+
+  // ─── Meeting attendance ───────────────────────────────────────────
+  _sectionHeading(doc, 'Meeting Attendance', sectionColor, { newPage: false });
+  if (meetingsTotal === 0) {
+    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#9aa3af')
+      .text('This member was not on the roster of any finalized meeting in this period.');
+    _resetText(doc);
+    doc.moveDown(1);
+  } else {
+    _statBar(doc, [
+      { label: 'Present', value: meetingsPresent, color: '#00a266' },
+      { label: 'Late', value: meetingsLate, color: '#e6a700' },
+      { label: 'Absent', value: absent, color: '#cf2e2e' },
+    ]);
+    _kvTable(doc, [
+      ['Finalized meetings on roster', meetingsTotal],
+      ['Present', meetingsPresent],
+      ['Late', meetingsLate],
+      ['Absent', absent],
+      ['Attendance rate (present + late)', `${attendanceRate}%`],
+    ], sectionColor, { headers: ['Measure', 'Value'] });
+  }
+
+  // ─── Activity engagement ──────────────────────────────────────────
+  _sectionHeading(doc, 'Activity Engagement', sectionColor, { newPage: false });
+  _kvTable(doc, [
+    ['Activities participated in', activitiesPart],
+    ['Activities led', activitiesLed],
+    ['Total activity involvement', activitiesPart + activitiesLed],
+  ], sectionColor, { headers: ['Measure', 'Value'] });
+
+  // ─── Contributions ────────────────────────────────────────────────
+  _sectionHeading(doc, 'Contributions', sectionColor, { newPage: false });
+  _kvTable(doc, [
+    ['Donations recorded', donCount],
+    ['Total donated', `PKR ${donTotal.toLocaleString()}`],
+    ['Average donation', donCount
+      ? `PKR ${Math.round(donTotal / donCount).toLocaleString()}` : '—'],
+  ], sectionColor, { headers: ['Measure', 'Value'] });
+
+  // ─── Responsibilities ─────────────────────────────────────────────
+  // Counted lifetime, not for the period — responsibilities carry no
+  // startAt, so the period filter above never applied to them. Say so
+  // rather than letting the figure read as period-scoped.
+  _sectionHeading(doc, 'Responsibilities', sectionColor, { newPage: false });
+  if (respTotal > 0) {
+    _statBar(doc, [
+      { label: 'Completed', value: respCompleted, color: '#00a266' },
+      { label: 'Pending', value: respPending, color: '#e65f00' },
+    ]);
+  }
+  _kvTable(doc, [
+    ['Pending', respPending],
+    ['Completed', respCompleted],
+    ['Completion rate', completionRate === null ? '—' : `${completionRate}%`],
+  ], sectionColor, { headers: ['Measure', 'Value'] });
+  doc.font('Helvetica-Oblique').fontSize(8).fillColor('#6b7280')
+    .text('Responsibility counts are lifetime totals — they are not limited to the reporting period.');
+  _resetText(doc);
+
+  _paginateFooters(doc, branding);
   doc.end();
 });
 
@@ -783,7 +1749,13 @@ exports.meetingPdf = asyncHandler(async (req, res) => {
   if (m.supervisorAttended) doc.text(`Supervisor: attended`);
   doc.moveDown(0.6);
 
-  // ─── Agenda / notes
+  // ─── Description / agenda / notes
+  if (m.description) {
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(sectionColor).text('Description');
+    doc.moveDown(0.2);
+    doc.font('Helvetica').fontSize(10).fillColor('#1a1a1a').text(m.description, { align: 'justify' });
+    doc.moveDown(0.6);
+  }
   if (m.agenda) {
     doc.font('Helvetica-Bold').fontSize(11).fillColor(sectionColor).text('Agenda');
     doc.moveDown(0.2);

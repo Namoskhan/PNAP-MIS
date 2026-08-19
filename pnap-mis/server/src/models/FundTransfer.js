@@ -1,9 +1,22 @@
 const mongoose = require('mongoose');
 
-// SRS §9.3 — Inter-level fund transfers travel upward only
-// (Basic Unit → Area → District → Province → Central). The amount
-// stays in the sender's books until the receiver acknowledges it.
+// SRS §9.3 — Inter-level fund transfers. Under the revised finance
+// policy the sending Finance Secretary names the recipient explicitly:
+// any active unit in the organization, at any tier, in any branch. A
+// Basic Unit may pay another Basic Unit, a District may pay one of its
+// Areas, KPK may pay Punjab. The unit named is the sole recipient and
+// the sole acknowledging authority — there are no intermediate hops
+// and no intermediate approvals.
+//
+// The amount stays in the sender's books until that receiver
+// acknowledges it.
 const STATES = ['PENDING_ACK', 'ACKNOWLEDGED', 'REJECTED', 'CANCELLED'];
+
+// Which way the money moved, derived server-side from the two tiers.
+// Every transfer used to be UP by construction; arbitrary destinations
+// make DOWN and SAME_TIER ordinary, and UnitPolicy.transfer
+// .allowedDirections is enforced against this value.
+const DIRECTIONS = ['UP', 'DOWN', 'SAME_TIER'];
 
 const fundTransferSchema = new mongoose.Schema(
   {
@@ -14,19 +27,52 @@ const fundTransferSchema = new mongoose.Schema(
       index: true,
     },
     sourceUnitId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
+    // BASIC_UNIT joined this enum with the revised policy — a unit at
+    // any tier can now be a recipient. Widening an enum is backward
+    // compatible: every stored value stays valid and no migration is
+    // needed.
     destinationLevel: {
       type: String,
-      enum: ['AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'],
+      enum: ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'],
       required: true,
       index: true,
     },
     destinationUnitId: { type: mongoose.Schema.Types.ObjectId, index: true },
+
+    // Denormalized display names, captured at create time from the
+    // resolved units. Destinations are no longer predictable from the
+    // sender's own hierarchy, so neither party can name the other by
+    // looking at its own tree — the history table would otherwise show
+    // a bare tier label. Snapshot semantics: a later rename does not
+    // rewrite what the transfer was addressed to.
+    sourceName: { type: String, trim: true },
+    destinationName: { type: String, trim: true },
+
+    // Server-derived from the two tiers; never accepted from a client.
+    direction: { type: String, enum: DIRECTIONS, index: true },
 
     // Denormalized hierarchy of the source for roll-up
     basicUnitId: { type: mongoose.Schema.Types.ObjectId, ref: 'BasicUnit' },
     areaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Area' },
     districtId: { type: mongoose.Schema.Types.ObjectId, ref: 'District' },
     provinceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Province' },
+
+    // SRS §3.1 — which body's books this transfer belongs to. Same
+    // field, enum and default as Meeting.js / Activity.js: a tag
+    // applied from whichever UI hub the transfer was initiated in, not
+    // an eligibility check on the sender (a Finance Secretary sits on
+    // both the Executive and the Committee by construction). Tagged
+    // from the SENDER's side only — the destination's own view of an
+    // incoming transfer inherits the same tag, since one record serves
+    // both ledgers. Records written before this field existed carry no
+    // value and are read back as EXECUTIVE by the `$exists: false`
+    // fallback in every filter that uses it.
+    body: {
+      type: String,
+      enum: ['EXECUTIVE', 'COMMITTEE'],
+      default: 'EXECUTIVE',
+      index: true,
+    },
 
     amount: { type: Number, required: true, min: 0 },
     currency: { type: String, default: 'PKR' },
@@ -65,5 +111,6 @@ const fundTransferSchema = new mongoose.Schema(
 );
 
 fundTransferSchema.statics.STATES = STATES;
+fundTransferSchema.statics.DIRECTIONS = DIRECTIONS;
 
 module.exports = mongoose.model('FundTransfer', fundTransferSchema);

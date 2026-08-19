@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../utils/permissions';
 import { useToast } from '../../components/Toast';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 const CREATABLE_CATEGORIES = [
   { value: 'CUSTOM',           label: 'Custom (general)' },
   { value: 'BU_AREA_DISTRICT', label: 'Below-Province Cabinet' },
@@ -37,7 +39,7 @@ export default function RolesPage() {
 
   async function deleteRole(r) {
     if (!canWrite) return;
-    if (!confirm(`Delete custom role "${r.label}" (${r.code})? This cannot be undone.`)) return;
+    if (!await dialog.confirm(`Delete custom role "${r.label}" (${r.code})? This cannot be undone.`)) return;
     try {
       await api.delete(`/admin/roles/${r._id}`);
       toast.success?.('Role deleted.');
@@ -233,7 +235,7 @@ function EditRoleDialog({ role, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 580 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Edit role · <code className="exec-login">{role.code}</code></h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {role.isSystem && (
           <div className="alert" style={{ background: 'rgba(217, 119, 6, 0.08)', border: '1px solid rgba(217, 119, 6, 0.2)', marginBottom: 12 }}>
@@ -331,7 +333,7 @@ function CreateRoleDialog({ onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 580 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Create custom role</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
         <div className="form-grid">

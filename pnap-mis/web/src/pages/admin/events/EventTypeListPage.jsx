@@ -4,8 +4,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { FolderIcon, GearIcon, CameraIcon } from '../../../components/icons';
+import { FolderIcon, GearIcon, CameraIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Shared list page used by both MeetingTypesPage and ActivityTypesPage
 // (`entity` prop selects which catalogue to show). Mirrors the
 // Roles page layout — hero + card with one row per type, action
@@ -34,7 +35,7 @@ export default function EventTypeListPage({ entity, title, subtitle, icon }) {
   async function deleteType(t) {
     if (!canWrite) return;
     if (t.isSystem) return;
-    if (!confirm(`Delete custom type "${t.label}" (${t.code})? This cannot be undone.`)) return;
+    if (!await dialog.confirm(`Delete custom type "${t.label}" (${t.code})? This cannot be undone.`)) return;
     try {
       await api.delete(`/admin/events/types/${t._id}`);
       toast.success?.('Type deleted.');
@@ -191,7 +192,7 @@ function CreateTypeDialog({ entity, onClose, onCreated }) {
       <div className="modal" style={{ maxWidth: 580 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Create {entity === 'MEETING' ? 'meeting' : 'activity'} type</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
         <div className="form-grid">

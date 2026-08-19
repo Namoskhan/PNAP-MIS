@@ -2,31 +2,56 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
-import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, roleLabel } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
+import { useToast } from '../../components/Toast';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 // Default starting type when no types have loaded yet — kept here so
 // the form has a sensible empty state. The picker itself is sourced
 // from /api/events/types (active types only) so admins can extend
 // the catalogue without a code change.
 const DEFAULT_TYPE_CODE = 'GBM';
 
+// Mirror the server's upload.array caps so the picker never sends a
+// batch that would be silently truncated: photos 10, documents 5.
+const MAX_PHOTOS = 10;
+const MAX_DOCUMENTS = 5;
+
 const EMPTY_FORM = {
-  typeCode: DEFAULT_TYPE_CODE, title: '', venue: '', startAt: '', endAt: '',
+  typeCode: DEFAULT_TYPE_CODE, title: '', description: '', venue: '', startAt: '', endAt: '',
   chairpersonId: '', agenda: '', gpsLat: '', gpsLng: '',
   dynamicData: {},
 };
 
-// SRS §3.1 — at Area+ levels, two distinct bodies meet: the Executive
-// (cabinet only) and the full Committee (executive + BU office-holders
-// + permanent members). The toggle filters meetings into the two
-// streams. Below Area level there's only one body, so the toggle is
-// hidden.
+// SRS §3.1 — two distinct bodies meet: the Executive (cabinet only)
+// and the full Committee (executive + office-holders + permanent
+// members). The toggle filters meetings into the two streams.
+//
+// BASIC_UNIT is included by product directive: a Basic Unit Senior
+// Mawin runs both kinds of meeting and needs the same two streams the
+// Area and District Senior Mawin get. The server puts no unit-level
+// restriction on `body` (see meetingController.list / create), and
+// records written before this toggle existed carry no `body` field —
+// the Executive filter matches those explicitly, so nothing that was
+// visible at BU level disappears from the list.
 function bodySupported(level) {
-  return level === 'AREA' || level === 'DISTRICT' || level === 'PROVINCE' || level === 'CENTRAL';
+  return level === 'BASIC_UNIT' || level === 'AREA' || level === 'DISTRICT'
+    || level === 'PROVINCE' || level === 'CENTRAL';
 }
+
+// Friendly labels for the owning-unit tier, shown to members when a
+// meeting in their list belongs to a unit above their own.
+const LEVEL_LABELS = {
+  BASIC_UNIT: 'Basic Unit',
+  AREA: 'Area',
+  DISTRICT: 'District',
+  PROVINCE: 'Province',
+  CENTRAL: 'Central',
+};
 
 function downloadAuthed(path, filename) {
   const token = localStorage.getItem('pnap_token');
@@ -46,6 +71,7 @@ export default function MeetingsPage() {
   const { ctx } = useUnit();
   const { user } = useAuth();
   const location = useLocation();
+  const toast = useToast();
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   // Pure-member viewers (no admin / cabinet / operator role) shouldn't
   // see the "this unit only / subtree" scope selector — they're
@@ -76,9 +102,15 @@ export default function MeetingsPage() {
   const [editing, setEditing] = useState(null);
   const [docFor, setDocFor] = useState(null);
   const [photosFor, setPhotosFor] = useState(null);
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
   const [gpsHint, setGpsHint] = useState('');
+  const [creating, setCreating] = useState(false);
+  // Supervisor candidates are a different population from `members`
+  // (office-holders ABOVE this meeting's unit, not the local roster),
+  // so they live in their own state and load only when the finalize
+  // dialog actually asks for them.
+  const [supervisorCandidates, setSupervisorCandidates] = useState([]);
+  const [supervisorsLoading, setSupervisorsLoading] = useState(false);
+  const supervisorsForRef = useRef(null);
 
   const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
 
@@ -102,24 +134,37 @@ export default function MeetingsPage() {
   async function reload() {
     if (!ctx) return;
     const myId = ++fetchIdRef.current;
+    // A meeting record is owned by the unit whose body sits — an Area
+    // committee meeting is an AREA record, a District one a DISTRICT
+    // record. A pure member is pinned to their Basic Unit, so the
+    // default `own` scope hid every meeting held above them and the
+    // page read "No meetings yet". `chain` adds their Area / District /
+    // Province / Central schedule on top of their own unit's.
     const params = {
       unitLevel: ctx.unitLevel, unitId: ctx.unitId,
-      scope: scope === 'tree' ? 'subtree' : undefined,
+      scope: isPureMember ? 'chain' : (scope === 'tree' ? 'subtree' : undefined),
     };
     if (showBodyToggle) params.body = body;
     const r = await api.get('/meetings', { params });
     if (myId === fetchIdRef.current) setItems(r.data.data);
   }
 
-  useEffect(() => { reload(); }, [ctx, scope, body]);
+  useEffect(() => { reload(); }, [ctx, scope, body, isPureMember]);
 
   useEffect(() => {
     if (!ctx) return;
+    // Local roster — feeds the attendance table and the chairperson
+    // picker. CENTRAL has no unit key of its own on Member, so it asks
+    // for the unrestricted roster explicitly; the server honours that
+    // only for Super Admin and clamps everyone else to their scope.
+    // Without this branch the request carried no filter at all and
+    // came back with every member in the system.
     const params = { status: 'ACTIVE', limit: 500 };
     if (ctx.unitLevel === 'BASIC_UNIT') params.basicUnitId = ctx.unitId;
     else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
     else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
     else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [ctx]);
 
@@ -147,8 +192,13 @@ export default function MeetingsPage() {
     );
   }
 
+  // Feedback here goes through toasts rather than an inline banner:
+  // the create dialog is a fixed overlay, so a banner rendered behind
+  // it was invisible — the failure case in particular looked like the
+  // Schedule button had done nothing.
   async function create() {
-    setErr(''); setMsg('');
+    if (creating) return;
+    setCreating(true);
     try {
       // Strip empty strings so optional fields don't ship as ''.
       // dynamicData is preserved as-is — server validates it against
@@ -158,43 +208,122 @@ export default function MeetingsPage() {
       if (showBodyToggle) payload.body = body;
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
       if (dynamicData && Object.keys(dynamicData).length > 0) payload.dynamicData = dynamicData;
-      await api.post('/meetings', payload);
-      setMsg(showBodyToggle ? `${body === 'COMMITTEE' ? 'Committee' : 'Executive'} meeting scheduled.` : 'Meeting scheduled.');
+      const r = await api.post('/meetings', payload);
+      const m = r.data.data;
+      const bodyLabel = showBodyToggle ? (body === 'COMMITTEE' ? 'Committee' : 'Executive') : '';
+      toast.success(
+        `${[bodyLabel, m.title || m.type].filter(Boolean).join(' · ')} — ${new Date(m.startAt).toLocaleString()} at ${m.venue}.`,
+        { title: 'Meeting scheduled' },
+      );
       setForm(EMPTY_FORM);
       setShowCreate(false);
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not schedule meeting', duration: 7000 });
+    } finally {
+      setCreating(false);
+    }
   }
 
-  async function uploadPhoto(meetingId, file) {
-    if (!file) return;
-    const fd = new FormData(); fd.append('photos', file);
+  // Photo uploads run through EXIF / GPS / duplicate checks server-side
+  // and can take a moment, so we show a sticky "uploading" toast and
+  // swap it for the verdict. A rejection is a warning, not an error —
+  // the meeting is fine, the photo just didn't pass the checks.
+  // Whole FileList — the route is upload.array('photos', 10), so a
+  // batch was always accepted; only the picker was single-file.
+  async function uploadPhotos(meetingId, fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (files.length > MAX_PHOTOS) {
+      toast.warning(
+        `Only ${MAX_PHOTOS} photos can be uploaded at once — the first ${MAX_PHOTOS} were sent.`,
+        { title: 'Too many selected', duration: 7000 },
+      );
+    }
+    const batch = files.slice(0, MAX_PHOTOS);
+    const fd = new FormData();
+    batch.forEach((f) => fd.append('photos', f));
+    const pending = toast.info(
+      batch.length === 1 ? `Uploading ${batch[0].name}…` : `Uploading ${batch.length} photos…`,
+      { duration: 0 },
+    );
     try {
       const r = await api.post(`/meetings/${meetingId}/photos`, fd);
       const data = r.data.data;
+      toast.dismiss(pending);
+      if (data.accepted?.length) {
+        const total = (data.meeting?.photos || []).length;
+        toast.success(
+          `${data.accepted.join(', ')} added${total ? ` — ${total} photo${total === 1 ? '' : 's'} on this meeting.` : '.'}`,
+          { title: 'Photo uploaded' },
+        );
+      }
       if (data.rejected?.length) {
-        alert(`Some photos rejected:\n${data.rejected.map((x) => `• ${x.filename}: ${x.reason}`).join('\n')}`);
+        toast.warning(
+          data.rejected.map((x) => `${x.filename}: ${x.reason}`).join(' | '),
+          { title: 'Photo rejected', duration: 9000 },
+        );
       }
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) {
+      toast.dismiss(pending);
+      toast.error(errorMessage(e), { title: 'Photo upload failed', duration: 9000 });
+    }
+  }
+
+  // Lazy — the finalize dialog calls this the first time "Supervisor
+  // attended" is ticked, so opening the dialog to record attendance
+  // costs nothing. Cached per meeting; cleared when the dialog closes.
+  async function loadSupervisorCandidates(meetingId) {
+    if (supervisorsForRef.current === meetingId) return;
+    supervisorsForRef.current = meetingId;
+    setSupervisorsLoading(true);
+    try {
+      const r = await api.get(`/meetings/${meetingId}/supervisor-candidates`);
+      setSupervisorCandidates(r.data.data);
+    } catch (e) {
+      supervisorsForRef.current = null;
+      setSupervisorCandidates([]);
+      toast.error(errorMessage(e), { title: 'Could not load supervisors', duration: 7000 });
+    } finally {
+      setSupervisorsLoading(false);
+    }
+  }
+
+  function closeFinalize() {
+    setFinalizing(null);
+    supervisorsForRef.current = null;
+    setSupervisorCandidates([]);
   }
 
   async function cancelMeeting(m) {
-    const reason = prompt('Cancellation reason:');
+    const reason = await dialog.prompt('Cancellation reason:');
     if (reason == null) return;
     try {
       await api.post(`/meetings/${m._id}/cancel`, { reason });
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+      toast.success(`"${m.title || 'Meeting'}" cancelled.`, { title: 'Meeting cancelled' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not cancel meeting', duration: 7000 });
+    }
   }
 
-  function exportPdf() {
+  // Body travels with the download alongside scope, so the exported
+  // report covers exactly the stream the user is looking at.
+  function exportParams() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    downloadAuthed(`/api/exports/unit/meetings/pdf?${params}`, `${ctx.unitName}-meetings.pdf`).catch(() => alert('Export failed.'));
+    if (scope === 'tree') params.set('scope', 'subtree');
+    if (showBodyToggle) params.set('body', body);
+    return params;
+  }
+  function exportName(ext) {
+    return `${ctx.unitName}${showBodyToggle ? `-${body.toLowerCase()}` : ''}-meetings.${ext}`;
+  }
+  function exportPdf() {
+    downloadAuthed(`/api/exports/unit/meetings/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
   function exportXlsx() {
-    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    downloadAuthed(`/api/exports/unit/meetings/xlsx?${params}`, `${ctx.unitName}-meetings.xlsx`).catch(() => alert('Export failed.'));
+    downloadAuthed(`/api/exports/unit/meetings/xlsx?${exportParams()}`, exportName('xlsx')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -203,7 +332,7 @@ export default function MeetingsPage() {
     <div>
       <div className="page-header">
         <h2>
-          {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee Meetings' : 'Executive Meetings') : 'Meetings'} · {ctx.unitName}
+          {body === 'COMMITTEE' ? 'Committee Meetings' : 'Executive Meetings'} · {ctx.unitName}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* At BU level the only option would be "This unit only" —
@@ -219,34 +348,18 @@ export default function MeetingsPage() {
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && (
             <button className="btn" onClick={() => setShowCreate(true)}>
-              + Schedule {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee ' : 'Executive ') : ''}Meeting
+              {body === 'COMMITTEE' ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'}
             </button>
           )}
         </div>
       </div>
-
-      {showBodyToggle && (
-        <div className="toolbar" style={{ marginBottom: 12 }}>
-          <button
-            className={`btn ${body === 'EXECUTIVE' ? '' : 'secondary'}`}
-            onClick={() => setBody('EXECUTIVE')}
-          >Executive Meetings</button>
-          <button
-            className={`btn ${body === 'COMMITTEE' ? '' : 'secondary'}`}
-            onClick={() => setBody('COMMITTEE')}
-          >Committee Meetings</button>
-        </div>
-      )}
-
-      {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {showCreate && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}>
         <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Schedule Meeting">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Schedule a Meeting</h3>
-            <button type="button" className="btn secondary" onClick={() => setShowCreate(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+            <button type="button" className="btn secondary" onClick={() => setShowCreate(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
           <p className="muted" style={{ marginTop: 0 }}>
             Photos uploaded later must be taken with a phone camera (EXIF metadata intact). If
@@ -296,6 +409,15 @@ export default function MeetingsPage() {
               {gpsHint && <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>{gpsHint}</div>}
             </div>
             <div className="field full">
+              <label>Description</label>
+              <textarea
+                rows={3}
+                placeholder="What this meeting is about"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+            <div className="field full">
               <label>Agenda</label>
               <textarea rows={3} value={form.agenda} onChange={(e) => setForm({ ...form, agenda: e.target.value })} />
             </div>
@@ -328,7 +450,7 @@ export default function MeetingsPage() {
           )}
           <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button className="btn secondary" type="button" onClick={() => setShowCreate(false)}>Cancel</button>
-            <button className="btn" onClick={create}>Schedule</button>
+            <button className="btn" onClick={create} disabled={creating}>{creating ? 'Scheduling…' : 'Schedule'}</button>
           </div>
         </div>
         </div>
@@ -346,7 +468,17 @@ export default function MeetingsPage() {
           {items.map((m) => (
             <tr key={m._id}>
               <td>{new Date(m.startAt).toLocaleString()}</td>
-              <td>{m.type}{m.title ? ` · ${m.title}` : ''}</td>
+              <td>
+                {m.type}{m.title ? ` · ${m.title}` : ''}
+                {/* Chain scope mixes tiers — say which body owns the
+                    meeting when it isn't the viewer's own unit. */}
+                {isPureMember && m.unitLevel !== ctx.unitLevel && (
+                  <div className="muted" style={{ fontSize: 11 }}>
+                    {LEVEL_LABELS[m.unitLevel] || m.unitLevel}
+                    {m.body === 'COMMITTEE' ? ' committee' : ' executive'} meeting
+                  </div>
+                )}
+              </td>
               <td>{m.venue}</td>
               <td>{m.chairpersonId?.fullName || '—'}</td>
               <td>{(m.attendance || []).filter((a) => a.status === 'PRESENT').length}</td>
@@ -369,7 +501,7 @@ export default function MeetingsPage() {
               <td style={{ whiteSpace: 'nowrap' }}>
                 <button
                   className="btn ghost"
-                  onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => alert('PDF download failed.'))}
+                  onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => toast.error('PDF download failed.', { title: 'Could not export' }))}
                   title="Download this meeting as PDF (with photos embedded)"
                 >📄 PDF</button>{' '}
                 {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
@@ -377,8 +509,22 @@ export default function MeetingsPage() {
                     <button className="btn ghost" onClick={() => setEditing(m)}>Edit</button>{' '}
                     <button className="btn ghost" onClick={() => setDocFor(m)}>Docs</button>{' '}
                     <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                      Photo
-                      <input type="file" accept="image/*" hidden onChange={(e) => uploadPhoto(m._id, e.target.files?.[0])} />
+                      Photos
+                      {/* Reset the input's value so re-picking the same
+                          file after a rejection still fires onChange. */}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        hidden
+                        onChange={(e) => {
+                          // Snapshot to an array BEFORE clearing value —
+                          // resetting the input empties its live FileList.
+                          const picked = Array.from(e.target.files || []);
+                          e.target.value = '';
+                          uploadPhotos(m._id, picked);
+                        }}
+                      />
                     </label>{' '}
                     <button className="btn" onClick={() => setFinalizing(m)}>Finalize</button>{' '}
                     <button className="btn danger" onClick={() => cancelMeeting(m)}>Cancel</button>
@@ -394,8 +540,14 @@ export default function MeetingsPage() {
         <FinalizeDialog
           meeting={finalizing}
           members={members}
-          onClose={() => setFinalizing(null)}
-          onDone={() => { setFinalizing(null); reload(); }}
+          supervisorCandidates={supervisorCandidates}
+          supervisorsLoading={supervisorsLoading}
+          onNeedSupervisors={() => loadSupervisorCandidates(finalizing._id)}
+          onClose={closeFinalize}
+          onDone={() => {
+            closeFinalize(); reload();
+            toast.success('Minutes recorded and the meeting is now finalized.', { title: 'Meeting finalized', duration: 7000 });
+          }}
         />
       )}
       {editing && (
@@ -403,7 +555,7 @@ export default function MeetingsPage() {
           meeting={editing}
           members={members}
           onClose={() => setEditing(null)}
-          onDone={() => { setEditing(null); reload(); }}
+          onDone={() => { setEditing(null); reload(); toast.success('Meeting updated.'); }}
         />
       )}
       {photosFor && (
@@ -423,12 +575,16 @@ export default function MeetingsPage() {
   );
 }
 
-function FinalizeDialog({ meeting, members, onClose, onDone }) {
-  const [decisions, setDecisions] = useState('');
+function FinalizeDialog({
+  meeting, members, supervisorCandidates, supervisorsLoading, onNeedSupervisors, onClose, onDone,
+}) {
+  const { user } = useAuth();
+  const [previouswork, setPreviouswork] = useState('');
   const [upcomingStrategy, setUpcomingStrategy] = useState('');
   const [notes, setNotes] = useState('');
   const [supervisorAttended, setSupervisorAttended] = useState(false);
   const [supervisorMemberId, setSupervisorMemberId] = useState('');
+  const [supervisorQuery, setSupervisorQuery] = useState('');
   const [attendance, setAttendance] = useState(() => members.map((m) => ({
     memberId: m._id, name: m.fullName, status: 'ABSENT',
   })));
@@ -436,6 +592,34 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const isStudy = meeting.type === 'STC';
+
+  // A Central meeting has no level above it, so nobody is eligible to
+  // supervise it — the field is suppressed rather than shown empty.
+  const supervisionApplies = meeting.unitLevel !== 'CENTRAL';
+
+  function roleText(s) {
+    return (s.roles || []).map((r) => r.customName || roleLabel(user, r.code)).join(', ');
+  }
+
+  const selectedSupervisor = supervisorCandidates.find((s) => s._id === supervisorMemberId) || null;
+
+  // Candidates span several tiers now, so the list can be long on a
+  // phone. Filter across every visible token — name, role, unit and
+  // member code — so any of them narrows it.
+  const filteredSupervisors = useMemo(() => {
+    const q = supervisorQuery.trim().toLowerCase();
+    if (!q) return supervisorCandidates;
+    return supervisorCandidates.filter((s) => [
+      s.fullName, s.unitName, s.memberCode, LEVEL_LABELS[s.unitLevel], roleText(s),
+    ].filter(Boolean).join(' ').toLowerCase().includes(q));
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [supervisorQuery, supervisorCandidates, user]);
+
+  function toggleSupervisorAttended(checked) {
+    setSupervisorAttended(checked);
+    if (checked) onNeedSupervisors();
+    else { setSupervisorMemberId(''); setSupervisorQuery(''); }
+  }
 
   function setStatus(memberId, status) {
     setAttendance((rows) => rows.map((r) => r.memberId === memberId ? { ...r, status } : r));
@@ -457,7 +641,10 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
     setErr(''); setBusy(true);
     try {
       const payload = {
-        decisions,
+        // The dialog labels this "Previous work", but the server (and
+        // the Meeting model) call the field `decisions` — send it under
+        // the canonical name or finalize 400s on a missing required key.
+        decisions: previouswork,
         upcomingStrategy,
         notes,
         supervisorAttended,
@@ -484,8 +671,8 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
 
         <div className="form-grid">
           <div className="field full">
-            <label>Decisions taken *</label>
-            <textarea rows={3} value={decisions} onChange={(e) => setDecisions(e.target.value)} />
+            <label>Previous work *</label>
+            <textarea rows={3} value={previouswork} onChange={(e) => setPreviouswork(e.target.value)} />
           </div>
           <div className="field full">
             <label>Upcoming strategy</label>
@@ -495,19 +682,83 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
             <label>Activity notes</label>
             <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
-          <div className="field">
-            <label>
-              <input type="checkbox" checked={supervisorAttended} onChange={(e) => setSupervisorAttended(e.target.checked)} />
-              {' '}Supervisor attended
-            </label>
+          <div className="field full">
+            {supervisionApplies ? (
+              <label>
+                <input type="checkbox" checked={supervisorAttended} onChange={(e) => toggleSupervisorAttended(e.target.checked)} />
+                {' '}Supervisor attended
+              </label>
+            ) : (
+              <div className="muted" style={{ fontSize: 12 }}>
+                <strong>Supervisor attendance</strong> does not apply to a Central meeting —
+                there is no level above it to send a supervisor.
+              </div>
+            )}
           </div>
-          {supervisorAttended && (
-            <div className="field">
+          {supervisionApplies && supervisorAttended && (
+            <div className="field full">
               <label>Supervisor</label>
-              <select value={supervisorMemberId} onChange={(e) => setSupervisorMemberId(e.target.value)}>
-                <option value="">— pick supervisor —</option>
-                {members.map((m) => <option key={m._id} value={m._id}>{m.fullName}</option>)}
-              </select>
+              {selectedSupervisor ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div>
+                    <strong>{selectedSupervisor.fullName}</strong>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      {[roleText(selectedSupervisor),
+                        `${selectedSupervisor.unitName} (${LEVEL_LABELS[selectedSupervisor.unitLevel] || selectedSupervisor.unitLevel})`,
+                      ].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => { setSupervisorMemberId(''); setSupervisorQuery(''); }}
+                  >Change</button>
+                </div>
+              ) : supervisorsLoading ? (
+                <div className="muted" style={{ fontSize: 12 }}>Loading eligible supervisors…</div>
+              ) : supervisorCandidates.length === 0 ? (
+                <div className="muted" style={{ fontSize: 12 }}>
+                  No active office-holders were found above this unit, so there is nobody
+                  eligible to record as supervisor.
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="search"
+                    placeholder="Search by name, role or unit…"
+                    value={supervisorQuery}
+                    onChange={(e) => setSupervisorQuery(e.target.value)}
+                  />
+                  <div style={{
+                    maxHeight: 200, overflowY: 'auto', marginTop: 6,
+                    border: '1px solid var(--border)', borderRadius: 6,
+                  }}>
+                    {filteredSupervisors.length === 0 && (
+                      <div className="muted" style={{ fontSize: 12, padding: 8 }}>
+                        No supervisor matches “{supervisorQuery}”.
+                      </div>
+                    )}
+                    {filteredSupervisors.map((s) => (
+                      <button
+                        key={s._id}
+                        type="button"
+                        onClick={() => setSupervisorMemberId(s._id)}
+                        style={{
+                          display: 'block', width: '100%', textAlign: 'left',
+                          padding: '6px 8px', border: 'none', background: 'none',
+                          cursor: 'pointer', borderBottom: '1px solid var(--border)',
+                        }}
+                      >
+                        {s.fullName}
+                        <div className="muted" style={{ fontSize: 11 }}>
+                          {[roleText(s), `${s.unitName} (${LEVEL_LABELS[s.unitLevel] || s.unitLevel})`]
+                            .filter(Boolean).join(' · ')}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -552,7 +803,7 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
                 </select>
                 <input placeholder="Topic" value={s.topic} onChange={(e) => updateStudyRow(i, { topic: e.target.value })} />
                 <input placeholder="Summary" value={s.summary} onChange={(e) => updateStudyRow(i, { summary: e.target.value })} />
-                <button type="button" className="btn ghost" onClick={() => removeStudyRow(i)}>×</button>
+                <button type="button" className="btn ghost" onClick={() => removeStudyRow(i)}><XIcon size={16} /></button>
               </div>
             ))}
             <button type="button" className="btn secondary" onClick={addStudyRow}>+ Add contribution</button>
@@ -561,7 +812,7 @@ function FinalizeDialog({ meeting, members, onClose, onDone }) {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
           <button className="btn secondary" onClick={onClose}>Cancel</button>
-          <button className="btn" disabled={busy || !decisions.trim()} onClick={submit}>
+          <button className="btn" disabled={busy || !previouswork.trim()} onClick={submit}>
             {busy ? 'Finalizing…' : 'Finalize'}
           </button>
         </div>
@@ -586,6 +837,7 @@ function EditDialog({ meeting, members, onClose, onDone }) {
   const [form, setForm] = useState({
     typeCode: (meeting.typeCode || meeting.type || '').toUpperCase(),
     title: meeting.title || '',
+    description: meeting.description || '',
     venue: meeting.venue || '',
     startAt: toLocalInput(meeting.startAt),
     endAt: toLocalInput(meeting.endAt),
@@ -666,6 +918,15 @@ function EditDialog({ meeting, members, onClose, onDone }) {
               <input style={{ flex: 1 }} placeholder="lat" value={form.gpsLat} onChange={(e) => setForm({ ...form, gpsLat: e.target.value })} />
               <input style={{ flex: 1 }} placeholder="lng" value={form.gpsLng} onChange={(e) => setForm({ ...form, gpsLng: e.target.value })} />
             </div>
+          </div>
+          <div className="field full">
+            <label>Description</label>
+            <textarea
+              rows={3}
+              placeholder="What this meeting is about"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
           </div>
           <div className="field full">
             <label>Agenda</label>
@@ -835,21 +1096,42 @@ function PhotosDialog({ meeting, onClose }) {
 }
 
 function DocumentsDialog({ meeting, onClose, onDone }) {
+  const toast = useToast();
   const [docs, setDocs] = useState(meeting.documents || []);
   const [kind, setKind] = useState('AGENDA');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
-  async function upload(file) {
-    if (!file) return;
+  // Route is uploadAny.array('documents', 5) — a batch was always
+  // accepted server-side; only the picker was single-file.
+  async function upload(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (files.length > MAX_DOCUMENTS) {
+      toast.warning(
+        `Only ${MAX_DOCUMENTS} documents can be uploaded at once — the first ${MAX_DOCUMENTS} were sent.`,
+        { title: 'Too many selected', duration: 7000 },
+      );
+    }
+    const batch = files.slice(0, MAX_DOCUMENTS);
     setErr(''); setBusy(true);
     try {
       const fd = new FormData();
-      fd.append('documents', file);
+      batch.forEach((f) => fd.append('documents', f));
       fd.append('kind', kind);
       const r = await api.post(`/meetings/${meeting._id}/documents`, fd);
       setDocs(r.data.data.documents || []);
-    } catch (e) { setErr(errorMessage(e)); }
+      // Reported here, not in onDone — that fires when the dialog is
+      // closed, which happens whether or not anything was attached.
+      toast.success(
+        batch.length === 1
+          ? `${batch[0].name} attached.`
+          : `${batch.length} documents attached.`,
+        { title: 'Document uploaded' },
+      );
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Document upload failed', duration: 9000 });
+    }
     finally { setBusy(false); }
   }
 
@@ -875,7 +1157,18 @@ function DocumentsDialog({ meeting, onClose, onDone }) {
           </div>
           <div className="field">
             <label>Upload</label>
-            <input type="file" accept=".pdf,image/*,.doc,.docx" disabled={busy} onChange={(e) => upload(e.target.files?.[0])} />
+            <input
+              type="file"
+              accept=".pdf,image/*,.doc,.docx"
+              multiple
+              disabled={busy}
+              onChange={(e) => {
+                // Snapshot before clearing — resetting empties the FileList.
+                const picked = Array.from(e.target.files || []);
+                e.target.value = '';
+                upload(picked);
+              }}
+            />
           </div>
         </div>
 

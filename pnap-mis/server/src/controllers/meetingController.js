@@ -9,6 +9,8 @@ const configSnapshotService = require('../services/configSnapshotService');
 const eventHashService = require('../services/eventHashService');
 const policyEngine = require('../services/policyEngine');
 const responsibilityHookService = require('../services/responsibilityHookService');
+const supervisorService = require('../services/supervisorService');
+const activityService = require('../services/activityService');
 
 // Resolve typeCode (preferred) or legacy type field, materialise the
 // snapshot, validate dynamicData. Throws ApiError on any failure.
@@ -40,6 +42,10 @@ async function resolveEventConfig(d, entity) {
 exports.list = asyncHandler(async (req, res) => {
   const { unitLevel, unitId, state, type, from, to, scope, body } = req.query;
   const filter = {};
+  // Conditions that each need their own $or go here — a bare
+  // filter.$or would be overwritten by the next one that wants it
+  // (the body filter and the `chain` scope both do).
+  const and = [];
   if (unitLevel && unitId) {
     if (scope === 'subtree') {
       // Roll-up: include all meetings under this unit
@@ -49,6 +55,23 @@ exports.list = asyncHandler(async (req, res) => {
       else if (unitLevel === 'AREA') filter.areaId = chain.areaId;
       else if (unitLevel === 'DISTRICT') filter.districtId = chain.districtId;
       else if (unitLevel === 'PROVINCE') filter.provinceId = chain.provinceId;
+    } else if (scope === 'chain') {
+      // Roll-DOWN: this unit plus every unit it reports up into.
+      // A meeting is owned by the unit whose body sits (an Area
+      // committee meeting is an AREA record), so a member pinned to a
+      // Basic Unit sees nothing of their Area / District / Province
+      // schedule under the default `own` scope. This scope is what the
+      // read-only member view uses so those meetings show up.
+      const chain = await resolveUnitChain(unitLevel, unitId);
+      if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
+      const ancestors = [];
+      if (chain.basicUnitId) ancestors.push({ unitLevel: 'BASIC_UNIT', unitId: chain.basicUnitId });
+      if (chain.areaId) ancestors.push({ unitLevel: 'AREA', unitId: chain.areaId });
+      if (chain.districtId) ancestors.push({ unitLevel: 'DISTRICT', unitId: chain.districtId });
+      if (chain.provinceId) ancestors.push({ unitLevel: 'PROVINCE', unitId: chain.provinceId });
+      // Central is the top of every chain — one singleton unit.
+      ancestors.push({ unitLevel: 'CENTRAL' });
+      and.push({ $or: ancestors });
     } else {
       filter.unitLevel = unitLevel;
       filter.unitId = unitId;
@@ -56,13 +79,15 @@ exports.list = asyncHandler(async (req, res) => {
   }
   if (state) filter.state = state;
   if (type) filter.type = type;
-  if (body === 'EXECUTIVE') filter.$or = [{ body: 'EXECUTIVE' }, { body: { $exists: false } }];
+  // Legacy records pre-date the `body` field; treat them as EXECUTIVE.
+  if (body === 'EXECUTIVE') and.push({ $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] });
   else if (body === 'COMMITTEE') filter.body = 'COMMITTEE';
   if (from || to) {
     filter.startAt = {};
     if (from) filter.startAt.$gte = new Date(from);
     if (to) filter.startAt.$lte = new Date(to);
   }
+  if (and.length) filter.$and = and;
 
   const items = await Meeting.find(filter)
     .sort({ startAt: -1 })
@@ -96,6 +121,7 @@ exports.create = asyncHandler(async (req, res) => {
     dynamicData,
     body,
     title: data.title,
+    description: data.description,
     venue: data.venue,
     startAt: data.startAt,
     endAt: data.endAt,
@@ -105,6 +131,20 @@ exports.create = asyncHandler(async (req, res) => {
     state: 'SCHEDULED',
     createdBy: req.user._id,
   });
+
+  // Meeting Creation — credited to the convening officer. The chain is
+  // already resolved above, so this costs no extra lookup.
+  activityService.record({
+    action: 'MEETING_CREATED',
+    req,
+    chain,
+    unitLevel: data.unitLevel,
+    unitId: data.unitId,
+    targetType: 'Meeting',
+    targetId: m._id,
+    targetLabel: m.title || m.type,
+  }).catch(() => {});
+
   created(res, m);
 });
 
@@ -153,7 +193,7 @@ exports.update = asyncHandler(async (req, res) => {
   }
 
   const editable = [
-    'title', 'venue', 'startAt', 'endAt', 'agenda',
+    'title', 'description', 'venue', 'startAt', 'endAt', 'agenda',
     'chairpersonId', 'upcomingStrategy', 'notes', 'previousMeetingId',
   ];
   for (const k of editable) {
@@ -248,6 +288,24 @@ exports.uploadPhotos = asyncHandler(async (req, res) => {
   ok(res, { meeting: m, accepted, rejected });
 });
 
+// GET /meetings/:id/supervisor-candidates — the office-holders of
+// this meeting's ancestor units (SRS §12). Derived server-side from
+// the stored record so the client never names the units itself and
+// cannot widen its own scope. Empty at CENTRAL, which has no level
+// above it.
+exports.supervisorCandidates = asyncHandler(async (req, res) => {
+  // Same gate as finalize — this list only exists to fill that form,
+  // and without the check it would be a way around the scope rules
+  // now enforced on /roles.
+  if (!canManageMeetings(req.user) && !canApprove(req.user)) {
+    throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  }
+  const m = await Meeting.findById(req.params.id)
+    .select('unitLevel unitId areaId districtId provinceId').lean();
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  ok(res, await supervisorService.listCandidates(m));
+});
+
 exports.finalize = asyncHandler(async (req, res) => {
   if (!canManageMeetings(req.user) && !canApprove(req.user)) {
     throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
@@ -290,6 +348,20 @@ exports.finalize = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'PHOTO_REQUIRED', `At least ${minCount} photos required to finalize this meeting`);
   }
 
+  // SRS §12 — the supervisor must be an office-holder of a unit ABOVE
+  // the one that met. Re-derived here rather than trusting whatever
+  // the picker offered, since supervisorAttended feeds the compliance
+  // report and a wrong entry silently inflates it.
+  if (req.body.supervisorMemberId) {
+    if (!(await supervisorService.isEligible(m, req.body.supervisorMemberId))) {
+      throw new ApiError(
+        400,
+        'INVALID_SUPERVISOR',
+        'The supervisor must hold an active role at a unit above this meeting\'s own unit.',
+      );
+    }
+  }
+
   Object.assign(m, req.body);
 
   // PR U3 — quorum / attendance enforcement. Pulls the merged
@@ -316,6 +388,43 @@ exports.finalize = asyncHandler(async (req, res) => {
   // idempotently to (templateId, meeting._id). Errors swallowed so
   // a misfiring template can never break finalize.
   responsibilityHookService.onMeetingFinalized(m, req.user).catch(() => {});
+
+  // ── Organizational activity ──────────────────────────────────────
+  // Three distinct facts, none of them overlapping:
+  //   • the officer who sealed the record → MEETING_FINALIZED
+  //   • everyone on the roster who showed up → ATTENDANCE_MARKED
+  //   • chairperson / supervisor who took part without being on the
+  //     roster → MEETING_PARTICIPATION
+  // The meeting already carries its denormalized chain, so no lookup
+  // is needed. recordMany() is one insertMany + one updateMany, so a
+  // 300-person roster stays two queries.
+  const chain = {
+    basicUnitId: m.basicUnitId,
+    areaId: m.areaId,
+    districtId: m.districtId,
+    provinceId: m.provinceId,
+  };
+  const common = {
+    req,
+    chain,
+    unitLevel: m.unitLevel,
+    unitId: m.unitId,
+    targetType: 'Meeting',
+    targetId: m._id,
+    targetLabel: m.title || m.type,
+    occurredAt: m.finalizedAt,
+  };
+
+  const attended = (m.attendance || [])
+    .filter((a) => a.status === 'PRESENT' || a.status === 'LATE')
+    .map((a) => a.memberId);
+  const attendedSet = new Set(attended.map(String));
+  const participants = [m.chairpersonId, m.supervisorMemberId]
+    .filter((id) => id && !attendedSet.has(String(id)));
+
+  activityService.record({ ...common, action: 'MEETING_FINALIZED' }).catch(() => {});
+  activityService.recordMany(attended, { ...common, action: 'ATTENDANCE_MARKED' }).catch(() => {});
+  activityService.recordMany(participants, { ...common, action: 'MEETING_PARTICIPATION' }).catch(() => {});
 
   ok(res, m);
 });

@@ -24,7 +24,7 @@ async function connectDB() {
       'User', 'Member', 'Province', 'District', 'Area', 'BasicUnit',
       'CabinetSlot', 'RoleAssignment', 'Meeting', 'Activity',
       'Donation', 'Expense', 'FundTransfer', 'PermanentMembership',
-      'UnitProposal', 'Counter', 'Responsibility', 'AuditLog', 'Central',
+      'UnitProposal', 'Counter', 'Responsibility', 'AuditLog', 'ActivityLog', 'Central', 'Congress',
       'EventTypeConfig', 'FieldDefinition', 'EventConfigSnapshot',
       'UnitTierConfig', 'UnitTierConfigSnapshot',
       'CabinetTemplate', 'UnitPolicy', 'WorkflowConfig',
@@ -80,16 +80,13 @@ async function connectDB() {
       console.warn(`[db] auto-admin wipe failed: ${err.message}`);
     }
 
-    // CENTRAL_ADMIN role removed — Super Admin now structures
-    // provinces and below directly. Wipe any leftover CENTRAL_ADMIN
-    // users (e.g. the legacy `pnap` seeded account).
-    try {
-      const User = require('../models/User');
-      const r = await User.deleteMany({ roles: 'CENTRAL_ADMIN' });
-      if (r.deletedCount) console.log(`[db] removed ${r.deletedCount} legacy CENTRAL_ADMIN user(s)`);
-    } catch (err) {
-      console.warn(`[db] CENTRAL_ADMIN cleanup failed: ${err.message}`);
-    }
+    // CENTRAL_ADMIN is a live tier again. This block used to run
+    // `User.deleteMany({ roles: 'CENTRAL_ADMIN' })` on every boot,
+    // from the period when Super Admin structured provinces directly.
+    // It is deliberately gone: with the one-level hierarchy restored
+    // (Super → Central → Province → District → Area, see
+    // utils/adminHierarchy) that migration would silently delete every
+    // Central Admin on restart. Do not reinstate it.
 
     // Idempotently ensure the Super Admin (super/123456) — god mode
     // for credential management + audit + password resets.
@@ -262,6 +259,10 @@ async function connectDB() {
       const r = await seedUnitPolicies();
       if (r.inserted) console.log('[db] seeded default GLOBAL unit policy');
       if (r.reconciled) console.log('[db] reconciled isSystem/isActive flags on GLOBAL unit policy');
+      if (r.widenedDirections) {
+        console.log('[db] GLOBAL unit policy now allows UP / DOWN / SAME_TIER transfers '
+          + '(was UP-only, which blocked the sender-chosen destinations the finance policy now permits)');
+      }
     } catch (err) {
       console.warn(`[db] unit-policy seed failed: ${err.message}`);
     }
@@ -276,6 +277,10 @@ async function connectDB() {
       const r = await seedWorkflowConfigs();
       if (r.inserted) console.log(`[db] seeded ${r.inserted}/${r.total} built-in workflow config(s)`);
       if (r.reconciled) console.log(`[db] reconciled isSystem/isActive flags on ${r.reconciled} workflow config(s)`);
+      if (r.repairedTransferStage) {
+        console.log('[db] TRANSFER_APPROVAL / DESTINATION_ACK now requires MANAGE_FINANCE '
+          + '(was APPROVE_EXPENSE, which blocked the destination Finance Secretary)');
+      }
     } catch (err) {
       console.warn(`[db] workflow-config seed failed: ${err.message}`);
     }
@@ -363,6 +368,21 @@ async function connectDB() {
       if (r.skipped) console.warn(`[db] ${r.skipped} finalized meeting(s) skipped during rehash`);
     } catch (err) {
       console.warn(`[db] rehash finalized meetings failed: ${err.message}`);
+    }
+
+    // Derive organizational activity history into ActivityLog so the
+    // executive dashboard's active/inactive rules have something to
+    // read on first boot. Self-skipping after the first successful
+    // run (sentinel row), and idempotent if interrupted.
+    try {
+      const { backfillActivityLog } = require('../utils/backfillActivityLog');
+      const r = await backfillActivityLog();
+      if (!r.skipped) {
+        console.log(`[db] derived ${r.inserted} historical activity log entr(ies); `
+          + `stamped lastActivityAt on ${r.membersTouched} member(s)`);
+      }
+    } catch (err) {
+      console.warn(`[db] activity-log backfill failed: ${err.message}`);
     }
 
     // Backfill Elaqayi Committee formation timestamp for any Area

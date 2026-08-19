@@ -4,9 +4,12 @@ import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
+import { useToast } from '../../components/Toast';
 import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
 
+import dialog from '../../components/dialog';
+import { XIcon } from '../../components/icons';
 function bodySupported(level) {
   return level === 'AREA' || level === 'DISTRICT' || level === 'PROVINCE' || level === 'CENTRAL';
 }
@@ -15,9 +18,14 @@ function bodySupported(level) {
 // /api/events/types (the EventTypeConfig catalogue).
 const DEFAULT_TYPE_CODE = 'CAMPAIGN';
 
+// Mirrors upload.array('photos', 10) on the server route — kept in sync
+// so the picker never sends a batch the server will truncate silently.
+const MAX_PHOTOS = 10;
+
 export default function ActivitiesPage() {
   const { ctx } = useUnit();
   const { user } = useAuth();
+  const toast = useToast();
   const location = useLocation();
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   // Pure-member viewers shouldn't see the scope selector — they're
@@ -45,8 +53,6 @@ export default function ActivitiesPage() {
     campaign_expectedJoiners: '', campaign_actualJoiners: '', campaign_volunteerHours: '',
     dynamicData: {},
   });
-  const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
 
   const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
 
@@ -75,37 +81,110 @@ export default function ActivitiesPage() {
   useEffect(() => { reload(); }, [ctx, scope, body]);
 
   async function create() {
-    setErr(''); setMsg('');
     try {
       const { dynamicData, ...rest } = form;
       const payload = { ...rest, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
       if (showBodyToggle) payload.body = body;
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
       if (dynamicData && Object.keys(dynamicData).length > 0) payload.dynamicData = dynamicData;
+      const title = form.title;
       await api.post('/activities', payload);
-      setMsg(showBodyToggle ? `${body === 'COMMITTEE' ? 'Committee' : 'Executive'} activity recorded.` : 'Activity recorded.');
       setShow(false);
       setForm((f) => ({ ...f, title: '', description: '', startAt: '', endAt: '', venue: '', dynamicData: {} }));
       reload();
-    } catch (e) { setErr(errorMessage(e)); }
+      toast.success(
+        showBodyToggle ? `${body === 'COMMITTEE' ? 'Committee' : 'Executive'} activity "${title}" recorded.` : `Activity "${title}" recorded.`,
+        { title: 'Activity recorded' }
+      );
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not record activity', duration: 7000 });
+    }
   }
 
-  async function uploadPhoto(id, file) {
-    if (!file) return;
-    const fd = new FormData(); fd.append('photos', file);
+  // Takes the whole FileList: the route is upload.array('photos', 10),
+  // so the server has always accepted a batch — the picker just never
+  // offered one, which forced a separate request (and a separate
+  // reload) per photo when finalizing needs two.
+  async function uploadPhotos(id, fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    if (files.length > MAX_PHOTOS) {
+      toast.warning(
+        `Only ${MAX_PHOTOS} photos can be uploaded at once — the first ${MAX_PHOTOS} were sent.`,
+        { title: 'Too many selected', duration: 7000 },
+      );
+    }
+    const batch = files.slice(0, MAX_PHOTOS);
+    const fd = new FormData();
+    batch.forEach((f) => fd.append('photos', f));
+    const pending = toast.info(
+      batch.length === 1 ? `Uploading ${batch[0].name}…` : `Uploading ${batch.length} photos…`,
+      { duration: 0 },
+    );
     try {
       const r = await api.post(`/activities/${id}/photos`, fd);
       const data = r.data.data;
+      toast.dismiss(pending);
+      const okCount = batch.length - (data.rejected?.length || 0);
+      if (okCount > 0) {
+        toast.success(`${okCount} photo${okCount === 1 ? '' : 's'} uploaded.`);
+      }
       if (data.rejected?.length) {
-        alert(`Some photos rejected:\n${data.rejected.map((x) => `• ${x.filename}: ${x.reason}`).join('\n')}`);
+        // Partial success — the accepted photos did upload, so this is a
+        // warning rather than an error, and it lists what to re-shoot.
+        toast.warning(
+          `${data.rejected.length} photo(s) rejected: ${data.rejected.map((x) => `${x.filename} (${x.reason})`).join('; ')}`,
+          { title: 'Some photos rejected', duration: 9000 }
+        );
       }
       reload();
-    } catch (e) { alert(errorMessage(e)); }
+    } catch (e) {
+      toast.dismiss(pending);
+      toast.error(errorMessage(e), { title: 'Photo upload failed', duration: 7000 });
+    }
   }
 
   async function complete(id) {
-    try { await api.post(`/activities/${id}/complete`, {}); reload(); }
-    catch (e) { alert(errorMessage(e)); }
+    try {
+      await api.post(`/activities/${id}/complete`, {});
+      reload();
+      toast.success('Activity marked complete.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not complete activity', duration: 7000 });
+    }
+  }
+
+  // Download helper used by other units pages — object URL approach
+  // so an authenticated fetch can surface in the browser's Downloads.
+  function downloadAuthed(path, filename) {
+    const token = localStorage.getItem('pnap_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      return fetch(path, { headers })
+        .then(async (res) => {
+          if (!res.ok) throw new Error('Export failed');
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = filename;
+          document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+        });
+    }
+
+  function exportParams() {
+    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+    if (scope === 'tree') params.set('scope', 'subtree');
+    if (showBodyToggle) params.set('body', body);
+    return params;
+  }
+  function exportName(ext) {
+      return `${ctx.unitName}${showBodyToggle ? ('-' + body.toLowerCase()) : ''}-activities.${ext}`;
+  }
+  function exportPdf() {
+    downloadAuthed(`/api/exports/unit/activities/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
+  }
+  function exportXlsx() {
+    downloadAuthed(`/api/exports/unit/activities/xlsx?${exportParams()}`, exportName('xlsx')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
@@ -114,9 +193,9 @@ export default function ActivitiesPage() {
     <div>
       <div className="page-header">
         <h2>
-          {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee Activities' : 'Executive Activities') : 'Activities'} · {ctx.unitName}
+          {body === 'COMMITTEE' ? 'Committee Activities' : 'Executive Activities'} · {ctx.unitName}
         </h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* Single-option select at BU level — hide for everyone there. */}
           {!isPureMember && ctx.unitLevel !== 'BASIC_UNIT' && (
             <select value={scope} onChange={(e) => setScope(e.target.value)}>
@@ -124,34 +203,21 @@ export default function ActivitiesPage() {
               <option value="tree">Including subordinates</option>
             </select>
           )}
+          <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
+          <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && <button className="btn" onClick={() => setShow(true)}>
-            + Record {showBodyToggle ? (body === 'COMMITTEE' ? 'Committee ' : 'Executive ') : ''}Activity
+            {body === 'COMMITTEE' ? '+ Record Committee Activity' : '+ Record Activity'}
           </button>}
         </div>
       </div>
 
-      {showBodyToggle && (
-        <div className="toolbar" style={{ marginBottom: 12 }}>
-          <button
-            className={`btn ${body === 'EXECUTIVE' ? '' : 'secondary'}`}
-            onClick={() => setBody('EXECUTIVE')}
-          >Executive Activities</button>
-          <button
-            className={`btn ${body === 'COMMITTEE' ? '' : 'secondary'}`}
-            onClick={() => setBody('COMMITTEE')}
-          >Committee Activities</button>
-        </div>
-      )}
-
-      {err && <div className="alert error">{err}</div>}
-      {msg && <div className="alert success">{msg}</div>}
 
       {show && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}>
         <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Activity">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Record Activity</h3>
-            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
           <div className="form-grid">
             <div className="field">
@@ -242,8 +308,22 @@ export default function ActivitiesPage() {
                 {canManage && a.state !== 'COMPLETED' && (
                   <>
                     <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                      Photo
-                      <input type="file" accept="image/*" hidden onChange={(e) => uploadPhoto(a._id, e.target.files?.[0])} />
+                      Photos
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        hidden
+                        // Snapshot to an array BEFORE clearing value:
+                        // resetting the input empties its live FileList.
+                        // The reset is what lets the same file be picked
+                        // again after a rejection.
+                        onChange={(e) => {
+                          const picked = Array.from(e.target.files || []);
+                          e.target.value = '';
+                          uploadPhotos(a._id, picked);
+                        }}
+                      />
                     </label>{' '}
                     <button className="btn" onClick={() => complete(a._id)}>Complete</button>
                   </>

@@ -3,8 +3,9 @@ import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
-import { FileTextIcon, PuzzleIcon, TrashIcon } from '../../../components/icons';
+import { FileTextIcon, PuzzleIcon, TrashIcon, XIcon } from '../../../components/icons';
 
+import dialog from '../../../components/dialog';
 // Report Templates — list + render + full composer dialog (PR F2).
 // Sections registry is locked in code; admin composes pre-built
 // sections into a template (sortOrder, title, per-section config).
@@ -41,7 +42,7 @@ export default function ReportTemplatesPage() {
 
   async function deleteTemplate(t) {
     if (t.isSystem) return;
-    if (!confirm(`Delete template "${t.name}"?`)) return;
+    if (!await dialog.confirm(`Delete template "${t.name}"?`)) return;
     try {
       await api.delete(`/admin/units/report-templates/${t._id}`);
       toast.success?.('Template deleted.');
@@ -279,7 +280,7 @@ function TemplateDialog({ mode, template, sectionRegistry, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 820, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{isEdit ? `Edit template · ${template.name}` : 'New report template'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 
@@ -457,6 +458,11 @@ function RenderDialog({ template, onClose }) {
   const [format, setFormat] = useState(
     template.format === 'BOTH' ? 'PDF' : template.format,
   );
+  // SRS §3.1 — which body's records the report covers. '' means
+  // Combined: the param is omitted and the renderer pools both, which
+  // is exactly how this dialog behaved before the split existed, so
+  // it stays the default.
+  const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -466,14 +472,17 @@ function RenderDialog({ template, onClose }) {
       const params = new URLSearchParams({ unitLevel, unitId, format });
       if (from) params.set('from', from);
       if (to) params.set('to', to);
+      if (body) params.set('body', body);
       const url = `/api/reports/templates/${template._id}/render?${params}`;
       const token = localStorage.getItem('pnap_token');
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error?.message || `Render failed (${res.status})`);
+        // Renamed off `body` — that identifier is now the body-filter
+        // state above, and shadowing it here reads as a bug.
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody?.error?.message || `Render failed (${res.status})`);
       }
       const blob = await res.blob();
       const dlUrl = URL.createObjectURL(blob);
@@ -492,7 +501,7 @@ function RenderDialog({ template, onClose }) {
       <div className="modal" style={{ maxWidth: 560 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>Render "{template.name}"</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}>×</button>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
         <div className="form-grid">
@@ -525,6 +534,18 @@ function RenderDialog({ template, onClose }) {
               <option value="PDF">PDF</option>
               <option value="XLSX">XLSX</option>
             </select>
+          </div>
+          <div className="field">
+            <label>Body</label>
+            <select value={body} onChange={(e) => setBody(e.target.value)}>
+              <option value="">Combined</option>
+              <option value="EXECUTIVE">Executive</option>
+              <option value="COMMITTEE">Committee</option>
+            </select>
+            <div className="hint">
+              Filters meetings, activities, donations, expenses and transfers.
+              Combined pools both bodies.
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>

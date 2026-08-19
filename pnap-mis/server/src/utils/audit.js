@@ -22,6 +22,33 @@ async function audit({ req, action, targetType, targetId, targetLabel, before, a
   } catch (err) {
     console.warn(`[audit] failed to log ${action}: ${err.message}`);
   }
+
+  // Mirror into the organizational activity stream. Every audited
+  // action IS meaningful administrative work, so hooking it here
+  // covers the whole "any administrative action already implemented"
+  // requirement at a single call site — the alternative was adding an
+  // activity call beside each of the ~40 existing audit() calls, which
+  // is exactly the duplication this service exists to prevent.
+  //
+  // The chain comes from the actor's own scope, since config actions
+  // aren't tied to a unit the way a meeting is. Kept out of the try
+  // above so an ActivityLog problem can't be misreported as an audit
+  // failure; record() swallows its own errors.
+  try {
+    const activityService = require('../services/activityService');
+    const { resolveUserChain } = require('./unitScope');
+    const chain = req.user ? await resolveUserChain(req.user) : {};
+    await activityService.record({
+      action: 'ADMIN_ACTION',
+      req,
+      chain,
+      targetType,
+      targetId,
+      targetLabel: targetLabel || action,
+    });
+  } catch (err) {
+    console.warn(`[audit] activity mirror failed for ${action}: ${err.message}`);
+  }
 }
 
 module.exports = { audit };

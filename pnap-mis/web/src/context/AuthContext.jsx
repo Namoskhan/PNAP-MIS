@@ -170,6 +170,14 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('pnap_token');
     localStorage.removeItem('pnap_user');
     localStorage.removeItem(ACTIVE_ROLE_KEY);
+    // The selected unit context is per-session state and must go too.
+    // Leaving it behind meant the NEXT account to sign in on this
+    // browser inherited it — sign out of Super Admin, in as an Area
+    // Admin, and the top bar still read "CENTRAL · PKNAP Central".
+    // UnitContext also stamps the stored row with the owning user id,
+    // so a session that ends without calling logout (expired token,
+    // closed tab) is covered as well; this is the tidy path.
+    localStorage.removeItem('pnap_unit_ctx');
     setActiveRoleRaw(null);
     setUser(null);
   }

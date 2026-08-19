@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useUnit } from '../context/UnitContext';
 import {
@@ -8,6 +8,7 @@ import {
   isOperatorPersona,
   isPresidentPersona,
   isProvinceAdminOnly,
+  isCentralAdminOnly,
   isDistrictAdminOnly,
   isSuperAdmin as isSuperAdminFn,
   isSecretaryOnly,
@@ -28,6 +29,7 @@ const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
 // Human-readable label for the role-persona selector.
 const ROLE_DISPLAY = {
   SUPER_ADMIN: 'Super Admin',
+  CENTRAL_ADMIN: 'Central Admin',
   PROVINCE_ADMIN: 'Province Admin',
   DISTRICT_ADMIN: 'District Admin',
   AREA_ADMIN: 'Area Admin',
@@ -50,7 +52,85 @@ const ROLE_DISPLAY = {
   MEMBER: 'Member',
 };
 
+// SRS §3.1–§3.4 — the wider consultative body's name changes per
+// tier. Was duplicated as an inline ternary chain in four sidebar
+// branches; hoisted so the Committee group and the personas below
+// can't drift apart.
+function committeeLabel(unitLevel) {
+  if (unitLevel === 'AREA') return 'Elaqayi Committee';
+  if (unitLevel === 'DISTRICT') return 'Zilla Committee';
+  if (unitLevel === 'PROVINCE') return 'Sobayi Committee / Jirga';
+  if (unitLevel === 'CENTRAL') return 'Central Committee / Qomi Jirga';
+  return 'Committee / Jirga';
+}
+
+// A unit nav entry that is body-aware.
+//
+// Meetings / Activities / Finance / Transfers each appear TWICE in the
+// sidebar now — once plain (Executive) and once under the Committee
+// group with `?body=COMMITTEE`. NavLink matches on pathname alone, so
+// without this both would light up at once. Same problem, and the same
+// fix, as the /admin/users?role=CENTRAL_ADMIN pair.
+//
+// `body={null}` is the plain entry. It stays active for a bare URL AND
+// for ?body=EXECUTIVE, because the pages themselves treat a missing
+// param as Executive — so a dashboard link carrying the explicit
+// param still highlights the entry it belongs to.
+function UnitNavLink({ to, body = null, children }) {
+  const { search } = useLocation();
+  const norm = (v) => (v === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE');
+  const current = norm(new URLSearchParams(search).get('body'));
+  const target = body ? `${to}?body=${body}` : to;
+  return (
+    <NavLink
+      to={target}
+      className={({ isActive }) => (isActive && current === norm(body) ? 'active' : undefined)}
+    >
+      {children}
+    </NavLink>
+  );
+}
+
+// The Committee hub — one collapsible group holding every surface of
+// the wider body, each pinned to ?body=COMMITTEE. Basic Units have no
+// committee (SRS §3.1, and `committeeController.composition` rejects
+// that level outright), so the whole group is hidden there.
+//
+// No "Committee Reports" entry: /unit/reports is the member
+// performance page and takes no body filter. The body-scoped report
+// is the PDF / Excel download on the Committee Finance and Committee
+// Meetings pages, which now carry `body` through to the export.
+//
+// `showEvents={false}` for personas whose main nav carries no meeting
+// or activity links at all (the Finance Secretary) — the committee
+// group mirrors the surfaces that persona already has, it does not
+// hand them new ones.
+function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }) {
+  if (!ctx) return null;
+  const label = committeeLabel(ctx.unitLevel);
+  return (
+    <NavGroup
+      label={label}
+      icon={<UsersIcon size={14} />}
+      storageKey="pnap_nav_committee"
+      defaultOpen={defaultOpen}
+    >
+      <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
+      {showEvents && <UnitNavLink to="/unit/meetings" body="COMMITTEE">Committee Meetings</UnitNavLink>}
+      {showEvents && <UnitNavLink to="/unit/activities" body="COMMITTEE">Committee Activities</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/finance" body="COMMITTEE">Committee Finance</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/transfers" body="COMMITTEE">Committee Transfers</UnitNavLink>}
+      {/* Committee-scoped reports — downloads filtered to the committee body */}
+      <UnitNavLink to="/unit/reports" body="COMMITTEE">Committee Reports</UnitNavLink>
+    </NavGroup>
+  );
+}
+
 export default function Layout() {
+  // Two sidebar entries share /admin/users and are distinguished only
+  // by their query string, so active-state has to consider it —
+  // NavLink matches on pathname alone.
+  const { search, pathname } = useLocation();
   const { user, logout, allRoles, activeRole, setActiveRole } = useAuth();
   const { ctx } = useUnit();
   const branding = useBranding();
@@ -92,6 +172,7 @@ export default function Layout() {
   const isSecretary = isSecretaryOnly(user);
   const isDistrictAdmin = isDistrictAdminOnly(user);
   const isProvinceAdmin = isProvinceAdminOnly(user);
+  const isCentralAdmin = isCentralAdminOnly(user);
   const isFinanceSecretary = isFinanceOnly(user);
   const isMember = isPureMember(user);
   const isPresident = isPresidentPersona(user);
@@ -130,14 +211,35 @@ export default function Layout() {
             <div className="nav-group">God Mode</div>
             <nav>
               <NavLink to="/" end>Dashboard</NavLink>
-              <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
+              {/* Lands on the user directory pre-filtered to the tier
+                  Super Admin is responsible for; the create action for
+                  this role lives there too, since a Central Admin has
+                  no org unit to be created alongside. */}
+              <NavLink
+                to="/admin/users?role=CENTRAL_ADMIN"
+                className={({ isActive }) => (
+                  isActive && search.includes('role=CENTRAL_ADMIN') ? 'active' : undefined
+                )}
+              >Central Admins</NavLink>
+              {/* Province management is SHARED with the Central Admin,
+                  not delegated away from Super Admin. Both tiers create
+                  provinces; only Super Admin can delete one, and only
+                  Super Admin can walk the whole hierarchy from here —
+                  hence "Units" rather than "Provinces". */}
+              <NavLink to="/admin/manage-org">Manage Units</NavLink>
               <NavLink to="/members">All Members</NavLink>
               <NavLink to="/admin/pending-approvals">Pending Role Approvals</NavLink>
               <NavLink to="/admin/finance-overview">Finance Overview</NavLink>
             </nav>
             <NavGroup label="User Manager" icon={<UsersIcon size={14} />} storageKey="pnap_nav_user_manager" defaultOpen>
               <NavLink to="/admin/roles">Role Management</NavLink>
-              <NavLink to="/admin/users">All Users &amp; Credentials</NavLink>
+              {/* Same page as the Central Admins entry above but with
+                  no role filter — so its active state must exclude the
+                  filtered URL, otherwise both light up at once. */}
+              <NavLink
+                to="/admin/users"
+                className={({ isActive }) => (isActive && !search ? 'active' : undefined)}
+              >All Users &amp; Credentials</NavLink>
               <NavLink to="/admin/audit">Audit Log</NavLink>
             </NavGroup>
             <NavGroup label="Event Manager" icon={<FolderIcon size={14} />} storageKey="pnap_nav_event_manager">
@@ -170,12 +272,13 @@ export default function Layout() {
             <nav>
               <NavLink to="/unit" end>Central Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Central Cabinet</NavLink>
-              <NavLink to="/unit/committee">Central Committee / Qomi Jirga</NavLink>
-              <NavLink to="/unit/meetings">Central Meetings</NavLink>
-              <NavLink to="/unit/activities">Central Activities</NavLink>
-              <NavLink to="/unit/finance">Central Finance</NavLink>
+              <UnitNavLink to="/unit/meetings">Central Meetings</UnitNavLink>
+              <UnitNavLink to="/unit/activities">Central Activities</UnitNavLink>
+              <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
+              <UnitNavLink to="/unit/finance">Central Finance</UnitNavLink>
               <NavLink to="/unit/reports">Central Reports</NavLink>
             </nav>
+            {/* Super Admin removed from Committee group per request. */}
           </>
         )}
 
@@ -184,10 +287,35 @@ export default function Layout() {
           <>
             <div className="nav-group">My Area</div>
             <nav>
+              <NavLink to="/unit" end>Dashboard</NavLink>
               <NavLink to="/admin/manage-org">Manage Basic Units</NavLink>
               <NavLink to="/members/pending" end>Member Approvals</NavLink>
-              <NavLink to="/members">All Members</NavLink>
+              {/* "/members" is a prefix of "/members/pending", so a plain
+                  NavLink lights up alongside Member Approvals. Stay active
+                  on the list + member detail pages, but never on /pending. */}
+              <NavLink
+                to="/members"
+                className={({ isActive }) => (
+                  isActive && pathname !== '/members/pending' ? 'active' : undefined
+                )}
+              >All Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+            </nav>
+          </>
+        )}
+
+        {isCentralAdmin && (
+          <>
+            <div className="nav-group">My Organization</div>
+            <nav>
+              <NavLink to="/unit" end>Dashboard</NavLink>
+              <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
+              <NavLink to="/members">Province Members</NavLink>
+              <NavLink to="/unit/cabinet">Assign Province Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+              <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
+              <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
           </>
         )}
@@ -200,6 +328,7 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Areas</NavLink>
               <NavLink to="/members">Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Area Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">Area Breakdown</NavLink>
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
@@ -214,6 +343,7 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Districts</NavLink>
               <NavLink to="/members">All Province Members</NavLink>
               <NavLink to="/unit/cabinet">Assign District Cabinet Roles</NavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">District Breakdown</NavLink>
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
@@ -228,22 +358,15 @@ export default function Layout() {
             <nav>
               <NavLink to="/unit" end>Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-              <NavLink to="/unit/meetings">Meetings</NavLink>
-              <NavLink to="/unit/activities">Activities</NavLink>
-              {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
-                <NavLink to="/unit/committee">
-                  {ctx.unitLevel === 'AREA' ? 'Elaqayi Committee'
-                    : ctx.unitLevel === 'DISTRICT' ? 'Zilla Committee'
-                    : ctx.unitLevel === 'PROVINCE' ? 'Sobayi Committee / Jirga'
-                    : ctx.unitLevel === 'CENTRAL' ? 'Central Committee / Qomi Jirga'
-                    : 'Committee'}
-                </NavLink>
-              )}
-              {canFinance && <NavLink to="/unit/finance">Finance</NavLink>}
-              {canFinance && <NavLink to="/unit/transfers">Fund Transfers</NavLink>}
+              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
               <NavLink to="/unit/performance">Member Performance</NavLink>
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
+                    <CommitteeNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -256,17 +379,18 @@ export default function Layout() {
               <NavLink to="/unit" end>Dashboard</NavLink>
               <NavLink to="/members">Members</NavLink>
               <NavLink to="/unit/cabinet">Cabinet</NavLink>
-              <NavLink to="/unit/meetings">Meetings</NavLink>
-              <NavLink to="/unit/activities">Activities</NavLink>
-              {ctx && (ctx.unitLevel === 'AREA' || ctx.unitLevel === 'DISTRICT') && (
-                <NavLink to="/unit/committee">
-                  {ctx.unitLevel === 'AREA' ? 'Elaqayi Committee' : 'Zilla Committee'}
-                </NavLink>
-              )}
+              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/performance">Member Performance</NavLink>
-              {canFinance && <NavLink to="/unit/finance">Finance Summary</NavLink>}
+              {canFinance && <UnitNavLink to="/unit/finance">Finance Summary</UnitNavLink>}
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
+            {/* Secretary saw the committee only at AREA / DISTRICT.
+                Kept that bound rather than widening their surface. */}
+            {ctx && (ctx.unitLevel === 'AREA' || ctx.unitLevel === 'DISTRICT') && (
+              <CommitteeNav ctx={ctx} canFinance={canFinance} />
+            )}
           </>
         )}
 
@@ -277,13 +401,22 @@ export default function Layout() {
             </div>
             <nav>
               <NavLink to="/unit" end>Dashboard</NavLink>
-              {canFinance && <NavLink to="/unit/finance">Finance</NavLink>}
-              {canFinance && <NavLink to="/unit/transfers">Fund Transfers</NavLink>}
+              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
+              {/* Not gated on MANAGE_MEETINGS: this persona cannot ASSIGN
+                  a responsibility, but a Senior Mawin can assign one TO
+                  them, and they need a way to open it and mark it done.
+                  The page hides every write control by itself. */}
+              <NavLink to="/unit/responsibilities">My Responsibilities</NavLink>
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
                 <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
               )}
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
+            {/* The Finance Secretary keeps the unit's books for BOTH
+                bodies, so they get the committee ledgers too — minus
+                the meeting / activity surfaces they never had. */}
+            <CommitteeNav ctx={ctx} canFinance={canFinance} showEvents={false} />
           </>
         )}
 
@@ -292,8 +425,12 @@ export default function Layout() {
             <div className="nav-group">My Unit</div>
             <nav>
               <NavLink to="/" end>My Dashboard</NavLink>
-              <NavLink to="/unit/meetings">Meetings</NavLink>
-              <NavLink to="/unit/activities">Activities</NavLink>
+              {/* No committee group for a pure member, but these stay
+                  body-aware so the entry doesn't stay lit if one lands
+                  on a ?body=COMMITTEE URL from elsewhere. */}
+              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+              <NavLink to="/unit/responsibilities">My Responsibilities</NavLink>
               {user?.memberId && (
                 <NavLink to={`/members/${user.memberId}`}>My Profile</NavLink>
               )}
@@ -310,24 +447,18 @@ export default function Layout() {
               <NavLink to="/unit" end>Dashboard</NavLink>
               <NavLink to="/members">Members</NavLink>
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-              <NavLink to="/unit/meetings">Meetings</NavLink>
-              <NavLink to="/unit/activities">Activities</NavLink>
-              {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
-                <NavLink to="/unit/committee">
-                  {ctx.unitLevel === 'PROVINCE' ? 'Sobayi Committee / Jirga'
-                    : ctx.unitLevel === 'CENTRAL' ? 'Central Committee / Qomi Jirga'
-                    : ctx.unitLevel === 'DISTRICT' ? 'Zilla Committee'
-                    : 'Elaqayi Committee'}
-                </NavLink>
-              )}
-              {canFinance && <NavLink to="/unit/finance">Finance</NavLink>}
+              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
               <NavLink to="/unit/performance">Member Performance</NavLink>
               <NavLink to="/unit/reports">Reports</NavLink>
             </nav>
+            <CommitteeNav ctx={ctx} canFinance={canFinance} />
           </>
         )}
 
-        {!isSuperAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
+        {!isSuperAdmin && !isCentralAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
           <>
             <div className="nav-group">Global</div>
             <nav>
@@ -342,20 +473,18 @@ export default function Layout() {
             <nav>
               <NavLink to="/unit" end>Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-              {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
-                <NavLink to="/unit/committee">Committee / Jirga</NavLink>
-              )}
-              <NavLink to="/unit/meetings">Meetings</NavLink>
-              <NavLink to="/unit/activities">Activities</NavLink>
+              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/performance">Member Performance</NavLink>
-              {canFinance && <NavLink to="/unit/finance">Finance</NavLink>}
-              {canFinance && <NavLink to="/unit/transfers">Fund Transfers</NavLink>}
+              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
               <NavLink to="/unit/reports">Reports</NavLink>
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
                 <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
               )}
             </nav>
+            <CommitteeNav ctx={ctx} canFinance={canFinance} />
           </>
         )}
 
@@ -370,20 +499,6 @@ export default function Layout() {
       <div className="main-col">
         {user && (
           <header className="topbar">
-            {/* Operating context — display-only mirror of the unit
-                the user is currently acting in (set via the Unit
-                Context card / role pinning). Fills the previously
-                empty left side of the bar. */}
-            <div className="topbar-context">
-              {ctx ? (
-                <>
-                  <span className="topbar-context-level">{ctx.unitLevel.replace('_', ' ')}</span>
-                  <span className="topbar-context-name">{ctx.unitName}</span>
-                </>
-              ) : (
-                <span className="topbar-context-name">{branding.identity?.systemName || 'PNAP-MIS'}</span>
-              )}
-            </div>
             <div className="topbar-spacer" aria-hidden="true" />
             {(() => {
               // Show the persona switcher whenever the user holds more
