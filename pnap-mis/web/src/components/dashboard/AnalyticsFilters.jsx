@@ -26,7 +26,7 @@ const MEMBER_STATUSES = [
   'ACTIVE', 'PENDING_APPROVAL', 'INACTIVE', 'SUSPENDED', 'REJECTED', 'EXPELLED', 'DECEASED',
 ];
 
-export default function AnalyticsFilters({ scope, filters, onScope, onFilters, busy }) {
+export default function AnalyticsFilters({ scope, filters, onScope, onFilters, busy, lockScope = false }) {
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -71,7 +71,7 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
             type="button"
             className="btn ghost"
             onClick={() => {
-              onScope({ provinceId: '', districtId: '', areaId: '', basicUnitId: '' });
+            if (!lockScope) onScope({ provinceId: '', districtId: '', areaId: '', basicUnitId: '' });
               onFilters({ days: 30, memberStatus: '', orgStatus: '' });
             }}
           >
@@ -81,17 +81,17 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select
+        {!lockScope && <select
           value={filters.days}
           onChange={(e) => onFilters({ ...filters, days: Number(e.target.value) })}
           aria-label="Date range"
         >
           {PRESETS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
-        </select>
+        </select>}
 
         {/* Narrowing a level clears everything beneath it, so the scope
             can never describe an area that isn't in the chosen district. */}
-        <select
+        {!lockScope && <select
           value={scope.provinceId}
           onChange={(e) => onScope({
             provinceId: e.target.value, districtId: '', areaId: '', basicUnitId: '',
@@ -100,9 +100,9 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
         >
           <option value="">All provinces</option>
           {provinces.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
-        </select>
+        </select>}
 
-        <select
+        {!lockScope && <select
           value={scope.districtId}
           onChange={(e) => onScope({ ...scope, districtId: e.target.value, areaId: '', basicUnitId: '' })}
           disabled={!scope.provinceId}
@@ -110,9 +110,9 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
         >
           <option value="">All districts</option>
           {districts.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
-        </select>
+        </select>}
 
-        <select
+        {!lockScope && <select
           value={scope.areaId}
           onChange={(e) => onScope({ ...scope, areaId: e.target.value, basicUnitId: '' })}
           disabled={!scope.districtId}
@@ -120,7 +120,7 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
         >
           <option value="">All areas</option>
           {areas.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
-        </select>
+        </select>}
 
         <select
           value={scope.basicUnitId}

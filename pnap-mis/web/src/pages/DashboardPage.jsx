@@ -167,5 +167,5 @@ export default function DashboardPage() {
   // Executive viewers land on the Command Centre. The previous section-based
   // view is untouched at components/dashboard/ExecutiveAnalytics.jsx —
   // swapping this one import back restores it.
-  return <CommandCenter />;
+  return <CommandCenter accessScope={user?.dashboardScope} />;
 }

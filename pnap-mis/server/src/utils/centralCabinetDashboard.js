@@ -8,30 +8,60 @@ const CENTRAL_CABINET_DASHBOARD_ROLES = [
   'CULTURE_SECRETARY', 'SPORTS_SECRETARY', 'FIRST_SECRETARY',
 ];
 
+const SCOPED_DASHBOARD_ROLES = {
+  PROVINCE: ['PRESIDENT', 'GENERAL_SECRETARY'],
+  DISTRICT: ['SENIOR_MAWIN', 'SECRETARY'],
+  AREA: ['SENIOR_MAWIN', 'SECRETARY'],
+  BASIC_UNIT: ['SENIOR_MAWIN', 'SECRETARY'],
+};
+
+const SCOPE_KEY = {
+  PROVINCE: 'provinceId', DISTRICT: 'districtId',
+  AREA: 'areaId', BASIC_UNIT: 'basicUnitId',
+};
+
+async function dashboardAccess(user) {
+  if (!user) return null;
+  if (user.roles?.includes('SUPER_ADMIN')) return { level: 'CENTRAL', unitId: null };
+  if (!user.memberId) return null;
+
+  const assignments = await RoleAssignment.find({
+    memberId: user.memberId, state: 'APPROVED', endedAt: { $exists: false },
+  }).select('unitLevel unitId roleCode').lean();
+
+  const central = assignments.find((a) => a.unitLevel === 'CENTRAL'
+    && CENTRAL_CABINET_DASHBOARD_ROLES.includes(a.roleCode));
+  if (central) return { level: 'CENTRAL', unitId: null };
+
+  for (const level of ['PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT']) {
+    const match = assignments.find((a) => a.unitLevel === level
+      && SCOPED_DASHBOARD_ROLES[level].includes(a.roleCode));
+    if (match) return { level, unitId: String(match.unitId) };
+  }
+  return null;
+}
+
 async function canViewExecutiveDashboard(user) {
-  if (!user) return false;
-  if (user.roles?.includes('SUPER_ADMIN')) return true;
-
-  const heldRoles = (user.roles || []).filter((role) =>
-    CENTRAL_CABINET_DASHBOARD_ROLES.includes(role));
-  if (!user.memberId || heldRoles.length === 0) return false;
-
-  return Boolean(await RoleAssignment.exists({
-    memberId: user.memberId,
-    unitLevel: 'CENTRAL',
-    roleCode: { $in: heldRoles },
-    state: 'APPROVED',
-  }));
+  return Boolean(await dashboardAccess(user));
 }
 
 function requireExecutiveDashboardAccess(req, res, next) {
-  canViewExecutiveDashboard(req.user)
-    .then((allowed) => {
-      if (allowed) return next();
+  dashboardAccess(req.user)
+    .then((access) => {
+      if (access) {
+        // Scoped officeholders cannot replace their assigned unit with
+        // a different province/district/area/basic unit in the URL.
+        // Analytics then rolls that unit up with its subordinates.
+        if (access.level !== 'CENTRAL') {
+          for (const key of Object.values(SCOPE_KEY)) req.query[key] = '';
+          req.query[SCOPE_KEY[access.level]] = access.unitId;
+        }
+        return next();
+      }
       const { ApiError } = require('./response');
       return next(new ApiError(403, 'FORBIDDEN', 'Central Cabinet dashboard access required'));
     })
     .catch(next);
 }
 
-module.exports = { CENTRAL_CABINET_DASHBOARD_ROLES, canViewExecutiveDashboard, requireExecutiveDashboardAccess };
+module.exports = { CENTRAL_CABINET_DASHBOARD_ROLES, canViewExecutiveDashboard, dashboardAccess, requireExecutiveDashboardAccess };
