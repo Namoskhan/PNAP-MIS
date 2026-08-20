@@ -49,8 +49,11 @@ exports.list = asyncHandler(async (req, res) => {
   }
   if (type) filter.type = type;
   if (state) filter.state = state;
-  if (body === 'EXECUTIVE') filter.$or = [{ body: 'EXECUTIVE' }, { body: { $exists: false } }];
-  else if (body === 'COMMITTEE') filter.body = 'COMMITTEE';
+  if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') {
+    filter.$or = [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }];
+  } else if (body === 'COMMITTEE') {
+    filter.body = 'COMMITTEE';
+  }
 
   const items = await Activity.find(filter)
     .sort({ startAt: -1 })
