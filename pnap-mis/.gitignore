@@ -1,1 +1,69 @@
-.git
+# ── Dependencies ───────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+.yarn/
+
+# ── Production Build Outputs ──────────────────────────────────
+dist/
+dist-ssr/
+build/
+out/
+.vite/
+
+# ── Environment & Secret Files ────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+!.env.*.example
+
+# ── User Uploads & Generated Exports ──────────────────────────
+uploads/*
+!uploads/.gitkeep
+server/uploads/*
+!server/uploads/.gitkeep
+exports/*
+!exports/.gitkeep
+server/exports/*
+!server/exports/.gitkeep
+
+# ── Logs & Debugging ──────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── Editor & IDE Directories ──────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.claude/
+
+# ── OS Metadata ───────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ── Scratch & Temporary Files ─────────────────────────────────
+*.tmp
+*.temp
+output.txt
+system.txt
+
+# ── Coverage & Testing ────────────────────────────────────────
+coverage/
+.nyc_output/

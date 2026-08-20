@@ -5,8 +5,13 @@ import axios from 'axios';
 // Separate from api/client for the same reason publicClient is: that
 // instance carries an interceptor that redirects to /login on a 401, and
 // the whole point of these pages is that the visitor CANNOT log in. A
-// bounce to /login would silently discard a valid reset link.
-export const authApi = axios.create({ baseURL: '/api/auth' });
+const AUTH_BASE =
+  import.meta.env.VITE_AUTH_API_BASE_URL ||
+  (import.meta.env.VITE_API_BASE_URL
+    ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/auth`
+    : '/api/auth');
+
+export const authApi = axios.create({ baseURL: AUTH_BASE });
 
 export function authErrorMessage(err) {
   return (

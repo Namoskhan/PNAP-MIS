@@ -1,4 +1,15 @@
-require('dotenv').config();
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables with fallback hierarchy:
+// 1. server/.env (if running from repo root or server)
+// 2. root .env (if a single root .env is used)
+// 3. process.cwd() / system environment variables
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config();
+
+const isProd = process.env.NODE_ENV === 'production';
 
 const env = {
   PORT: parseInt(process.env.PORT || '5000', 10),
@@ -35,6 +46,17 @@ const env = {
   SMTP_SECURE: process.env.SMTP_SECURE
     ? process.env.SMTP_SECURE === 'true'
     : parseInt(process.env.SMTP_PORT || '587', 10) === 465,
+
+  // Rate limits (requests per window per IP)
+  AUTH_RATE_LIMIT: parseInt(process.env.AUTH_RATE_LIMIT || '0', 10),
+  REGISTER_RATE_LIMIT: parseInt(
+    process.env.REGISTER_RATE_LIMIT || (isProd ? '10' : '0'),
+    10
+  ),
+  API_RATE_LIMIT: parseInt(
+    process.env.API_RATE_LIMIT || (isProd ? '600' : '0'),
+    10
+  ),
 };
 
 module.exports = env;

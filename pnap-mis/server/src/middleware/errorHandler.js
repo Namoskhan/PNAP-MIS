@@ -42,7 +42,7 @@ function errorHandler(err, req, res, next) {
   if (isMongoErr) {
     console.error('[db error]', err.message);
     return fail(res, 503, 'DB_UNAVAILABLE',
-      `Database not reachable. Is MongoDB running at ${process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/pnap_mis'}?`);
+      `Database not reachable. Is MongoDB running at ${env.MONGO_URI}?`);
   }
 
   console.error('[error]', err);

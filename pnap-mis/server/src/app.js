@@ -28,10 +28,7 @@ if (env.NODE_ENV !== 'test') app.use(morgan('dev'));
 // Global API rate limit. Production keeps the 600/15min guard (tunable
 // via API_RATE_LIMIT); development defaults to 0 = disabled so bulk
 // data entry and load testing aren't throttled.
-const apiMax = parseInt(
-  process.env.API_RATE_LIMIT || (env.NODE_ENV === 'production' ? '600' : '0'),
-  10,
-);
+const apiMax = env.API_RATE_LIMIT;
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: apiMax,
