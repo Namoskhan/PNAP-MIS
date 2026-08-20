@@ -245,3 +245,14 @@ exports.uploadPhotos = asyncHandler(async (req, res) => {
   await a.save();
   ok(res, { activity: a, accepted, rejected });
 });
+
+exports.cancel = asyncHandler(async (req, res) => {
+  if (!canManageMeetings(req.user)) throw new ApiError(403, 'FORBIDDEN', 'Forbidden');
+  const a = await Activity.findById(req.params.id);
+  if (!a) throw new ApiError(404, 'NOT_FOUND', 'Activity not found');
+  if (a.state === 'COMPLETED') throw new ApiError(400, 'INVALID_STATE', 'Cannot cancel completed activity');
+  a.state = 'CANCELLED';
+  a.outcomeNotes = (a.outcomeNotes || '') + (req.body.reason ? `\n[CANCELLED] ${req.body.reason}` : '\n[CANCELLED]');
+  await a.save();
+  ok(res, a);
+});

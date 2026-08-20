@@ -174,6 +174,18 @@ export default function ActivitiesPage() {
     }
   }
 
+  async function cancelActivity(a) {
+    const reason = await dialog.prompt('Cancellation reason:');
+    if (reason == null) return;
+    try {
+      await api.post(`/activities/${a._id}/cancel`, { reason });
+      reload();
+      toast.success(`"${a.title || 'Activity'}" cancelled.`, { title: 'Activity cancelled' });
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not cancel activity', duration: 7000 });
+    }
+  }
+
   // Download helper used by other units pages — object URL approach
   // so an authenticated fetch can surface in the browser's Downloads.
   function downloadAuthed(path, filename) {
@@ -351,7 +363,7 @@ export default function ActivitiesPage() {
               <td><span className={`badge ${a.state}`}>{a.state}</span></td>
               <td>{(a.photos || []).length}</td>
               <td style={{ whiteSpace: 'nowrap' }}>
-                {canManage && a.state !== 'COMPLETED' && (
+                {canManage && a.state !== 'COMPLETED' && a.state !== 'CANCELLED' && (
                   <>
                     <label className="btn secondary" style={{ cursor: 'pointer' }}>
                       Photos
@@ -371,7 +383,8 @@ export default function ActivitiesPage() {
                         }}
                       />
                     </label>{' '}
-                    <button className="btn" onClick={() => complete(a._id)}>Complete</button>
+                    <button className="btn" onClick={() => complete(a._id)}>Complete</button>{' '}
+                    <button className="btn danger" onClick={() => cancelActivity(a)}>Cancel</button>
                   </>
                 )}
               </td>
