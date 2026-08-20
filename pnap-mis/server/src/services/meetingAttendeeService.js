@@ -1,0 +1,330 @@
+const RoleAssignment = require('../models/RoleAssignment');
+const BasicUnit = require('../models/BasicUnit');
+const Area = require('../models/Area');
+const District = require('../models/District');
+const Province = require('../models/Province');
+const Member = require('../models/Member');
+const PermanentMembership = require('../models/PermanentMembership');
+
+const SUBORDINATE_KEY_ROLES = [
+  'SECRETARY', 'SENIOR_MAWIN', 'PRESIDENT', 'GENERAL_SECRETARY', 'FIRST_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
+];
+
+async function listSubordinateUnits(parentLevel, parentId) {
+  if (parentLevel === 'AREA') {
+    const units = await BasicUnit.find({ areaId: parentId, isActive: true }).select('name').lean();
+    return units.map((u) => ({ ...u, level: 'BASIC_UNIT' }));
+  }
+  if (parentLevel === 'DISTRICT') {
+    const areas = await Area.find({ districtId: parentId, isActive: true }).select('name').lean();
+    return areas.map((a) => ({ ...a, level: 'AREA' }));
+  }
+  if (parentLevel === 'PROVINCE') {
+    const districts = await District.find({ provinceId: parentId, isActive: true }).select('name code').lean();
+    return districts.map((d) => ({ ...d, level: 'DISTRICT' }));
+  }
+  if (parentLevel === 'CENTRAL') {
+    const provinces = await Province.find({ isActive: true }).select('name code').lean();
+    return provinces.map((p) => ({ ...p, level: 'PROVINCE' }));
+  }
+  return [];
+}
+
+/**
+ * Resolves eligible attendees & chairperson candidates based on meeting stream / type:
+ * 1. Executive Meeting: ONLY office-holders / role holders of that unit level
+ * 2. Committee Meeting: Committee composition (own cabinet + subordinate key roles + permanent members)
+ * 3. General Body Meeting: All members (role holders or not) of that level and below (subordinates)
+ */
+async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
+  const normBody = body || (typeCode === 'GBM' || typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : (typeCode === 'CMP' || typeCode === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE'));
+
+  if (normBody === 'EXECUTIVE') {
+    const assignments = await RoleAssignment.find({
+      unitLevel,
+      unitId,
+      state: 'APPROVED',
+      endedAt: { $exists: false },
+    }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+
+    const attendeesMap = new Map();
+    for (const a of assignments) {
+      if (a.memberId && a.memberId._id && a.memberId.status !== 'INACTIVE') {
+        const idStr = String(a.memberId._id);
+        const roleLabel = a.customRoleName || a.customName || a.roleCode;
+        const existing = attendeesMap.get(idStr);
+        if (!existing) {
+          attendeesMap.set(idStr, {
+            _id: a.memberId._id,
+            fullName: a.memberId.fullName,
+            memberId: a.memberId.memberId,
+            phone: a.memberId.phone,
+            cnic: a.memberId.cnic,
+            roleText: roleLabel,
+            category: 'CABINET',
+          });
+        } else {
+          existing.roleText = `${existing.roleText}, ${roleLabel}`;
+        }
+      }
+    }
+    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+  }
+
+  if (normBody === 'COMMITTEE') {
+    const attendeesMap = new Map();
+
+    // a) Own Cabinet
+    const ownCabinet = await RoleAssignment.find({
+      unitLevel,
+      unitId,
+      state: 'APPROVED',
+      endedAt: { $exists: false },
+    }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+
+    for (const a of ownCabinet) {
+      if (a.memberId && a.memberId._id && a.memberId.status !== 'INACTIVE') {
+        const idStr = String(a.memberId._id);
+        const roleLabel = a.customRoleName || a.customName || a.roleCode;
+        attendeesMap.set(idStr, {
+          _id: a.memberId._id,
+          fullName: a.memberId.fullName,
+          memberId: a.memberId.memberId,
+          phone: a.memberId.phone,
+          cnic: a.memberId.cnic,
+          roleText: `${roleLabel} (${unitLevel ? unitLevel.replace('_', ' ') : ''})`,
+          category: 'CABINET',
+        });
+      }
+    }
+
+    // b) Subordinates
+    const subs = await listSubordinateUnits(unitLevel, unitId);
+    if (subs.length > 0) {
+      const subRoles = await RoleAssignment.find({
+        $or: subs.map((s) => ({ unitLevel: s.level, unitId: s._id })),
+        roleCode: { $in: SUBORDINATE_KEY_ROLES },
+        state: 'APPROVED',
+        endedAt: { $exists: false },
+      }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+
+      const subUnitMap = new Map(subs.map((s) => [String(s._id), s.name]));
+
+      for (const a of subRoles) {
+        if (a.memberId && a.memberId._id && a.memberId.status !== 'INACTIVE') {
+          const idStr = String(a.memberId._id);
+          if (!attendeesMap.has(idStr)) {
+            const unitName = subUnitMap.get(String(a.unitId)) || a.unitLevel;
+            const roleLabel = a.customRoleName || a.customName || a.roleCode;
+            attendeesMap.set(idStr, {
+              _id: a.memberId._id,
+              fullName: a.memberId.fullName,
+              memberId: a.memberId.memberId,
+              phone: a.memberId.phone,
+              cnic: a.memberId.cnic,
+              roleText: `${roleLabel} · ${unitName}`,
+              category: 'SUBORDINATE',
+            });
+          }
+        }
+      }
+    }
+
+    // c) Permanent / Selective members
+    const permanent = await PermanentMembership.find({
+      unitLevel,
+      unitId,
+      bodyType: 'COMMITTEE',
+      isActive: true,
+    }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+
+    for (const p of permanent) {
+      if (p.memberId && p.memberId._id && p.memberId.status !== 'INACTIVE') {
+        const idStr = String(p.memberId._id);
+        if (!attendeesMap.has(idStr)) {
+          attendeesMap.set(idStr, {
+            _id: p.memberId._id,
+            fullName: p.memberId.fullName,
+            memberId: p.memberId.memberId,
+            phone: p.memberId.phone,
+            cnic: p.memberId.cnic,
+            roleText: 'Selective Member',
+            category: 'PERMANENT',
+          });
+        }
+      }
+    }
+
+    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+  }
+
+  // General Body Meeting (GENERAL_BODY):
+  // All members (role holders or regular members), own & subordinate cabinet role-holders,
+  // and Committee members (for Area level and above, excluding Basic Unit).
+  if (normBody === 'GENERAL_BODY') {
+    const attendeesMap = new Map();
+
+    // 1. Resolve subordinate units list and IDs
+    let buIds = [];
+    let areaIds = [];
+    let districtIds = [];
+    const subUnitQuery = [];
+
+    if (unitLevel === 'BASIC_UNIT') {
+      // Basic unit has no subordinates and no committee
+    } else if (unitLevel === 'AREA') {
+      const bus = await BasicUnit.find({ areaId: unitId, isActive: true }).select('_id name').lean();
+      buIds = bus.map((b) => b._id);
+      if (buIds.length > 0) subUnitQuery.push({ unitLevel: 'BASIC_UNIT', unitId: { $in: buIds } });
+    } else if (unitLevel === 'DISTRICT') {
+      const areas = await Area.find({ districtId: unitId, isActive: true }).select('_id name').lean();
+      areaIds = areas.map((a) => a._id);
+      const bus = await BasicUnit.find({ areaId: { $in: areaIds }, isActive: true }).select('_id name').lean();
+      buIds = bus.map((b) => b._id);
+      if (areaIds.length > 0) subUnitQuery.push({ unitLevel: 'AREA', unitId: { $in: areaIds } });
+      if (buIds.length > 0) subUnitQuery.push({ unitLevel: 'BASIC_UNIT', unitId: { $in: buIds } });
+    } else if (unitLevel === 'PROVINCE') {
+      const districts = await District.find({ provinceId: unitId, isActive: true }).select('_id name').lean();
+      districtIds = districts.map((d) => d._id);
+      const areas = await Area.find({ districtId: { $in: districtIds }, isActive: true }).select('_id name').lean();
+      areaIds = areas.map((a) => a._id);
+      const bus = await BasicUnit.find({ areaId: { $in: areaIds }, isActive: true }).select('_id name').lean();
+      buIds = bus.map((b) => b._id);
+      if (districtIds.length > 0) subUnitQuery.push({ unitLevel: 'DISTRICT', unitId: { $in: districtIds } });
+      if (areaIds.length > 0) subUnitQuery.push({ unitLevel: 'AREA', unitId: { $in: areaIds } });
+      if (buIds.length > 0) subUnitQuery.push({ unitLevel: 'BASIC_UNIT', unitId: { $in: buIds } });
+    }
+
+    // 2. Fetch own and subordinate cabinet / role holders
+    const roleConditions = [{ unitLevel, unitId }];
+    if (unitLevel === 'CENTRAL') {
+      roleConditions.length = 0;
+    } else if (subUnitQuery.length > 0) {
+      roleConditions.push(...subUnitQuery);
+    }
+
+    const roleFilter = {
+      state: 'APPROVED',
+      endedAt: { $exists: false },
+    };
+    if (roleConditions.length > 0) {
+      roleFilter.$or = roleConditions;
+    }
+
+    const assignments = await RoleAssignment.find(roleFilter)
+      .populate('memberId', 'fullName memberId phone photoUrl cnic status')
+      .lean();
+
+    for (const a of assignments) {
+      if (a.memberId && a.memberId._id && a.memberId.status !== 'INACTIVE') {
+        const idStr = String(a.memberId._id);
+        const roleLabel = a.customRoleName || a.customName || a.roleCode;
+        const levelTag = a.unitLevel === unitLevel ? '' : ` (${a.unitLevel.replace('_', ' ')})`;
+        const fullRole = `${roleLabel}${levelTag}`;
+        const existing = attendeesMap.get(idStr);
+        if (!existing) {
+          attendeesMap.set(idStr, {
+            _id: a.memberId._id,
+            fullName: a.memberId.fullName,
+            memberId: a.memberId.memberId,
+            phone: a.memberId.phone,
+            cnic: a.memberId.cnic,
+            roleText: fullRole,
+            category: a.unitLevel === unitLevel ? 'CABINET' : 'SUBORDINATE',
+          });
+        } else if (!existing.roleText.includes(roleLabel)) {
+          existing.roleText = `${existing.roleText}, ${fullRole}`;
+        }
+      }
+    }
+
+    // 3. Fetch Committee Permanent Members (for Area level and above, excluding Basic Unit)
+    if (unitLevel !== 'BASIC_UNIT') {
+      const permConditions = [{ unitLevel, unitId }];
+      if (unitLevel === 'CENTRAL') {
+        permConditions.length = 0;
+      } else if (subUnitQuery.length > 0) {
+        permConditions.push(...subUnitQuery);
+      }
+
+      const permFilter = { isActive: true };
+      if (permConditions.length > 0) {
+        permFilter.$or = permConditions;
+      }
+
+      const permanent = await PermanentMembership.find(permFilter)
+        .populate('memberId', 'fullName memberId phone photoUrl cnic status')
+        .lean();
+
+      for (const p of permanent) {
+        if (p.memberId && p.memberId._id && p.memberId.status !== 'INACTIVE') {
+          const idStr = String(p.memberId._id);
+          const existing = attendeesMap.get(idStr);
+          if (!existing) {
+            attendeesMap.set(idStr, {
+              _id: p.memberId._id,
+              fullName: p.memberId.fullName,
+              memberId: p.memberId.memberId,
+              phone: p.memberId.phone,
+              cnic: p.memberId.cnic,
+              roleText: 'Selective Committee Member',
+              category: 'PERMANENT',
+            });
+          } else if (!existing.roleText.includes('Selective Committee Member') && !existing.roleText.includes('Committee')) {
+            existing.roleText = `${existing.roleText}, Selective Committee Member`;
+          }
+        }
+      }
+    }
+
+    // 4. Fetch all registered local & subordinate members
+    let memberFilter = { status: 'ACTIVE' };
+    if (unitLevel === 'BASIC_UNIT') {
+      memberFilter.basicUnitId = unitId;
+    } else if (unitLevel === 'AREA') {
+      memberFilter.$or = [
+        { areaId: unitId },
+        { basicUnitId: { $in: buIds } },
+      ];
+    } else if (unitLevel === 'DISTRICT') {
+      memberFilter.$or = [
+        { districtId: unitId },
+        { areaId: { $in: areaIds } },
+        { basicUnitId: { $in: buIds } },
+      ];
+    } else if (unitLevel === 'PROVINCE') {
+      memberFilter.provinceId = unitId;
+    } else if (unitLevel === 'CENTRAL') {
+      memberFilter = { status: 'ACTIVE' };
+    }
+
+    const members = await Member.find(memberFilter)
+      .select('fullName memberId phone cnic status')
+      .sort({ fullName: 1 })
+      .limit(1000)
+      .lean();
+
+    for (const m of members) {
+      const idStr = String(m._id);
+      if (!attendeesMap.has(idStr)) {
+        attendeesMap.set(idStr, {
+          _id: m._id,
+          fullName: m.fullName,
+          memberId: m.memberId,
+          phone: m.phone,
+          cnic: m.cnic,
+          roleText: 'Member',
+          category: 'MEMBER',
+        });
+      }
+    }
+
+    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+  }
+
+  return [];
+}
+
+module.exports = {
+  resolveEligibleAttendees,
+};

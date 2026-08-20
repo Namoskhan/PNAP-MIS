@@ -10,6 +10,7 @@ const eventHashService = require('../services/eventHashService');
 const policyEngine = require('../services/policyEngine');
 const responsibilityHookService = require('../services/responsibilityHookService');
 const supervisorService = require('../services/supervisorService');
+const meetingAttendeeService = require('../services/meetingAttendeeService');
 const activityService = require('../services/activityService');
 
 // Resolve typeCode (preferred) or legacy type field, materialise the
@@ -85,11 +86,21 @@ exports.list = asyncHandler(async (req, res) => {
   if (state) filter.state = state;
   if (type) filter.type = type;
   // Body filtering:
-  // Legacy records pre-date the `body` field; treat them as EXECUTIVE.
-  if (body === 'EXECUTIVE') and.push({ $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] });
-  else if (body === 'COMMITTEE') filter.body = 'COMMITTEE';
-  else if (body === 'GENERAL_BODY') filter.body = 'GENERAL_BODY';
-  else if (body === 'NON_COMMITTEE') and.push({ $or: [{ body: { $ne: 'COMMITTEE' } }, { body: { $exists: false } }] });
+  // Legacy records pre-date the `body` field; treat them as EXECUTIVE unless their type is explicitly CMP or GBM.
+  if (body === 'EXECUTIVE') {
+    and.push({ $or: [{ body: 'EXECUTIVE' }, { $and: [{ body: { $exists: false } }, { type: { $nin: ['CMP', 'COMMITTEE', 'GBM', 'GENERAL_BODY'] } }] }] });
+  } else if (body === 'COMMITTEE') {
+    and.push({ $or: [{ body: 'COMMITTEE' }, { type: 'CMP' }, { type: 'COMMITTEE' }] });
+  } else if (body === 'GENERAL_BODY') {
+    and.push({ $or: [{ body: 'GENERAL_BODY' }, { type: 'GBM' }, { type: 'GENERAL_BODY' }] });
+  } else if (body === 'NON_COMMITTEE') {
+    and.push({
+      $and: [
+        { body: { $ne: 'COMMITTEE' } },
+        { type: { $nin: ['CMP', 'COMMITTEE'] } },
+      ],
+    });
+  }
   if (from || to) {
     filter.startAt = {};
     if (from) filter.startAt.$gte = new Date(from);
@@ -301,6 +312,35 @@ exports.uploadPhotos = asyncHandler(async (req, res) => {
 
   await m.save();
   ok(res, { meeting: m, accepted, rejected });
+});
+
+// GET /meetings/:id/attendees — the eligible attendees roster for a meeting
+// based on whether it is Executive, Committee, or General Body.
+exports.attendees = asyncHandler(async (req, res) => {
+  const m = await Meeting.findById(req.params.id);
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
+  const attendees = await meetingAttendeeService.resolveEligibleAttendees({
+    unitLevel: m.unitLevel,
+    unitId: m.unitId,
+    body: m.body,
+    typeCode: m.typeCode || m.type,
+  });
+  ok(res, attendees);
+});
+
+// GET /meetings/eligible-attendees?unitLevel=...&unitId=...&body=...&typeCode=...
+exports.eligibleAttendees = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, body, typeCode } = req.query;
+  if (!unitLevel || !unitId) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId are required');
+  }
+  const attendees = await meetingAttendeeService.resolveEligibleAttendees({
+    unitLevel,
+    unitId,
+    body,
+    typeCode,
+  });
+  ok(res, attendees);
 });
 
 // GET /meetings/:id/supervisor-candidates — the office-holders of
