@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import useAnalytics from '../useAnalytics';
 import CountUp from '../../CountUp';
 import { SkeletonKpiGrid, SkeletonCard } from '../../Skeleton';
@@ -109,9 +109,15 @@ function Act({ n, title, lead, children, meta }) {
   );
 }
 
-export default function CommandCenter() {
-  const [scope, setScope] = useState(EMPTY_SCOPE);
+export default function CommandCenter({ accessScope = null }) {
+  const initialScope = useMemo(() => {
+    if (!accessScope?.level || !accessScope?.unitId) return EMPTY_SCOPE;
+    return { ...EMPTY_SCOPE, [DRILL_KEY[accessScope.level]]: accessScope.unitId };
+  }, [accessScope]);
+  const [scope, setScope] = useState(initialScope);
   const [filters, setFilters] = useState({ days: 365, memberStatus: '', orgStatus: '' });
+  const lockedScope = Boolean(accessScope?.unitId);
+  useEffect(() => { setScope(initialScope); }, [initialScope]);
 
   const params = useMemo(() => {
     const p = { days: filters.days };
@@ -126,6 +132,7 @@ export default function CommandCenter() {
   const org = useAnalytics('/dashboard/org-breakdown', params);
 
   const drillTo = useCallback((level, id) => {
+    if (lockedScope) return;
     setScope((s) => {
       const next = { ...s };
       for (const k of BELOW[level] || []) next[k] = '';
@@ -133,16 +140,17 @@ export default function CommandCenter() {
       return next;
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [lockedScope]);
 
   const navigateTo = useCallback((level) => {
+    if (lockedScope) return;
     setScope((s) => {
       if (level === 'NATIONAL') return EMPTY_SCOPE;
       const next = { ...s };
       for (const k of BELOW[level] || []) next[k] = '';
       return next;
     });
-  }, []);
+  }, [lockedScope]);
 
   const s = summary.data;
   const trail = scopeInfo.data?.trail;
@@ -164,9 +172,7 @@ export default function CommandCenter() {
       <header className="cc-masthead">
         <div>
           <div className="cc-eyebrow">Command Centre</div>
-          <h2 className="cc-title">
-            {scope.provinceId ? scopeName : 'National Standing'}
-          </h2>
+          <h2 className="cc-title">{scopeName === 'the whole country' ? 'National Standing' : scopeName}</h2>
         </div>
         <div className="cc-live" title="Headline totals refresh every minute">
           <span className="cc-live-dot" aria-hidden="true" />
@@ -174,7 +180,7 @@ export default function CommandCenter() {
         </div>
       </header>
 
-      {scope.provinceId && (
+      {scope.provinceId && !lockedScope && (
         <div className="dash-scope-bar">
           <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
           <button type="button" className="btn secondary sm" onClick={() => navigateTo('NATIONAL')}>
@@ -189,6 +195,7 @@ export default function CommandCenter() {
         onScope={(next) => setScope({ ...EMPTY_SCOPE, ...next })}
         onFilters={setFilters}
         busy={summary.loading}
+        lockScope={lockedScope}
       />
 
       {summary.error && <div className="alert error">{summary.error}</div>}

@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const ctrl = require('../controllers/dashboardController');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
+const { requireExecutiveDashboardAccess } = require('../utils/centralCabinetDashboard');
 
 router.use(authenticate);
 
@@ -9,11 +10,10 @@ router.get('/subordinates', ctrl.subordinateBreakdown);
 
 // ─── Executive analytics ───────────────────────────────────────────
 // System-wide organizational intelligence. Every route below reads
-// across ALL provinces regardless of the caller's own scope, so they
-// are Super Admin only — the same gate adminRoutes puts on the audit
-// log and the global finance overview. Reuses the existing
-// authenticate + requireRole middleware; no new auth path.
-const SUPER_ONLY = requireRole('SUPER_ADMIN');
+// across ALL provinces regardless of the caller's own scope. Super
+// Admin and approved Central Cabinet officeholders may read these
+// dashboard endpoints; no other management powers are granted here.
+const SUPER_ONLY = requireExecutiveDashboardAccess;
 
 router.get('/summary', SUPER_ONLY, ctrl.executiveSummary);
 router.get('/scope', SUPER_ONLY, ctrl.scope);

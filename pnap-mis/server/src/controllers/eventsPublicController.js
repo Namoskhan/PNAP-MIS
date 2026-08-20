@@ -62,6 +62,8 @@ exports.listTypes = asyncHandler(async (req, res) => {
     types = types.filter((t) => t.appliesTo?.executive !== false);
   } else if (body === 'COMMITTEE') {
     types = types.filter((t) => t.appliesTo?.committee !== false);
+  } else if (body === 'GENERAL_BODY') {
+    types = types.filter((t) => t.code === 'GBM' || t.code === 'GENERAL_BODY');
   }
 
   ok(res, types.map(_publicTypeShape));

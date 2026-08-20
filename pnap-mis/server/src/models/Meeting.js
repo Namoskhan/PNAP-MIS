@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // itself no longer enforces this enum (PR 4a cutover): the
 // EventTypeConfig collection is the source of truth, and the
 // meetingController validates `typeCode` against it on create.
-const LEGACY_MEETING_TYPES = ['GBM', 'EXC', 'PRT', 'JLS', 'CMP', 'SEM', 'STC', 'OTH'];
+const LEGACY_MEETING_TYPES = ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE', 'PRT', 'JLS', 'SEM', 'STC', 'OTH'];
 const STATES = ['DRAFT', 'SCHEDULED', 'IN_PROGRESS', 'PENDING_REPORT', 'FINALIZED', 'CANCELLED'];
 
 const photoSchema = new mongoose.Schema(
@@ -49,13 +49,11 @@ const meetingSchema = new mongoose.Schema(
     // EventTypeConfig). Kept as a denormalized mirror of `typeCode`
     // so existing reads (exports, performance queries) keep working.
     type: { type: String, required: true, uppercase: true, trim: true, index: true },
-    // SRS §3.1 — at Area+ levels the body that meets can be either
-    // the Executive (cabinet only) or the full Committee (executive +
-    // BU office-holders + permanent members). Stored on every meeting
-    // so the two streams of records can be filtered apart.
+    // Meetings can be run by Executive (cabinet only), Committee (executive +
+    // office-holders + permanent members), or General Body (full basic unit membership).
     body: {
       type: String,
-      enum: ['EXECUTIVE', 'COMMITTEE'],
+      enum: ['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY'],
       default: 'EXECUTIVE',
       index: true,
     },

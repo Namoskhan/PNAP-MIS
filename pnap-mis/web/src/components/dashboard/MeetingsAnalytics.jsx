@@ -20,7 +20,7 @@ const TIER_LABEL = {
   CENTRAL: 'Central', PROVINCE: 'Province', DISTRICT: 'District',
   AREA: 'Area', BASIC_UNIT: 'Basic Unit',
 };
-const BODY_LABEL = { EXECUTIVE: 'Cabinet', COMMITTEE: 'Committee' };
+const BODY_LABEL = { EXECUTIVE: 'Cabinet', COMMITTEE: 'Committee', GENERAL_BODY: 'General Body' };
 
 // Meeting lifecycle is a STATUS scale — ordered, with meaning attached
 // to each step — so it wears the reserved status hues rather than a

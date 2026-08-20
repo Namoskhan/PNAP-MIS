@@ -13,7 +13,10 @@ router.use(authenticate);
 // caller's territory; see middleware/unitScopeGuard.
 router.get('/', requireUnitScope(), ctrl.list);
 router.post('/', validate(meetingCreateSchema), ctrl.create);
+router.get('/eligible-attendees', ctrl.eligibleAttendees);
 router.get('/:id', ctrl.getOne);
+router.get('/:id/attendees', ctrl.attendees);
+router.get('/:id/eligible-attendees', ctrl.attendees);
 router.patch('/:id', validate(meetingUpdateSchema), ctrl.update);
 router.post('/:id/photos', upload.array('photos', 10), ctrl.uploadPhotos);
 router.post('/:id/documents', uploadAny.array('documents', 5), ctrl.uploadDocuments);

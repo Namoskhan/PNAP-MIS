@@ -110,11 +110,11 @@ export default function FinancePage() {
       })
       .catch(() => {});
   }, [user?.memberId, user?.roles?.join(',')]);
-  const [scope, setScope] = useState('own');
-  // Default body — read once from URL so a "Committee Finance" link
-  // from the dashboard lands on the right tab.
-  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
-  const [body, setBody] = useState(initialBody);
+
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCommitteeView = queryBody === 'COMMITTEE';
+  const targetBody = isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE';
+
   const [summary, setSummary] = useState(null);
   const [donations, setDonations] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -135,32 +135,23 @@ export default function FinancePage() {
 
   const [err, setErr] = useState('');
 
-  // Real-time KPI refresh — keeps the summary cards in sync with new
-  // donations / expenses / transfers logged by other officers without
-  // a manual reload. Tracks last-fetched time + a "live" indicator.
   const [lastRefreshed, setLastRefreshed] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  // Skeleton flash on the KPI tiles when a value changes between polls.
   const [pulseKey, setPulseKey] = useState(0);
   const lastSummaryRef = useRef(null);
-  // Latest-fetch guard — when ctx changes mid-flight we may have an
-  // in-flight reload from the previous ctx that resolves AFTER the
-  // new one. Tag each reload with a monotonic id and only commit if
-  // ours is still the latest.
   const fetchIdRef = useRef(0);
-
-  const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
 
   async function reload() {
     if (!ctx) return;
     const myId = ++fetchIdRef.current;
     setRefreshing(true);
     try {
-      const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, scope: scope === 'tree' ? 'subtree' : undefined };
-      // Sent only when the toggle is shown, so a level without the
-      // split keeps requesting the pooled figures it gets today.
-      if (showBodyToggle) params.body = body;
+      const params = {
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
+        body: targetBody,
+      };
       const [s, d, e] = await Promise.all([
         api.get('/finance/summary', { params }),
         api.get('/finance/donations', { params }),
@@ -168,7 +159,6 @@ export default function FinancePage() {
       ]);
       if (myId !== fetchIdRef.current) return;
       const next = s.data.data;
-      // Pulse the KPI tiles when any headline figure changes between polls.
       const prev = lastSummaryRef.current;
       const changed = !prev
         || prev.donations?.total !== next.donations?.total
@@ -179,19 +169,30 @@ export default function FinancePage() {
       if (changed) setPulseKey((k) => k + 1);
       lastSummaryRef.current = next;
       setSummary(next);
-      setDonations(d.data.data);
-      setExpenses(e.data.data);
+      setDonations(d.data.data || []);
+      setExpenses(e.data.data || []);
       setLastRefreshed(new Date());
     } catch { /* swallow — keep showing stale figures rather than blanking */ }
     finally {
       if (myId === fetchIdRef.current) setRefreshing(false);
     }
   }
-  useEffect(() => { reload(); }, [ctx, scope, body]);
+  useEffect(() => { reload(); }, [ctx, targetBody]);
 
-  // Auto-refresh everything (KPI cards + donations + expenses tables)
-  // every 15s. Skips when the tab is hidden so we're not burning the
-  // API for a backgrounded window. Re-fires immediately on tab focus.
+  const displayedDonations = useMemo(() => {
+    return (donations || []).filter((d) => {
+      if (isCommitteeView) return d.body === 'COMMITTEE';
+      return d.body === 'EXECUTIVE' || !d.body || d.body !== 'COMMITTEE';
+    });
+  }, [donations, isCommitteeView]);
+
+  const displayedExpenses = useMemo(() => {
+    return (expenses || []).filter((e) => {
+      if (isCommitteeView) return e.body === 'COMMITTEE';
+      return e.body === 'EXECUTIVE' || !e.body || e.body !== 'COMMITTEE';
+    });
+  }, [expenses, isCommitteeView]);
+
   useEffect(() => {
     if (!autoRefresh || !ctx) return;
     let timer = null;
@@ -199,124 +200,120 @@ export default function FinancePage() {
       if (document.visibilityState === 'visible') reload();
     }
     timer = setInterval(tick, 15000);
-    function onVisible() { if (document.visibilityState === 'visible') reload(); }
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', onVisible);
+    function onVis() { if (document.visibilityState === 'visible') reload(); }
+    document.addEventListener('visibilitychange', onVis);
     return () => {
       if (timer) clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVis);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefresh, ctx, scope, body]);
+  }, [autoRefresh, ctx, targetBody]);
 
-  // Members for the donor picker (donor-type=MEMBER) — scoped to the
-  // selected unit so a Finance Secretary picks from their own roster.
-  // Skip the fetch entirely for view-only personas; they have no
-  // donation form to fill in.
   useEffect(() => {
-    if (!ctx || !canRecord) return;
-    const params = { status: 'ACTIVE', limit: 500 };
+    if (!ctx) return;
+    const params = { limit: 500 };
     if (ctx.unitLevel === 'BASIC_UNIT') params.basicUnitId = ctx.unitId;
     else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
     else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
     else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
-    // Central has no unit key on Member; scope:'all' is the explicit
-    // opt-in the members endpoint requires when no unit filter is sent.
-    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
-  }, [ctx, canRecord]);
+  }, [ctx]);
 
-  // Field-level validation for the two modals. Each rule mirrors a
-  // server rule so the officer sees the problem beside the input
-  // rather than as a 400 after filling the whole form in. Errors only
-  // appear once a field has been touched, so an untouched form is not
-  // covered in red.
-  const donAmount = parseFloat(donForm.amount);
-  const donErrors = useMemo(() => {
-    const e = {};
-    if (donForm.amount !== '' && !(donAmount > 0)) e.amount = 'Enter an amount greater than 0';
-    if (donForm.donorType === 'ANONYMOUS' && donAmount > ANONYMOUS_CAP) {
-      e.amount = `Anonymous donations cannot exceed ${PKR.format(ANONYMOUS_CAP)}`;
-    }
-    // CNIC is optional for a small non-member gift but mandatory above
-    // the threshold — FIN-004.
-    const cnicRequired = donForm.donorType === 'NON_MEMBER' && donAmount > NON_MEMBER_CNIC_THRESHOLD;
-    if (donForm.donorCnic && !isCompleteCnic(donForm.donorCnic)) {
-      e.donorCnic = 'Enter all 13 digits (XXXXX-XXXXXXX-X)';
-    } else if (cnicRequired && !donForm.donorCnic) {
-      e.donorCnic = `Required for non-member donations above ${PKR.format(NON_MEMBER_CNIC_THRESHOLD)}`;
-    }
-    if (!donForm.receivedAt) e.receivedAt = 'Pick the date the money was received';
-    return e;
-  }, [donForm, donAmount]);
-  const donCnicRequired = donForm.donorType === 'NON_MEMBER' && donAmount > NON_MEMBER_CNIC_THRESHOLD;
-
-  const expAmount = parseFloat(expForm.amount);
-  const expErrors = useMemo(() => {
-    const e = {};
-    if (expForm.amount !== '' && !(expAmount > 0)) e.amount = 'Enter an amount greater than 0';
-    if (expForm.description && expForm.description.trim().length < 3) {
-      e.description = 'At least 3 characters';
-    }
-    return e;
-  }, [expForm, expAmount]);
-
-  async function loadMonthly() {
+  async function reloadMonthly() {
     if (!ctx) return;
-    const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, scope: scope === 'tree' ? 'subtree' : undefined };
-    if (showBodyToggle) params.body = body;
-    if (monthFrom) params.from = monthFrom;
-    if (monthTo) params.to = monthTo;
-    const r = await api.get('/finance/monthly', { params });
-    setMonthly(r.data.data);
+    try {
+      const params = {
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
+        body: targetBody,
+        from: monthFrom || undefined,
+        to: monthTo || undefined,
+      };
+      const r = await api.get('/finance/monthly', { params });
+      setMonthly(r.data.data || []);
+    } catch { /* swallow */ }
   }
-  useEffect(() => { if (tab === 'monthly') loadMonthly(); }, [tab, ctx, scope, body, monthFrom, monthTo]);
+  useEffect(() => {
+    if (tab === 'monthly') reloadMonthly();
+  }, [ctx, tab, targetBody, monthFrom, monthTo]);
 
   function applyQuickRange(kind) {
-    const today = new Date();
-    const fmt = (d) => d.toISOString().slice(0, 10);
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const pad = (n) => String(n).padStart(2, '0');
+    const firstOf = (yr, mo) => `${yr}-${pad(mo + 1)}-01`;
+    const lastOf = (yr, mo) => {
+      const d = new Date(yr, mo + 1, 0);
+      return `${yr}-${pad(mo + 1)}-${pad(d.getDate())}`;
+    };
+
     if (kind === 'this') {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      setMonthFrom(fmt(start)); setMonthTo(fmt(today));
+      setMonthFrom(firstOf(y, m));
+      setMonthTo(lastOf(y, m));
     } else if (kind === 'last') {
-      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const end = new Date(today.getFullYear(), today.getMonth(), 0);
-      setMonthFrom(fmt(start)); setMonthTo(fmt(end));
+      const prevY = m === 0 ? y - 1 : y;
+      const prevM = m === 0 ? 11 : m - 1;
+      setMonthFrom(firstOf(prevY, prevM));
+      setMonthTo(lastOf(prevY, prevM));
     } else if (kind === '3') {
-      const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-      setMonthFrom(fmt(start)); setMonthTo(fmt(today));
+      const start = new Date(y, m - 2, 1);
+      setMonthFrom(firstOf(start.getFullYear(), start.getMonth()));
+      setMonthTo(lastOf(y, m));
     } else if (kind === 'ytd') {
-      const start = new Date(today.getFullYear(), 0, 1);
-      setMonthFrom(fmt(start)); setMonthTo(fmt(today));
-    } else { setMonthFrom(''); setMonthTo(''); }
+      setMonthFrom(`${y}-01-01`);
+      setMonthTo(lastOf(y, m));
+    } else if (kind === 'all') {
+      setMonthFrom('');
+      setMonthTo('');
+    }
   }
+
+  const donAmount = parseFloat(donForm.amount) || 0;
+  const donCnicRequired = donForm.donorType === 'NON_MEMBER' && donAmount > NON_MEMBER_CNIC_THRESHOLD;
+  const donErrors = useMemo(() => {
+    const errs = {};
+    if (donForm.amount !== '' && !(donAmount > 0)) {
+      errs.amount = 'Amount must be greater than zero';
+    }
+    if (donForm.donorType === 'ANONYMOUS' && donAmount > ANONYMOUS_CAP) {
+      errs.amount = `Anonymous donations capped at PKR ${ANONYMOUS_CAP.toLocaleString()}`;
+    }
+    if (donCnicRequired && !donForm.donorCnic) {
+      errs.donorCnic = `CNIC is required for non-member donations above PKR ${NON_MEMBER_CNIC_THRESHOLD.toLocaleString()}`;
+    } else if (donForm.donorCnic && !isCompleteCnic(donForm.donorCnic)) {
+      errs.donorCnic = 'CNIC must be 13 digits (42101-1234567-1)';
+    }
+    if (!donForm.receivedAt) {
+      errs.receivedAt = 'Received date is required';
+    }
+    return errs;
+  }, [donForm.amount, donForm.donorType, donForm.donorCnic, donForm.receivedAt, donAmount, donCnicRequired]);
+
+  const expAmount = parseFloat(expForm.amount) || 0;
+  const expErrors = useMemo(() => {
+    const errs = {};
+    if (expForm.amount !== '' && !(expAmount > 0)) {
+      errs.amount = 'Amount must be greater than zero';
+    }
+    if (expForm.description && expForm.description.trim().length < 3) {
+      errs.description = 'Description must be at least 3 characters';
+    }
+    return errs;
+  }, [expForm.amount, expForm.description, expAmount]);
 
   async function recordDonation() {
     setErr('');
-    // Stop here rather than round-tripping: every one of these mirrors
-    // a server rule that would come back as a 400.
-    if (!(donAmount > 0)) { setErr('Enter a donation amount greater than 0.'); return; }
-    if (!donForm.receivedAt) { setErr('Pick the date the donation was received.'); return; }
-    if (Object.keys(donErrors).length) { setErr('Please fix the highlighted fields.'); return; }
+    if (Object.keys(donErrors).length) {
+      setErr('Please fix the highlighted fields.');
+      return;
+    }
     try {
-      // When the donor is a registered member, the donorMemberId link
-      // is enough to credit the donation on the member's performance
-      // report (SRS §10). Auto-filling the donorName is fine; do NOT
-      // auto-fill donorCnic — stored CNICs may not match the strict
-      // ##### -####### -# zod regex, which would 400 the request.
-      const payload = { ...donForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
-      if (showBodyToggle) payload.body = body;
-      if (donForm.donorType === 'MEMBER' && donForm.donorMemberId) {
-        const m = members.find((x) => x._id === donForm.donorMemberId);
-        if (m) payload.donorName = m.fullName;
-        delete payload.donorCnic;
-      }
       const fd = new FormData();
+      const payload = { ...donForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: targetBody };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v != null) fd.append(k, v);
       });
-      if (donReceipt) fd.append('receipt', donReceipt);
+      if (donReceipt) fd.append('receiptImage', donReceipt);
       const amount = parseFloat(donForm.amount);
       await api.post('/finance/donations', fd);
       setDonForm({ amount: '', donorType: 'MEMBER', donorMemberId: '', donorName: '', donorCnic: '', paymentMode: 'CASH', receivedAt: '' });
@@ -331,7 +328,6 @@ export default function FinancePage() {
 
   async function recordExpense() {
     setErr('');
-    // Validation stays inline — the modal is still open and being fixed.
     if (!(expAmount > 0)) { setErr('Enter an expense amount greater than 0.'); return; }
     if (!expForm.description || expForm.description.trim().length < 3) {
       setErr('Enter a description of at least 3 characters.'); return;
@@ -341,8 +337,7 @@ export default function FinancePage() {
     if (Object.keys(expErrors).length) { setErr('Please fix the highlighted fields.'); return; }
     try {
       const fd = new FormData();
-      const payload = { ...expForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
-      if (showBodyToggle) payload.body = body;
+      const payload = { ...expForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: targetBody };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v != null) fd.append(k, v);
       });
@@ -369,21 +364,15 @@ export default function FinancePage() {
     }
   }
 
-  // Authed download helper — same pattern used by MeetingsPage /
-  // ReportsPage. Streams the unit-wide finance report (KPIs +
-  // donations + expenses) as PDF or XLSX.
   function downloadReport(format) {
     if (!ctx) return;
-    // Same scope the on-screen figures use, so the downloaded report
-    // and the page can never disagree.
-    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    if (scope === 'tree') params.set('scope', 'subtree');
-    // Body travels with the download for the same reason scope does:
-    // the report and the figures on screen must never disagree.
-    if (showBodyToggle) params.set('body', body);
+    const params = new URLSearchParams({
+      unitLevel: ctx.unitLevel,
+      unitId: ctx.unitId,
+      body: targetBody,
+    });
     const ext = format === 'pdf' ? 'pdf' : 'xlsx';
-    const bodyPart = showBodyToggle ? `-${body.toLowerCase()}` : '';
-    const filename = `${ctx.unitName || 'unit'}${bodyPart}-finance.${ext}`;
+    const filename = `${ctx.unitName || 'unit'}-${targetBody.toLowerCase()}-finance.${ext}`;
     const token = localStorage.getItem('pnap_token');
     fetch(`/api/exports/unit/finance/${format}?${params.toString()}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -399,8 +388,6 @@ export default function FinancePage() {
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
-  // Server enforces this too (403) — the guard just renders a clear
-  // notice instead of a page of failed requests.
   if (!hasPermission(user, 'MANAGE_FINANCE') && !hasPermission(user, 'APPROVE_EXPENSE')) {
     return (
       <div className="alert error">
@@ -409,26 +396,16 @@ export default function FinancePage() {
     );
   }
 
-
   return (
     <div>
       <div className="page-header">
         <div>
           <h2>
-            {body === 'COMMITTEE' ? 'Committee Finance' : 'Executive Finance'} · {ctx.unitName}
+            {isCommitteeView ? 'Committee Finance' : 'Executive Finance'} · {ctx.unitName}
           </h2>
           <div className="subtitle">{ctx.unitLevel.replace('_', ' ')}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* A Basic Unit has nothing beneath it, so the choice is
-              meaningless there. Everywhere else this drives BOTH the
-              figures on screen and the downloaded report. */}
-          {ctx.unitLevel !== 'BASIC_UNIT' && (
-            <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Report scope">
-              <option value="own">This unit only</option>
-              <option value="tree">Including subordinates</option>
-            </select>
-          )}
           <button className="btn secondary" onClick={() => downloadReport('pdf')}>Download PDF</button>
           <button className="btn secondary" onClick={() => downloadReport('xlsx')}>Download Excel</button>
         </div>
@@ -463,91 +440,91 @@ export default function FinancePage() {
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn" onClick={() => { setErr(''); setDonModalOpen(true); }}>
-                          {body === 'COMMITTEE' ? '+ Record Committee Donation' : '+ Record Donation'}
+                {isCommitteeView ? '+ Record Committee Donation' : '+ Record Donation'}
               </button>
             </div>
           )}
           {canRecord && donModalOpen && (
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDonModalOpen(false); }}>
-          <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Donation">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h3 style={{ margin: 0 }}>Record a Donation</h3>
-              <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
-            </div>
-            {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
-            <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-              Fields marked <Req /> are required.
-            </p>
-            <div className="form-grid">
-              <div className="field"><label>Amount (PKR) <Req /></label>
-                <input type="number" min="1" required value={donForm.amount}
-                  aria-invalid={donErrors.amount ? 'true' : undefined}
-                  onChange={(e) => setDonForm({ ...donForm, amount: e.target.value })} />
-                {donErrors.amount
-                  ? <div className="error">{donErrors.amount}</div>
-                  : donForm.donorType === 'ANONYMOUS'
-                    ? <div className="hint">Anonymous donations are capped at {PKR.format(ANONYMOUS_CAP)}.</div>
-                    : null}
-              </div>
-              <div className="field"><label>Donor Type <Req /></label>
-                <select value={donForm.donorType} onChange={(e) => setDonForm({ ...donForm, donorType: e.target.value })}>
-                  {DONOR_TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select></div>
-              {donForm.donorType === 'MEMBER' && (
-                <div className="field full">
-                  <label>Donor (member)</label>
-                  <select value={donForm.donorMemberId} onChange={(e) => setDonForm({ ...donForm, donorMemberId: e.target.value })}>
-                    <option value="">— pick a member —</option>
-                    {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
-                  </select>
-                  <div className="hint">Linking to a member also reflects the donation on their performance report.</div>
+            <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDonModalOpen(false); }}>
+              <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Donation">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <h3 style={{ margin: 0 }}>
+                    {isCommitteeView ? 'Record Committee Donation' : 'Record a Donation'}
+                  </h3>
+                  <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
-              )}
-              {(donForm.donorType === 'NON_MEMBER' || donForm.donorType === 'CORPORATE') && (
-                <>
-                  <div className="field"><label>Donor Name</label>
-                    <input value={donForm.donorName} onChange={(e) => setDonForm({ ...donForm, donorName: e.target.value })} /></div>
-                  <div className="field">
-                    <label>Donor CNIC {donCnicRequired && <Req />}</label>
-                    {/* Same mask as the registration form: the officer
-                        types digits and the dashes are inserted for them. */}
-                    <input
-                      value={donForm.donorCnic}
-                      placeholder="42101-1234567-1"
-                      inputMode="numeric"
-                      aria-invalid={donErrors.donorCnic ? 'true' : undefined}
-                      onChange={(e) => setDonForm({ ...donForm, donorCnic: formatCnic(e.target.value) })}
-                    />
-                    {donErrors.donorCnic
-                      ? <div className="error">{donErrors.donorCnic}</div>
-                      : <div className="hint">
-                          {donForm.donorType === 'NON_MEMBER'
-                            ? `Required above ${PKR.format(NON_MEMBER_CNIC_THRESHOLD)}; optional below.`
-                            : 'Optional.'}
-                        </div>}
+                {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
+                <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+                  Fields marked <Req /> are required.
+                </p>
+                <div className="form-grid">
+                  <div className="field"><label>Amount (PKR) <Req /></label>
+                    <input type="number" min="1" required value={donForm.amount}
+                      aria-invalid={donErrors.amount ? 'true' : undefined}
+                      onChange={(e) => setDonForm({ ...donForm, amount: e.target.value })} />
+                    {donErrors.amount
+                      ? <div className="error">{donErrors.amount}</div>
+                      : donForm.donorType === 'ANONYMOUS'
+                        ? <div className="hint">Anonymous donations are capped at {PKR.format(ANONYMOUS_CAP)}.</div>
+                        : null}
                   </div>
-                </>
-              )}
-              <div className="field"><label>Payment Mode <Req /></label>
-                <select value={donForm.paymentMode} onChange={(e) => setDonForm({ ...donForm, paymentMode: e.target.value })}>
-                  {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
-                </select></div>
-              <div className="field"><label>Received At <Req /></label>
-                <input type="date" required value={donForm.receivedAt}
-                  aria-invalid={donErrors.receivedAt ? 'true' : undefined}
-                  onChange={(e) => setDonForm({ ...donForm, receivedAt: e.target.value })} />
-                {donErrors.receivedAt && <div className="error">{donErrors.receivedAt}</div>}
+                  <div className="field"><label>Donor Type <Req /></label>
+                    <select value={donForm.donorType} onChange={(e) => setDonForm({ ...donForm, donorType: e.target.value })}>
+                      {DONOR_TYPES.map((t) => <option key={t}>{t}</option>)}
+                    </select></div>
+                  {donForm.donorType === 'MEMBER' && (
+                    <div className="field full">
+                      <label>Donor (member)</label>
+                      <select value={donForm.donorMemberId} onChange={(e) => setDonForm({ ...donForm, donorMemberId: e.target.value })}>
+                        <option value="">— pick a member —</option>
+                        {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
+                      </select>
+                      <div className="hint">Linking to a member also reflects the donation on their performance report.</div>
+                    </div>
+                  )}
+                  {(donForm.donorType === 'NON_MEMBER' || donForm.donorType === 'CORPORATE') && (
+                    <>
+                      <div className="field"><label>Donor Name</label>
+                        <input value={donForm.donorName} onChange={(e) => setDonForm({ ...donForm, donorName: e.target.value })} /></div>
+                      <div className="field">
+                        <label>Donor CNIC {donCnicRequired && <Req />}</label>
+                        <input
+                          value={donForm.donorCnic}
+                          placeholder="42101-1234567-1"
+                          inputMode="numeric"
+                          aria-invalid={donErrors.donorCnic ? 'true' : undefined}
+                          onChange={(e) => setDonForm({ ...donForm, donorCnic: formatCnic(e.target.value) })}
+                        />
+                        {donErrors.donorCnic
+                          ? <div className="error">{donErrors.donorCnic}</div>
+                          : <div className="hint">
+                              {donForm.donorType === 'NON_MEMBER'
+                                ? `Required above ${PKR.format(NON_MEMBER_CNIC_THRESHOLD)}; optional below.`
+                                : 'Optional.'}
+                            </div>}
+                      </div>
+                    </>
+                  )}
+                  <div className="field"><label>Payment Mode <Req /></label>
+                    <select value={donForm.paymentMode} onChange={(e) => setDonForm({ ...donForm, paymentMode: e.target.value })}>
+                      {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
+                    </select></div>
+                  <div className="field"><label>Received At <Req /></label>
+                    <input type="date" required value={donForm.receivedAt}
+                      aria-invalid={donErrors.receivedAt ? 'true' : undefined}
+                      onChange={(e) => setDonForm({ ...donForm, receivedAt: e.target.value })} />
+                    {donErrors.receivedAt && <div className="error">{donErrors.receivedAt}</div>}
+                  </div>
+                  <div className="field full"><label>Receipt Image</label>
+                    <input type="file" accept="image/*,application/pdf" onChange={(e) => setDonReceipt(e.target.files?.[0] || null)} />
+                    <div className="hint">Optional.</div></div>
+                </div>
+                <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button className="btn secondary" type="button" onClick={() => setDonModalOpen(false)}>Cancel</button>
+                  <button className="btn" onClick={recordDonation}>Record Donation</button>
+                </div>
               </div>
-              <div className="field full"><label>Receipt Image</label>
-                <input type="file" accept="image/*,application/pdf" onChange={(e) => setDonReceipt(e.target.files?.[0] || null)} />
-                <div className="hint">Optional.</div></div>
             </div>
-            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="btn secondary" type="button" onClick={() => setDonModalOpen(false)}>Cancel</button>
-              <button className="btn" onClick={recordDonation}>Record Donation</button>
-            </div>
-          </div>
-          </div>
           )}
 
           <table className="list">
@@ -555,10 +532,30 @@ export default function FinancePage() {
               <tr><th>Receipt</th><th>Date</th><th>Donor</th><th>Mode</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
             </thead>
             <tbody>
-              {donations.length === 0 && <tr><td colSpan="5">No donations yet.</td></tr>}
-              {donations.map((d) => (
+              {displayedDonations.length === 0 && (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                    No {isCommitteeView ? 'committee' : 'executive'} donations recorded yet.
+                  </td>
+                </tr>
+              )}
+              {displayedDonations.map((d) => (
                 <tr key={d._id}>
-                  <td>{d.receiptNo}</td>
+                  <td>
+                    <span
+                      className="badge"
+                      style={{
+                        marginRight: 6,
+                        background: d.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
+                        color: d.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                        fontWeight: 600,
+                        fontSize: 11,
+                      }}
+                    >
+                      {d.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                    </span>
+                    {d.receiptNo}
+                  </td>
                   <td>{new Date(d.receivedAt).toLocaleDateString()}</td>
                   <td>{d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '—')}</td>
                   <td>{d.paymentMode}</td>
@@ -575,57 +572,59 @@ export default function FinancePage() {
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn" onClick={() => { setErr(''); setExpModalOpen(true); }}>
-                {body === 'COMMITTEE' ? '+ Record Committee Expense' : '+ Record Expense'}
+                {isCommitteeView ? '+ Record Committee Expense' : '+ Record Expense'}
               </button>
             </div>
           )}
           {canRecord && expModalOpen && (
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setExpModalOpen(false); }}>
-          <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Expense">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h3 style={{ margin: 0 }}>Record an Expense</h3>
-              <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
-            </div>
-            {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
-            <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-              Fields marked <Req /> are required.
-            </p>
-            <div className="form-grid">
-              <div className="field"><label>Amount (PKR) <Req /></label>
-                <input type="number" min="1" required value={expForm.amount}
-                  aria-invalid={expErrors.amount ? 'true' : undefined}
-                  onChange={(e) => setExpForm({ ...expForm, amount: e.target.value })} />
-                {expErrors.amount && <div className="error">{expErrors.amount}</div>}
+            <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setExpModalOpen(false); }}>
+              <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Expense">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <h3 style={{ margin: 0 }}>
+                    {isCommitteeView ? 'Record Committee Expense' : 'Record an Expense'}
+                  </h3>
+                  <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+                </div>
+                {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
+                <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
+                  Fields marked <Req /> are required.
+                </p>
+                <div className="form-grid">
+                  <div className="field"><label>Amount (PKR) <Req /></label>
+                    <input type="number" min="1" required value={expForm.amount}
+                      aria-invalid={expErrors.amount ? 'true' : undefined}
+                      onChange={(e) => setExpForm({ ...expForm, amount: e.target.value })} />
+                    {expErrors.amount && <div className="error">{expErrors.amount}</div>}
+                  </div>
+                  <div className="field"><label>Category <Req /></label>
+                    <select value={expForm.category} onChange={(e) => setExpForm({ ...expForm, category: e.target.value })}>
+                      {EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    </select></div>
+                  <div className="field full"><label>Description <Req /></label>
+                    <input required value={expForm.description}
+                      aria-invalid={expErrors.description ? 'true' : undefined}
+                      onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} />
+                    {expErrors.description && <div className="error">{expErrors.description}</div>}
+                  </div>
+                  <div className="field"><label>Vendor / Payee</label>
+                    <input value={expForm.vendor} onChange={(e) => setExpForm({ ...expForm, vendor: e.target.value })} />
+                    <div className="hint">Optional.</div></div>
+                  <div className="field"><label>Payment Mode <Req /></label>
+                    <select value={expForm.paymentMode} onChange={(e) => setExpForm({ ...expForm, paymentMode: e.target.value })}>
+                      {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
+                    </select></div>
+                  <div className="field"><label>Incurred At <Req /></label>
+                    <input type="date" required value={expForm.incurredAt} onChange={(e) => setExpForm({ ...expForm, incurredAt: e.target.value })} /></div>
+                  <div className="field full"><label>Bill / Voucher <Req /></label>
+                    <input type="file" accept="image/*,application/pdf" onChange={(e) => setExpEvidence(e.target.files?.[0] || null)} />
+                    <div className="hint">{expEvidence ? expEvidence.name : 'An expense cannot be recorded without a bill or voucher.'}</div></div>
+                </div>
+                <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button className="btn secondary" type="button" onClick={() => setExpModalOpen(false)}>Cancel</button>
+                  <button className="btn" onClick={recordExpense}>Record Expense</button>
+                </div>
               </div>
-              <div className="field"><label>Category <Req /></label>
-                <select value={expForm.category} onChange={(e) => setExpForm({ ...expForm, category: e.target.value })}>
-                  {EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-                </select></div>
-              <div className="field full"><label>Description <Req /></label>
-                <input required value={expForm.description}
-                  aria-invalid={expErrors.description ? 'true' : undefined}
-                  onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} />
-                {expErrors.description && <div className="error">{expErrors.description}</div>}
-              </div>
-              <div className="field"><label>Vendor / Payee</label>
-                <input value={expForm.vendor} onChange={(e) => setExpForm({ ...expForm, vendor: e.target.value })} />
-                <div className="hint">Optional.</div></div>
-              <div className="field"><label>Payment Mode <Req /></label>
-                <select value={expForm.paymentMode} onChange={(e) => setExpForm({ ...expForm, paymentMode: e.target.value })}>
-                  {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
-                </select></div>
-              <div className="field"><label>Incurred At <Req /></label>
-                <input type="date" required value={expForm.incurredAt} onChange={(e) => setExpForm({ ...expForm, incurredAt: e.target.value })} /></div>
-              <div className="field full"><label>Bill / Voucher <Req /></label>
-                <input type="file" accept="image/*,application/pdf" onChange={(e) => setExpEvidence(e.target.files?.[0] || null)} />
-                <div className="hint">{expEvidence ? expEvidence.name : 'An expense cannot be recorded without a bill or voucher.'}</div></div>
             </div>
-            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="btn secondary" type="button" onClick={() => setExpModalOpen(false)}>Cancel</button>
-              <button className="btn" onClick={recordExpense}>Record Expense</button>
-            </div>
-          </div>
-          </div>
           )}
 
           <table className="list">
@@ -633,11 +632,31 @@ export default function FinancePage() {
               <tr><th>Date</th><th>Category</th><th>Description</th><th>Vendor</th><th style={{ textAlign: 'right' }}>Amount</th><th>State</th><th></th></tr>
             </thead>
             <tbody>
-              {expenses.length === 0 && <tr><td colSpan="7">No expenses yet.</td></tr>}
-              {expenses.map((x) => (
+              {displayedExpenses.length === 0 && (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                    No {isCommitteeView ? 'committee' : 'executive'} expenses recorded yet.
+                  </td>
+                </tr>
+              )}
+              {displayedExpenses.map((x) => (
                 <tr key={x._id}>
                   <td>{new Date(x.incurredAt).toLocaleDateString()}</td>
-                  <td>{x.category}</td>
+                  <td>
+                    <span
+                      className="badge"
+                      style={{
+                        marginRight: 6,
+                        background: x.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
+                        color: x.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                        fontWeight: 600,
+                        fontSize: 11,
+                      }}
+                    >
+                      {x.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                    </span>
+                    {x.category}
+                  </td>
                   <td>{x.description}</td>
                   <td>{x.vendor || '—'}</td>
                   <td style={{ textAlign: 'right' }}>{PKR.format(x.amount)}</td>
@@ -689,7 +708,13 @@ export default function FinancePage() {
               </tr>
             </thead>
             <tbody>
-              {monthly.length === 0 && <tr><td colSpan="6" className="muted">No financial activity in this period.</td></tr>}
+              {monthly.length === 0 && (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                    No {isCommitteeView ? 'committee' : 'executive'} financial activity in this period.
+                  </td>
+                </tr>
+              )}
               {monthly.map((m) => (
                 <tr key={m.month}>
                   <td>{m.month}</td>

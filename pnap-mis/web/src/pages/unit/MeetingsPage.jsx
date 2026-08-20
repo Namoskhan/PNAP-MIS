@@ -12,9 +12,11 @@ import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
 // Default starting type when no types have loaded yet — kept here so
 // the form has a sensible empty state. The picker itself is sourced
+// Default starting type when no types have loaded yet — kept here so
+// the form has a sensible empty state. The picker itself is sourced
 // from /api/events/types (active types only) so admins can extend
 // the catalogue without a code change.
-const DEFAULT_TYPE_CODE = 'GBM';
+const DEFAULT_TYPE_CODE = 'EXC';
 
 // Mirror the server's upload.array caps so the picker never sends a
 // batch that would be silently truncated: photos 10, documents 5.
@@ -91,12 +93,14 @@ export default function MeetingsPage() {
     && (user?.roles?.includes('SENIOR_MAWIN') || user?.roles?.includes('SR_VICE_PRESIDENT') || user?.roles?.includes('FIRST_SECRETARY'));
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
-  const [scope, setScope] = useState('own');
+  const [chairpersonCandidates, setChairpersonCandidates] = useState([]);
+  const [loadingChairpersons, setLoadingChairpersons] = useState(false);
+  const [meetingTab, setMeetingTab] = useState('ALL'); // 'ALL' | 'EXECUTIVE' | 'GENERAL_BODY'
   const [showCreate, setShowCreate] = useState(false);
-  // Default body — read once from URL so a "Committee Meetings" link
-  // from the dashboard lands on the right tab.
-  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
-  const [body, setBody] = useState(initialBody);
+  
+  // URL check: committee vs regular meetings
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCommitteeView = queryBody === 'COMMITTEE';
   const [form, setForm] = useState(EMPTY_FORM);
   const [finalizing, setFinalizing] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -114,17 +118,78 @@ export default function MeetingsPage() {
 
   const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
 
-  // Active meeting types from the EventTypeConfig catalogue (PR 4b).
-  // We pass `body` only when the body toggle is shown — at BU level
-  // there's no body distinction, so the unfiltered catalogue is fine.
-  const { types: eventTypes } = useEventTypes('MEETING', showBodyToggle ? body : undefined);
+  // Active meeting types from the EventTypeConfig catalogue
+  const { types: eventTypes } = useEventTypes('MEETING');
+
+  // Filter types based on current stream view:
+  // On Committee stream: Committee Meeting only
+  // On regular Meetings stream: Executive Meeting and General Body Meeting
+  const availableTypes = useMemo(() => {
+    if (isCommitteeView) {
+      return eventTypes.filter((t) => ['CMP', 'COMMITTEE'].includes(String(t.code).toUpperCase()));
+    }
+    return eventTypes.filter((t) => ['EXC', 'EXECUTIVE', 'GBM', 'GENERAL_BODY'].includes(String(t.code).toUpperCase()));
+  }, [eventTypes, isCommitteeView]);
 
   // Resolve the currently-selected type doc so the create dialog can
   // render its custom fields via <DynamicForm>.
   const selectedType = useMemo(() => {
-    return eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase()) || null;
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [eventTypes, form.typeCode]);
+    return availableTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || null;
+  }, [availableTypes, eventTypes, form.typeCode]);
+
+  // Load eligible attendees for the chairperson dropdown whenever the create modal is open or type changes
+  useEffect(() => {
+    if (!showCreate || !ctx) return;
+    let active = true;
+    setLoadingChairpersons(true);
+    const targetBody = isCommitteeView
+      ? 'COMMITTEE'
+      : (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : 'EXECUTIVE');
+    api.get('/meetings/eligible-attendees', {
+      params: {
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
+        body: targetBody,
+        typeCode: form.typeCode,
+      },
+    })
+      .then((r) => { if (active) setChairpersonCandidates(r.data.data || []); })
+      .catch(() => {})
+      .finally(() => { if (active) setLoadingChairpersons(false); });
+    return () => { active = false; };
+  }, [showCreate, ctx, isCommitteeView, form.typeCode]);
+
+  // Separate meeting collections for pristine categorization
+  const committeeItems = useMemo(() => {
+    return (items || []).filter((m) => m.body === 'COMMITTEE' || m.typeCode === 'CMP' || m.type === 'CMP' || m.type === 'COMMITTEE' || m.type === 'Committee Meeting');
+  }, [items]);
+
+  const nonCommitteeItems = useMemo(() => {
+    return (items || []).filter((m) => m.body !== 'COMMITTEE' && m.typeCode !== 'CMP' && m.type !== 'CMP' && m.type !== 'COMMITTEE' && m.type !== 'Committee Meeting');
+  }, [items]);
+
+  const execItems = useMemo(() => {
+    return nonCommitteeItems.filter((m) => m.body === 'EXECUTIVE' || (!m.body && m.typeCode !== 'GBM' && m.type !== 'GBM' && m.type !== 'General Body Meeting'));
+  }, [nonCommitteeItems]);
+
+  const gbmItems = useMemo(() => {
+    return nonCommitteeItems.filter((m) => m.body === 'GENERAL_BODY' || m.typeCode === 'GBM' || m.type === 'GBM' || m.type === 'General Body Meeting');
+  }, [nonCommitteeItems]);
+
+  const displayedItems = useMemo(() => {
+    if (isCommitteeView) {
+      return committeeItems;
+    }
+    if (meetingTab === 'EXECUTIVE') {
+      return execItems;
+    }
+    if (meetingTab === 'GENERAL_BODY') {
+      return gbmItems;
+    }
+    return nonCommitteeItems;
+  }, [isCommitteeView, meetingTab, committeeItems, execItems, gbmItems, nonCommitteeItems]);
 
   // Latest-fetch guard — when ctx changes mid-flight (e.g. user
   // drilled into a subordinate) ignore stale responses so they don't
@@ -134,22 +199,20 @@ export default function MeetingsPage() {
   async function reload() {
     if (!ctx) return;
     const myId = ++fetchIdRef.current;
-    // A meeting record is owned by the unit whose body sits — an Area
-    // committee meeting is an AREA record, a District one a DISTRICT
-    // record. A pure member is pinned to their Basic Unit, so the
-    // default `own` scope hid every meeting held above them and the
-    // page read "No meetings yet". `chain` adds their Area / District /
-    // Province / Central schedule on top of their own unit's.
     const params = {
       unitLevel: ctx.unitLevel, unitId: ctx.unitId,
-      scope: isPureMember ? 'chain' : (scope === 'tree' ? 'subtree' : undefined),
+      scope: isPureMember ? 'chain' : undefined,
     };
-    if (showBodyToggle) params.body = body;
+    if (isCommitteeView) {
+      params.body = 'COMMITTEE';
+    } else if (showBodyToggle) {
+      params.body = 'NON_COMMITTEE';
+    }
     const r = await api.get('/meetings', { params });
     if (myId === fetchIdRef.current) setItems(r.data.data);
   }
 
-  useEffect(() => { reload(); }, [ctx, scope, body, isPureMember]);
+  useEffect(() => { reload(); }, [ctx, isCommitteeView, isPureMember]);
 
   useEffect(() => {
     if (!ctx) return;
@@ -192,6 +255,14 @@ export default function MeetingsPage() {
     );
   }
 
+  function openCreate() {
+    const initialCode = isCommitteeView
+      ? (availableTypes[0]?.code || 'CMP')
+      : (availableTypes.find((t) => t.code === 'EXC')?.code || availableTypes[0]?.code || 'EXC');
+    setForm({ ...EMPTY_FORM, typeCode: initialCode });
+    setShowCreate(true);
+  }
+
   // Feedback here goes through toasts rather than an inline banner:
   // the create dialog is a fixed overlay, so a banner rendered behind
   // it was invisible — the failure case in particular looked like the
@@ -205,12 +276,18 @@ export default function MeetingsPage() {
       // the type's snapshot resolved fields.
       const { dynamicData, ...rest } = form;
       const payload = { ...rest, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
-      if (showBodyToggle) payload.body = body;
+      if (isCommitteeView) {
+        payload.body = 'COMMITTEE';
+      } else if (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') {
+        payload.body = 'GENERAL_BODY';
+      } else {
+        payload.body = 'EXECUTIVE';
+      }
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
       if (dynamicData && Object.keys(dynamicData).length > 0) payload.dynamicData = dynamicData;
       const r = await api.post('/meetings', payload);
       const m = r.data.data;
-      const bodyLabel = showBodyToggle ? (body === 'COMMITTEE' ? 'Committee' : 'Executive') : '';
+      const bodyLabel = isCommitteeView ? 'Committee' : (payload.body === 'GENERAL_BODY' ? 'General Body' : 'Executive');
       toast.success(
         `${[bodyLabel, m.title || m.type].filter(Boolean).join(' · ')} — ${new Date(m.startAt).toLocaleString()} at ${m.venue}.`,
         { title: 'Meeting scheduled' },
@@ -312,12 +389,20 @@ export default function MeetingsPage() {
   // report covers exactly the stream the user is looking at.
   function exportParams() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    if (scope === 'tree') params.set('scope', 'subtree');
-    if (showBodyToggle) params.set('body', body);
+    if (isCommitteeView) {
+      params.set('body', 'COMMITTEE');
+    } else if (meetingTab === 'EXECUTIVE') {
+      params.set('body', 'EXECUTIVE');
+    } else if (meetingTab === 'GENERAL_BODY') {
+      params.set('body', 'GENERAL_BODY');
+    } else if (showBodyToggle) {
+      params.set('body', 'NON_COMMITTEE');
+    }
     return params;
   }
   function exportName(ext) {
-    return `${ctx.unitName}${showBodyToggle ? `-${body.toLowerCase()}` : ''}-meetings.${ext}`;
+    const stream = isCommitteeView ? '-committee' : (meetingTab === 'EXECUTIVE' ? '-executive' : meetingTab === 'GENERAL_BODY' ? '-general-body' : '');
+    return `${ctx.unitName}${stream}-meetings.${ext}`;
   }
   function exportPdf() {
     downloadAuthed(`/api/exports/unit/meetings/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
@@ -332,23 +417,14 @@ export default function MeetingsPage() {
     <div>
       <div className="page-header">
         <h2>
-          {body === 'COMMITTEE' ? 'Committee Meetings' : 'Executive Meetings'} · {ctx.unitName}
+          {isCommitteeView ? 'Committee Meetings' : 'Meetings'} · {ctx.unitName}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {/* At BU level the only option would be "This unit only" —
-              hide the single-option dropdown for every persona. Above
-              BU, hide it for pure-member viewers (pinned to one unit). */}
-          {!isPureMember && ctx.unitLevel !== 'BASIC_UNIT' && (
-            <select value={scope} onChange={(e) => setScope(e.target.value)}>
-              <option value="own">This unit only</option>
-              <option value="tree">Including subordinates</option>
-            </select>
-          )}
           <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && (
-            <button className="btn" onClick={() => setShowCreate(true)}>
-              {body === 'COMMITTEE' ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'}
+            <button className="btn" onClick={openCreate}>
+              {isCommitteeView ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'}
             </button>
           )}
         </div>
@@ -372,8 +448,8 @@ export default function MeetingsPage() {
                 value={form.typeCode}
                 onChange={(e) => setForm({ ...form, typeCode: e.target.value, dynamicData: {} })}
               >
-                {eventTypes.length === 0 && <option value="">— Loading types —</option>}
-                {eventTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+                {availableTypes.length === 0 && <option value="">— Loading types —</option>}
+                {availableTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
               </select>
             </div>
             <div className="field">
@@ -395,8 +471,13 @@ export default function MeetingsPage() {
             <div className="field">
               <label>Chairperson</label>
               <select value={form.chairpersonId} onChange={(e) => setForm({ ...form, chairpersonId: e.target.value })}>
-                <option value="">— pick a member —</option>
-                {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
+                <option value="">— pick a chairperson —</option>
+                {loadingChairpersons && <option disabled>Loading eligible attendees…</option>}
+                {!loadingChairpersons && chairpersonCandidates.map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m.fullName}{m.roleText ? ` · ${m.roleText}` : (m.memberId ? ` · ${m.memberId}` : '')}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="field">
@@ -456,6 +537,36 @@ export default function MeetingsPage() {
         </div>
       )}
 
+      {!isCommitteeView && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className="muted" style={{ fontSize: 13, marginRight: 4, fontWeight: 500 }}>Category:</span>
+          <button
+            type="button"
+            className={`btn ${meetingTab === 'ALL' ? '' : 'ghost'}`}
+            style={{ padding: '6px 14px', fontSize: 13, borderRadius: 20 }}
+            onClick={() => setMeetingTab('ALL')}
+          >
+            All Meetings <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({nonCommitteeItems.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`btn ${meetingTab === 'EXECUTIVE' ? '' : 'ghost'}`}
+            style={{ padding: '6px 14px', fontSize: 13, borderRadius: 20 }}
+            onClick={() => setMeetingTab('EXECUTIVE')}
+          >
+            🏛️ Executive Meetings <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({execItems.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`btn ${meetingTab === 'GENERAL_BODY' ? '' : 'ghost'}`}
+            style={{ padding: '6px 14px', fontSize: 13, borderRadius: 20 }}
+            onClick={() => setMeetingTab('GENERAL_BODY')}
+          >
+            👥 General Body Meetings <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({gbmItems.length})</span>
+          </button>
+        </div>
+      )}
+
       <table className="list">
         <thead>
           <tr>
@@ -464,82 +575,100 @@ export default function MeetingsPage() {
           </tr>
         </thead>
         <tbody>
-          {items.length === 0 && <tr><td colSpan="9">No meetings yet.</td></tr>}
-          {items.map((m) => (
-            <tr key={m._id}>
-              <td>{new Date(m.startAt).toLocaleString()}</td>
-              <td>
-                {m.type}{m.title ? ` · ${m.title}` : ''}
-                {/* Chain scope mixes tiers — say which body owns the
-                    meeting when it isn't the viewer's own unit. */}
-                {isPureMember && m.unitLevel !== ctx.unitLevel && (
-                  <div className="muted" style={{ fontSize: 11 }}>
-                    {LEVEL_LABELS[m.unitLevel] || m.unitLevel}
-                    {m.body === 'COMMITTEE' ? ' committee' : ' executive'} meeting
-                  </div>
-                )}
-              </td>
-              <td>{m.venue}</td>
-              <td>{m.chairpersonId?.fullName || '—'}</td>
-              <td>{(m.attendance || []).filter((a) => a.status === 'PRESENT').length}</td>
-              <td><span className={`badge ${m.state}`}>{m.state}</span></td>
-              <td>
-                {(m.photos || []).length === 0 ? (
-                  <span className="muted">0</span>
-                ) : (
-                  <button
-                    className="btn ghost"
-                    onClick={() => setPhotosFor(m)}
-                    style={{ padding: '2px 6px' }}
-                    title="View photos with capture details"
-                  >
-                    📷 {(m.photos || []).length} · View
-                  </button>
-                )}
-              </td>
-              <td>{(m.documents || []).length}</td>
-              <td style={{ whiteSpace: 'nowrap' }}>
-                <button
-                  className="btn ghost"
-                  onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => toast.error('PDF download failed.', { title: 'Could not export' }))}
-                  title="Download this meeting as PDF (with photos embedded)"
-                >📄 PDF</button>{' '}
-                {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
-                  <>
-                    <button className="btn ghost" onClick={() => setEditing(m)}>Edit</button>{' '}
-                    <button className="btn ghost" onClick={() => setDocFor(m)}>Docs</button>{' '}
-                    <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                      Photos
-                      {/* Reset the input's value so re-picking the same
-                          file after a rejection still fires onChange. */}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        hidden
-                        onChange={(e) => {
-                          // Snapshot to an array BEFORE clearing value —
-                          // resetting the input empties its live FileList.
-                          const picked = Array.from(e.target.files || []);
-                          e.target.value = '';
-                          uploadPhotos(m._id, picked);
-                        }}
-                      />
-                    </label>{' '}
-                    <button className="btn" onClick={() => setFinalizing(m)}>Finalize</button>{' '}
-                    <button className="btn danger" onClick={() => cancelMeeting(m)}>Cancel</button>
-                  </>
-                )}
+          {displayedItems.length === 0 && (
+            <tr>
+              <td colSpan="9" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--muted)' }}>
+                {isCommitteeView
+                  ? 'No committee meetings scheduled yet.'
+                  : meetingTab === 'EXECUTIVE'
+                  ? 'No executive meetings scheduled yet.'
+                  : meetingTab === 'GENERAL_BODY'
+                  ? 'No general body meetings scheduled yet.'
+                  : 'No meetings scheduled yet.'}
               </td>
             </tr>
-          ))}
+          )}
+          {displayedItems.map((m) => {
+            const isCm = m.body === 'COMMITTEE' || m.typeCode === 'CMP' || m.type === 'CMP' || m.type === 'COMMITTEE' || m.type === 'Committee Meeting';
+            const isGbm = m.body === 'GENERAL_BODY' || m.typeCode === 'GBM' || m.type === 'GBM' || m.type === 'General Body Meeting';
+            return (
+              <tr key={m._id}>
+                <td>{new Date(m.startAt).toLocaleString()}</td>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {isCm ? (
+                      <span className="badge" style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600, fontSize: 11 }}>Committee</span>
+                    ) : isGbm ? (
+                      <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontWeight: 600, fontSize: 11 }}>General Body</span>
+                    ) : (
+                      <span className="badge" style={{ backgroundColor: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe', fontWeight: 600, fontSize: 11 }}>Executive</span>
+                    )}
+                    <span>{m.title ? `${m.type} · ${m.title}` : m.type}</span>
+                  </div>
+                  {isPureMember && m.unitLevel !== ctx.unitLevel && (
+                    <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                      {LEVEL_LABELS[m.unitLevel] || m.unitLevel}
+                      {isCm ? ' committee' : isGbm ? ' general body' : ' executive'} meeting
+                    </div>
+                  )}
+                </td>
+                <td>{m.venue}</td>
+                <td>{m.chairpersonId?.fullName || '—'}</td>
+                <td>{(m.attendance || []).filter((a) => a.status === 'PRESENT').length}</td>
+                <td><span className={`badge ${m.state}`}>{m.state}</span></td>
+                <td>
+                  {(m.photos || []).length === 0 ? (
+                    <span className="muted">0</span>
+                  ) : (
+                    <button
+                      className="btn ghost"
+                      onClick={() => setPhotosFor(m)}
+                      style={{ padding: '2px 6px' }}
+                      title="View photos with capture details"
+                    >
+                      📷 {(m.photos || []).length} · View
+                    </button>
+                  )}
+                </td>
+                <td>{(m.documents || []).length}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button
+                    className="btn ghost"
+                    onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => toast.error('PDF download failed.', { title: 'Could not export' }))}
+                    title="Download this meeting as PDF (with photos embedded)"
+                  >📄 PDF</button>{' '}
+                  {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
+                    <>
+                      <button className="btn ghost" onClick={() => setEditing(m)}>Edit</button>{' '}
+                      <button className="btn ghost" onClick={() => setDocFor(m)}>Docs</button>{' '}
+                      <label className="btn secondary" style={{ cursor: 'pointer' }}>
+                        Photos
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          hidden
+                          onChange={(e) => {
+                            const picked = Array.from(e.target.files || []);
+                            e.target.value = '';
+                            uploadPhotos(m._id, picked);
+                          }}
+                        />
+                      </label>{' '}
+                      <button className="btn" onClick={() => setFinalizing(m)}>Finalize</button>{' '}
+                      <button className="btn danger" onClick={() => cancelMeeting(m)}>Cancel</button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
       {finalizing && (
         <FinalizeDialog
           meeting={finalizing}
-          members={members}
           supervisorCandidates={supervisorCandidates}
           supervisorsLoading={supervisorsLoading}
           onNeedSupervisors={() => loadSupervisorCandidates(finalizing._id)}
@@ -553,7 +682,6 @@ export default function MeetingsPage() {
       {editing && (
         <EditDialog
           meeting={editing}
-          members={members}
           onClose={() => setEditing(null)}
           onDone={() => { setEditing(null); reload(); toast.success('Meeting updated.'); }}
         />
@@ -576,7 +704,7 @@ export default function MeetingsPage() {
 }
 
 function FinalizeDialog({
-  meeting, members, supervisorCandidates, supervisorsLoading, onNeedSupervisors, onClose, onDone,
+  meeting, supervisorCandidates, supervisorsLoading, onNeedSupervisors, onClose, onDone,
 }) {
   const { user } = useAuth();
   const [previouswork, setPreviouswork] = useState('');
@@ -585,13 +713,41 @@ function FinalizeDialog({
   const [supervisorAttended, setSupervisorAttended] = useState(false);
   const [supervisorMemberId, setSupervisorMemberId] = useState('');
   const [supervisorQuery, setSupervisorQuery] = useState('');
-  const [attendance, setAttendance] = useState(() => members.map((m) => ({
-    memberId: m._id, name: m.fullName, status: 'ABSENT',
-  })));
+  const [attendance, setAttendance] = useState([]);
+  const [eligibleAttendees, setEligibleAttendees] = useState([]);
+  const [loadingAttendees, setLoadingAttendees] = useState(true);
   const [studyRows, setStudyRows] = useState([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const isStudy = meeting.type === 'STC';
+
+  // Load strictly eligible attendees for this meeting stream/body
+  useEffect(() => {
+    let active = true;
+    setLoadingAttendees(true);
+    api.get(`/meetings/${meeting._id}/attendees`)
+      .then((r) => {
+        if (!active) return;
+        const list = r.data.data || [];
+        setEligibleAttendees(list);
+        const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
+        const rows = list.map((m) => ({
+          memberId: m._id,
+          name: m.fullName,
+          memberCode: m.memberId,
+          roleText: m.roleText,
+          status: existingMap.get(String(m._id)) || 'ABSENT',
+        }));
+        setAttendance(rows);
+      })
+      .catch(() => {
+        if (active) setErr('Could not load attendees roster.');
+      })
+      .finally(() => {
+        if (active) setLoadingAttendees(false);
+      });
+    return () => { active = false; };
+  }, [meeting._id]);
 
   // A Central meeting has no level above it, so nobody is eligible to
   // supervise it — the field is suppressed rather than shown empty.
@@ -764,7 +920,7 @@ function FinalizeDialog({
         </div>
 
         <h4 style={{ marginBottom: 6 }}>
-          Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} present / {attendance.length})
+          Attendance ({attendance.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length} present / {attendance.length})
         </h4>
         <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
           <button type="button" className="btn ghost" onClick={() => markAll('PRESENT')}>Mark all present</button>
@@ -773,13 +929,22 @@ function FinalizeDialog({
         <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table className="list" style={{ margin: 0 }}>
             <thead>
-              <tr><th>Member</th><th>Present</th><th>Late</th><th>Absent</th></tr>
+              <tr><th>Attendee / Member</th><th>Present</th><th>Late</th><th>Absent</th></tr>
             </thead>
             <tbody>
-              {attendance.length === 0 && <tr><td colSpan="4" className="muted">No members on roster yet.</td></tr>}
-              {attendance.map((r) => (
+              {loadingAttendees && (
+                <tr><td colSpan="4" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
+              )}
+              {!loadingAttendees && attendance.length === 0 && (
+                <tr><td colSpan="4" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive'} meeting.</td></tr>
+              )}
+              {!loadingAttendees && attendance.map((r) => (
                 <tr key={r.memberId}>
-                  <td>{r.name}</td>
+                  <td>
+                    <strong>{r.name}</strong>
+                    {r.memberCode && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>· {r.memberCode}</span>}
+                    {r.roleText && <div className="muted" style={{ fontSize: 11 }}>{r.roleText}</div>}
+                  </td>
                   <td><input type="radio" checked={r.status === 'PRESENT'} onChange={() => setStatus(r.memberId, 'PRESENT')} /></td>
                   <td><input type="radio" checked={r.status === 'LATE'} onChange={() => setStatus(r.memberId, 'LATE')} /></td>
                   <td><input type="radio" checked={r.status === 'ABSENT'} onChange={() => setStatus(r.memberId, 'ABSENT')} /></td>
@@ -799,7 +964,11 @@ function FinalizeDialog({
               <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 6, marginBottom: 6 }}>
                 <select value={s.memberId} onChange={(e) => updateStudyRow(i, { memberId: e.target.value })}>
                   <option value="">— member —</option>
-                  {members.map((m) => <option key={m._id} value={m._id}>{m.fullName}</option>)}
+                  {eligibleAttendees.map((m) => (
+                    <option key={m._id} value={m._id}>
+                      {m.fullName}{m.roleText ? ` · ${m.roleText}` : ''}
+                    </option>
+                  ))}
                 </select>
                 <input placeholder="Topic" value={s.topic} onChange={(e) => updateStudyRow(i, { topic: e.target.value })} />
                 <input placeholder="Summary" value={s.summary} onChange={(e) => updateStudyRow(i, { summary: e.target.value })} />
@@ -828,12 +997,16 @@ function toLocalInput(d) {
   return new Date(date - tz).toISOString().slice(0, 16);
 }
 
-function EditDialog({ meeting, members, onClose, onDone }) {
-  // Edit dialog uses its own useEventTypes call so it works even when
-  // opened from a context where the parent's hook hasn't refreshed.
-  // Body filtering follows the meeting's own body, since changing body
-  // is not allowed via this dialog.
-  const { types: eventTypes } = useEventTypes('MEETING', meeting.body);
+function EditDialog({ meeting, onClose, onDone }) {
+  const isCommitteeMeeting = meeting.body === 'COMMITTEE';
+  const { types: eventTypes } = useEventTypes('MEETING');
+  const availableTypes = useMemo(() => {
+    if (isCommitteeMeeting) {
+      return eventTypes.filter((t) => ['CMP', 'COMMITTEE'].includes(String(t.code).toUpperCase()));
+    }
+    return eventTypes.filter((t) => ['EXC', 'EXECUTIVE', 'GBM', 'GENERAL_BODY'].includes(String(t.code).toUpperCase()));
+  }, [eventTypes, isCommitteeMeeting]);
+
   const [form, setForm] = useState({
     typeCode: (meeting.typeCode || meeting.type || '').toUpperCase(),
     title: meeting.title || '',
@@ -849,19 +1022,49 @@ function EditDialog({ meeting, members, onClose, onDone }) {
     gpsLng: meeting.gps?.lng ?? '',
     dynamicData: meeting.dynamicData || {},
   });
+  const [chairpersonOptions, setChairpersonOptions] = useState([]);
+  const [loadingChairperson, setLoadingChairperson] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
   const selectedType = useMemo(() => {
-    return eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase()) || null;
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [eventTypes, form.typeCode]);
+    return availableTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || null;
+  }, [availableTypes, eventTypes, form.typeCode]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingChairperson(true);
+    const targetBody = isCommitteeMeeting
+      ? 'COMMITTEE'
+      : (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : 'EXECUTIVE');
+    api.get('/meetings/eligible-attendees', {
+      params: {
+        unitLevel: meeting.unitLevel,
+        unitId: meeting.unitId,
+        body: targetBody,
+        typeCode: form.typeCode,
+      },
+    })
+      .then((r) => { if (active) setChairpersonOptions(r.data.data || []); })
+      .catch(() => {})
+      .finally(() => { if (active) setLoadingChairperson(false); });
+    return () => { active = false; };
+  }, [meeting.unitLevel, meeting.unitId, isCommitteeMeeting, form.typeCode]);
 
   async function save() {
     setErr(''); setBusy(true);
     try {
       const { dynamicData, ...rest } = form;
       const payload = { ...rest };
+      if (isCommitteeMeeting) {
+        payload.body = 'COMMITTEE';
+      } else if (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') {
+        payload.body = 'GENERAL_BODY';
+      } else {
+        payload.body = 'EXECUTIVE';
+      }
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
       // Always send dynamicData so the server can re-validate against
       // the (possibly new) snapshot — even if the bag is empty.
@@ -885,8 +1088,8 @@ function EditDialog({ meeting, members, onClose, onDone }) {
               value={form.typeCode}
               onChange={(e) => setForm({ ...form, typeCode: e.target.value, dynamicData: {} })}
             >
-              {eventTypes.length === 0 && <option value={form.typeCode}>{form.typeCode}</option>}
-              {eventTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+              {availableTypes.length === 0 && <option value={form.typeCode}>{form.typeCode}</option>}
+              {availableTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
             </select>
           </div>
           <div className="field">
@@ -907,9 +1110,17 @@ function EditDialog({ meeting, members, onClose, onDone }) {
           </div>
           <div className="field">
             <label>Chairperson</label>
-            <select value={form.chairpersonId} onChange={(e) => setForm({ ...form, chairpersonId: e.target.value })}>
-              <option value="">— pick a member —</option>
-              {members.map((m) => <option key={m._id} value={m._id}>{m.fullName}</option>)}
+            <select
+              value={form.chairpersonId}
+              onChange={(e) => setForm({ ...form, chairpersonId: e.target.value })}
+            >
+              <option value="">— pick a chairperson —</option>
+              {loadingChairperson && <option disabled>Loading eligible attendees…</option>}
+              {!loadingChairperson && chairpersonOptions.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.fullName}{m.roleText ? ` · ${m.roleText}` : (m.memberId ? ` · ${m.memberId}` : '')}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">

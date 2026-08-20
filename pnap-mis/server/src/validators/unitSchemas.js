@@ -38,7 +38,7 @@ const meetingCreateSchema = z.object({
   unitId: objectId,
   type: eventTypeCodePattern.optional(),
   typeCode: eventTypeCodePattern.optional(),
-  body: z.enum(['EXECUTIVE', 'COMMITTEE']).optional(),
+  body: z.enum(['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY']).optional(),
   title: z.string().max(200).optional(),
   description: z.string().max(5000).optional(),
   venue: z.string().min(2).max(200),

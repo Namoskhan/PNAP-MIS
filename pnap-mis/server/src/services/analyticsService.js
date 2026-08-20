@@ -838,7 +838,9 @@ async function membershipAnalytics(f) {
       ]),
       // $facet fans the same matched roster out to one grouping per
       // tier, so four breakdowns cost one pass rather than four.
-      Member.aggregate([
+      // MongoDB rejects an empty $facet object. A Basic Unit is a leaf,
+      // so it has no child-tier breakdowns; totals and trends still load.
+      levels.length ? Member.aggregate([
         ...(Object.keys(base).length ? [{ $match: base }] : []),
         {
           $facet: Object.fromEntries(levels.map((lvl) => [
@@ -853,7 +855,7 @@ async function membershipAnalytics(f) {
             }],
           ])),
         },
-      ]),
+      ]) : Promise.resolve([]),
       // 12-month registration trend, independent of the activity window
       // so the shape of growth stays visible whatever the filter says.
       Member.aggregate([
@@ -1189,7 +1191,9 @@ async function campaignsAnalytics(f) {
       ]),
       // $facet fans the SAME matched set out to one grouping per tier,
       // so four breakdowns cost one collection scan rather than four.
-      Activity.aggregate([
+      // A Basic Unit has no tiers beneath it, hence no breakdown facet.
+      // Avoid issuing MongoDB's invalid `{ $facet: {} }` in that case.
+      levels.length ? Activity.aggregate([
         { $match: match },
         {
           $facet: Object.fromEntries(levels.map((lvl) => [
@@ -1197,7 +1201,7 @@ async function campaignsAnalytics(f) {
             [{ $group: { _id: { unit: `$${LEVEL_FK[lvl]}`, stage }, count: { $sum: 1 } } }],
           ])),
         },
-      ]),
+      ]) : Promise.resolve([]),
       // The campaign sub-document the activity module already records.
       Activity.aggregate([
         { $match: { ...match, 'campaign.peopleContacted': { $exists: true, $ne: null } } },

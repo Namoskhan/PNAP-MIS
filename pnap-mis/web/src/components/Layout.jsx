@@ -61,7 +61,7 @@ function committeeLabel(unitLevel) {
   if (unitLevel === 'DISTRICT') return 'Zilla Committee';
   if (unitLevel === 'PROVINCE') return 'Sobayi Committee / Jirga';
   if (unitLevel === 'CENTRAL') return 'Central Committee / Qomi Jirga';
-  return 'Committee / Jirga';
+  return '';
 }
 
 // A unit nav entry that is body-aware.
@@ -106,8 +106,9 @@ function UnitNavLink({ to, body = null, children }) {
 // group mirrors the surfaces that persona already has, it does not
 // hand them new ones.
 function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }) {
-  if (!ctx) return null;
+  if (!ctx || ctx.unitLevel === 'BASIC_UNIT') return null;
   const label = committeeLabel(ctx.unitLevel);
+  if (!label) return null;
   return (
     <NavGroup
       label={label}
@@ -276,7 +277,7 @@ export default function Layout() {
               <UnitNavLink to="/unit/activities">Central Activities</UnitNavLink>
               <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
               <UnitNavLink to="/unit/finance">Central Finance</UnitNavLink>
-              <NavLink to="/unit/reports">Central Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Central Reports</UnitNavLink>
             </nav>
             {/* Super Admin removed from Committee group per request. */}
           </>
@@ -315,7 +316,7 @@ export default function Layout() {
               <NavLink to="/unit/cabinet">Assign Province Cabinet Roles</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
           </>
         )}
@@ -330,7 +331,7 @@ export default function Layout() {
               <NavLink to="/unit/cabinet">Assign Area Cabinet Roles</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">Area Breakdown</NavLink>
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
           </>
         )}
@@ -345,7 +346,7 @@ export default function Layout() {
               <NavLink to="/unit/cabinet">Assign District Cabinet Roles</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">District Breakdown</NavLink>
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
           </>
         )}
@@ -364,7 +365,7 @@ export default function Layout() {
               {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
               {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
               <NavLink to="/unit/performance">Member Performance</NavLink>
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
                     <CommitteeNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
@@ -384,7 +385,7 @@ export default function Layout() {
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/performance">Member Performance</NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">Finance Summary</UnitNavLink>}
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
             {/* Secretary saw the committee only at AREA / DISTRICT.
                 Kept that bound rather than widening their surface. */}
@@ -400,7 +401,9 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
             </div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
+              <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
+                {user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}
+              </NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
               {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
               {/* Not gated on MANAGE_MEETINGS: this persona cannot ASSIGN
@@ -411,7 +414,7 @@ export default function Layout() {
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
                 <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
               )}
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
             {/* The Finance Secretary keeps the unit's books for BOTH
                 bodies, so they get the committee ledgers too — minus
@@ -444,7 +447,9 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Province'}
             </div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
+              <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
+                {user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}
+              </NavLink>
               <NavLink to="/members">Members</NavLink>
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
               <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
@@ -452,7 +457,7 @@ export default function Layout() {
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
               <NavLink to="/unit/performance">Member Performance</NavLink>
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
           </>
@@ -460,18 +465,22 @@ export default function Layout() {
 
         {!isSuperAdmin && !isCentralAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
           <>
-            <div className="nav-group">Global</div>
+            <div className="nav-group">
+              {user?.canViewExecutiveDashboard ? 'CENTRAL · PKNAP CENTRAL' : 'Global'}
+            </div>
             <nav>
-              <NavLink to="/" end>Dashboard</NavLink>
+              <NavLink to="/" end>{user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}</NavLink>
               <NavLink to="/members">Members</NavLink>
               {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
               {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
             </nav>
-            <div className="nav-group">
-              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
-            </div>
+            {!user?.canViewExecutiveDashboard && (
+              <div className="nav-group">
+                {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+              </div>
+            )}
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
+              {!user?.canViewExecutiveDashboard && <NavLink to="/unit" end>Dashboard</NavLink>}
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
               <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
               <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
@@ -479,7 +488,7 @@ export default function Layout() {
               <NavLink to="/unit/performance">Member Performance</NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
               {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
-              <NavLink to="/unit/reports">Reports</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
                 <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
               )}

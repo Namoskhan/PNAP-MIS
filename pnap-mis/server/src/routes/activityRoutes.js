@@ -13,5 +13,6 @@ router.get('/', requireUnitScope(), ctrl.list);
 router.post('/', validate(activityCreateSchema), ctrl.create);
 router.post('/:id/photos', upload.array('photos', 10), ctrl.uploadPhotos);
 router.post('/:id/complete', ctrl.complete);
+router.post('/:id/cancel', ctrl.cancel);
 
 module.exports = router;

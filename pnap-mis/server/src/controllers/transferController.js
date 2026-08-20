@@ -1,5 +1,8 @@
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const FundTransfer = require('../models/FundTransfer');
+const Donation = require('../models/Donation');
+const Expense = require('../models/Expense');
 const Area = require('../models/Area');
 const District = require('../models/District');
 const Province = require('../models/Province');
@@ -12,6 +15,25 @@ const activityService = require('../services/activityService');
 // endpoint below and the create path share one implementation of what
 // counts as a legal recipient.
 const { resolveDestination } = require('../utils/transferRouting');
+
+// Pending transfers are already committed by the sender's payment proof.
+// Reserving them prevents the same balance from funding multiple transfers.
+async function availableBalance(unitLevel, unitId, body) {
+  const unitObjectId = new mongoose.Types.ObjectId(String(unitId));
+  const ownUnit = { unitLevel, unitId: unitObjectId };
+  const bodyMatch = body === 'EXECUTIVE'
+    ? { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] }
+    : { body };
+  const [donations, expenses, outgoing, incoming] = await Promise.all([
+    Donation.aggregate([{ $match: { ...ownUnit, ...bodyMatch } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    Expense.aggregate([{ $match: { ...ownUnit, ...bodyMatch, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    FundTransfer.aggregate([{ $match: { sourceLevel: unitLevel, sourceUnitId: unitObjectId, ...bodyMatch, state: { $in: ['PENDING_ACK', 'ACKNOWLEDGED'] } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    FundTransfer.aggregate([{ $match: { destinationLevel: unitLevel, destinationUnitId: unitObjectId, ...bodyMatch, state: 'ACKNOWLEDGED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+  ]);
+
+  return (donations[0]?.total || 0) + (incoming[0]?.total || 0)
+    - (expenses[0]?.total || 0) - (outgoing[0]?.total || 0);
+}
 
 // Approval gate for acknowledge / reject. Under the revised finance
 // policy the sender names the recipient outright, and THAT unit is the
@@ -77,7 +99,7 @@ async function authorizeAck(user, transfer) {
 // before the field existed keep showing under Executive. Returns null
 // when `body` is omitted (pooled view — today's behavior).
 function bodyClause(body) {
-  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
   return null;
 }
@@ -178,6 +200,12 @@ exports.initiate = asyncHandler(async (req, res) => {
   // the revised business rule; an admin who narrows it still governs.
   const policy = await policyEngine.resolveFor(sourceLevel, sourceUnitId);
   policyEngine.assertTransferDirection(direction, policy);
+
+  const balance = await availableBalance(sourceLevel, sourceUnitId, body);
+  if (amount > balance) {
+    throw new ApiError(400, 'INSUFFICIENT_FUNDS',
+      `Transfer amount exceeds the available balance of PKR ${balance.toLocaleString()}`);
+  }
 
   // Source-side hierarchy, denormalized for the §11 roll-ups. This is
   // the SENDER's chain and stays that way — the destination is no

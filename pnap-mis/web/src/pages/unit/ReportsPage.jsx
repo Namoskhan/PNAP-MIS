@@ -38,9 +38,9 @@ function downloadAuthed2(path, filename) {
 
 export default function ReportsPage() {
   const location = useLocation();
-  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : '';
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCommitteeView = queryBody === 'COMMITTEE';
   const { ctx } = useUnit();
-  const [body, setBody] = useState(initialBody);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [members, setMembers] = useState([]);
@@ -67,32 +67,48 @@ export default function ReportsPage() {
 
   useEffect(() => {
     if (!ctx) return;
-    const params = { status: 'ACTIVE', limit: 500 };
-    if (ctx.unitLevel === 'BASIC_UNIT') params.basicUnitId = ctx.unitId;
-    else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
-    else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
-    else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
-    // Central has no unit key on Member; scope:'all' is the explicit
-    // opt-in the members endpoint requires when no unit filter is sent.
-    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
-    api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
-  }, [ctx]);
+    setMemberId('');
+    setReport(null);
+    const bodyTarget = isCommitteeView ? 'COMMITTEE' : 'GENERAL_BODY';
+    api.get('/meetings/eligible-attendees', {
+      params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: bodyTarget },
+    })
+      .then((r) => setMembers(r.data.data || []))
+      .catch(() => {
+        const params = { status: 'ACTIVE', limit: 500 };
+        if (ctx.unitLevel === 'BASIC_UNIT') params.basicUnitId = ctx.unitId;
+        else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
+        else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
+        else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+        else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
+        api.get('/members', { params }).then((r) => setMembers(r.data.data || [])).catch(() => {});
+      });
+  }, [ctx, isCommitteeView]);
 
-  function unitParams() {
+  function unitParams(kind) {
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
-      if (typeof body !== 'undefined' && body) p.set('body', body);
-      return p.toString();
+    if (isCommitteeView) {
+      p.set('body', 'COMMITTEE');
+    } else {
+      if (kind === 'meetings') {
+        p.set('body', 'NON_COMMITTEE');
+      } else if (kind === 'finance') {
+        p.set('body', 'EXECUTIVE');
+      }
     }
+    return p.toString();
+  }
 
   async function downloadUnit(kind, format) {
     setErr(''); setBusy(true);
     try {
       const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+      const bodySuffix = isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : '');
       await downloadAuthed2(
-        `/api/exports/unit/${kind}/${format}?${unitParams()}`,
-              `${ctx.unitLevel}-${ctx.unitName}-${kind}${body ? `-${body.toLowerCase()}` : ''}.${ext}`,
+        `/api/exports/unit/${kind}/${format}?${unitParams(kind)}`,
+        `${ctx.unitLevel}-${ctx.unitName}-${kind}${bodySuffix}.${ext}`,
       );
     } catch (e) { setErr('Export failed: ' + (e.message || 'unknown')); }
     finally { setBusy(false); }
@@ -117,7 +133,7 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div className="page-header"><h2>Reports · {ctx.unitName}</h2></div>
+      <div className="page-header"><h2>{isCommitteeView ? 'Committee Reports' : 'Reports'} · {ctx.unitName}</h2></div>
 
       {err && <div className="alert error">{err}</div>}
 
@@ -136,9 +152,11 @@ export default function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>{body === 'COMMITTEE' ? 'Committee Meetings & Activities Report' : 'Meetings & Activities Report'}</h3>
+        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Meetings & Activities Report' : 'Meetings & Activities Report'}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
-          Roster, meetings (with embedded photos), activities, and pending/completed responsibilities.
+          {isCommitteeView
+            ? 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.'
+            : 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.'}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('meetings', 'pdf')}>Download PDF</button>
@@ -147,9 +165,11 @@ export default function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>{body === 'COMMITTEE' ? 'Committee Finance Report' : 'Finance Report'}</h3>
+        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Finance Report' : 'Finance Report'}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
-          Donations ledger, expenses ledger, and the unit's net balance for the period.
+          {isCommitteeView
+            ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'
+            : 'Executive donations ledger, expenses ledger, and the executive net balance for the period.'}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>Download PDF</button>
@@ -158,13 +178,22 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Individual Performance Report</h3>
+        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Member Performance Report' : 'Individual Performance Report'}</h3>
+        <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
+          {isCommitteeView
+            ? 'Performance scorecard and attendance report for committee members.'
+            : 'Performance scorecard and attendance report for executive committee and subordinate members.'}
+        </p>
         <div className="form-grid" style={{ alignItems: 'end' }}>
           <div className="field">
-            <label>Member</label>
+            <label>{isCommitteeView ? 'Committee Member' : 'Member'}</label>
             <select value={memberId} onChange={(e) => setMemberId(e.target.value)}>
               <option value="">— pick a member —</option>
-              {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
+              {members.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.fullName} · {m.memberId || m.cnic}{m.roleText ? ` (${m.roleText})` : ''}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">
