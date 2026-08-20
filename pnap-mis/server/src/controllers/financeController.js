@@ -52,7 +52,7 @@ async function nextReceiptNo(unitId, fy) {
 // all and must keep appearing under Executive so nothing that used to
 // be visible disappears.
 function bodyClause(body) {
-  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
   return null;
 }

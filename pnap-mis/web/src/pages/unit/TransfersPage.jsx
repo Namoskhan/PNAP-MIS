@@ -38,10 +38,10 @@ export default function TransfersPage() {
   const location = useLocation();
   const toast = useToast();
   const [tab, setTab] = useState('outgoing');
-  // Default body — read once from URL so a "Committee Transfers" link
-  // from the dashboard lands on the right tab.
-  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
-  const [body, setBody] = useState(initialBody);
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCommitteeView = queryBody === 'COMMITTEE';
+  const targetBody = isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE';
+
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
   const [receipt, setReceipt] = useState(null);
@@ -58,18 +58,13 @@ export default function TransfersPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
-
   async function reload() {
     if (!ctx) return;
-    const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab };
-    // Sent only when the toggle is shown, so a level without the split
-    // keeps requesting the pooled history it gets today.
-    if (showBodyToggle) params.body = body;
+    const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab, body: targetBody };
     const r = await api.get('/transfers', { params });
-    setItems(r.data.data);
+    setItems(r.data.data || []);
   }
-  useEffect(() => { reload(); }, [ctx, tab, body]);
+  useEffect(() => { reload(); }, [ctx, tab, targetBody]);
 
   // Switching unit context invalidates any pending selection.
   useEffect(() => { resetSelection(); }, [ctx]);
@@ -111,7 +106,7 @@ export default function TransfersPage() {
       // The only routing input the server accepts — an opaque id it
       // re-resolves and re-validates on its own.
       fd.append('destinationId', preview.destination.id);
-      if (showBodyToggle) fd.append('body', body);
+      fd.append('body', targetBody);
       fd.append('amount', form.amount);
       fd.append('mode', form.mode);
       if (form.reference) fd.append('reference', form.reference);
@@ -168,26 +163,25 @@ export default function TransfersPage() {
   // so an authenticated fetch can surface in the browser's Downloads.
   function downloadAuthed(path, filename) {
     const token = localStorage.getItem('pnap_token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      return fetch(path, { headers })
-        .then(async (res) => {
-          if (!res.ok) throw new Error('Export failed');
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a); a.click(); a.remove();
-          URL.revokeObjectURL(url);
-        });
-    }
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    return fetch(path, { headers })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Export failed');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      });
+  }
 
   function exportParams() {
-    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab });
-    if (showBodyToggle) params.set('body', body);
+    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab, body: targetBody });
     return params;
   }
   function exportName(ext) {
-      return `${ctx.unitName}${showBodyToggle ? ('-' + body.toLowerCase()) : ''}-transfers.${ext}`;
+    return `${ctx.unitName}-${targetBody.toLowerCase()}-transfers.${ext}`;
   }
   function exportPdf() {
     downloadAuthed(`/api/exports/unit/transfers/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
@@ -213,22 +207,27 @@ export default function TransfersPage() {
   const canSend = ctx.unitLevel !== 'CENTRAL';
   const readyToConfirm = !!preview && !!form.amount && !!receipt;
 
+  const displayedItems = (items || []).filter((t) => {
+    if (isCommitteeView) return t.body === 'COMMITTEE';
+    return t.body === 'EXECUTIVE' || !t.body || t.body !== 'COMMITTEE';
+  });
+
   return (
     <div>
       <div className="page-header">
-          <h2>
-            {body === 'COMMITTEE' ? 'Committee Transfers' : 'Executive Transfers'} · {ctx.unitName}
-          </h2>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
-            <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
-            {canSend && (
-              <button className="btn" onClick={() => setTransferModalOpen(true)}>
-                {body === 'COMMITTEE' ? '+ Initiate Committee Fund Transfer' : '+ Initiate Fund Transfer'}
-              </button>
-            )}
-          </div>
+        <h2>
+          {isCommitteeView ? 'Committee Transfers' : 'Executive Transfers'} · {ctx.unitName}
+        </h2>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
+          <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
+          {canSend && (
+            <button className="btn" onClick={() => setTransferModalOpen(true)}>
+              {isCommitteeView ? '+ Initiate Committee Fund Transfer' : '+ Initiate Fund Transfer'}
+            </button>
+          )}
         </div>
+      </div>
 
       {err && !transferModalOpen && <div className="alert error">{err}</div>}
 
@@ -452,11 +451,31 @@ export default function TransfersPage() {
           </tr>
         </thead>
         <tbody>
-          {items.length === 0 && <tr><td colSpan="8" className="muted">No transfers in this view.</td></tr>}
-          {items.map((t) => (
+          {displayedItems.length === 0 && (
+            <tr>
+              <td colSpan="8" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                No {isCommitteeView ? 'committee' : 'executive'} transfers in this view.
+              </td>
+            </tr>
+          )}
+          {displayedItems.map((t) => (
             <tr key={t._id}>
               <td>{new Date(t.createdAt).toLocaleDateString()}</td>
-              <td>{counterparty(t)}</td>
+              <td>
+                <span
+                  className="badge"
+                  style={{
+                    marginRight: 6,
+                    background: t.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
+                    color: t.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                    fontWeight: 600,
+                    fontSize: 11,
+                  }}
+                >
+                  {t.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                </span>
+                {counterparty(t)}
+              </td>
               <td>{t.mode}</td>
               <td>{t.reference || '—'}</td>
               <td style={{ textAlign: 'right' }}>{PKR.format(t.amount)}</td>

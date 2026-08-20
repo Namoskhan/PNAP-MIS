@@ -530,10 +530,10 @@ async function unitName(unitLevel, unitId) {
 // omitted, which is what every existing caller does — their results
 // stay pooled and byte-identical to before.
 function bodyClause(body) {
-  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
   if (body === 'GENERAL_BODY') return { body: 'GENERAL_BODY' };
-  if (body === 'NON_COMMITTEE') return { $or: [{ body: { $ne: 'COMMITTEE' } }, { body: { $exists: false } }] };
+  if (body === 'NON_COMMITTEE') return { $or: [{ body: { $ne: 'COMMITTEE' } }, { body: { $exists: false } }, { body: null }] };
   return null;
 }
 

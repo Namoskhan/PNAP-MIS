@@ -77,7 +77,7 @@ async function authorizeAck(user, transfer) {
 // before the field existed keep showing under Executive. Returns null
 // when `body` is omitted (pooled view — today's behavior).
 function bodyClause(body) {
-  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
+  if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
   return null;
 }
