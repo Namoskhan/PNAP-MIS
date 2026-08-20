@@ -532,6 +532,8 @@ async function unitName(unitLevel, unitId) {
 function bodyClause(body) {
   if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'GENERAL_BODY') return { body: 'GENERAL_BODY' };
+  if (body === 'NON_COMMITTEE') return { $or: [{ body: { $ne: 'COMMITTEE' } }, { body: { $exists: false } }] };
   return null;
 }
 
@@ -543,6 +545,7 @@ function bodyClause(body) {
 function bodyLabel(body) {
   if (body === 'COMMITTEE') return 'Committee';
   if (body === 'EXECUTIVE') return 'Executive';
+  if (body === 'GENERAL_BODY') return 'General Body';
   return '';
 }
 // Filename fragment: '-committee' / '-executive' / '' so the two

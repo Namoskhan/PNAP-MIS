@@ -13,14 +13,9 @@ const EventTypeConfig = require('../models/EventTypeConfig');
 // built-ins can't be tampered with.
 
 const BUILTIN_MEETING_TYPES = [
-  { code: 'GBM', label: 'General Body Meeting',  sortOrder: 10, description: 'Full membership meeting at any unit.' },
-  { code: 'EXC', label: 'Executive Meeting',     sortOrder: 20, description: 'Cabinet / executive committee meeting.' },
-  { code: 'PRT', label: 'Protest Meeting',       sortOrder: 30, description: 'Planning / debrief meeting tied to a protest activity.' },
-  { code: 'JLS', label: 'Jalsa Meeting',         sortOrder: 40, description: 'Planning / debrief meeting tied to a jalsa.' },
-  { code: 'CMP', label: 'Campaign Meeting',      sortOrder: 50, description: 'Planning / debrief meeting tied to a campaign.' },
-  { code: 'SEM', label: 'Seminar Meeting',       sortOrder: 60, description: 'Planning / debrief meeting tied to a seminar.' },
-  { code: 'STC', label: 'Study Circle Meeting',  sortOrder: 70, description: 'Internal study-circle session (SRS §10).' },
-  { code: 'OTH', label: 'Other Meeting',         sortOrder: 99, description: 'Catch-all for ad-hoc meetings.' },
+  { code: 'GBM', label: 'General Body Meeting',  sortOrder: 10, description: 'Full membership / General Body meeting at basic unit level.' },
+  { code: 'EXC', label: 'Executive Meeting',     sortOrder: 20, description: 'Cabinet / executive meeting.' },
+  { code: 'CMP', label: 'Committee Meeting',     sortOrder: 30, description: 'Committee meeting.' },
 ];
 
 const BUILTIN_ACTIVITY_TYPES = [
@@ -68,6 +63,8 @@ async function _upsertOne({ entity, code, label, description, sortOrder, photoMi
   if (!existing.isSystem) { existing.isSystem = true; dirty = true; }
   if (existing.entity !== entity) { existing.entity = entity; dirty = true; }
   if (existing.code !== code) { existing.code = code; dirty = true; }
+  if (entity === 'MEETING' && existing.label !== label) { existing.label = label; dirty = true; }
+  if (entity === 'MEETING' && existing.description !== description) { existing.description = description; dirty = true; }
   if (dirty) await existing.save();
   return dirty ? 'reconciled' : 'unchanged';
 }
@@ -90,6 +87,12 @@ async function seedEventTypes() {
     if (r === 'inserted') stats.meetingsInserted++;
     if (r === 'reconciled') stats.reconciled++;
   }
+
+  // Deactivate any legacy meeting types in the DB that are not among the 3 canonical types
+  await EventTypeConfig.updateMany(
+    { entity: 'MEETING', code: { $nin: ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE'] }, isActive: true },
+    { $set: { isActive: false } }
+  );
 
   for (const t of BUILTIN_ACTIVITY_TYPES) {
     const r = await _upsertOne({

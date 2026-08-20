@@ -61,7 +61,7 @@ function committeeLabel(unitLevel) {
   if (unitLevel === 'DISTRICT') return 'Zilla Committee';
   if (unitLevel === 'PROVINCE') return 'Sobayi Committee / Jirga';
   if (unitLevel === 'CENTRAL') return 'Central Committee / Qomi Jirga';
-  return 'Committee / Jirga';
+  return '';
 }
 
 // A unit nav entry that is body-aware.
@@ -106,8 +106,9 @@ function UnitNavLink({ to, body = null, children }) {
 // group mirrors the surfaces that persona already has, it does not
 // hand them new ones.
 function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }) {
-  if (!ctx) return null;
+  if (!ctx || ctx.unitLevel === 'BASIC_UNIT') return null;
   const label = committeeLabel(ctx.unitLevel);
+  if (!label) return null;
   return (
     <NavGroup
       label={label}

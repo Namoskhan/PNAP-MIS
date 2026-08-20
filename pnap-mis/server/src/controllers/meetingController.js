@@ -23,7 +23,12 @@ async function resolveEventConfig(d, entity) {
 
   // Body applicability — if the type config restricts to one body
   // and the request asks for the other, reject before persisting.
-  const requestedBody = (d.body === 'COMMITTEE') ? 'COMMITTEE' : 'EXECUTIVE';
+  let requestedBody = d.body ? String(d.body).toUpperCase() : undefined;
+  if (!requestedBody || !['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY'].includes(requestedBody)) {
+    if (rawCode === 'GBM' || rawCode === 'GENERAL_BODY') requestedBody = 'GENERAL_BODY';
+    else if (rawCode === 'CMP' || rawCode === 'COMMITTEE') requestedBody = 'COMMITTEE';
+    else requestedBody = 'EXECUTIVE';
+  }
   const appliesTo = config.appliesTo || {};
   if (requestedBody === 'EXECUTIVE' && appliesTo.executive === false) {
     throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Executive body`);
@@ -79,9 +84,12 @@ exports.list = asyncHandler(async (req, res) => {
   }
   if (state) filter.state = state;
   if (type) filter.type = type;
+  // Body filtering:
   // Legacy records pre-date the `body` field; treat them as EXECUTIVE.
   if (body === 'EXECUTIVE') and.push({ $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }] });
   else if (body === 'COMMITTEE') filter.body = 'COMMITTEE';
+  else if (body === 'GENERAL_BODY') filter.body = 'GENERAL_BODY';
+  else if (body === 'NON_COMMITTEE') and.push({ $or: [{ body: { $ne: 'COMMITTEE' } }, { body: { $exists: false } }] });
   if (from || to) {
     filter.startAt = {};
     if (from) filter.startAt.$gte = new Date(from);
@@ -189,7 +197,14 @@ exports.update = asyncHandler(async (req, res) => {
     if (typeChanged) {
       m.type = codeForLookup;
       m.typeCode = codeForLookup;
+      if (codeForLookup === 'GBM' || codeForLookup === 'GENERAL_BODY') m.body = 'GENERAL_BODY';
+      else if (codeForLookup === 'CMP' || codeForLookup === 'COMMITTEE') m.body = 'COMMITTEE';
+      else if (codeForLookup === 'EXC' || codeForLookup === 'EXECUTIVE') m.body = 'EXECUTIVE';
     }
+  }
+
+  if (req.body.body && ['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY'].includes(req.body.body)) {
+    m.body = req.body.body;
   }
 
   const editable = [

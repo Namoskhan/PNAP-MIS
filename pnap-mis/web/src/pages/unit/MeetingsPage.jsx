@@ -12,9 +12,11 @@ import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
 // Default starting type when no types have loaded yet — kept here so
 // the form has a sensible empty state. The picker itself is sourced
+// Default starting type when no types have loaded yet — kept here so
+// the form has a sensible empty state. The picker itself is sourced
 // from /api/events/types (active types only) so admins can extend
 // the catalogue without a code change.
-const DEFAULT_TYPE_CODE = 'GBM';
+const DEFAULT_TYPE_CODE = 'EXC';
 
 // Mirror the server's upload.array caps so the picker never sends a
 // batch that would be silently truncated: photos 10, documents 5.
@@ -93,10 +95,10 @@ export default function MeetingsPage() {
   const [members, setMembers] = useState([]);
   const [scope, setScope] = useState('own');
   const [showCreate, setShowCreate] = useState(false);
-  // Default body — read once from URL so a "Committee Meetings" link
-  // from the dashboard lands on the right tab.
-  const initialBody = new URLSearchParams(location.search).get('body') === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
-  const [body, setBody] = useState(initialBody);
+  
+  // URL check: committee vs regular meetings
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCommitteeView = queryBody === 'COMMITTEE';
   const [form, setForm] = useState(EMPTY_FORM);
   const [finalizing, setFinalizing] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -114,17 +116,26 @@ export default function MeetingsPage() {
 
   const showBodyToggle = ctx && bodySupported(ctx.unitLevel);
 
-  // Active meeting types from the EventTypeConfig catalogue (PR 4b).
-  // We pass `body` only when the body toggle is shown — at BU level
-  // there's no body distinction, so the unfiltered catalogue is fine.
-  const { types: eventTypes } = useEventTypes('MEETING', showBodyToggle ? body : undefined);
+  // Active meeting types from the EventTypeConfig catalogue
+  const { types: eventTypes } = useEventTypes('MEETING');
+
+  // Filter types based on current stream view:
+  // On Committee stream: Committee Meeting
+  // On regular Meetings stream: Executive Meeting and General Body Meeting
+  const availableTypes = useMemo(() => {
+    if (isCommitteeView) {
+      return eventTypes.filter((t) => t.code === 'CMP' || t.code === 'COMMITTEE' || t.appliesTo?.committee !== false);
+    }
+    return eventTypes.filter((t) => ['EXC', 'EXECUTIVE', 'GBM', 'GENERAL_BODY'].includes(String(t.code).toUpperCase()));
+  }, [eventTypes, isCommitteeView]);
 
   // Resolve the currently-selected type doc so the create dialog can
   // render its custom fields via <DynamicForm>.
   const selectedType = useMemo(() => {
-    return eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase()) || null;
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [eventTypes, form.typeCode]);
+    return availableTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || null;
+  }, [availableTypes, eventTypes, form.typeCode]);
 
   // Latest-fetch guard — when ctx changes mid-flight (e.g. user
   // drilled into a subordinate) ignore stale responses so they don't
@@ -134,22 +145,20 @@ export default function MeetingsPage() {
   async function reload() {
     if (!ctx) return;
     const myId = ++fetchIdRef.current;
-    // A meeting record is owned by the unit whose body sits — an Area
-    // committee meeting is an AREA record, a District one a DISTRICT
-    // record. A pure member is pinned to their Basic Unit, so the
-    // default `own` scope hid every meeting held above them and the
-    // page read "No meetings yet". `chain` adds their Area / District /
-    // Province / Central schedule on top of their own unit's.
     const params = {
       unitLevel: ctx.unitLevel, unitId: ctx.unitId,
       scope: isPureMember ? 'chain' : (scope === 'tree' ? 'subtree' : undefined),
     };
-    if (showBodyToggle) params.body = body;
+    if (isCommitteeView) {
+      params.body = 'COMMITTEE';
+    } else if (showBodyToggle) {
+      params.body = 'NON_COMMITTEE';
+    }
     const r = await api.get('/meetings', { params });
     if (myId === fetchIdRef.current) setItems(r.data.data);
   }
 
-  useEffect(() => { reload(); }, [ctx, scope, body, isPureMember]);
+  useEffect(() => { reload(); }, [ctx, scope, isCommitteeView, isPureMember]);
 
   useEffect(() => {
     if (!ctx) return;
@@ -192,6 +201,14 @@ export default function MeetingsPage() {
     );
   }
 
+  function openCreate() {
+    const initialCode = isCommitteeView
+      ? (availableTypes[0]?.code || 'CMP')
+      : (availableTypes.find((t) => t.code === 'EXC')?.code || availableTypes[0]?.code || 'EXC');
+    setForm({ ...EMPTY_FORM, typeCode: initialCode });
+    setShowCreate(true);
+  }
+
   // Feedback here goes through toasts rather than an inline banner:
   // the create dialog is a fixed overlay, so a banner rendered behind
   // it was invisible — the failure case in particular looked like the
@@ -205,12 +222,18 @@ export default function MeetingsPage() {
       // the type's snapshot resolved fields.
       const { dynamicData, ...rest } = form;
       const payload = { ...rest, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
-      if (showBodyToggle) payload.body = body;
+      if (isCommitteeView) {
+        payload.body = 'COMMITTEE';
+      } else if (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') {
+        payload.body = 'GENERAL_BODY';
+      } else {
+        payload.body = 'EXECUTIVE';
+      }
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
       if (dynamicData && Object.keys(dynamicData).length > 0) payload.dynamicData = dynamicData;
       const r = await api.post('/meetings', payload);
       const m = r.data.data;
-      const bodyLabel = showBodyToggle ? (body === 'COMMITTEE' ? 'Committee' : 'Executive') : '';
+      const bodyLabel = isCommitteeView ? 'Committee' : (payload.body === 'GENERAL_BODY' ? 'General Body' : 'Executive');
       toast.success(
         `${[bodyLabel, m.title || m.type].filter(Boolean).join(' · ')} — ${new Date(m.startAt).toLocaleString()} at ${m.venue}.`,
         { title: 'Meeting scheduled' },
@@ -313,11 +336,12 @@ export default function MeetingsPage() {
   function exportParams() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (scope === 'tree') params.set('scope', 'subtree');
-    if (showBodyToggle) params.set('body', body);
+    if (isCommitteeView) params.set('body', 'COMMITTEE');
+    else if (showBodyToggle) params.set('body', 'NON_COMMITTEE');
     return params;
   }
   function exportName(ext) {
-    return `${ctx.unitName}${showBodyToggle ? `-${body.toLowerCase()}` : ''}-meetings.${ext}`;
+    return `${ctx.unitName}${isCommitteeView ? '-committee' : ''}-meetings.${ext}`;
   }
   function exportPdf() {
     downloadAuthed(`/api/exports/unit/meetings/pdf?${exportParams()}`, exportName('pdf')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
@@ -332,7 +356,7 @@ export default function MeetingsPage() {
     <div>
       <div className="page-header">
         <h2>
-          {body === 'COMMITTEE' ? 'Committee Meetings' : 'Executive Meetings'} · {ctx.unitName}
+          {isCommitteeView ? 'Committee Meetings' : 'Meetings'} · {ctx.unitName}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {/* At BU level the only option would be "This unit only" —
@@ -347,8 +371,8 @@ export default function MeetingsPage() {
           <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && (
-            <button className="btn" onClick={() => setShowCreate(true)}>
-              {body === 'COMMITTEE' ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'}
+            <button className="btn" onClick={openCreate}>
+              {isCommitteeView ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'}
             </button>
           )}
         </div>
@@ -372,8 +396,8 @@ export default function MeetingsPage() {
                 value={form.typeCode}
                 onChange={(e) => setForm({ ...form, typeCode: e.target.value, dynamicData: {} })}
               >
-                {eventTypes.length === 0 && <option value="">— Loading types —</option>}
-                {eventTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+                {availableTypes.length === 0 && <option value="">— Loading types —</option>}
+                {availableTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
               </select>
             </div>
             <div className="field">
@@ -829,11 +853,15 @@ function toLocalInput(d) {
 }
 
 function EditDialog({ meeting, members, onClose, onDone }) {
-  // Edit dialog uses its own useEventTypes call so it works even when
-  // opened from a context where the parent's hook hasn't refreshed.
-  // Body filtering follows the meeting's own body, since changing body
-  // is not allowed via this dialog.
-  const { types: eventTypes } = useEventTypes('MEETING', meeting.body);
+  const isCommitteeMeeting = meeting.body === 'COMMITTEE';
+  const { types: eventTypes } = useEventTypes('MEETING');
+  const availableTypes = useMemo(() => {
+    if (isCommitteeMeeting) {
+      return eventTypes.filter((t) => t.code === 'CMP' || t.code === 'COMMITTEE' || t.appliesTo?.committee !== false);
+    }
+    return eventTypes.filter((t) => ['EXC', 'EXECUTIVE', 'GBM', 'GENERAL_BODY'].includes(String(t.code).toUpperCase()));
+  }, [eventTypes, isCommitteeMeeting]);
+
   const [form, setForm] = useState({
     typeCode: (meeting.typeCode || meeting.type || '').toUpperCase(),
     title: meeting.title || '',
@@ -853,15 +881,23 @@ function EditDialog({ meeting, members, onClose, onDone }) {
   const [err, setErr] = useState('');
 
   const selectedType = useMemo(() => {
-    return eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase()) || null;
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [eventTypes, form.typeCode]);
+    return availableTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || eventTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
+      || null;
+  }, [availableTypes, eventTypes, form.typeCode]);
 
   async function save() {
     setErr(''); setBusy(true);
     try {
       const { dynamicData, ...rest } = form;
       const payload = { ...rest };
+      if (isCommitteeMeeting) {
+        payload.body = 'COMMITTEE';
+      } else if (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') {
+        payload.body = 'GENERAL_BODY';
+      } else {
+        payload.body = 'EXECUTIVE';
+      }
       Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
       // Always send dynamicData so the server can re-validate against
       // the (possibly new) snapshot — even if the bag is empty.
@@ -885,8 +921,8 @@ function EditDialog({ meeting, members, onClose, onDone }) {
               value={form.typeCode}
               onChange={(e) => setForm({ ...form, typeCode: e.target.value, dynamicData: {} })}
             >
-              {eventTypes.length === 0 && <option value={form.typeCode}>{form.typeCode}</option>}
-              {eventTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+              {availableTypes.length === 0 && <option value={form.typeCode}>{form.typeCode}</option>}
+              {availableTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
             </select>
           </div>
           <div className="field">
