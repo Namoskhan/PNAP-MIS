@@ -529,6 +529,23 @@ async function unitName(unitLevel, unitId) {
 // field still report under Executive. Returns null when `body` is
 // omitted, which is what every existing caller does — their results
 // stay pooled and byte-identical to before.
+function meetingBodyClause(body) {
+  if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'GENERAL_BODY') return { body: 'GENERAL_BODY' };
+  if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
+  return { $or: [{ body: { $in: ['EXECUTIVE', 'GENERAL_BODY'] } }, { body: { $exists: false } }, { body: null }] };
+}
+
+function activityBodyClause(body) {
+  if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
+}
+
+function financeBodyClause(body) {
+  if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
+}
+
 function bodyClause(body) {
   if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
@@ -570,46 +587,36 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
   const recvClause = (Object.keys(dateFilter).length) ? { receivedAt: dateFilter } : {};
   const incurClause = (Object.keys(dateFilter).length) ? { incurredAt: dateFilter } : {};
   const xferClause = (Object.keys(dateFilter).length) ? { transferredAt: dateFilter } : {};
-  // Applied only to the five body-tagged collections below. Members
-  // and Responsibilities carry no `body` field, so they stay whole —
-  // a Committee report still names the unit's full roster. `{}` when
-  // the caller omits `body`, which spreads to nothing.
-  const bodyQ = bodyClause(body) || {};
 
-  // Fund transfers are their OWN ledger — initiating one does not create
-  // an Expense, and acknowledging one does not approve an expense. They
-  // move money between units, so they only count once the receiving unit
-  // has acknowledged: until then the amount is still on the sender's
-  // books.
-  //
-  // Matched on the exact unit rather than the subtree, mirroring
-  // financeController's summary. Rolling them up would double-count any
-  // transfer INTERNAL to the subtree (an Area sending to its own
-  // District would appear as both an outflow and an inflow), and the
-  // schema denormalizes only the SOURCE chain, so the incoming side
-  // could not be rolled up symmetrically anyway.
+  // Stream-specific body queries:
+  // - Committee Reports: strictly body === 'COMMITTEE'
+  // - Executive/General Reports: Meetings include Executive + General Body; Activities include Executive; Finance includes Executive.
+  const meetingBodyQ = meetingBodyClause(body);
+  const activityBodyQ = activityBodyClause(body);
+  const financeBodyQ = financeBodyClause(body);
+
   const oid = (v) => {
     try { return new mongoose.Types.ObjectId(String(v)); } catch { return null; }
   };
   const unitOid = oid(unitId);
-  const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...bodyQ };
-  const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...bodyQ };
+  const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...financeBodyQ };
+  const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...financeBodyQ };
 
   const [members, meetings, activities, donations, expenses, responsibilities,
     transfersOut, transfersIn] = await Promise.all([
     Member.find({ ...memberQ, status: 'ACTIVE' }).select('fullName memberId cnic phone').lean(),
-    Meeting.find({ ...ownQ, ...startClause, ...bodyQ })
+    Meeting.find({ ...ownQ, ...startClause, ...meetingBodyQ })
       .populate('chairpersonId', 'fullName memberId')
       .populate('attendance.memberId', 'fullName memberId')
       .lean(),
     // Lead + participants are populated so activity blocks can name
     // people the same way meeting blocks name the chair and roster.
-    Activity.find({ ...ownQ, ...startClause, ...bodyQ })
+    Activity.find({ ...ownQ, ...startClause, ...activityBodyQ })
       .populate('leadMemberId', 'fullName memberId')
       .populate('participants', 'fullName memberId')
       .lean(),
-    Donation.find({ ...ownQ, ...recvClause, ...bodyQ }).lean(),
-    Expense.find({ ...ownQ, ...incurClause, ...bodyQ }).lean(),
+    Donation.find({ ...ownQ, ...recvClause, ...financeBodyQ }).lean(),
+    Expense.find({ ...ownQ, ...incurClause, ...financeBodyQ }).lean(),
     Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
     unitOid ? FundTransfer.find(outFilter).lean() : [],
     unitOid ? FundTransfer.find(inFilter).lean() : [],
