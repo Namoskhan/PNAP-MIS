@@ -2,11 +2,20 @@
   "name": "pnap-mis",
   "private": true,
   "version": "0.1.0",
-  "workspaces": ["server", "web"],
+  "workspaces": [
+    "server",
+    "web"
+  ],
   "scripts": {
+    "build": "npm run build --workspace=web",
+    "start": "npm start --workspace=server",
     "dev:server": "npm run dev --workspace=server",
     "dev:web": "npm run dev --workspace=web",
-    "dev": "npm-run-all --parallel dev:server dev:web"
+    "dev": "npm-run-all --parallel dev:server dev:web",
+    "seed": "npm run seed --workspace=server",
+    "seed:demo": "npm run seed:demo --workspace=server",
+    "export:demo": "npm run export:demo --workspace=server",
+    "import:credentials": "npm run import:credentials --workspace=server"
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5"
