@@ -36,8 +36,11 @@ module.exports = {
     doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
     for (const d of rows) {
       const dateStr = d.receivedAt ? new Date(d.receivedAt).toLocaleDateString() : '—';
+      const donorName = d.donorType === 'ANONYMOUS'
+        ? 'Anonymous'
+        : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
       doc.text(dateStr,                                    40,  y, { width: 90 });
-      doc.text(String(d.donorName || d.donorType || '—'),  135, y, { width: 200, ellipsis: true });
+      doc.text(String(donorName),                          135, y, { width: 200, ellipsis: true });
       doc.text(String(d.paymentMode || ''),                345, y, { width: 80 });
       doc.text(`PKR ${(d.amount || 0).toLocaleString()}`,  430, y, { width: 100, align: 'right' });
       total += d.amount || 0;
@@ -69,9 +72,12 @@ module.exports = {
     ];
     let total = 0;
     for (const d of rows) {
+      const donorName = d.donorType === 'ANONYMOUS'
+        ? 'Anonymous'
+        : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : ''));
       ws.addRow({
         date:   d.receivedAt ? new Date(d.receivedAt) : null,
-        donor:  d.donorName || '',
+        donor:  donorName,
         type:   d.donorType || '',
         cnic:   d.donorCnic || '',
         mode:   d.paymentMode || '',

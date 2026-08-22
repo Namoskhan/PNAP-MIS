@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
+const Member = require('../models/Member');
 const Donation = require('../models/Donation');
 const Expense = require('../models/Expense');
 const FundTransfer = require('../models/FundTransfer');
@@ -91,7 +92,10 @@ exports.listDonations = asyncHandler(async (req, res) => {
   }
   const bc = bodyClause(body);
   if (bc) Object.assign(filter, bc);
-  const items = await Donation.find(filter).sort({ receivedAt: -1 }).limit(500);
+  const items = await Donation.find(filter)
+    .populate('donorMemberId', 'fullName memberId cnic')
+    .sort({ receivedAt: -1 })
+    .limit(500);
   ok(res, items);
 });
 
@@ -107,6 +111,14 @@ exports.recordDonation = asyncHandler(async (req, res) => {
   }
   if (d.donorType === 'NON_MEMBER' && d.amount > NON_MEMBER_CNIC_THRESHOLD && !d.donorCnic) {
     throw new ApiError(400, 'CNIC_REQUIRED', `Donor CNIC is required for non-member donations above PKR ${NON_MEMBER_CNIC_THRESHOLD}`);
+  }
+
+  if (d.donorType === 'MEMBER' && d.donorMemberId) {
+    const mem = await Member.findById(d.donorMemberId);
+    if (mem) {
+      if (!d.donorName) d.donorName = mem.fullName;
+      if (!d.donorCnic && mem.cnic) d.donorCnic = mem.cnic;
+    }
   }
 
   const chain = await resolveUnitChain(d.unitLevel, d.unitId);

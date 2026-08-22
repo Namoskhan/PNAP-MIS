@@ -615,7 +615,9 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
       .populate('leadMemberId', 'fullName memberId')
       .populate('participants', 'fullName memberId')
       .lean(),
-    Donation.find({ ...ownQ, ...recvClause, ...financeBodyQ }).lean(),
+    Donation.find({ ...ownQ, ...recvClause, ...financeBodyQ })
+      .populate('donorMemberId', 'fullName memberId cnic')
+      .lean(),
     Expense.find({ ...ownQ, ...incurClause, ...financeBodyQ }).lean(),
     Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
     unitOid ? FundTransfer.find(outFilter).lean() : [],
@@ -683,7 +685,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
       r: d.receiptNo || '',
       d: new Date(d.receivedAt).toLocaleDateString(),
       dt: d.donorType,
-      dn: d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)'),
+      dn: d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
       c: d.donorCnic || '',
       m: d.paymentMode,
       a: d.amount,
@@ -933,7 +935,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
       .map((d) => [
         d.receiptNo || '—',
         new Date(d.receivedAt).toLocaleDateString(),
-        d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)'),
+        d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
         d.paymentMode || '—',
         (d.amount || 0).toLocaleString(),
       ]),

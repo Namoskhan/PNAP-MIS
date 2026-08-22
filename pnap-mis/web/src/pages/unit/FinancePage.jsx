@@ -309,11 +309,30 @@ export default function FinancePage() {
     }
     try {
       const fd = new FormData();
-      const payload = { ...donForm, unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: targetBody };
+      let donorName = donForm.donorName;
+      let donorCnic = donForm.donorCnic;
+      if (donForm.donorType === 'MEMBER' && donForm.donorMemberId) {
+        const found = members.find((m) => String(m._id) === String(donForm.donorMemberId));
+        if (found) {
+          if (!donorName) donorName = found.fullName;
+          if (!donorCnic && found.cnic) donorCnic = found.cnic;
+        }
+      }
+      const payload = {
+        ...donForm,
+        donorName,
+        donorCnic,
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
+        body: targetBody,
+      };
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== '' && v != null) fd.append(k, v);
       });
-      if (donReceipt) fd.append('receiptImage', donReceipt);
+      if (donReceipt) {
+        fd.append('receipt', donReceipt);
+        fd.append('receiptImage', donReceipt);
+      }
       const amount = parseFloat(donForm.amount);
       await api.post('/finance/donations', fd);
       setDonForm({ amount: '', donorType: 'MEMBER', donorMemberId: '', donorName: '', donorCnic: '', paymentMode: 'CASH', receivedAt: '' });
@@ -469,13 +488,38 @@ export default function FinancePage() {
                         : null}
                   </div>
                   <div className="field"><label>Donor Type <Req /></label>
-                    <select value={donForm.donorType} onChange={(e) => setDonForm({ ...donForm, donorType: e.target.value })}>
+                    <select
+                      value={donForm.donorType}
+                      onChange={(e) => {
+                        const nextType = e.target.value;
+                        const mem = nextType === 'MEMBER' ? members.find((m) => String(m._id) === String(donForm.donorMemberId)) : null;
+                        setDonForm({
+                          ...donForm,
+                          donorType: nextType,
+                          donorMemberId: nextType === 'MEMBER' ? donForm.donorMemberId : '',
+                          donorName: nextType === 'MEMBER' ? (mem?.fullName || '') : (nextType === 'ANONYMOUS' ? '' : donForm.donorName),
+                          donorCnic: nextType === 'MEMBER' ? (mem?.cnic || '') : (nextType === 'ANONYMOUS' ? '' : donForm.donorCnic),
+                        });
+                      }}
+                    >
                       {DONOR_TYPES.map((t) => <option key={t}>{t}</option>)}
                     </select></div>
                   {donForm.donorType === 'MEMBER' && (
                     <div className="field full">
                       <label>Donor (member)</label>
-                      <select value={donForm.donorMemberId} onChange={(e) => setDonForm({ ...donForm, donorMemberId: e.target.value })}>
+                      <select
+                        value={donForm.donorMemberId}
+                        onChange={(e) => {
+                          const mId = e.target.value;
+                          const selected = members.find((m) => String(m._id) === String(mId));
+                          setDonForm({
+                            ...donForm,
+                            donorMemberId: mId,
+                            donorName: selected ? selected.fullName : '',
+                            donorCnic: selected?.cnic || '',
+                          });
+                        }}
+                      >
                         <option value="">— pick a member —</option>
                         {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
                       </select>
@@ -539,29 +583,39 @@ export default function FinancePage() {
                   </td>
                 </tr>
               )}
-              {displayedDonations.map((d) => (
-                <tr key={d._id}>
-                  <td>
-                    <span
-                      className="badge"
-                      style={{
-                        marginRight: 6,
-                        background: d.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
-                        color: d.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
-                        fontWeight: 600,
-                        fontSize: 11,
-                      }}
-                    >
-                      {d.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
-                    </span>
-                    {d.receiptNo}
-                  </td>
-                  <td>{new Date(d.receivedAt).toLocaleDateString()}</td>
-                  <td>{d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '—')}</td>
-                  <td>{d.paymentMode}</td>
-                  <td style={{ textAlign: 'right' }}>{PKR.format(d.amount)}</td>
-                </tr>
-              ))}
+              {displayedDonations.map((d) => {
+                const memberObj = (d.donorMemberId && typeof d.donorMemberId === 'object') ? d.donorMemberId : null;
+                const memberFromList = (!memberObj && d.donorMemberId)
+                  ? members.find((m) => String(m._id) === String(d.donorMemberId))
+                  : null;
+                const effectiveDonorName = d.donorType === 'ANONYMOUS'
+                  ? 'Anonymous'
+                  : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
+
+                return (
+                  <tr key={d._id}>
+                    <td>
+                      <span
+                        className="badge"
+                        style={{
+                          marginRight: 6,
+                          background: d.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
+                          color: d.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                          fontWeight: 600,
+                          fontSize: 11,
+                        }}
+                      >
+                        {d.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                      </span>
+                      {d.receiptNo}
+                    </td>
+                    <td>{new Date(d.receivedAt).toLocaleDateString()}</td>
+                    <td>{effectiveDonorName}</td>
+                    <td>{d.paymentMode}</td>
+                    <td style={{ textAlign: 'right' }}>{PKR.format(d.amount)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </>
