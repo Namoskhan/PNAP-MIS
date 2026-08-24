@@ -18,6 +18,7 @@ router.get('/unit/activities/pdf', ctrl.unitActivitiesPdf);
 router.get('/unit/transfers/xlsx', FIN_READ, ctrl.unitTransfersXlsx);
 router.get('/unit/transfers/pdf', FIN_READ, ctrl.unitTransfersPdf);
 router.get('/member/:id/pdf', ctrl.memberPerformancePdf);
+router.get('/member/:id/xlsx', ctrl.memberPerformanceXlsx);
 router.get('/meeting/:id/pdf', ctrl.meetingPdf);
 
 module.exports = router;

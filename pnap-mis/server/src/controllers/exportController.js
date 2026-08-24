@@ -1586,7 +1586,7 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
   if (to) dateFilter.$lte = new Date(to);
   const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
 
-  const [meetingsTotal, meetingsPresent, meetingsLate, activitiesPart, activitiesLed, donAgg, respPending, respCompleted] = await Promise.all([
+  const [meetingsTotal, meetingsPresent, meetingsLate, activitiesPart, activitiesLed, donAgg, respPending, respCompleted, studyContribs] = await Promise.all([
     Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'LATE' } }, state: 'FINALIZED', ...startClause }),
@@ -1598,6 +1598,12 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     ]),
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'PENDING' }),
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
+    Meeting.find({
+      'studyContributions.memberId': m._id,
+      type: 'STC',
+      state: 'FINALIZED',
+      ...startClause,
+    }).select('title startAt studyContributions').lean(),
   ]);
 
   const [branding, homeUnit] = await Promise.all([
@@ -1617,6 +1623,12 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
   const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
   const donCount = donAgg[0]?.count || 0;
   const donTotal = donAgg[0]?.total || 0;
+
+  const studyEntries = (studyContribs || []).flatMap((mt) =>
+    (mt.studyContributions || [])
+      .filter((s) => String(s.memberId) === String(m._id))
+      .map((s) => ({ meetingTitle: mt.title, meetingDate: mt.startAt, topic: s.topic, summary: s.summary }))
+  );
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.pdf"`);
@@ -1711,8 +1723,150 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     .text('Responsibility counts are lifetime totals — they are not limited to the reporting period.');
   _resetText(doc);
 
+  // ─── Study Contributions ──────────────────────────────────────────
+  _sectionHeading(doc, 'Study Circle Contributions', sectionColor, { newPage: false });
+  if (studyEntries.length === 0) {
+    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#9aa3af')
+      .text('No study circle presentations recorded for this member in this period.');
+    _resetText(doc);
+    doc.moveDown(1);
+  } else {
+    _table(doc, {
+      headers: [
+        { label: 'Date', x: 40, w: 80 },
+        { label: 'Meeting', x: 120, w: 120 },
+        { label: 'Topic', x: 240, w: 140 },
+        { label: 'Summary', x: 380, w: 175 },
+      ],
+      rows: studyEntries.map((s) => [
+        s.meetingDate ? new Date(s.meetingDate).toLocaleDateString() : '—',
+        s.meetingTitle || '—',
+        s.topic || '—',
+        s.summary || '—',
+      ]),
+    });
+  }
+
   _paginateFooters(doc, branding);
   doc.end();
+});
+
+// ─── Per-member Excel performance report ───────────────────────────
+exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { from, to } = req.query;
+  const m = await Member.findById(id).lean();
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Member not found');
+
+  const dateFilter = {};
+  if (from) dateFilter.$gte = new Date(from);
+  if (to) dateFilter.$lte = new Date(to);
+  const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
+
+  const [
+    meetingsTotal, meetingsPresent, meetingsLate,
+    activitiesPart, activitiesLed,
+    donAgg, respPending, respCompleted, respCancelled,
+    studyContribs, homeUnit,
+  ] = await Promise.all([
+    Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
+    Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
+    Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'LATE' } }, state: 'FINALIZED', ...startClause }),
+    Activity.countDocuments({ participants: m._id, ...startClause }),
+    Activity.countDocuments({ leadMemberId: m._id, ...startClause }),
+    Donation.aggregate([
+      { $match: { donorMemberId: m._id, ...(Object.keys(dateFilter).length ? { receivedAt: dateFilter } : {}) } },
+      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+    ]),
+    Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'PENDING' }),
+    Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
+    Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'CANCELLED' }),
+    Meeting.find({
+      'studyContributions.memberId': m._id,
+      type: 'STC',
+      state: 'FINALIZED',
+      ...startClause,
+    }).select('title startAt studyContributions').lean(),
+    m.basicUnitId ? BasicUnit.findById(m.basicUnitId).select('name').lean() : null,
+  ]);
+
+  const absent = Math.max(0, meetingsTotal - meetingsPresent - meetingsLate);
+  const attendanceRate = meetingsTotal
+    ? Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100) : null;
+  const respTotal = respPending + respCompleted + (respCancelled || 0);
+  const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
+  const donCount = donAgg[0]?.count || 0;
+  const donTotal = donAgg[0]?.total || 0;
+
+  const studyEntries = (studyContribs || []).flatMap((mt) =>
+    (mt.studyContributions || [])
+      .filter((s) => String(s.memberId) === String(m._id))
+      .map((s) => ({ meetingTitle: mt.title, meetingDate: mt.startAt, topic: s.topic, summary: s.summary }))
+  );
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PKNAP';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('Performance Summary');
+  ws.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 30 }];
+  ws.addRow({ k: 'Member Name', v: m.fullName });
+  ws.addRow({ k: 'Member ID', v: m.memberId || '—' });
+  ws.addRow({ k: 'CNIC', v: m.cnic });
+  ws.addRow({ k: 'Phone', v: m.phone || '—' });
+  ws.addRow({ k: 'Email', v: m.email || '—' });
+  ws.addRow({ k: 'Basic Unit', v: homeUnit?.name || '—' });
+  ws.addRow({ k: 'Status', v: m.status || 'ACTIVE' });
+  ws.addRow({ k: 'Reporting Period', v: `${from || 'All time'} → ${to || 'Present'}` });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── MEETING ATTENDANCE ───', v: '' });
+  ws.addRow({ k: 'Meetings on Roster (Finalized)', v: meetingsTotal });
+  ws.addRow({ k: 'Present', v: meetingsPresent });
+  ws.addRow({ k: 'Late', v: meetingsLate });
+  ws.addRow({ k: 'Absent', v: absent });
+  ws.addRow({ k: 'Attendance Rate', v: attendanceRate !== null ? `${attendanceRate}%` : 'N/A' });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── ACTIVITIES ───', v: '' });
+  ws.addRow({ k: 'Activities Participated', v: activitiesPart });
+  ws.addRow({ k: 'Activities Led', v: activitiesLed });
+  ws.addRow({ k: 'Total Activities Involved', v: activitiesPart + activitiesLed });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── DONATIONS ───', v: '' });
+  ws.addRow({ k: 'Donations Count', v: donCount });
+  ws.addRow({ k: 'Total Donated (PKR)', v: donTotal });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── RESPONSIBILITIES ───', v: '' });
+  ws.addRow({ k: 'Pending Tasks', v: respPending });
+  ws.addRow({ k: 'Completed Tasks', v: respCompleted });
+  ws.addRow({ k: 'Completion Rate', v: completionRate !== null ? `${completionRate}%` : 'N/A' });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── STUDY CONTRIBUTIONS ───', v: '' });
+  ws.addRow({ k: 'Study Circle Talks Given', v: studyEntries.length });
+  ws.getRow(1).font = { bold: true };
+
+  if (studyEntries.length > 0) {
+    const stWs = wb.addWorksheet('Study Contributions');
+    stWs.columns = [
+      { header: 'Date', key: 'd', width: 14 },
+      { header: 'Meeting Title', key: 'm', width: 28 },
+      { header: 'Topic', key: 't', width: 30 },
+      { header: 'Summary', key: 's', width: 45 },
+    ];
+    studyEntries.forEach((s) => {
+      stWs.addRow({
+        d: s.meetingDate ? new Date(s.meetingDate).toLocaleDateString() : '—',
+        m: s.meetingTitle || '—',
+        t: s.topic || '—',
+        s: s.summary || '—',
+      });
+    });
+    stWs.getRow(1).font = { bold: true };
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
 });
 
 // ─── Per-meeting PDF — full details + embedded photographs ──────────

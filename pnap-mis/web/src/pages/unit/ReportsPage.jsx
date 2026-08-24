@@ -43,6 +43,7 @@ export default function ReportsPage() {
   const { ctx } = useUnit();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [scope, setScope] = useState('subtree');
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -89,6 +90,7 @@ export default function ReportsPage() {
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
+    if (ctx.unitLevel !== 'BASIC_UNIT' && scope) p.set('scope', scope);
     if (isCommitteeView) {
       p.set('body', 'COMMITTEE');
     } else {
@@ -106,9 +108,10 @@ export default function ReportsPage() {
     try {
       const ext = format === 'pdf' ? 'pdf' : 'xlsx';
       const bodySuffix = isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : '');
+      const scopeSuffix = (ctx.unitLevel !== 'BASIC_UNIT' && scope === 'subtree') ? '-aggregated' : '';
       await downloadAuthed2(
         `/api/exports/unit/${kind}/${format}?${unitParams(kind)}`,
-        `${ctx.unitLevel}-${ctx.unitName}-${kind}${bodySuffix}.${ext}`,
+        `${ctx.unitLevel}-${ctx.unitName}-${kind}${bodySuffix}${scopeSuffix}.${ext}`,
       );
     } catch (e) { setErr('Export failed: ' + (e.message || 'unknown')); }
     finally { setBusy(false); }
@@ -129,26 +132,65 @@ export default function ReportsPage() {
     finally { setBusy(false); }
   }
 
+  async function downloadMemberXlsx() {
+    if (!memberId) return;
+    setErr(''); setBusy(true);
+    try {
+      const p = new URLSearchParams();
+      if (from) p.set('from', from);
+      if (to) p.set('to', to);
+      await downloadAuthed2(
+        `/api/exports/member/${memberId}/xlsx?${p.toString()}`,
+        `member-${memberId}-performance.xlsx`,
+      );
+    } catch (e) { setErr('Export failed: ' + (e.message || 'unknown')); }
+    finally { setBusy(false); }
+  }
+
   if (!ctx) return <p>Select a unit context first.</p>;
+
+  const scopeDescription = {
+    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
+    AREA: scope === 'subtree' ? 'Aggregated Area Report (Roll-up of all subordinate Basic Units + Area activities)' : 'Area Level Only (Records authored directly at Area)',
+    DISTRICT: scope === 'subtree' ? 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)' : 'District Level Only (Records authored directly at District)',
+    PROVINCE: scope === 'subtree' ? 'Aggregated Province Report (Roll-up of all subordinate Districts, Areas & Basic Units + Province activities)' : 'Province Level Only (Records authored directly at Province)',
+    CENTRAL: scope === 'subtree' ? 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)' : 'Central Level Only (Records authored directly at Central)',
+  }[ctx.unitLevel] || '';
 
   return (
     <div>
-      <div className="page-header"><h2>{isCommitteeView ? 'Committee Reports' : 'Reports'} · {ctx.unitName}</h2></div>
+      <div className="page-header">
+        <h2>{isCommitteeView ? 'Committee Reports' : 'Reports'} · {ctx.unitName}</h2>
+      </div>
 
       {err && <div className="alert error">{err}</div>}
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Date range (optional)</h3>
+        <h3 style={{ marginTop: 0 }}>Report Scope & Period Filter</h3>
         <div className="form-grid">
+          {ctx.unitLevel !== 'BASIC_UNIT' && (
+            <div className="field">
+              <label>Data Aggregation Scope</label>
+              <select value={scope} onChange={(e) => setScope(e.target.value)}>
+                <option value="subtree">Aggregated (Include all subordinate units roll-up)</option>
+                <option value="own">This unit tier only</option>
+              </select>
+            </div>
+          )}
           <div className="field">
-            <label>From</label>
+            <label>From Date</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div className="field">
-            <label>To</label>
+            <label>To Date</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
+        {scopeDescription && (
+          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-soft)', background: 'var(--surface-alt)', padding: '8px 12px', borderRadius: 'var(--radius)' }}>
+            📊 <strong>Report Mode:</strong> {scopeDescription}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
@@ -196,8 +238,9 @@ export default function ReportsPage() {
               ))}
             </select>
           </div>
-          <div className="field">
+          <div className="field" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn" disabled={busy || !memberId} onClick={downloadMemberPdf}>Download PDF</button>
+            <button className="btn secondary" disabled={busy || !memberId} onClick={downloadMemberXlsx}>Download Excel</button>
           </div>
         </div>
 
