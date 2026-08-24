@@ -149,24 +149,6 @@ export default function PerformancePage() {
               <Kpi label="Completion Rate" value={`${report.responsibilities.completionRate}%`} accent={report.responsibilities.completionRate >= 70 ? 'good' : 'danger'} />
             )}
           </div>
-
-          {report.studyContributions.length > 0 && (
-            <div className="card">
-              <h3 style={{ marginTop: 0 }}>Study Contributions</h3>
-              <table className="list">
-                <thead><tr><th>Date</th><th>Topic</th><th>Summary</th></tr></thead>
-                <tbody>
-                  {report.studyContributions.map((s, i) => (
-                    <tr key={i}>
-                      <td>{new Date(s.meetingDate).toLocaleDateString()}</td>
-                      <td>{s.topic}</td>
-                      <td>{s.summary}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </>
       )}
     </div>

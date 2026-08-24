@@ -327,33 +327,7 @@ export default function ReportsPage() {
                 <div className="value">{report.responsibilities.completed}/{report.responsibilities.total}</div>
                 <div className="hint">{report.responsibilities.completionRate != null ? `${report.responsibilities.completionRate}% done` : '—'} · {report.responsibilities.pending} pending</div>
               </div>
-              <div className="kpi">
-                <div className="label">Study Contributions</div>
-                <div className="value">{report.studyContributions?.length || 0}</div>
-                <div className="hint">study-circle talks</div>
-              </div>
             </div>
-
-            {report.studyContributions?.length > 0 && (
-              <>
-                <h4 style={{ marginTop: 16, marginBottom: 8 }}>Study Circle Contributions</h4>
-                <table className="list">
-                  <thead>
-                    <tr><th>Date</th><th>Meeting</th><th>Topic</th><th>Summary</th></tr>
-                  </thead>
-                  <tbody>
-                    {report.studyContributions.map((s, i) => (
-                      <tr key={i}>
-                        <td>{s.meetingDate ? new Date(s.meetingDate).toLocaleDateString() : '—'}</td>
-                        <td>{s.meetingTitle || '—'}</td>
-                        <td>{s.topic || '—'}</td>
-                        <td>{s.summary || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
 
             {(report.range.from || report.range.to) && (
               <p className="muted" style={{ marginTop: 12, fontSize: 12 }}>

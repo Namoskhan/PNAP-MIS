@@ -1651,7 +1651,7 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
   if (to) dateFilter.$lte = new Date(to);
   const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
 
-  const [meetingsTotal, meetingsPresent, meetingsLate, activitiesPart, activitiesLed, donAgg, respPending, respCompleted, studyContribs] = await Promise.all([
+  const [meetingsTotal, meetingsPresent, meetingsLate, activitiesPart, activitiesLed, donAgg, respPending, respCompleted] = await Promise.all([
     Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'LATE' } }, state: 'FINALIZED', ...startClause }),
@@ -1663,12 +1663,6 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     ]),
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'PENDING' }),
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
-    Meeting.find({
-      'studyContributions.memberId': m._id,
-      type: 'STC',
-      state: 'FINALIZED',
-      ...startClause,
-    }).select('title startAt studyContributions').lean(),
   ]);
 
   const [branding, homeUnit] = await Promise.all([
@@ -1688,12 +1682,6 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
   const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
   const donCount = donAgg[0]?.count || 0;
   const donTotal = donAgg[0]?.total || 0;
-
-  const studyEntries = (studyContribs || []).flatMap((mt) =>
-    (mt.studyContributions || [])
-      .filter((s) => String(s.memberId) === String(m._id))
-      .map((s) => ({ meetingTitle: mt.title, meetingDate: mt.startAt, topic: s.topic, summary: s.summary }))
-  );
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.pdf"`);
@@ -1788,30 +1776,6 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     .text('Responsibility counts are lifetime totals — they are not limited to the reporting period.');
   _resetText(doc);
 
-  // ─── Study Contributions ──────────────────────────────────────────
-  _sectionHeading(doc, 'Study Circle Contributions', sectionColor, { newPage: false });
-  if (studyEntries.length === 0) {
-    doc.font('Helvetica-Oblique').fontSize(10).fillColor('#9aa3af')
-      .text('No study circle presentations recorded for this member in this period.');
-    _resetText(doc);
-    doc.moveDown(1);
-  } else {
-    _table(doc, {
-      headers: [
-        { label: 'Date', x: 40, w: 80 },
-        { label: 'Meeting', x: 120, w: 120 },
-        { label: 'Topic', x: 240, w: 140 },
-        { label: 'Summary', x: 380, w: 175 },
-      ],
-      rows: studyEntries.map((s) => [
-        s.meetingDate ? new Date(s.meetingDate).toLocaleDateString() : '—',
-        s.meetingTitle || '—',
-        s.topic || '—',
-        s.summary || '—',
-      ]),
-    });
-  }
-
   _paginateFooters(doc, branding);
   doc.end();
 });
@@ -1832,7 +1796,7 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
     meetingsTotal, meetingsPresent, meetingsLate,
     activitiesPart, activitiesLed,
     donAgg, respPending, respCompleted, respCancelled,
-    studyContribs, homeUnit,
+    homeUnit,
   ] = await Promise.all([
     Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
@@ -1846,12 +1810,6 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'PENDING' }),
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'CANCELLED' }),
-    Meeting.find({
-      'studyContributions.memberId': m._id,
-      type: 'STC',
-      state: 'FINALIZED',
-      ...startClause,
-    }).select('title startAt studyContributions').lean(),
     m.basicUnitId ? BasicUnit.findById(m.basicUnitId).select('name').lean() : null,
   ]);
 
@@ -1862,12 +1820,6 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
   const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
   const donCount = donAgg[0]?.count || 0;
   const donTotal = donAgg[0]?.total || 0;
-
-  const studyEntries = (studyContribs || []).flatMap((mt) =>
-    (mt.studyContributions || [])
-      .filter((s) => String(s.memberId) === String(m._id))
-      .map((s) => ({ meetingTitle: mt.title, meetingDate: mt.startAt, topic: s.topic, summary: s.summary }))
-  );
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'PKNAP';
@@ -1904,29 +1856,7 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
   ws.addRow({ k: 'Pending Tasks', v: respPending });
   ws.addRow({ k: 'Completed Tasks', v: respCompleted });
   ws.addRow({ k: 'Completion Rate', v: completionRate !== null ? `${completionRate}%` : 'N/A' });
-  ws.addRow({ k: '', v: '' });
-  ws.addRow({ k: '─── STUDY CONTRIBUTIONS ───', v: '' });
-  ws.addRow({ k: 'Study Circle Talks Given', v: studyEntries.length });
   ws.getRow(1).font = { bold: true };
-
-  if (studyEntries.length > 0) {
-    const stWs = wb.addWorksheet('Study Contributions');
-    stWs.columns = [
-      { header: 'Date', key: 'd', width: 14 },
-      { header: 'Meeting Title', key: 'm', width: 28 },
-      { header: 'Topic', key: 't', width: 30 },
-      { header: 'Summary', key: 's', width: 45 },
-    ];
-    studyEntries.forEach((s) => {
-      stWs.addRow({
-        d: s.meetingDate ? new Date(s.meetingDate).toLocaleDateString() : '—',
-        m: s.meetingTitle || '—',
-        t: s.topic || '—',
-        s: s.summary || '—',
-      });
-    });
-    stWs.getRow(1).font = { bold: true };
-  }
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.xlsx"`);
