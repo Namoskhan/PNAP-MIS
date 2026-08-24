@@ -38,15 +38,19 @@ export default function ResponsibilitiesPage() {
 
   useEffect(() => {
     if (!ctx) return;
-    const params = { status: 'ACTIVE', limit: 500 };
-    if (ctx.unitLevel === 'BASIC_UNIT') params.basicUnitId = ctx.unitId;
-    else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
-    else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
-    else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
-    // Central has no unit key on Member; scope:'all' is the explicit
-    // opt-in the members endpoint requires when no unit filter is sent.
-    else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
-    api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
+    api.get('/meetings/eligible-attendees', {
+      params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: 'GENERAL_BODY' },
+    })
+      .then((r) => setMembers(r.data.data || []))
+      .catch(() => {
+        const params = { status: 'ACTIVE', limit: 500 };
+        if (ctx.unitLevel === 'BASIC_UNIT') params.basicUnitId = ctx.unitId;
+        else if (ctx.unitLevel === 'AREA') params.areaId = ctx.unitId;
+        else if (ctx.unitLevel === 'DISTRICT') params.districtId = ctx.unitId;
+        else if (ctx.unitLevel === 'PROVINCE') params.provinceId = ctx.unitId;
+        else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
+        api.get('/members', { params }).then((r) => setMembers(r.data.data || [])).catch(() => {});
+      });
   }, [ctx]);
 
   async function create() {
@@ -115,37 +119,46 @@ export default function ResponsibilitiesPage() {
 
       {show && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}>
-        <div className="modal" style={{ maxWidth: 640 }} role="dialog" aria-modal="true" aria-label="Assign Responsibility">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>Assign a responsibility</h3>
-            <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+          <div className="modal" style={{ maxWidth: 640 }} role="dialog" aria-modal="true" aria-label="Assign Responsibility">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <h3 style={{ margin: 0 }}>Assign a responsibility</h3>
+              <button type="button" className="btn secondary" onClick={() => setShow(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+            </div>
+            <div className="form-grid">
+              <div className="field full">
+                <label>Title *</label>
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Mobilize voters in Block 4" />
+              </div>
+              <div className="field">
+                <label>Assign to *</label>
+                <select value={form.assignedToMemberId} onChange={(e) => setForm({ ...form, assignedToMemberId: e.target.value })}>
+                  <option value="">— pick a member —</option>
+                  {members.map((m) => {
+                    const role = m.roleText || 'Member';
+                    const unit = m.unitText || (m.basicUnitId?.name ? `Basic Unit: ${m.basicUnitId.name}` : '');
+                    const meta = [role, unit].filter(Boolean).join(' · ');
+                    return (
+                      <option key={m._id} value={m._id}>
+                        {m.fullName} {m.memberId ? `(${m.memberId})` : ''} {meta ? `— ${meta}` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="field">
+                <label>Due date</label>
+                <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+              </div>
+              <div className="field full">
+                <label>Description</label>
+                <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              </div>
+            </div>
+            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button className="btn secondary" type="button" onClick={() => setShow(false)}>Cancel</button>
+              <button className="btn" onClick={create}>Assign</button>
+            </div>
           </div>
-          <div className="form-grid">
-            <div className="field full">
-              <label>Title *</label>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Mobilize voters in Block 4" />
-            </div>
-            <div className="field">
-              <label>Assign to *</label>
-              <select value={form.assignedToMemberId} onChange={(e) => setForm({ ...form, assignedToMemberId: e.target.value })}>
-                <option value="">— pick a member —</option>
-                {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Due date</label>
-              <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
-            </div>
-            <div className="field full">
-              <label>Description</label>
-              <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-            </div>
-          </div>
-          <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button className="btn secondary" type="button" onClick={() => setShow(false)}>Cancel</button>
-            <button className="btn" onClick={create}>Assign</button>
-          </div>
-        </div>
         </div>
       )}
 
@@ -158,7 +171,30 @@ export default function ResponsibilitiesPage() {
           {items.map((r) => (
             <tr key={r._id}>
               <td><strong>{r.title}</strong>{r.description && <div className="muted" style={{ fontSize: 12 }}>{r.description}</div>}</td>
-              <td>{r.assignedToMemberId?.fullName || '—'}</td>
+              <td>
+                <div><strong>{r.assignedToMemberId?.fullName || '—'}</strong></div>
+                {r.assignedToMemberId?.roleText && (
+                  <div style={{ marginTop: 2 }}>
+                    <span
+                      className="badge"
+                      style={{
+                        fontSize: 10,
+                        padding: '1px 5px',
+                        background: 'var(--primary-subtle, #e0f2fe)',
+                        color: 'var(--primary, #0369a1)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {r.assignedToMemberId.roleText}
+                    </span>
+                  </div>
+                )}
+                {r.assignedToMemberId?.unitText && (
+                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                    {r.assignedToMemberId.unitText}
+                  </div>
+                )}
+              </td>
               <td>{r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '—'}</td>
               <td><span className={`badge ${r.state}`}>{STATE_LABEL[r.state]}</span></td>
               <td style={{ whiteSpace: 'nowrap' }}>

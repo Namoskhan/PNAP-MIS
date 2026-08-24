@@ -30,6 +30,16 @@ async function listSubordinateUnits(parentLevel, parentId) {
   return [];
 }
 
+function formatMemberUnitText(m) {
+  if (!m) return '';
+  const parts = [];
+  if (m.basicUnitId?.name) parts.push(`Basic Unit: ${m.basicUnitId.name}`);
+  if (m.areaId?.name) parts.push(`Area: ${m.areaId.name}`);
+  if (m.districtId?.name) parts.push(`District: ${m.districtId.name}`);
+  if (m.provinceId?.name || m.provinceId?.code) parts.push(m.provinceId.name || m.provinceId.code);
+  return parts.join(' · ') || '';
+}
+
 /**
  * Resolves eligible attendees & chairperson candidates based on meeting stream / type:
  * 1. Executive Meeting: ONLY office-holders / role holders of that unit level
@@ -45,7 +55,18 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       unitId,
       state: 'APPROVED',
       endedAt: { $exists: false },
-    }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+    })
+      .populate({
+        path: 'memberId',
+        select: 'fullName memberId phone photoUrl cnic status basicUnitId areaId districtId provinceId',
+        populate: [
+          { path: 'basicUnitId', select: 'name' },
+          { path: 'areaId', select: 'name' },
+          { path: 'districtId', select: 'name code' },
+          { path: 'provinceId', select: 'name code' },
+        ],
+      })
+      .lean();
 
     const attendeesMap = new Map();
     for (const a of assignments) {
@@ -61,6 +82,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
             phone: a.memberId.phone,
             cnic: a.memberId.cnic,
             roleText: roleLabel,
+            unitText: formatMemberUnitText(a.memberId),
+            basicUnitId: a.memberId.basicUnitId,
+            areaId: a.memberId.areaId,
+            districtId: a.memberId.districtId,
+            provinceId: a.memberId.provinceId,
             category: 'CABINET',
           });
         } else {
@@ -80,7 +106,18 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       unitId,
       state: 'APPROVED',
       endedAt: { $exists: false },
-    }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+    })
+      .populate({
+        path: 'memberId',
+        select: 'fullName memberId phone photoUrl cnic status basicUnitId areaId districtId provinceId',
+        populate: [
+          { path: 'basicUnitId', select: 'name' },
+          { path: 'areaId', select: 'name' },
+          { path: 'districtId', select: 'name code' },
+          { path: 'provinceId', select: 'name code' },
+        ],
+      })
+      .lean();
 
     for (const a of ownCabinet) {
       if (a.memberId && a.memberId._id && a.memberId.status !== 'INACTIVE') {
@@ -93,6 +130,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
           phone: a.memberId.phone,
           cnic: a.memberId.cnic,
           roleText: `${roleLabel} (${unitLevel ? unitLevel.replace('_', ' ') : ''})`,
+          unitText: formatMemberUnitText(a.memberId),
+          basicUnitId: a.memberId.basicUnitId,
+          areaId: a.memberId.areaId,
+          districtId: a.memberId.districtId,
+          provinceId: a.memberId.provinceId,
           category: 'CABINET',
         });
       }
@@ -106,7 +148,18 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
         roleCode: { $in: SUBORDINATE_KEY_ROLES },
         state: 'APPROVED',
         endedAt: { $exists: false },
-      }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+      })
+        .populate({
+          path: 'memberId',
+          select: 'fullName memberId phone photoUrl cnic status basicUnitId areaId districtId provinceId',
+          populate: [
+            { path: 'basicUnitId', select: 'name' },
+            { path: 'areaId', select: 'name' },
+            { path: 'districtId', select: 'name code' },
+            { path: 'provinceId', select: 'name code' },
+          ],
+        })
+        .lean();
 
       const subUnitMap = new Map(subs.map((s) => [String(s._id), s.name]));
 
@@ -123,6 +176,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
               phone: a.memberId.phone,
               cnic: a.memberId.cnic,
               roleText: `${roleLabel} · ${unitName}`,
+              unitText: formatMemberUnitText(a.memberId),
+              basicUnitId: a.memberId.basicUnitId,
+              areaId: a.memberId.areaId,
+              districtId: a.memberId.districtId,
+              provinceId: a.memberId.provinceId,
               category: 'SUBORDINATE',
             });
           }
@@ -136,7 +194,18 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       unitId,
       bodyType: 'COMMITTEE',
       isActive: true,
-    }).populate('memberId', 'fullName memberId phone photoUrl cnic status').lean();
+    })
+      .populate({
+        path: 'memberId',
+        select: 'fullName memberId phone photoUrl cnic status basicUnitId areaId districtId provinceId',
+        populate: [
+          { path: 'basicUnitId', select: 'name' },
+          { path: 'areaId', select: 'name' },
+          { path: 'districtId', select: 'name code' },
+          { path: 'provinceId', select: 'name code' },
+        ],
+      })
+      .lean();
 
     for (const p of permanent) {
       if (p.memberId && p.memberId._id && p.memberId.status !== 'INACTIVE') {
@@ -149,6 +218,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
             phone: p.memberId.phone,
             cnic: p.memberId.cnic,
             roleText: 'Selective Member',
+            unitText: formatMemberUnitText(p.memberId),
+            basicUnitId: p.memberId.basicUnitId,
+            areaId: p.memberId.areaId,
+            districtId: p.memberId.districtId,
+            provinceId: p.memberId.provinceId,
             category: 'PERMANENT',
           });
         }
@@ -212,7 +286,16 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
     }
 
     const assignments = await RoleAssignment.find(roleFilter)
-      .populate('memberId', 'fullName memberId phone photoUrl cnic status')
+      .populate({
+        path: 'memberId',
+        select: 'fullName memberId phone photoUrl cnic status basicUnitId areaId districtId provinceId',
+        populate: [
+          { path: 'basicUnitId', select: 'name' },
+          { path: 'areaId', select: 'name' },
+          { path: 'districtId', select: 'name code' },
+          { path: 'provinceId', select: 'name code' },
+        ],
+      })
       .lean();
 
     for (const a of assignments) {
@@ -230,6 +313,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
             phone: a.memberId.phone,
             cnic: a.memberId.cnic,
             roleText: fullRole,
+            unitText: formatMemberUnitText(a.memberId),
+            basicUnitId: a.memberId.basicUnitId,
+            areaId: a.memberId.areaId,
+            districtId: a.memberId.districtId,
+            provinceId: a.memberId.provinceId,
             category: a.unitLevel === unitLevel ? 'CABINET' : 'SUBORDINATE',
           });
         } else if (!existing.roleText.includes(roleLabel)) {
@@ -253,7 +341,16 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       }
 
       const permanent = await PermanentMembership.find(permFilter)
-        .populate('memberId', 'fullName memberId phone photoUrl cnic status')
+        .populate({
+          path: 'memberId',
+          select: 'fullName memberId phone photoUrl cnic status basicUnitId areaId districtId provinceId',
+          populate: [
+            { path: 'basicUnitId', select: 'name' },
+            { path: 'areaId', select: 'name' },
+            { path: 'districtId', select: 'name code' },
+            { path: 'provinceId', select: 'name code' },
+          ],
+        })
         .lean();
 
       for (const p of permanent) {
@@ -268,6 +365,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
               phone: p.memberId.phone,
               cnic: p.memberId.cnic,
               roleText: 'Selective Committee Member',
+              unitText: formatMemberUnitText(p.memberId),
+              basicUnitId: p.memberId.basicUnitId,
+              areaId: p.memberId.areaId,
+              districtId: p.memberId.districtId,
+              provinceId: p.memberId.provinceId,
               category: 'PERMANENT',
             });
           } else if (!existing.roleText.includes('Selective Committee Member') && !existing.roleText.includes('Committee')) {
@@ -299,7 +401,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
     }
 
     const members = await Member.find(memberFilter)
-      .select('fullName memberId phone cnic status')
+      .select('fullName memberId phone cnic status basicUnitId areaId districtId provinceId')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name')
+      .populate('provinceId', 'name code')
       .sort({ fullName: 1 })
       .limit(1000)
       .lean();
@@ -314,6 +420,11 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
           phone: m.phone,
           cnic: m.cnic,
           roleText: 'Member',
+          unitText: formatMemberUnitText(m),
+          basicUnitId: m.basicUnitId,
+          areaId: m.areaId,
+          districtId: m.districtId,
+          provinceId: m.provinceId,
           category: 'MEMBER',
         });
       }
