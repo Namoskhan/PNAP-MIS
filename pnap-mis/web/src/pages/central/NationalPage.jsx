@@ -29,9 +29,12 @@ export default function NationalPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h2>National Congress / Qomi Jirga</h2>
-        <Link className="btn secondary" to="/unit" onClick={jumpToCentral}>Open Central Unit Dashboard →</Link>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <h2>National Congress</h2>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Link className="btn secondary" to="/unit/jirga" onClick={jumpToCentral}>Open Qomi Jirga Assembly →</Link>
+          <Link className="btn" to="/unit" onClick={jumpToCentral}>Open Central Unit Dashboard →</Link>
+        </div>
       </div>
 
       <div className="card">

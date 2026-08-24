@@ -4,18 +4,19 @@ const BasicUnit = require('../models/BasicUnit');
 const Area = require('../models/Area');
 const District = require('../models/District');
 const Province = require('../models/Province');
+const PermanentMembership = require('../models/PermanentMembership');
 const { ok, ApiError } = require('../utils/response');
 const { canManagePermanentMembers } = require('../utils/unitScope');
 
-// SRS §3.2 — A "committee" / "jirga" is the wider consultative body
+// SRS §3.2 — A "committee" is the wider consultative body
 // of a level: own cabinet + subordinate Secretaries & Senior Mawin
 // Secretaries + (admin-managed) Permanent Members.
 //
 // Composition by level:
-//   Area     → Area Cabinat + Basic Unit Secretaries & Senior Mawins
-//   District → District Cabinat + Area Secretaries & Senior Mawins
-//   Province → Provincial Cabinat + District Secretaries & Senior Mawins
-//   Central  → Central Cabinat + Provincial Presidents & GS / 1st Secs
+//   Area     → Elaqayi Committee (Area Cabinet + Basic Unit Secretaries & Senior Mawins)
+//   District → Zilla Committee (District Cabinet + Area Secretaries & Senior Mawins)
+//   Province → Sobayi Committee (Provincial Cabinet + District Secretaries & Senior Mawins)
+//   Central  → Central Committee (Central Cabinet + Provincial Presidents & GS / 1st Secs)
 //
 // Permanent members live in PermanentMembership (admin-curated).
 
@@ -42,8 +43,7 @@ async function listSubordinateUnits(parentLevel, parentId) {
 }
 
 exports.addPermanent = asyncHandler(async (req, res) => {
-  const PermanentMembership = require('../models/PermanentMembership');
-  const { unitLevel, unitId, memberId, bodyType, nominationNote } = req.body;
+  const { unitLevel, unitId, memberId, nominationNote } = req.body;
   if (!['AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'].includes(unitLevel)) {
     throw new ApiError(400, 'INVALID_LEVEL', 'Selective members are only valid at AREA / DISTRICT / PROVINCE / CENTRAL');
   }
@@ -53,7 +53,6 @@ exports.addPermanent = asyncHandler(async (req, res) => {
   }
   const doc = await PermanentMembership.create({
     unitLevel, unitId, memberId,
-    bodyType: bodyType || 'COMMITTEE',
     nominationNote,
     nominatedBy: req.user._id,
   });
@@ -61,7 +60,6 @@ exports.addPermanent = asyncHandler(async (req, res) => {
 });
 
 exports.removePermanent = asyncHandler(async (req, res) => {
-  const PermanentMembership = require('../models/PermanentMembership');
   const doc = await PermanentMembership.findById(req.params.id);
   if (!doc) throw new ApiError(404, 'NOT_FOUND', 'Selective member not found');
   if (!(await canManagePermanentMembers(req.user, doc.unitLevel, doc.unitId))) {
@@ -75,12 +73,6 @@ exports.removePermanent = asyncHandler(async (req, res) => {
 
 exports.composition = asyncHandler(async (req, res) => {
   const { unitLevel, unitId } = req.query;
-  // SRS §3.3 / §3.4 — a unit can have BOTH a Committee and a Jirga
-  // (Sobayi Committee + Sobayi Jirga at province; Central Committee +
-  // Qomi Jirga at centre). Same auto-derived cabinet + subordinate
-  // membership, but a separate Permanent Members list per body.
-  // Default to COMMITTEE for backward compatibility.
-  const bodyType = req.query.bodyType === 'JIRGA' ? 'JIRGA' : 'COMMITTEE';
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
   if (unitLevel === 'BASIC_UNIT') {
     throw new ApiError(400, 'INVALID_LEVEL', 'Basic Units do not have a committee — they have only a cabinet');
@@ -112,18 +104,13 @@ exports.composition = asyncHandler(async (req, res) => {
     };
   }));
 
-  // Permanent members (admin-curated; model added in this phase).
-  // Filtered to the requested body so Sobayi Committee and Sobayi
-  // Jirga show distinct Permanent Member lists even though the
-  // cabinet/subordinate composition is shared.
-  const PermanentMembership = require('../models/PermanentMembership');
+  // Permanent members (admin-curated)
   const permanent = await PermanentMembership.find({
-    unitLevel, unitId, bodyType, isActive: true,
+    unitLevel, unitId, isActive: true,
   }).populate('memberId', 'fullName phone memberId');
 
   ok(res, {
     unit: { unitLevel, unitId },
-    bodyType,
     ownCabinet,
     subordinates: subRows,
     permanentMembers: permanent,

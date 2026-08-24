@@ -228,8 +228,7 @@ async function canReadUnitRoles(user, unitLevel, unitId) {
 // committee — they are a member of it via their BU role, but the
 // management seat belongs to the Area-level Senior Mawin.
 async function canManagePermanentMembers(user, unitLevel, unitId) {
-  // Super Admin curates the Central Committee + Qomi Jirga
-  // selective-member rosters directly at the Central tier.
+  // Super Admin curates the Central Committee selective-member rosters directly at Central.
   if (user.roles?.includes('SUPER_ADMIN') && unitLevel === 'CENTRAL') {
     return true;
   }
@@ -254,6 +253,36 @@ async function canManagePermanentMembers(user, unitLevel, unitId) {
   return !!active;
 }
 
+// SRS §3.3 / §3.4 — Qomi Jirga (Central) and Sobayi Jirga (Province)
+// members are assigned by the unit's General Secretary (or higher admin).
+// Central: Super Admin, Central Admin, or Central General Secretary.
+// Province: Super Admin, Central Admin, matching Province Admin, or Provincial General Secretary.
+async function canManageJirgaMembers(user, unitLevel, unitId) {
+  if (!['CENTRAL', 'PROVINCE'].includes(unitLevel)) return false;
+  if (!user) return false;
+  if (userHasRole(user, 'SUPER_ADMIN', 'CENTRAL_ADMIN')) return true;
+
+  if (unitLevel === 'PROVINCE' && userHasRole(user, 'PROVINCE_ADMIN')) {
+    const provId = String(user.scope?.provinceId || '');
+    if (provId && provId === String(unitId)) return true;
+  }
+
+  if (!user.memberId) return false;
+  const { rolesWithPermission } = require('./permissions');
+  const grantingCodes = rolesWithPermission('MANAGE_JIRGA_MEMBERS');
+  if (grantingCodes.length === 0) return false;
+  const RoleAssignment = require('../models/RoleAssignment');
+  const active = await RoleAssignment.findOne({
+    memberId: user.memberId,
+    roleCode: { $in: grantingCodes },
+    unitLevel,
+    unitId,
+    state: 'APPROVED',
+    endedAt: { $exists: false },
+  }).lean();
+  return !!active;
+}
+
 module.exports = {
   resolveUnitChain,
   isAdmin,
@@ -265,6 +294,7 @@ module.exports = {
   canManageFinance,
   canPostAnnouncement,
   canManagePermanentMembers,
+  canManageJirgaMembers,
   unitWithinAreaAdminScope,
   memberWithinAreaAdminScope,
   resolveUserChain,

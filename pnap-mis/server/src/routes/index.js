@@ -17,6 +17,7 @@ router.use('/activities', require('./activityRoutes'));
 router.use('/finance', require('./financeRoutes'));
 router.use('/dashboard', require('./dashboardRoutes'));
 router.use('/committee', require('./committeeRoutes'));
+router.use('/jirga', require('./jirgaRoutes'));
 router.use('/unit-proposals', require('./unitProposalRoutes'));
 router.use('/transfers', require('./transferRoutes'));
 router.use('/central', require('./centralRoutes'));

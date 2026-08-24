@@ -7,27 +7,24 @@ import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
-// SRS §3.3 / §3.4 — at province and central, two distinct bodies
-// coexist with the same composition rules but separate Permanent
-// Member lists. Title flips per (level, body) pair.
-const BODY_LABEL = {
-  AREA: { COMMITTEE: 'Elaqayi Committee', JIRGA: 'Elaqayi Committee' },
-  DISTRICT: { COMMITTEE: 'Zilla Committee', JIRGA: 'Zilla Committee' },
-  PROVINCE: { COMMITTEE: 'Sobayi Committee', JIRGA: 'Sobayi Jirga' },
-  CENTRAL: { COMMITTEE: 'Central Committee', JIRGA: 'National / Qomi Jirga' },
+
+// SRS §3.1–§3.4 — Committee titles per unit tier
+const COMMITTEE_LABEL = {
+  AREA: 'Elaqayi Committee',
+  DISTRICT: 'Zilla Committee',
+  PROVINCE: 'Sobayi Committee',
+  CENTRAL: 'Central Committee',
 };
-// Below province there's only one body per level — no toggle needed.
-function bodyTabsSupported(level) {
-  return level === 'PROVINCE' || level === 'CENTRAL';
-}
+
 const SUB_HEADING = {
   AREA: 'Basic Unit Secretaries & Senior Mawin Secretaries',
   DISTRICT: 'Area Secretaries & Senior Mawin Secretaries',
   PROVINCE: 'District Secretaries & Senior Mawin Secretaries',
   CENTRAL: 'Provincial Presidents & General/First Secretaries',
 };
+
 const OWN_HEADING = {
-  AREA: 'Elaqayi Executive',
+  AREA: 'Elaqayi Executive Cabinet',
   DISTRICT: 'Zilla Cabinet (District Executive)',
   PROVINCE: 'Sobayi Cabinet (Province Executive)',
   CENTRAL: 'Central Executive Cabinet',
@@ -40,10 +37,6 @@ export default function CommitteePage() {
   const [data, setData] = useState(null);
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
-  // Active body tab — drives both the composition fetch (which
-  // permanent-member list to show) and the bodyType used when
-  // nominating new permanent members.
-  const [bodyType, setBodyType] = useState('COMMITTEE');
   const [note, setNote] = useState('');
   const [nominateOpen, setNominateOpen] = useState(false);
   const [err, setErr] = useState('');
@@ -59,9 +52,7 @@ export default function CommitteePage() {
       setResolved({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, unitName: ctx.unitName });
       return;
     }
-    // Look up the parent Area for this Basic Unit. user.scope?.areaId
-    // is set for any role-bound user (Senior Mawin / Secretary /
-    // Finance Sec.) registered under a basic unit.
+    // Look up the parent Area for this Basic Unit.
     const areaId = user?.scope?.areaId;
     const districtId = user?.scope?.districtId;
     if (!areaId || !districtId) { setResolved(null); return; }
@@ -73,8 +64,6 @@ export default function CommitteePage() {
       .catch(() => {});
   }, [ctx, user]);
 
-  // Latest-fetch guard — drop stale composition responses from a
-  // previous resolved unit / bodyType.
   const fetchIdRef = useRef(0);
 
   async function reload() {
@@ -83,7 +72,7 @@ export default function CommitteePage() {
     setErr('');
     try {
       const r = await api.get('/committee/composition', {
-        params: { unitLevel: resolved.unitLevel, unitId: resolved.unitId, bodyType },
+        params: { unitLevel: resolved.unitLevel, unitId: resolved.unitId },
       });
       if (myId === fetchIdRef.current) setData(r.data.data);
     } catch (e) {
@@ -91,9 +80,7 @@ export default function CommitteePage() {
     }
   }
 
-  // Refetch when the user switches between Committee and Jirga tabs
-  // (bodyType change) so the Selective Members list updates.
-  useEffect(() => { reload(); }, [resolved, bodyType]);
+  useEffect(() => { reload(); }, [resolved]);
 
   useEffect(() => {
     if (!resolved) return;
@@ -101,28 +88,24 @@ export default function CommitteePage() {
     if (resolved.unitLevel === 'AREA') params.areaId = resolved.unitId;
     if (resolved.unitLevel === 'DISTRICT') params.districtId = resolved.unitId;
     if (resolved.unitLevel === 'PROVINCE') params.provinceId = resolved.unitId;
-    // Central (and Basic Unit, which never had a branch here either)
-    // send no unit key — scope:'all' is the explicit opt-in the
-    // members endpoint requires when no unit filter is present.
     if (resolved.unitLevel === 'CENTRAL' || resolved.unitLevel === 'BASIC_UNIT') params.scope = 'all';
     api.get('/members', { params }).then((r) => setMembers(r.data.data)).catch(() => {});
   }, [resolved]);
 
   async function nominate() {
     setErr('');
-    // Validation stays inline — the nominate form is still open.
     if (!memberId) { setErr('Pick a member.'); return; }
     try {
       const nominee = members.find((m) => m._id === memberId);
       await api.post('/committee/permanent', {
         unitLevel: resolved.unitLevel, unitId: resolved.unitId,
-        memberId, bodyType, nominationNote: note,
+        memberId, nominationNote: note,
       });
       setMemberId(''); setNote('');
       setNominateOpen(false);
       reload();
       toast.success(
-        nominee ? `${nominee.fullName} nominated as a permanent member.` : 'Permanent member nominated.',
+        nominee ? `${nominee.fullName} nominated as a selective member.` : 'Selective member nominated.',
         { title: 'Nomination recorded' }
       );
     } catch (e) {
@@ -131,18 +114,16 @@ export default function CommitteePage() {
   }
 
   async function removePerm(id) {
-    if (!await dialog.confirm('Remove this permanent member?')) return;
+    if (!await dialog.confirm('Remove this selective member from the committee?')) return;
     try {
       await api.post(`/committee/permanent/${id}/remove`);
       reload();
-      toast.success('Permanent member removed.');
+      toast.success('Selective member removed.');
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Could not remove member', duration: 7000 });
     }
   }
 
-  // Members already in groups (a) or (b) shouldn't be re-nominated as
-  // permanent — they're already members by virtue of their role.
   const alreadyInBody = useMemo(() => {
     if (!data) return new Set();
     const ids = new Set();
@@ -171,28 +152,16 @@ export default function CommitteePage() {
     : 0;
 
   const canManage = !!data?.canManage;
+  const committeeTitle = COMMITTEE_LABEL[resolved.unitLevel] || 'Committee';
 
   return (
     <div>
       <div className="page-header">
-        <h2>{BODY_LABEL[resolved.unitLevel]?.[bodyType] || 'Committee'} · {resolved.unitName}</h2>
+        <h2>{committeeTitle} · {resolved.unitName}</h2>
       </div>
 
-      {bodyTabsSupported(resolved.unitLevel) && (
-        <div className="toolbar" style={{ marginBottom: 12 }}>
-          <button
-            className={`btn ${bodyType === 'COMMITTEE' ? '' : 'secondary'}`}
-            onClick={() => setBodyType('COMMITTEE')}
-          >{BODY_LABEL[resolved.unitLevel].COMMITTEE}</button>
-          <button
-            className={`btn ${bodyType === 'JIRGA' ? '' : 'secondary'}`}
-            onClick={() => setBodyType('JIRGA')}
-          >{BODY_LABEL[resolved.unitLevel].JIRGA}</button>
-        </div>
-      )}
-
       {ctx.unitLevel === 'BASIC_UNIT' && (
-        <div className="alert" style={{ background: 'var(--info-bg)', color: 'var(--info-strong)', border: '1px solid var(--info-border)' }}>
+        <div className="alert" style={{ background: 'var(--info-bg)', color: 'var(--info-strong)', border: '1px solid var(--info-border)', marginBottom: 14 }}>
           You are pinned to a Basic Unit. Showing the parent Area's Elaqayi Committee in <strong>read-only</strong> mode — you are a member of this body via your Basic-Unit role.
         </div>
       )}
@@ -202,8 +171,8 @@ export default function CommitteePage() {
           <div className="card" style={{ marginBottom: 14 }}>
             <p className="muted" style={{ margin: 0 }}>
               <strong>{totalMembers}</strong> total members =
-              {' '}{data.ownCabinet?.length || 0} from the Area Executive
-              {' '}+ {(data.subordinates || []).reduce((a, s) => a + (s.roles?.length || 0), 0)} Basic-Unit office-holders
+              {' '}{data.ownCabinet?.length || 0} from Executive Cabinet
+              {' '}+ {(data.subordinates || []).reduce((a, s) => a + (s.roles?.length || 0), 0)} subordinate key office-holders
               {' '}+ {data.permanentMembers?.length || 0} Selective Members.
             </p>
           </div>
@@ -263,13 +232,6 @@ export default function CommitteePage() {
             </div>
             {err && <div className="alert error">{err}</div>}
 
-            {/* Portalled to <body> on purpose. A fixed-position backdrop
-                rendered inside this .card breaks the moment the card is
-                hovered: `.card:hover` sets a transform, which makes the
-                card the containing block for position:fixed, so the
-                backdrop collapses to the card's box and the modal jumps.
-                Since the backdrop is a card descendant, hovering it
-                re-triggers that hover — the modal then oscillates. */}
             {canManage && nominateOpen && createPortal((
               <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setNominateOpen(false); }}>
               <div className="modal" style={{ maxWidth: 560 }} role="dialog" aria-modal="true" aria-label="Nominate Selective Member">
@@ -300,12 +262,11 @@ export default function CommitteePage() {
               </div>
             ), document.body)}
             <table className="list" style={{ marginTop: 12 }}>
-              <thead><tr><th>Body</th><th>Member</th><th>Phone</th><th>Note</th>{canManage && <th></th>}</tr></thead>
+              <thead><tr><th>Member</th><th>Phone</th><th>Note</th>{canManage && <th></th>}</tr></thead>
               <tbody>
-                {data.permanentMembers.length === 0 && <tr><td colSpan={canManage ? 5 : 4} className="muted">None nominated.</td></tr>}
+                {data.permanentMembers.length === 0 && <tr><td colSpan={canManage ? 4 : 3} className="muted">None nominated.</td></tr>}
                 {data.permanentMembers.map((p) => (
                   <tr key={p._id}>
-                    <td>{p.bodyType}</td>
                     <td>{p.memberId?.fullName}</td>
                     <td>{p.memberId?.phone}</td>
                     <td>{p.nominationNote || '—'}</td>

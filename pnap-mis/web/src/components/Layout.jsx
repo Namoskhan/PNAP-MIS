@@ -52,15 +52,12 @@ const ROLE_DISPLAY = {
   MEMBER: 'Member',
 };
 
-// SRS §3.1–§3.4 — the wider consultative body's name changes per
-// tier. Was duplicated as an inline ternary chain in four sidebar
-// branches; hoisted so the Committee group and the personas below
-// can't drift apart.
+// SRS §3.1–§3.4 — the wider consultative body's name changes per tier.
 function committeeLabel(unitLevel) {
   if (unitLevel === 'AREA') return 'Elaqayi Committee';
   if (unitLevel === 'DISTRICT') return 'Zilla Committee';
-  if (unitLevel === 'PROVINCE') return 'Sobayi Committee / Jirga';
-  if (unitLevel === 'CENTRAL') return 'Central Committee / Qomi Jirga';
+  if (unitLevel === 'PROVINCE') return 'Sobayi Committee';
+  if (unitLevel === 'CENTRAL') return 'Central Committee';
   return '';
 }
 
@@ -95,35 +92,34 @@ function UnitNavLink({ to, body = null, children }) {
 // the wider body, each pinned to ?body=COMMITTEE. Basic Units have no
 // committee (SRS §3.1, and `committeeController.composition` rejects
 // that level outright), so the whole group is hidden there.
-//
-// No "Committee Reports" entry: /unit/reports is the member
-// performance page and takes no body filter. The body-scoped report
-// is the PDF / Excel download on the Committee Finance and Committee
-// Meetings pages, which now carry `body` through to the export.
-//
-// `showEvents={false}` for personas whose main nav carries no meeting
-// or activity links at all (the Finance Secretary) — the committee
-// group mirrors the surfaces that persona already has, it does not
-// hand them new ones.
 function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }) {
   if (!ctx || ctx.unitLevel === 'BASIC_UNIT') return null;
   const label = committeeLabel(ctx.unitLevel);
   if (!label) return null;
+  const isJirgaTier = ctx.unitLevel === 'CENTRAL' || ctx.unitLevel === 'PROVINCE';
+  const jirgaLabel = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
   return (
-    <NavGroup
-      label={label}
-      icon={<UsersIcon size={14} />}
-      storageKey="pnap_nav_committee"
-      defaultOpen={defaultOpen}
-    >
-      <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
-      {showEvents && <UnitNavLink to="/unit/meetings" body="COMMITTEE">Committee Meetings</UnitNavLink>}
-      {showEvents && <UnitNavLink to="/unit/activities" body="COMMITTEE">Committee Activities</UnitNavLink>}
-      {canFinance && <UnitNavLink to="/unit/finance" body="COMMITTEE">Committee Finance</UnitNavLink>}
-      {canFinance && <UnitNavLink to="/unit/transfers" body="COMMITTEE">Committee Transfers</UnitNavLink>}
-      {/* Committee-scoped reports — downloads filtered to the committee body */}
-      <UnitNavLink to="/unit/reports" body="COMMITTEE">Committee Reports</UnitNavLink>
-    </NavGroup>
+    <>
+      <NavGroup
+        label={label}
+        icon={<UsersIcon size={14} />}
+        storageKey="pnap_nav_committee"
+        defaultOpen={defaultOpen}
+      >
+        <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
+        {showEvents && <UnitNavLink to="/unit/meetings" body="COMMITTEE">Committee Meetings</UnitNavLink>}
+        {showEvents && <UnitNavLink to="/unit/activities" body="COMMITTEE">Committee Activities</UnitNavLink>}
+        {canFinance && <UnitNavLink to="/unit/finance" body="COMMITTEE">Committee Finance</UnitNavLink>}
+        {canFinance && <UnitNavLink to="/unit/transfers" body="COMMITTEE">Committee Transfers</UnitNavLink>}
+        {/* Committee-scoped reports — downloads filtered to the committee body */}
+        <UnitNavLink to="/unit/reports" body="COMMITTEE">Committee Reports</UnitNavLink>
+      </NavGroup>
+      {isJirgaTier && (
+        <nav style={{ marginTop: 2 }}>
+          <NavLink to="/unit/jirga">{jirgaLabel}</NavLink>
+        </nav>
+      )}
+    </>
   );
 }
 
@@ -273,6 +269,7 @@ export default function Layout() {
             <nav>
               <NavLink to="/unit" end>Central Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Central Cabinet</NavLink>
+              <NavLink to="/unit/jirga">Qomi Jirga</NavLink>
               <UnitNavLink to="/unit/meetings">Central Meetings</UnitNavLink>
               <UnitNavLink to="/unit/activities">Central Activities</UnitNavLink>
               <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
@@ -314,6 +311,7 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
               <NavLink to="/members">Province Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Province Cabinet Roles</NavLink>
+              <NavLink to="/unit/jirga">Qomi Jirga</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
@@ -344,6 +342,7 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Districts</NavLink>
               <NavLink to="/members">All Province Members</NavLink>
               <NavLink to="/unit/cabinet">Assign District Cabinet Roles</NavLink>
+              <NavLink to="/unit/jirga">Sobayi Jirga</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">District Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
