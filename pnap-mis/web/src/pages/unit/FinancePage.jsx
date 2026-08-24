@@ -331,7 +331,6 @@ export default function FinancePage() {
       });
       if (donReceipt) {
         fd.append('receipt', donReceipt);
-        fd.append('receiptImage', donReceipt);
       }
       const amount = parseFloat(donForm.amount);
       await api.post('/finance/donations', fd);

@@ -22,7 +22,19 @@ const FIN_READ = requirePermission('MANAGE_FINANCE', 'APPROVE_EXPENSE');
 const IN_SCOPE = requireUnitScope();
 
 router.get('/donations', FIN_READ, IN_SCOPE, ctrl.listDonations);
-router.post('/donations', IN_SCOPE, upload.single('receipt'), validate(donationCreateSchema), ctrl.recordDonation);
+router.post(
+  '/donations',
+  IN_SCOPE,
+  upload.fields([{ name: 'receipt', maxCount: 1 }, { name: 'receiptImage', maxCount: 1 }]),
+  (req, res, next) => {
+    if (req.files) {
+      req.file = req.files['receipt']?.[0] || req.files['receiptImage']?.[0];
+    }
+    next();
+  },
+  validate(donationCreateSchema),
+  ctrl.recordDonation
+);
 
 router.get('/expenses', FIN_READ, IN_SCOPE, ctrl.listExpenses);
 router.post('/expenses', IN_SCOPE, upload.single('evidence'), validate(expenseCreateSchema), ctrl.recordExpense);
