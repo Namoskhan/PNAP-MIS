@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { api, errorMessage } from '../../api/client';
+import { getCommitteeTierLabel, getRegularTierLabel } from '../../utils/unitFormat';
 
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
@@ -149,7 +150,16 @@ export default function ReportsPage() {
 
   if (!ctx) return <p>Select a unit context first.</p>;
 
-  const scopeDescription = {
+  const committeeTier = getCommitteeTierLabel(ctx.unitLevel);
+  const regularTier = getRegularTierLabel(ctx.unitLevel);
+
+  const scopeDescription = isCommitteeView ? {
+    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
+    AREA: scope === 'subtree' ? 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)' : 'Elaqai Committee Level Only (Records authored directly at Elaqai)',
+    DISTRICT: scope === 'subtree' ? 'Aggregated Zilla Committee Report (Roll-up of all subordinate Elaqai Committees & Basic Units + Zilla Committee activities)' : 'Zilla Committee Level Only (Records authored directly at Zilla)',
+    PROVINCE: scope === 'subtree' ? 'Aggregated Sobayi Committee Report (Roll-up of all subordinate Zilla, Elaqai Committees & Basic Units + Sobayi Committee activities)' : 'Sobayi Committee Level Only (Records authored directly at Sobayi)',
+    CENTRAL: scope === 'subtree' ? 'Aggregated Central Committee Report (Nationwide roll-up across all subordinate Sobayi, Zilla, and Elaqai Committees)' : 'Central Committee Level Only (Records authored directly at Central)',
+  }[ctx.unitLevel] || '' : {
     BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
     AREA: scope === 'subtree' ? 'Aggregated Area Report (Roll-up of all subordinate Basic Units + Area activities)' : 'Area Level Only (Records authored directly at Area)',
     DISTRICT: scope === 'subtree' ? 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)' : 'District Level Only (Records authored directly at District)',
@@ -157,10 +167,22 @@ export default function ReportsPage() {
     CENTRAL: scope === 'subtree' ? 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)' : 'Central Level Only (Records authored directly at Central)',
   }[ctx.unitLevel] || '';
 
+  const pageTitle = isCommitteeView
+    ? `${committeeTier ? `${committeeTier} Committee` : 'Committee'} Reports · ${ctx.unitName}`
+    : `Reports · ${ctx.unitName}`;
+
+  const meetingsReportTitle = isCommitteeView
+    ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Meetings & Activities Report`
+    : 'Meetings & Activities Report';
+
+  const financeReportTitle = isCommitteeView
+    ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Finance Report`
+    : 'Finance Report';
+
   return (
     <div>
       <div className="page-header">
-        <h2>{isCommitteeView ? 'Committee Reports' : 'Reports'} · {ctx.unitName}</h2>
+        <h2>{pageTitle}</h2>
       </div>
 
       {err && <div className="alert error">{err}</div>}
@@ -194,7 +216,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Meetings & Activities Report' : 'Meetings & Activities Report'}</h3>
+        <h3 style={{ marginTop: 0 }}>{meetingsReportTitle}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
           {isCommitteeView
             ? 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.'
@@ -207,7 +229,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Finance Report' : 'Finance Report'}</h3>
+        <h3 style={{ marginTop: 0 }}>{financeReportTitle}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
           {isCommitteeView
             ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'

@@ -13,6 +13,7 @@ import { formatCnic, isCompleteCnic } from '../../utils/formatters';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
+import { formatUnitArrangedBy } from '../../utils/unitFormat';
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
 const EXPENSE_CATEGORIES = ['OFFICE','TRANSPORT','PRINTING','REFRESHMENTS','STAGE_EQUIPMENT','COMMUNICATION','DONATIONS_OUT','SALARIES_STIPENDS','MISC'];
@@ -594,19 +595,28 @@ export default function FinancePage() {
                 return (
                   <tr key={d._id}>
                     <td>
-                      <span
-                        className="badge"
-                        style={{
-                          marginRight: 6,
-                          background: d.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
-                          color: d.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
-                          fontWeight: 600,
-                          fontSize: 11,
-                        }}
-                      >
-                        {d.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
-                      </span>
-                      {d.receiptNo}
+                      <div>
+                        <span
+                          className="badge"
+                          style={{
+                            marginRight: 6,
+                            background: d.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
+                            color: d.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                            fontWeight: 600,
+                            fontSize: 11,
+                          }}
+                        >
+                          {d.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                        </span>
+                        {d.receiptNo}
+                      </div>
+                      {d.unitLevel && (
+                        <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                          <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                            {formatUnitArrangedBy(d, { isCommitteeView })}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td>{new Date(d.receivedAt).toLocaleDateString()}</td>
                     <td>{effectiveDonorName}</td>
@@ -710,7 +720,16 @@ export default function FinancePage() {
                     </span>
                     {x.category}
                   </td>
-                  <td>{x.description}</td>
+                  <td>
+                    <div>{x.description}</div>
+                    {x.unitLevel && (
+                      <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                        <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                          {formatUnitArrangedBy(x, { isCommitteeView })}
+                        </span>
+                      </div>
+                    )}
+                  </td>
                   <td>{x.vendor || '—'}</td>
                   <td style={{ textAlign: 'right' }}>{PKR.format(x.amount)}</td>
                   <td><span className={`badge ${x.state}`}>{x.state}</span></td>

@@ -111,7 +111,11 @@ exports.list = asyncHandler(async (req, res) => {
   const items = await Meeting.find(filter)
     .sort({ startAt: -1 })
     .limit(200)
-    .populate('chairpersonId', 'fullName memberId');
+    .populate('chairpersonId', 'fullName memberId')
+    .populate('basicUnitId', 'name')
+    .populate('areaId', 'name')
+    .populate('districtId', 'name code')
+    .populate('provinceId', 'name code');
   ok(res, items);
 });
 

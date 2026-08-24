@@ -10,6 +10,7 @@ import DynamicForm from '../../components/dynamic-form/DynamicForm';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
+import { formatUnitArrangedBy } from '../../utils/unitFormat';
 function bodySupported(level) {
   return level === 'AREA' || level === 'DISTRICT' || level === 'PROVINCE' || level === 'CENTRAL';
 }
@@ -358,7 +359,16 @@ export default function ActivitiesPage() {
                 </span>
                 {a.type}
               </td>
-              <td>{a.title}</td>
+              <td>
+                <div>{a.title}</div>
+                {a.unitLevel && (
+                  <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                    <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                      {formatUnitArrangedBy(a, { isCommitteeView })}
+                    </span>
+                  </div>
+                )}
+              </td>
               <td>{a.venue || '—'}</td>
               <td><span className={`badge ${a.state}`}>{a.state}</span></td>
               <td>{(a.photos || []).length}</td>

@@ -20,6 +20,7 @@ const { resolveUnitChain } = require('../utils/unitScope');
 const env = require('../config/env');
 const settingsService = require('../services/settingsService');
 const eventExportService = require('../services/eventExportService');
+const { formatUnitArrangedBy, getCommitteeTierLabel, getRegularTierLabel } = require('../utils/unitFormat');
 
 // Render a dynamicData value into a cell-friendly form. Numerics
 // stay numeric so XLSX can format them; everything else stringifies
@@ -565,6 +566,17 @@ function bodyLabel(body) {
   if (body === 'GENERAL_BODY') return 'General Body';
   return '';
 }
+
+function bodyTierLabel(body, unitLevel) {
+  if (body === 'COMMITTEE') {
+    const tier = getCommitteeTierLabel(unitLevel);
+    return tier ? `${tier} Committee` : 'Committee';
+  }
+  if (body === 'EXECUTIVE') return 'Executive';
+  if (body === 'GENERAL_BODY') return 'General Body';
+  return '';
+}
+
 // Filename fragment: '-committee' / '-executive' / '' so the two
 // downloads don't overwrite each other in the browser's Downloads
 // folder.
@@ -608,21 +620,57 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
     Meeting.find({ ...ownQ, ...startClause, ...meetingBodyQ })
       .populate('chairpersonId', 'fullName memberId')
       .populate('attendance.memberId', 'fullName memberId')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
       .lean(),
     // Lead + participants are populated so activity blocks can name
     // people the same way meeting blocks name the chair and roster.
     Activity.find({ ...ownQ, ...startClause, ...activityBodyQ })
       .populate('leadMemberId', 'fullName memberId')
       .populate('participants', 'fullName memberId')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
       .lean(),
     Donation.find({ ...ownQ, ...recvClause, ...financeBodyQ })
       .populate('donorMemberId', 'fullName memberId cnic')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
       .lean(),
-    Expense.find({ ...ownQ, ...incurClause, ...financeBodyQ }).lean(),
-    Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
+    Expense.find({ ...ownQ, ...incurClause, ...financeBodyQ })
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
+      .lean(),
+    Responsibility.find(ownQ)
+      .populate('assignedToMemberId', 'fullName memberId')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
+      .lean(),
     unitOid ? FundTransfer.find(outFilter).lean() : [],
     unitOid ? FundTransfer.find(inFilter).lean() : [],
   ]);
+
+  // Attach formatted arrangedBy to every record
+  const isComm = body === 'COMMITTEE';
+  const attachArrangedBy = (arr) => {
+    arr.forEach((item) => {
+      item.arrangedBy = formatUnitArrangedBy(item, { isCommitteeView: isComm });
+    });
+  };
+  attachArrangedBy(meetings);
+  attachArrangedBy(activities);
+  attachArrangedBy(donations);
+  attachArrangedBy(expenses);
+  attachArrangedBy(responsibilities);
 
   const name = await unitName(unitLevel, unitId);
   return {
@@ -672,6 +720,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   don.columns = [
     { header: 'Receipt #', key: 'r', width: 14 },
     { header: 'Date', key: 'd', width: 14 },
+    { header: 'Unit / Arranged By', key: 'u', width: 26 },
     { header: 'Donor Type', key: 'dt', width: 14 },
     { header: 'Donor', key: 'dn', width: 28 },
     { header: 'CNIC', key: 'c', width: 18 },
@@ -684,6 +733,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     .forEach((d) => don.addRow({
       r: d.receiptNo || '',
       d: new Date(d.receivedAt).toLocaleDateString(),
+      u: d.arrangedBy || formatUnitArrangedBy(d, { isCommitteeView: body === 'COMMITTEE' }),
       dt: d.donorType,
       dn: d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
       c: d.donorCnic || '',
@@ -695,6 +745,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   const exp = wb.addWorksheet('Expenses');
   exp.columns = [
     { header: 'Date', key: 'd', width: 14 },
+    { header: 'Unit / Incurred By', key: 'u', width: 26 },
     { header: 'Category', key: 'c', width: 18 },
     { header: 'Description', key: 'desc', width: 36 },
     { header: 'Vendor', key: 'v', width: 24 },
@@ -707,6 +758,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     .sort((a, b) => new Date(b.incurredAt) - new Date(a.incurredAt))
     .forEach((e) => exp.addRow({
       d: new Date(e.incurredAt).toLocaleDateString(),
+      u: e.arrangedBy || formatUnitArrangedBy(e, { isCommitteeView: body === 'COMMITTEE' }),
       c: e.category,
       desc: e.description || '',
       v: e.vendor || '',
@@ -886,7 +938,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
   // The scope is stated explicitly — a District report that aggregates
   // its Areas looks identical to one that does not unless it says so.
   const scopeLabel = scope === 'subtree' ? 'including all subordinate units' : 'this unit only';
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Finance Report`,
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Finance Report`,
     `${data.unitLevel.replace('_', ' ')} · ${data.name}   |   ${scopeLabel}   |   Period: ${_periodLabel(from, to)}`);
 
   // Acknowledged transfers move real money, so the report's bottom line
@@ -923,11 +975,12 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     sectionColor,
     emptyText: 'No donations recorded in this period.',
     cols: [
-      { label: 'Receipt #', x: 40, w: 68 },
-      { label: 'Date', x: 108, w: 62 },
-      { label: 'Donor', x: 170, w: 168, wrap: true },
-      { label: 'Mode', x: 338, w: 96 },
-      { label: 'Amount (PKR)', x: 434, w: 121, align: 'right' },
+      { label: 'Receipt #', x: 40, w: 55 },
+      { label: 'Date', x: 95, w: 55 },
+      { label: 'Unit', x: 150, w: 105, wrap: true },
+      { label: 'Donor', x: 255, w: 120, wrap: true },
+      { label: 'Mode', x: 375, w: 75 },
+      { label: 'Amount (PKR)', x: 450, w: 105, align: 'right' },
     ],
     rows: data.donations
       .slice()
@@ -935,6 +988,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
       .map((d) => [
         d.receiptNo || '—',
         new Date(d.receivedAt).toLocaleDateString(),
+        d.arrangedBy || formatUnitArrangedBy(d, { isCommitteeView: body === 'COMMITTEE' }),
         d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
         d.paymentMode || '—',
         (d.amount || 0).toLocaleString(),
@@ -955,17 +1009,19 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     sectionColor,
     emptyText: 'No expenses recorded in this period.',
     cols: [
-      { label: 'Date', x: 40, w: 62 },
-      { label: 'Category', x: 102, w: 98 },
-      { label: 'Description', x: 200, w: 178, wrap: true },
-      { label: 'State', x: 378, w: 60 },
-      { label: 'Amount (PKR)', x: 438, w: 117, align: 'right' },
+      { label: 'Date', x: 40, w: 55 },
+      { label: 'Unit', x: 95, w: 105, wrap: true },
+      { label: 'Category', x: 200, w: 85 },
+      { label: 'Description', x: 285, w: 135, wrap: true },
+      { label: 'State', x: 420, w: 50 },
+      { label: 'Amount (PKR)', x: 470, w: 85, align: 'right' },
     ],
     rows: data.expenses
       .slice()
       .sort((a, b) => new Date(b.incurredAt) - new Date(a.incurredAt))
       .map((e) => [
         new Date(e.incurredAt).toLocaleDateString(),
+        e.arrangedBy || formatUnitArrangedBy(e, { isCommitteeView: body === 'COMMITTEE' }),
         e.category || '—',
         e.description || e.vendor || '—',
         e.state || '—',
@@ -1046,7 +1102,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
 
   sum.mergeCells('A1:B1');
-  sum.getCell('A1').value = `${orgName} — ${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`;
+  sum.getCell('A1').value = `${orgName} — ${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Meetings & Activities Report`;
   sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
   sum.getRow(1).height = 24;
 
@@ -1095,6 +1151,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   const mt = wb.addWorksheet('Meetings');
   mt.columns = [
     { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Arranged By', key: 'ab', width: 24 },
     { header: 'Type', key: 't', width: 16 },
     { header: 'Title', key: 'tt', width: 34 },
     { header: 'State', key: 's', width: 13 },
@@ -1105,7 +1162,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     { header: 'Roster', key: 'r', width: 9 },
     { header: 'Present', key: 'pr', width: 9 },
     { header: 'Late', key: 'la', width: 8 },
-    { header: 'Absent', key: 'ab', width: 9 },
+    { header: 'Absent', key: 'ab_count', width: 9 },
     { header: 'Attendance %', key: 'ap', width: 13, style: { numFmt: '0%' } },
     { header: 'Supervisor', key: 'sup', width: 11 },
     { header: 'Photos', key: 'p', width: 9 },
@@ -1122,6 +1179,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     const absent = att.filter((x) => x.status === 'ABSENT').length;
     const row = {
       d: m.startAt ? new Date(m.startAt) : null,
+      ab: m.arrangedBy || formatUnitArrangedBy(m, { isCommitteeView: body === 'COMMITTEE' }),
       t: m.type,
       tt: m.title || '',
       s: m.state,
@@ -1133,7 +1191,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
       r: att.length,
       pr: present,
       la: late,
-      ab: absent,
+      ab_count: absent,
       ap: att.length ? (present + late) / att.length : null,
       sup: m.supervisorAttended ? 'Yes' : 'No',
       p: (m.photos || []).length,
@@ -1155,6 +1213,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   ac.columns = [
     { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
     { header: 'Ends', key: 'e', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Arranged By', key: 'ab', width: 24 },
     { header: 'Type', key: 't', width: 18 },
     { header: 'Title', key: 'tt', width: 34 },
     { header: 'State', key: 's', width: 13 },
@@ -1183,6 +1242,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     const row = {
       d: a.startAt ? new Date(a.startAt) : null,
       e: a.endAt ? new Date(a.endAt) : null,
+      ab: a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' }),
       t: a.type,
       tt: a.title || '',
       s: a.state,
@@ -1286,7 +1346,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
     _resetText(doc);
   };
 
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`,
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Meetings & Activities Report`,
     `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
 
   // ─── Summary ──────────────────────────────────────────────────────
@@ -1321,6 +1381,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
     const late = att.filter((a) => a.status === 'LATE').length;
     const absent = att.filter((a) => a.status === 'ABSENT').length;
     _metaLines(doc, [
+      ['Arranged By', m.arrangedBy || formatUnitArrangedBy(m, { isCommitteeView: body === 'COMMITTEE' })],
       ['Venue', m.venue || '—'],
       ['Venue GPS', fmtGps(m.gpsLat, m.gpsLng)],
       ['Chair', m.chairpersonId?.fullName || '—'],
@@ -1358,6 +1419,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
 
     const parts = a.participants || [];
     _metaLines(doc, [
+      ['Arranged By', a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' })],
       ['Venue', a.venue || '—'],
       ['Venue GPS', fmtGps(a.gps?.lat, a.gps?.lng)],
       ['Lead', a.leadMemberId?.fullName || '—'],
@@ -1422,6 +1484,7 @@ exports.unitActivitiesXlsx = asyncHandler(async (req, res) => {
   ac.columns = [
     { header: '#', key: 'n', width: 6 },
     { header: 'Date', key: 'd', width: 14 },
+    { header: 'Arranged By', key: 'ab', width: 24 },
     { header: 'Type', key: 't', width: 18 },
     { header: 'Title', key: 'ti', width: 36 },
     { header: 'Lead', key: 'l', width: 26 },
@@ -1432,6 +1495,7 @@ exports.unitActivitiesXlsx = asyncHandler(async (req, res) => {
   data.activities.slice().sort((a, b) => new Date(b.startAt) - new Date(a.startAt)).forEach((a, i) => ac.addRow({
     n: i + 1,
     d: a.startAt ? new Date(a.startAt).toLocaleDateString() : '',
+    ab: a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' }),
     t: a.type || '',
     ti: a.title || '',
     l: a.leadMemberId?.fullName || '',
@@ -1459,7 +1523,7 @@ exports.unitActivitiesPdf = asyncHandler(async (req, res) => {
   const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Activities Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Activities Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
   _sectionHeading(doc, `Activities (${data.activities.length})`, sectionColor, { newPage: false });
   if (data.activities.length === 0) {
     doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No activities recorded in this period.');
@@ -1468,6 +1532,7 @@ exports.unitActivitiesPdf = asyncHandler(async (req, res) => {
     if (doc.y > _bottom(doc) - 120) doc.addPage();
     _recordHeader(doc, idx + 1, a.title || a.type, [a.type, a.state, a.startAt ? new Date(a.startAt).toLocaleString() : ''], sectionColor);
     _metaLines(doc, [
+      ['Arranged By', a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' })],
       ['Venue', a.venue || '—'],
       ['Lead', a.leadMemberId?.fullName || '—'],
       ['Participants', (a.participants || []).map((p) => p?.fullName).filter(Boolean).join(', ') || null],
@@ -1547,7 +1612,7 @@ exports.unitTransfersPdf = asyncHandler(async (req, res) => {
   const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Transfers Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Transfers Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
   _sectionHeading(doc, `Transfers Out (${data.transfersOut.length})`, sectionColor, { newPage: false });
   if (data.transfersOut.length === 0) doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No outgoing transfers in this period.');
   data.transfersOut.forEach((t, i) => {

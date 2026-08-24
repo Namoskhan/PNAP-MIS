@@ -10,6 +10,7 @@ import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
+import { formatUnitArrangedBy } from '../../utils/unitFormat';
 // Default starting type when no types have loaded yet — kept here so
 // the form has a sensible empty state. The picker itself is sourced
 // Default starting type when no types have loaded yet — kept here so
@@ -605,10 +606,11 @@ export default function MeetingsPage() {
                     )}
                     <span>{m.title ? `${m.type} · ${m.title}` : m.type}</span>
                   </div>
-                  {isPureMember && m.unitLevel !== ctx.unitLevel && (
-                    <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
-                      {LEVEL_LABELS[m.unitLevel] || m.unitLevel}
-                      {isCm ? ' committee' : isGbm ? ' general body' : ' executive'} meeting
+                  {m.unitLevel && (
+                    <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                      <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                        {formatUnitArrangedBy(m, { isCommitteeView })}
+                      </span>
                     </div>
                   )}
                 </td>

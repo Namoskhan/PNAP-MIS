@@ -94,6 +94,10 @@ exports.listDonations = asyncHandler(async (req, res) => {
   if (bc) Object.assign(filter, bc);
   const items = await Donation.find(filter)
     .populate('donorMemberId', 'fullName memberId cnic')
+    .populate('basicUnitId', 'name')
+    .populate('areaId', 'name')
+    .populate('districtId', 'name code')
+    .populate('provinceId', 'name code')
     .sort({ receivedAt: -1 })
     .limit(500);
   ok(res, items);
@@ -158,7 +162,13 @@ exports.listExpenses = asyncHandler(async (req, res) => {
   }
   const bc = bodyClause(body);
   if (bc) Object.assign(filter, bc);
-  const items = await Expense.find(filter).sort({ incurredAt: -1 }).limit(500);
+  const items = await Expense.find(filter)
+    .populate('basicUnitId', 'name')
+    .populate('areaId', 'name')
+    .populate('districtId', 'name code')
+    .populate('provinceId', 'name code')
+    .sort({ incurredAt: -1 })
+    .limit(500);
   ok(res, items);
 });
 
