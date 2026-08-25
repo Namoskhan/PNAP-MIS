@@ -24,6 +24,8 @@ import ActivitiesPage from './pages/unit/ActivitiesPage';
 import FinancePage from './pages/unit/FinancePage';
 import BreakdownPage from './pages/unit/BreakdownPage';
 import CommitteePage from './pages/unit/CommitteePage';
+import JirgaPage from './pages/unit/JirgaPage';
+import CongressPage from './pages/unit/CongressPage';
 import UnitProposalsPage from './pages/admin/UnitProposalsPage';
 import TransfersPage from './pages/unit/TransfersPage';
 import NationalPage from './pages/central/NationalPage';
@@ -136,6 +138,8 @@ export default function App() {
             <Route path="/unit/finance" element={<FinancePage />} />
             <Route path="/unit/breakdown" element={<BreakdownPage />} />
             <Route path="/unit/committee" element={<CommitteePage />} />
+            <Route path="/unit/jirga" element={<JirgaPage />} />
+            <Route path="/unit/congress" element={<CongressPage />} />
             <Route path="/admin/unit-proposals" element={<UnitProposalsPage />} />
             <Route path="/unit/transfers" element={<TransfersPage />} />
             <Route path="/unit/responsibilities" element={<ResponsibilitiesPage />} />

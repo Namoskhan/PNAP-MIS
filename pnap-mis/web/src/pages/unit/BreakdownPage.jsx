@@ -42,18 +42,20 @@ export default function BreakdownPage() {
             <th>Name</th>
             <th>Active Members</th>
             <th>Meetings (30d)</th>
+            <th>Activities (30d)</th>
             <th style={{ textAlign: 'right' }}>Donations</th>
             <th style={{ textAlign: 'right' }}>Expenses</th>
             <th style={{ textAlign: 'right' }}>Balance</th>
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan="6">No subordinate units yet.</td></tr>}
+          {rows.length === 0 && <tr><td colSpan="7">No subordinate units yet.</td></tr>}
           {rows.map((r) => (
             <tr key={r._id}>
               <td>{r.name}{r.code ? ` (${r.code})` : ''}</td>
               <td>{r.members}</td>
               <td>{r.meetings30}</td>
+              <td>{r.activities30 ?? 0}</td>
               <td style={{ textAlign: 'right' }}>{PKR.format(r.donations)}</td>
               <td style={{ textAlign: 'right' }}>{PKR.format(r.expenses)}</td>
               <td style={{ textAlign: 'right', color: r.balance < 0 ? 'var(--danger)' : 'inherit' }}>{PKR.format(r.balance)}</td>

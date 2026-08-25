@@ -2685,58 +2685,153 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── Sidebar collapsible nav group ──────────────────────────── */
-.nav-collapsible { margin-bottom: 2px; }
+.nav-collapsible {
+  margin: 4px 0;
+}
 .nav-collapsible-head {
-  display: flex; align-items: center; gap: 9px;
-  /* Inset to match the nav links below it, so the group reads as a
-     heading over its own items instead of a floating label. */
+  display: flex;
+  align-items: center;
+  gap: 9px;
   width: calc(100% - 20px);
-  margin: 8px 10px 2px;
-  background: transparent;
-  border: 0;
+  margin: 4px 10px 2px;
+  background: rgba(255, 255, 255, .03);
+  border: 1px solid rgba(255, 255, 255, .07);
   border-radius: 8px;
-  color: rgba(255, 255, 255, .55);
-  font-size: 10.5px;
+  color: rgba(255, 255, 255, .65);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: .1em;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  padding: 8px 12px 8px 16px;
+  padding: 7px 10px 7px 10px;
   cursor: pointer;
   text-align: left;
-  transition: color .15s ease, background-color .15s ease;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 .nav-collapsible-head:hover {
   color: #fff;
-  /* The whole row is the hit target, so it needs to look like one. */
-  background: rgba(255, 255, 255, .06);
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .15);
 }
 .nav-collapsible-head:focus-visible {
   outline: 2px solid #fff;
   outline-offset: -2px;
   color: #fff;
 }
-/* An open group is a heading with content under it — give it more
-   presence than a collapsed one. */
-.nav-collapsible.open > .nav-collapsible-head { color: rgba(255, 255, 255, .82); }
+.nav-collapsible.open > .nav-collapsible-head {
+  color: #fff;
+  background: rgba(255, 255, 255, .07);
+  border-color: rgba(255, 255, 255, .14);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+}
 .nav-collapsible-icon {
   display: inline-flex;
   align-items: center;
-  opacity: .9;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .85);
+  flex-shrink: 0;
+  transition: background-color .15s ease, color .15s ease;
 }
-.nav-collapsible-label { flex: 1; }
+.nav-collapsible:hover .nav-collapsible-icon,
+.nav-collapsible.open .nav-collapsible-icon {
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+}
+
+/* Themed Icon Accents */
+.nav-committee .nav-collapsible-icon {
+  color: #93c5fd;
+  background: rgba(147, 197, 253, .16);
+}
+.nav-committee.open .nav-collapsible-icon,
+.nav-committee:hover .nav-collapsible-icon {
+  color: #bfdbfe;
+  background: rgba(147, 197, 253, .28);
+}
+
+.nav-jirga .nav-collapsible-icon {
+  color: #d8b4fe;
+  background: rgba(216, 180, 254, .16);
+}
+.nav-jirga.open .nav-collapsible-icon,
+.nav-jirga:hover .nav-collapsible-icon {
+  color: #f3e8ff;
+  background: rgba(216, 180, 254, .28);
+}
+
+.nav-congress .nav-collapsible-icon {
+  color: #7dd3fc;
+  background: rgba(125, 211, 252, .16);
+}
+.nav-congress.open .nav-collapsible-icon,
+.nav-congress:hover .nav-collapsible-icon {
+  color: #bae6fd;
+  background: rgba(125, 211, 252, .28);
+}
+
+.nav-collapsible-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .nav-collapsible-chevron {
   display: inline-flex;
   align-items: center;
-  color: rgba(255, 255, 255, 0.55);
-  transition: transform .22s cubic-bezier(.16, 1, .3, 1);
+  color: rgba(255, 255, 255, 0.5);
+  transition: transform .22s cubic-bezier(.16, 1, .3, 1), color .15s ease;
 }
-.nav-collapsible-chevron.open { transform: rotate(90deg); }
+.nav-collapsible-chevron.open {
+  transform: rotate(90deg);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Collapsible Body (Indented Sub-Navigation) ── */
 .nav-collapsible-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 3px 10px 6px 20px;
+  padding: 3px 0 3px 10px;
+  border-left: 1.5px solid rgba(255, 255, 255, .15);
   animation: navGroupIn .22s cubic-bezier(.16, 1, .3, 1);
 }
-@keyframes navGroupIn {
-  from { opacity: 0; transform: translateY(-3px); }
-  to   { opacity: 1; transform: translateY(0); }
+
+.sidebar .nav-collapsible-body a {
+  padding: 7px 10px 7px 12px;
+  font-size: 12.5px;
+  font-weight: 450;
+  color: rgba(255, 255, 255, .72);
+  border-radius: 6px;
+  line-height: 1.3;
+  letter-spacing: .01em;
+  position: relative;
+}
+
+.sidebar .nav-collapsible-body a:hover {
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.sidebar .nav-collapsible-body a.active {
+  background: #fff;
+  color: var(--primary-dark);
+  font-weight: 600;
+  font-size: 12.5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .15), 0 4px 10px -4px rgba(0, 0, 0, .35);
+}
+
+.sidebar .nav-collapsible-body a.active::before {
+  left: 4px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--primary);
 }
 
 /* ── Permission picker (Roles page) ─────────────────────────── */

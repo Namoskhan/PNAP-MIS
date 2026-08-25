@@ -1,10 +1,9 @@
-// DONATIONS_TABLE — donor / amount / mode / received-at rows plus a
-// total row.
+const { formatUnitArrangedBy } = require('../../utils/unitFormat');
 
 module.exports = {
   kind: 'DONATIONS_TABLE',
   label: 'Donations table',
-  description: 'Donor name, amount, payment mode, received date, plus total row.',
+  description: 'Donor name, unit, amount, payment mode, received date, plus total row.',
   defaultTitle: 'Donations',
   defaultConfig: { limit: 500 },
 
@@ -25,20 +24,26 @@ module.exports = {
 
     let y = doc.y;
     doc.font('Helvetica-Bold').fontSize(9).fillColor('#374151');
-    doc.text('Date',     40,  y, { width: 90 });
-    doc.text('Donor',    135, y, { width: 200 });
-    doc.text('Mode',     345, y, { width: 80 });
+    doc.text('Date',     40,  y, { width: 65 });
+    doc.text('Unit',     110, y, { width: 90 });
+    doc.text('Donor',    205, y, { width: 140 });
+    doc.text('Mode',     350, y, { width: 75 });
     doc.text('Amount',   430, y, { width: 100, align: 'right' });
     y += 14;
     doc.moveTo(40, y - 2).lineTo(555, y - 2).strokeColor('#e5e7eb').stroke();
 
     let total = 0;
-    doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
+    doc.font('Helvetica').fontSize(8.5).fillColor('#1a1a1a');
     for (const d of rows) {
       const dateStr = d.receivedAt ? new Date(d.receivedAt).toLocaleDateString() : '—';
-      doc.text(dateStr,                                    40,  y, { width: 90 });
-      doc.text(String(d.donorName || d.donorType || '—'),  135, y, { width: 200, ellipsis: true });
-      doc.text(String(d.paymentMode || ''),                345, y, { width: 80 });
+      const donorName = d.donorType === 'ANONYMOUS'
+        ? 'Anonymous'
+        : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
+      const arrBy = d.arrangedBy || formatUnitArrangedBy(d);
+      doc.text(dateStr,                                    40,  y, { width: 65 });
+      doc.text(String(arrBy),                              110, y, { width: 90, ellipsis: true });
+      doc.text(String(donorName),                          205, y, { width: 140, ellipsis: true });
+      doc.text(String(d.paymentMode || ''),                350, y, { width: 75 });
       doc.text(`PKR ${(d.amount || 0).toLocaleString()}`,  430, y, { width: 100, align: 'right' });
       total += d.amount || 0;
       y += 16;
@@ -46,9 +51,9 @@ module.exports = {
     }
 
     y += 4;
-    doc.moveTo(345, y - 2).lineTo(555, y - 2).strokeColor('#374151').stroke();
+    doc.moveTo(350, y - 2).lineTo(555, y - 2).strokeColor('#374151').stroke();
     doc.font('Helvetica-Bold').fontSize(10).fillColor('#1a1a1a');
-    doc.text('Total', 345, y, { width: 80 });
+    doc.text('Total', 350, y, { width: 75 });
     doc.text(`PKR ${total.toLocaleString()}`, 430, y, { width: 100, align: 'right' });
     doc.y = y + 20;
   },
@@ -60,22 +65,27 @@ module.exports = {
 
     const ws = workbook.addWorksheet(title.slice(0, 30));
     ws.columns = [
-      { header: 'Date',         key: 'date',    width: 14 },
-      { header: 'Donor name',   key: 'donor',   width: 26 },
-      { header: 'Donor type',   key: 'type',    width: 16 },
-      { header: 'CNIC',         key: 'cnic',    width: 18 },
-      { header: 'Mode',         key: 'mode',    width: 16 },
-      { header: 'Amount (PKR)', key: 'amount',  width: 16 },
+      { header: 'Date',               key: 'date',       width: 14 },
+      { header: 'Unit / Arranged By', key: 'arrangedBy', width: 22 },
+      { header: 'Donor name',         key: 'donor',      width: 26 },
+      { header: 'Donor type',         key: 'type',       width: 16 },
+      { header: 'CNIC',               key: 'cnic',       width: 18 },
+      { header: 'Mode',               key: 'mode',       width: 16 },
+      { header: 'Amount (PKR)',       key: 'amount',     width: 16 },
     ];
     let total = 0;
     for (const d of rows) {
+      const donorName = d.donorType === 'ANONYMOUS'
+        ? 'Anonymous'
+        : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : ''));
       ws.addRow({
-        date:   d.receivedAt ? new Date(d.receivedAt) : null,
-        donor:  d.donorName || '',
-        type:   d.donorType || '',
-        cnic:   d.donorCnic || '',
-        mode:   d.paymentMode || '',
-        amount: d.amount || 0,
+        date:        d.receivedAt ? new Date(d.receivedAt) : null,
+        arrangedBy:  d.arrangedBy || formatUnitArrangedBy(d),
+        donor:       donorName,
+        type:        d.donorType || '',
+        cnic:        d.donorCnic || '',
+        mode:        d.paymentMode || '',
+        amount:      d.amount || 0,
       });
       total += d.amount || 0;
     }

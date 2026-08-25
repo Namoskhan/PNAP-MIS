@@ -50,7 +50,7 @@ function requirePermission(...codes) {
 
 function signToken(user) {
   return jwt.sign({ sub: user._id.toString(), roles: user.roles }, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN,
+    expiresIn: env.JWT_EXPIRES_IN || '12h',
   });
 }
 

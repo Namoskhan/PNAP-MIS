@@ -39,8 +39,9 @@ export default function TransfersPage() {
   const toast = useToast();
   const [tab, setTab] = useState('outgoing');
   const queryBody = new URLSearchParams(location.search).get('body');
+  const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
-  const targetBody = isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE';
+  const targetBody = isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE');
 
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
@@ -118,14 +119,16 @@ export default function TransfersPage() {
       setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
       setReceipt(null);
       resetSelection();
-      setConfirmOpen(false);
       setTransferModalOpen(false);
+      setConfirmOpen(false);
       reload();
       toast.success(summary, { title: 'Transfer initiated', duration: 9000 });
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not initiate transfer', duration: 7000 });
+      setErr(errorMessage(e));
       setConfirmOpen(false);
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   // Counterparty for a history row. Destinations and sources are now
@@ -141,19 +144,21 @@ export default function TransfersPage() {
 
   async function ack(id) {
     try {
-      await api.post(`/transfers/${id}/acknowledge`, {});
+      await api.post(`/transfers/${id}/ack`, {});
       reload();
-      toast.success('Transfer acknowledged — funds credited to this unit.', { title: 'Transfer acknowledged' });
+      toast.success('Transfer acknowledged — funds added to your balance.');
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Could not acknowledge transfer', duration: 7000 });
     }
   }
+
   async function reject(id) {
-    const note = await dialog.prompt('Reason for rejection:') || '';
+    const reason = await dialog.prompt('Reason for rejecting this transfer:');
+    if (reason == null) return;
     try {
-      await api.post(`/transfers/${id}/reject`, { note });
+      await api.post(`/transfers/${id}/reject`, { reason });
       reload();
-      toast.success('Transfer rejected — the sending unit has been notified.', { title: 'Transfer rejected' });
+      toast.success('Transfer rejected.');
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Could not reject transfer', duration: 7000 });
     }
@@ -202,28 +207,29 @@ export default function TransfersPage() {
     );
   }
 
-  // Center heads the organization and does not initiate transfers —
-  // unchanged from before, and enforced server-side by sourceLevel.
-  const canSend = ctx.unitLevel !== 'CENTRAL';
+  const canSend = hasPermission(user, 'MANAGE_FINANCE');
   const readyToConfirm = !!preview && !!form.amount && !!receipt;
 
   const displayedItems = (items || []).filter((t) => {
+    if (isJirgaView) return t.body === 'JIRGA';
     if (isCommitteeView) return t.body === 'COMMITTEE';
-    return t.body === 'EXECUTIVE' || !t.body || t.body !== 'COMMITTEE';
+    return t.body === 'EXECUTIVE' || !t.body || (t.body !== 'COMMITTEE' && t.body !== 'JIRGA');
   });
 
   return (
     <div>
       <div className="page-header">
         <h2>
-          {isCommitteeView ? 'Committee Transfers' : 'Executive Transfers'} · {ctx.unitName}
+          {isJirgaView
+            ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Fund Transfers' : `Sobayi Jirga Fund Transfers · ${ctx.unitName}`)
+            : (isCommitteeView ? `Committee Transfers · ${ctx.unitName}` : `Executive Transfers · ${ctx.unitName}`)}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canSend && (
             <button className="btn" onClick={() => setTransferModalOpen(true)}>
-              {isCommitteeView ? '+ Initiate Committee Fund Transfer' : '+ Initiate Fund Transfer'}
+              {isJirgaView ? '+ Initiate Jirga Fund Transfer' : (isCommitteeView ? '+ Initiate Committee Fund Transfer' : '+ Initiate Fund Transfer')}
             </button>
           )}
         </div>
@@ -235,10 +241,12 @@ export default function TransfersPage() {
         <div className="tr-banner">
           <span>
             <strong>{ctx.unitName}</strong>{' '}
-            {ctx.unitLevel === 'PROVINCE'
-              ? 'may send funds to any unit in the organization, including other provinces.'
-              : 'may send funds to any unit within its own province, or to the Center. '
-                + 'Transfers to another province are initiated by the Province Finance Secretary.'}
+            {ctx.unitLevel === 'CENTRAL'
+              ? 'may send funds to any unit in the organization.'
+              : ctx.unitLevel === 'PROVINCE'
+                ? 'may send funds to any unit in the organization, including other provinces.'
+                : 'may send funds to any unit within its own province, or to the Center. '
+                  + 'Transfers to another province are initiated by the Province Finance Secretary.'}
             {' '}The unit you choose receives the funds and is the only one that acknowledges them.
           </span>
         </div>
@@ -454,7 +462,7 @@ export default function TransfersPage() {
           {displayedItems.length === 0 && (
             <tr>
               <td colSpan="8" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                No {isCommitteeView ? 'committee' : 'executive'} transfers in this view.
+                No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} transfers in this view.
               </td>
             </tr>
           )}
@@ -466,13 +474,14 @@ export default function TransfersPage() {
                   className="badge"
                   style={{
                     marginRight: 6,
-                    background: t.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
-                    color: t.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                    background: t.body === 'JIRGA' ? '#f3e8ff' : (t.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)'),
+                    color: t.body === 'JIRGA' ? '#6b21a8' : (t.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)'),
+                    border: t.body === 'JIRGA' ? '1px solid #d8b4fe' : undefined,
                     fontWeight: 600,
                     fontSize: 11,
                   }}
                 >
-                  {t.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                  {t.body === 'JIRGA' ? 'Jirga' : (t.body === 'COMMITTEE' ? 'Committee' : 'Executive')}
                 </span>
                 {counterparty(t)}
               </td>

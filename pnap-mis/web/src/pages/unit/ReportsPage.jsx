@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { api, errorMessage } from '../../api/client';
+import { getCommitteeTierLabel, getRegularTierLabel } from '../../utils/unitFormat';
 
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
@@ -39,10 +40,13 @@ function downloadAuthed2(path, filename) {
 export default function ReportsPage() {
   const location = useLocation();
   const queryBody = new URLSearchParams(location.search).get('body');
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
   const { ctx } = useUnit();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [scope, setScope] = useState('subtree');
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -69,7 +73,7 @@ export default function ReportsPage() {
     if (!ctx) return;
     setMemberId('');
     setReport(null);
-    const bodyTarget = isCommitteeView ? 'COMMITTEE' : 'GENERAL_BODY';
+    const bodyTarget = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'GENERAL_BODY'));
     api.get('/meetings/eligible-attendees', {
       params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: bodyTarget },
     })
@@ -83,13 +87,19 @@ export default function ReportsPage() {
         else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
         api.get('/members', { params }).then((r) => setMembers(r.data.data || [])).catch(() => {});
       });
-  }, [ctx, isCommitteeView]);
+  }, [ctx, isCommitteeView, isJirgaView, isCongressView]);
 
   function unitParams(kind) {
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
-    if (isCommitteeView) {
+    if (ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && scope) p.set('scope', scope);
+    if (isCongressView) {
+      p.set('body', 'CONGRESS');
+      p.set('scope', 'own');
+    } else if (isJirgaView) {
+      p.set('body', 'JIRGA');
+    } else if (isCommitteeView) {
       p.set('body', 'COMMITTEE');
     } else {
       if (kind === 'meetings') {
@@ -105,10 +115,11 @@ export default function ReportsPage() {
     setErr(''); setBusy(true);
     try {
       const ext = format === 'pdf' ? 'pdf' : 'xlsx';
-      const bodySuffix = isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : '');
+      const bodySuffix = isCongressView ? '-congress' : (isJirgaView ? '-jirga' : (isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : '')));
+      const scopeSuffix = (ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && scope === 'subtree') ? '-aggregated' : '';
       await downloadAuthed2(
         `/api/exports/unit/${kind}/${format}?${unitParams(kind)}`,
-        `${ctx.unitLevel}-${ctx.unitName}-${kind}${bodySuffix}.${ext}`,
+        `${ctx.unitLevel}-${ctx.unitName}-${kind}${bodySuffix}${scopeSuffix}.${ext}`,
       );
     } catch (e) { setErr('Export failed: ' + (e.message || 'unknown')); }
     finally { setBusy(false); }
@@ -129,34 +140,121 @@ export default function ReportsPage() {
     finally { setBusy(false); }
   }
 
+  async function downloadMemberXlsx() {
+    if (!memberId) return;
+    setErr(''); setBusy(true);
+    try {
+      const p = new URLSearchParams();
+      if (from) p.set('from', from);
+      if (to) p.set('to', to);
+      await downloadAuthed2(
+        `/api/exports/member/${memberId}/xlsx?${p.toString()}`,
+        `member-${memberId}-performance.xlsx`,
+      );
+    } catch (e) { setErr('Export failed: ' + (e.message || 'unknown')); }
+    finally { setBusy(false); }
+  }
+
   if (!ctx) return <p>Select a unit context first.</p>;
+
+  const committeeTier = getCommitteeTierLabel(ctx.unitLevel);
+  const jirgaTier = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
+  const regularTier = getRegularTierLabel(ctx.unitLevel);
+
+  const scopeDescription = isCongressView ? (
+    'National Congress Assembly Records (Central)'
+  ) : (isJirgaView ? (
+    scope === 'subtree' ? `Aggregated ${jirgaTier} Report` : `${jirgaTier} Direct Records`
+  ) : (isCommitteeView ? {
+    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
+    AREA: scope === 'subtree' ? 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)' : 'Elaqai Committee Level Only (Records authored directly at Elaqai)',
+    DISTRICT: scope === 'subtree' ? 'Aggregated Zilla Committee Report (Roll-up of all subordinate Elaqai Committees & Basic Units + Zilla Committee activities)' : 'Zilla Committee Level Only (Records authored directly at Zilla)',
+    PROVINCE: scope === 'subtree' ? 'Aggregated Sobayi Committee Report (Roll-up of all subordinate Zilla, Elaqai Committees & Basic Units + Sobayi Committee activities)' : 'Sobayi Committee Level Only (Records authored directly at Sobayi)',
+    CENTRAL: scope === 'subtree' ? 'Aggregated Central Committee Report (Nationwide roll-up across all subordinate Sobayi, Zilla, and Elaqai Committees)' : 'Central Committee Level Only (Records authored directly at Central)',
+  }[ctx.unitLevel] || '' : {
+    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
+    AREA: scope === 'subtree' ? 'Aggregated Area Report (Roll-up of all subordinate Basic Units + Area activities)' : 'Area Level Only (Records authored directly at Area)',
+    DISTRICT: scope === 'subtree' ? 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)' : 'District Level Only (Records authored directly at District)',
+    PROVINCE: scope === 'subtree' ? 'Aggregated Province Report (Roll-up of all subordinate Districts, Areas & Basic Units + Province activities)' : 'Province Level Only (Records authored directly at Province)',
+    CENTRAL: scope === 'subtree' ? 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)' : 'Central Level Only (Records authored directly at Central)',
+  }[ctx.unitLevel] || ''));
+
+  const pageTitle = isCongressView
+    ? 'National Congress Reports · PKNAP Central'
+    : (isJirgaView
+      ? `${jirgaTier} Reports · ${ctx.unitName}`
+      : (isCommitteeView
+      ? `${committeeTier ? `${committeeTier} Committee` : 'Committee'} Reports · ${ctx.unitName}`
+      : `Reports · ${ctx.unitName}`));
+
+  const meetingsReportTitle = isCongressView
+    ? 'National Congress Meetings & Activities Report'
+    : (isJirgaView
+      ? `${jirgaTier} Meetings & Activities Report`
+      : (isCommitteeView
+      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Meetings & Activities Report`
+      : 'Meetings & Activities Report'));
+
+  const financeReportTitle = isCongressView
+    ? 'National Congress Finance Report'
+    : (isJirgaView
+      ? `${jirgaTier} Finance Report`
+      : (isCommitteeView
+      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Finance Report`
+      : 'Finance Report'));
+
+  const comprehensiveReportTitle = isCongressView
+    ? 'National Congress Comprehensive Periodic Report'
+    : (isJirgaView
+      ? `${jirgaTier} Comprehensive Periodic Report`
+      : (isCommitteeView
+      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Comprehensive Periodic Report`
+      : 'Comprehensive Periodic Report'));
 
   return (
     <div>
-      <div className="page-header"><h2>{isCommitteeView ? 'Committee Reports' : 'Reports'} · {ctx.unitName}</h2></div>
+      <div className="page-header">
+        <h2>{pageTitle}</h2>
+      </div>
 
       {err && <div className="alert error">{err}</div>}
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Date range (optional)</h3>
+        <h3 style={{ marginTop: 0 }}>Report Scope & Period Filter</h3>
         <div className="form-grid">
+          {ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && (
+            <div className="field">
+              <label>Data Aggregation Scope</label>
+              <select value={scope} onChange={(e) => setScope(e.target.value)}>
+                <option value="subtree">Aggregated (Include all subordinate units roll-up)</option>
+                <option value="own">This unit tier only</option>
+              </select>
+            </div>
+          )}
           <div className="field">
-            <label>From</label>
+            <label>From Date</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div className="field">
-            <label>To</label>
+            <label>To Date</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
+        {scopeDescription && (
+          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-soft)', background: 'var(--surface-alt)', padding: '8px 12px', borderRadius: 'var(--radius)' }}>
+            📊 <strong>Report Mode:</strong> {scopeDescription}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Meetings & Activities Report' : 'Meetings & Activities Report'}</h3>
+        <h3 style={{ marginTop: 0 }}>{meetingsReportTitle}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
-          {isCommitteeView
-            ? 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.'
-            : 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.'}
+          {isCongressView
+            ? 'National Congress meetings (with embedded photos), congress activities, and responsibilities.'
+            : (isCommitteeView
+              ? 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.'
+              : 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.')}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('meetings', 'pdf')}>Download PDF</button>
@@ -165,11 +263,13 @@ export default function ReportsPage() {
       </div>
 
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Finance Report' : 'Finance Report'}</h3>
+        <h3 style={{ marginTop: 0 }}>{financeReportTitle}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
-          {isCommitteeView
-            ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'
-            : 'Executive donations ledger, expenses ledger, and the executive net balance for the period.'}
+          {isCongressView
+            ? 'National Congress donations ledger, expenses ledger, and congress net balance for the period.'
+            : (isCommitteeView
+              ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'
+              : 'Executive donations ledger, expenses ledger, and the executive net balance for the period.')}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>Download PDF</button>
@@ -178,15 +278,17 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>{isCommitteeView ? 'Committee Member Performance Report' : 'Individual Performance Report'}</h3>
+        <h3 style={{ marginTop: 0 }}>{isCongressView ? 'Congress Member Performance Report' : (isCommitteeView ? 'Committee Member Performance Report' : 'Individual Performance Report')}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
-          {isCommitteeView
-            ? 'Performance scorecard and attendance report for committee members.'
-            : 'Performance scorecard and attendance report for executive committee and subordinate members.'}
+          {isCongressView
+            ? 'Performance scorecard and attendance report for National Congress members.'
+            : (isCommitteeView
+              ? 'Performance scorecard and attendance report for committee members.'
+              : 'Performance scorecard and attendance report for executive committee and subordinate members.')}
         </p>
         <div className="form-grid" style={{ alignItems: 'end' }}>
           <div className="field">
-            <label>{isCommitteeView ? 'Committee Member' : 'Member'}</label>
+            <label>{isCongressView ? 'Congress Member' : (isCommitteeView ? 'Committee Member' : 'Member')}</label>
             <select value={memberId} onChange={(e) => setMemberId(e.target.value)}>
               <option value="">— pick a member —</option>
               {members.map((m) => (
@@ -196,8 +298,9 @@ export default function ReportsPage() {
               ))}
             </select>
           </div>
-          <div className="field">
+          <div className="field" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button className="btn" disabled={busy || !memberId} onClick={downloadMemberPdf}>Download PDF</button>
+            <button className="btn secondary" disabled={busy || !memberId} onClick={downloadMemberXlsx}>Download Excel</button>
           </div>
         </div>
 
@@ -262,33 +365,7 @@ export default function ReportsPage() {
                 <div className="value">{report.responsibilities.completed}/{report.responsibilities.total}</div>
                 <div className="hint">{report.responsibilities.completionRate != null ? `${report.responsibilities.completionRate}% done` : '—'} · {report.responsibilities.pending} pending</div>
               </div>
-              <div className="kpi">
-                <div className="label">Study Contributions</div>
-                <div className="value">{report.studyContributions?.length || 0}</div>
-                <div className="hint">study-circle talks</div>
-              </div>
             </div>
-
-            {report.studyContributions?.length > 0 && (
-              <>
-                <h4 style={{ marginTop: 16, marginBottom: 8 }}>Study Circle Contributions</h4>
-                <table className="list">
-                  <thead>
-                    <tr><th>Date</th><th>Meeting</th><th>Topic</th><th>Summary</th></tr>
-                  </thead>
-                  <tbody>
-                    {report.studyContributions.map((s, i) => (
-                      <tr key={i}>
-                        <td>{s.meetingDate ? new Date(s.meetingDate).toLocaleDateString() : '—'}</td>
-                        <td>{s.meetingTitle || '—'}</td>
-                        <td>{s.topic || '—'}</td>
-                        <td>{s.summary || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
 
             {(report.range.from || report.range.to) && (
               <p className="muted" style={{ marginTop: 12, fontSize: 12 }}>

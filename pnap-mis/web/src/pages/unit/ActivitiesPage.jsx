@@ -10,6 +10,7 @@ import DynamicForm from '../../components/dynamic-form/DynamicForm';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
+import { formatUnitArrangedBy } from '../../utils/unitFormat';
 function bodySupported(level) {
   return level === 'AREA' || level === 'DISTRICT' || level === 'PROVINCE' || level === 'CENTRAL';
 }
@@ -29,10 +30,12 @@ export default function ActivitiesPage() {
   const location = useLocation();
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
 
-  // URL check: committee vs regular executive activities
+  // URL check: committee vs jirga vs congress vs regular executive activities
   const queryBody = new URLSearchParams(location.search).get('body');
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
-  const targetBody = isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE';
+  const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
   const [items, setItems] = useState([]);
   const [show, setShow] = useState(false);
@@ -46,11 +49,17 @@ export default function ActivitiesPage() {
   // Active activity types from the EventTypeConfig catalogue for this stream
   const { types: eventTypes } = useEventTypes('ACTIVITY', targetBody);
   const availableTypes = useMemo(() => {
+    if (isCongressView) {
+      return eventTypes.filter((t) => t.appliesTo?.congress !== false);
+    }
+    if (isJirgaView) {
+      return eventTypes.filter((t) => t.appliesTo?.jirga !== false);
+    }
     if (isCommitteeView) {
       return eventTypes.filter((t) => t.appliesTo?.committee !== false);
     }
     return eventTypes.filter((t) => t.appliesTo?.executive !== false);
-  }, [eventTypes, isCommitteeView]);
+  }, [eventTypes, isCommitteeView, isJirgaView, isCongressView]);
 
   const selectedType = useMemo(() => {
     return availableTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
@@ -77,10 +86,12 @@ export default function ActivitiesPage() {
   // Clean separation of items for the active stream
   const displayedItems = useMemo(() => {
     return (items || []).filter((a) => {
+      if (isCongressView) return a.body === 'CONGRESS';
+      if (isJirgaView) return a.body === 'JIRGA';
       if (isCommitteeView) return a.body === 'COMMITTEE';
-      return a.body === 'EXECUTIVE' || !a.body || a.body !== 'COMMITTEE';
+      return a.body === 'EXECUTIVE' || !a.body || (a.body !== 'COMMITTEE' && a.body !== 'JIRGA' && a.body !== 'CONGRESS');
     });
-  }, [items, isCommitteeView]);
+  }, [items, isCommitteeView, isJirgaView, isCongressView]);
 
   function openCreate() {
     const initialCode = availableTypes[0]?.code || DEFAULT_TYPE_CODE;
@@ -112,8 +123,9 @@ export default function ActivitiesPage() {
       await api.post('/activities', payload);
       setShow(false);
       reload();
+      const bodyLabel = isCongressView ? 'Congress' : (isCommitteeView ? 'Committee' : 'Executive');
       toast.success(
-        `${isCommitteeView ? 'Committee' : 'Executive'} activity "${title}" recorded.`,
+        `${bodyLabel} activity "${title}" recorded.`,
         { title: 'Activity recorded' }
       );
     } catch (e) {
@@ -227,14 +239,18 @@ export default function ActivitiesPage() {
     <div>
       <div className="page-header">
         <h2>
-          {isCommitteeView ? 'Committee Activities' : 'Executive Activities'} · {ctx.unitName}
+          {isCongressView
+            ? 'National Congress Activities · PKNAP Central'
+            : (isJirgaView
+              ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Activities' : `Sobayi Jirga Activities · ${ctx.unitName}`)
+              : (isCommitteeView ? `Committee Activities · ${ctx.unitName}` : `Executive Activities · ${ctx.unitName}`))}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && (
             <button className="btn" onClick={openCreate}>
-              {isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity'}
+              {isCongressView ? '+ Record Congress Activity' : (isJirgaView ? '+ Record Jirga Activity' : (isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity'))}
             </button>
           )}
         </div>
@@ -245,7 +261,7 @@ export default function ActivitiesPage() {
           <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Activity">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>
-                {isCommitteeView ? 'Record Committee Activity' : 'Record Activity'}
+                {isCongressView ? 'Record Congress Activity' : (isJirgaView ? 'Record Jirga Activity' : (isCommitteeView ? 'Record Committee Activity' : 'Record Activity'))}
               </h3>
               <button
                 type="button"
@@ -336,11 +352,15 @@ export default function ActivitiesPage() {
           {displayedItems.length === 0 && (
             <tr>
               <td colSpan="7" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                No {isCommitteeView ? 'committee' : 'executive'} activities recorded yet.
+                No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} activities recorded yet.
               </td>
             </tr>
           )}
-          {displayedItems.map((a) => (
+          {displayedItems.map((a) => {
+            const isCng = a.body === 'CONGRESS';
+            const isJrg = a.body === 'JIRGA';
+            const isCm = a.body === 'COMMITTEE';
+            return (
             <tr key={a._id}>
               <td>{new Date(a.startAt).toLocaleString()}</td>
               <td>
@@ -348,17 +368,27 @@ export default function ActivitiesPage() {
                   className="badge"
                   style={{
                     marginRight: 6,
-                    background: a.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
-                    color: a.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                    background: isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)')),
+                    color: isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)')),
+                    border: isCng ? '1px solid #bae6fd' : (isJrg ? '1px solid #d8b4fe' : undefined),
                     fontWeight: 600,
                     fontSize: 11,
                   }}
                 >
-                  {a.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                  {isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
                 </span>
                 {a.type}
               </td>
-              <td>{a.title}</td>
+              <td>
+                <div>{a.title}</div>
+                {a.unitLevel && (
+                  <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                    <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                      {formatUnitArrangedBy(a, { isCommitteeView, isJirgaView, isCongressView })}
+                    </span>
+                  </div>
+                )}
+              </td>
               <td>{a.venue || '—'}</td>
               <td><span className={`badge ${a.state}`}>{a.state}</span></td>
               <td>{(a.photos || []).length}</td>
@@ -389,7 +419,8 @@ export default function ActivitiesPage() {
                 )}
               </td>
             </tr>
-          ))}
+          );
+        })}
         </tbody>
       </table>
     </div>

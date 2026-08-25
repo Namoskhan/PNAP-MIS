@@ -26,6 +26,8 @@ const PERMISSIONS = [
   { code: 'INITIATE_ROLE',     category: 'Roles',           label: 'Propose role assignments to cabinet members' },
   { code: 'DECIDE_ROLE',       category: 'Roles',           label: 'Approve or reject pending role proposals' },
   { code: 'MANAGE_PERMANENT_MEMBERS', category: 'Roles',    label: 'Nominate / revoke Permanent Members on a committee' },
+  { code: 'MANAGE_JIRGA_MEMBERS', category: 'Roles',        label: 'Assign / remove members on Qomi or Sobayi Jirga' },
+  { code: 'MANAGE_CONGRESS_MEMBERS', category: 'Roles',     label: 'Assign / remove members on National Congress' },
 
   // ─── Communication
   { code: 'POST_ANNOUNCEMENT', category: 'Communication',   label: 'Post announcements & send direct messages' },
@@ -79,7 +81,7 @@ const DEFAULT_PERMISSIONS = {
     'REGISTER_MEMBER', 'APPROVE_MEMBER',
     'MANAGE_FINANCE', 'APPROVE_EXPENSE',
     'MANAGE_MEETINGS',
-    'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS',
+    'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS', 'MANAGE_JIRGA_MEMBERS', 'MANAGE_CONGRESS_MEMBERS',
     'POST_ANNOUNCEMENT',
   ],
 
@@ -87,7 +89,7 @@ const DEFAULT_PERMISSIONS = {
     'REGISTER_MEMBER', 'APPROVE_MEMBER',
     'MANAGE_FINANCE', 'APPROVE_EXPENSE',
     'MANAGE_MEETINGS',
-    'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS',
+    'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS', 'MANAGE_JIRGA_MEMBERS',
   ],
   DISTRICT_ADMIN: [
     'REGISTER_MEMBER', 'APPROVE_MEMBER',
@@ -112,7 +114,7 @@ const DEFAULT_PERMISSIONS = {
   PRESIDENT:          ['DECIDE_ROLE'],
   SR_VICE_PRESIDENT:  ['MANAGE_FINANCE', 'MANAGE_MEETINGS', 'INITIATE_ROLE', 'POST_ANNOUNCEMENT'],
   VICE_PRESIDENT:     [],
-  GENERAL_SECRETARY:  ['REGISTER_MEMBER', 'MANAGE_FINANCE', 'MANAGE_MEETINGS', 'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS', 'POST_ANNOUNCEMENT'],
+  GENERAL_SECRETARY:  ['REGISTER_MEMBER', 'MANAGE_FINANCE', 'MANAGE_MEETINGS', 'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS', 'MANAGE_JIRGA_MEMBERS', 'MANAGE_CONGRESS_MEMBERS', 'POST_ANNOUNCEMENT'],
 
   // Central cabinet
   CHAIRMAN:           ['DECIDE_ROLE'],

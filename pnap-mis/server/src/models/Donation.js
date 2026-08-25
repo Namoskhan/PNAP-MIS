@@ -27,7 +27,7 @@ const donationSchema = new mongoose.Schema(
     // filter that uses it.
     body: {
       type: String,
-      enum: ['EXECUTIVE', 'COMMITTEE'],
+      enum: ['EXECUTIVE', 'COMMITTEE', 'JIRGA', 'CONGRESS'],
       default: 'EXECUTIVE',
       index: true,
     },

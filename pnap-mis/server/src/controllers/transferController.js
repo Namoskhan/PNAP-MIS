@@ -70,12 +70,12 @@ async function authorizeAck(user, transfer) {
       'You can only approve transfers destined for your own area');
   }
 
-  // Finance Secretary OR Senior-Mawin-class operator at the EXACT
+  // Finance Secretary, General Secretary OR Senior-Mawin-class operator at the EXACT
   // destination unit. Looked up via RoleAssignment because user.scope
   // reflects the member's registration BU, not the unit where they
   // hold the cabinet seat. SR_VICE_PRESIDENT plays the Senior-Mawin
   // role at PROVINCE, FIRST_SECRETARY at CENTRAL.
-  const allowedDestRoles = ['FINANCE_SECRETARY', 'SENIOR_MAWIN', 'SR_VICE_PRESIDENT', 'FIRST_SECRETARY'];
+  const allowedDestRoles = ['FINANCE_SECRETARY', 'SENIOR_MAWIN', 'SR_VICE_PRESIDENT', 'FIRST_SECRETARY', 'GENERAL_SECRETARY'];
   if (user.memberId && allowedDestRoles.some((r) => roles.includes(r))) {
     const RoleAssignment = require('../models/RoleAssignment');
     const active = await RoleAssignment.findOne({
@@ -90,7 +90,7 @@ async function authorizeAck(user, transfer) {
   }
 
   throw new ApiError(403, 'FORBIDDEN',
-    `Only the Finance Secretary or Senior Mawin of the destination ${transfer.destinationLevel} (or its admin) may decide on this transfer`);
+    `Only the Finance Secretary, General Secretary, or Senior Mawin of the destination ${transfer.destinationLevel} (or its admin) may decide on this transfer`);
 }
 
 // SRS §3.1 body separation — identical fragment to
@@ -101,6 +101,7 @@ async function authorizeAck(user, transfer) {
 function bodyClause(body) {
   if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
   return null;
 }
 
@@ -170,10 +171,8 @@ exports.initiate = asyncHandler(async (req, res) => {
   const { sourceLevel, sourceUnitId, destinationId, mode, reference, note } = req.body;
   // SRS §3.1 — which body's books this movement belongs to. Same
   // coercion as activityController's `requestedBody`: anything that
-  // isn't COMMITTEE is EXECUTIVE, so a caller that omits it gets
-  // today's behavior. This route has no zod schema, so the value
-  // arrives raw off the multipart form.
-  const body = (req.body.body === 'COMMITTEE') ? 'COMMITTEE' : 'EXECUTIVE';
+  // isn't COMMITTEE or JIRGA is EXECUTIVE.
+  const body = (req.body.body === 'COMMITTEE') ? 'COMMITTEE' : (req.body.body === 'JIRGA' ? 'JIRGA' : 'EXECUTIVE');
   // Multipart payload — amount comes through as a string from the form.
   const amount = parseFloat(req.body.amount);
   if (!amount || amount <= 0) throw new ApiError(400, 'VALIDATION_ERROR', 'amount must be positive');

@@ -397,3 +397,42 @@ export function XIcon(props) {
     </Svg>
   );
 }
+
+// Committee / Consultative council of delegates
+export function CommitteeIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </Svg>
+  );
+}
+
+// Jirga — traditional assembly / council circle
+export function JirgaIcon(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+    </Svg>
+  );
+}
+
+// National Congress — supreme capitol assembly / parliament hall
+export function CongressIcon(props) {
+  return (
+    <Svg {...props}>
+      <path d="M3 21h18" />
+      <path d="M4 18h16" />
+      <path d="M6 18v-7" />
+      <path d="M10 18v-7" />
+      <path d="M14 18v-7" />
+      <path d="M18 18v-7" />
+      <path d="M12 2L2 8h20L12 2z" />
+    </Svg>
+  );
+}
+

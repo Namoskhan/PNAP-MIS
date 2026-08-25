@@ -706,10 +706,37 @@ export default function UnitDashboardPage() {
 
           {!isFinanceOnlyUser && data.subordinateUnits && Object.keys(data.subordinateUnits).length > 0 && (
             <div className="card" style={{ marginBottom: 16 }}>
-              <h3 style={{ marginTop: 0 }}>Subordinate Units</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                <h3 style={{ margin: 0 }}>Subordinate Units & Hierarchical Roll-Up</h3>
+                <span className="badge ACTIVE" style={{ fontSize: 12 }}>
+                  {ctx.unitLevel.replace('_', ' ')} Hierarchy
+                </span>
+              </div>
+
+              {data.rollup && (
+                <div style={{ marginBottom: 16, padding: 14, background: 'var(--surface-alt)', borderRadius: 'var(--radius)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Aggregated Subtree Roll-Up (All Subordinate Units)
+                  </div>
+                  <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
+                    <Kpi label="Total Sub-Units" value={data.rollup.totalUnits} />
+                    <Kpi label="Total Members" value={data.rollup.totalMembers} accent="good" />
+                    <Kpi label="Meetings (30d)" value={data.rollup.meetings30} />
+                    <Kpi label="Activities (30d)" value={data.rollup.activities30} />
+                    <Kpi label="Donations" value={PKR.format(data.rollup.donations)} />
+                    <Kpi label="Expenses" value={PKR.format(data.rollup.expenses)} />
+                    <Kpi
+                      label="Net Balance"
+                      value={PKR.format(data.rollup.balance)}
+                      accent={data.rollup.balance < 0 ? 'danger' : 'good'}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="kpi-grid">
                 {Object.entries(data.subordinateUnits).map(([k, v]) => (
-                  <Kpi key={k} label={k} value={v} />
+                  <Kpi key={k} label={k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())} value={v} />
                 ))}
               </div>
               {subordinates.length > 0 && (
@@ -720,6 +747,7 @@ export default function UnitDashboardPage() {
                         <th>{childLabel}</th>
                         <th style={{ textAlign: 'right' }}>Active Members</th>
                         <th style={{ textAlign: 'right' }}>Meetings (30d)</th>
+                        <th style={{ textAlign: 'right' }}>Activities (30d)</th>
                         <th style={{ textAlign: 'right' }}>Donations</th>
                         <th style={{ textAlign: 'right' }}>Expenses</th>
                         <th style={{ textAlign: 'right' }}>Balance</th>
@@ -736,6 +764,7 @@ export default function UnitDashboardPage() {
                           <td><strong>{s.name}</strong>{s.code ? <span className="muted" style={{ fontSize: 12 }}> · {s.code}</span> : null}</td>
                           <td style={{ textAlign: 'right' }}>{s.members}</td>
                           <td style={{ textAlign: 'right' }}>{s.meetings30}</td>
+                          <td style={{ textAlign: 'right' }}>{s.activities30 ?? 0}</td>
                           <td style={{ textAlign: 'right' }}>{PKR.format(s.donations)}</td>
                           <td style={{ textAlign: 'right' }}>{PKR.format(s.expenses)}</td>
                           <td style={{ textAlign: 'right', color: s.balance < 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>

@@ -18,13 +18,19 @@ async function resolveEventConfig(d, entity) {
 
   const { snapshot, config } = await configSnapshotService.materialise(entity, rawCode);
 
-  const requestedBody = (d.body === 'COMMITTEE') ? 'COMMITTEE' : 'EXECUTIVE';
+  const requestedBody = (d.body === 'COMMITTEE') ? 'COMMITTEE' : (d.body === 'JIRGA' ? 'JIRGA' : (d.body === 'CONGRESS' ? 'CONGRESS' : 'EXECUTIVE'));
   const appliesTo = config.appliesTo || {};
   if (requestedBody === 'EXECUTIVE' && appliesTo.executive === false) {
     throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Executive body`);
   }
   if (requestedBody === 'COMMITTEE' && appliesTo.committee === false) {
     throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Committee body`);
+  }
+  if (requestedBody === 'JIRGA' && appliesTo.jirga === false) {
+    throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Jirga body`);
+  }
+  if (requestedBody === 'CONGRESS' && appliesTo.congress === false) {
+    throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Congress body`);
   }
 
   const dynamicData = dynamicFormService.validate(d.dynamicData || {}, snapshot.resolvedFields);
@@ -53,12 +59,20 @@ exports.list = asyncHandler(async (req, res) => {
     filter.$or = [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }];
   } else if (body === 'COMMITTEE') {
     filter.body = 'COMMITTEE';
+  } else if (body === 'JIRGA') {
+    filter.body = 'JIRGA';
+  } else if (body === 'CONGRESS') {
+    filter.body = 'CONGRESS';
   }
 
   const items = await Activity.find(filter)
     .sort({ startAt: -1 })
     .limit(200)
-    .populate('leadMemberId', 'fullName memberId');
+    .populate('leadMemberId', 'fullName memberId')
+    .populate('basicUnitId', 'name')
+    .populate('areaId', 'name')
+    .populate('districtId', 'name code')
+    .populate('provinceId', 'name code');
   ok(res, items);
 });
 

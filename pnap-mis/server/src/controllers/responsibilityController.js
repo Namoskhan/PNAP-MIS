@@ -4,6 +4,9 @@ const Member = require('../models/Member');
 const { ok, created, ApiError } = require('../utils/response');
 const { canManageMeetings, resolveUnitChain, userHasRole } = require('../utils/unitScope');
 
+const RoleAssignment = require('../models/RoleAssignment');
+const { formatUnitArrangedBy } = require('../utils/unitFormat');
+
 exports.list = asyncHandler(async (req, res) => {
   const { unitLevel, unitId, memberId, state, scope } = req.query;
   const filter = {};
@@ -25,10 +28,61 @@ exports.list = asyncHandler(async (req, res) => {
   const items = await Responsibility.find(filter)
     .sort({ dueDate: 1, createdAt: -1 })
     .limit(500)
-    .populate('assignedToMemberId', 'fullName memberId phone')
+    .populate({
+      path: 'assignedToMemberId',
+      select: 'fullName memberId phone cnic basicUnitId areaId districtId provinceId',
+      populate: [
+        { path: 'basicUnitId', select: 'name' },
+        { path: 'areaId', select: 'name' },
+        { path: 'districtId', select: 'name code' },
+        { path: 'provinceId', select: 'name code' },
+      ],
+    })
+    .populate('basicUnitId', 'name')
+    .populate('areaId', 'name')
+    .populate('districtId', 'name code')
+    .populate('provinceId', 'name code')
     .populate('relatedActivityId', 'title type')
     .populate('relatedMeetingId', 'title type startAt');
-  ok(res, items);
+
+  // Batch-fetch active roles for all assigned members
+  const memberIds = items.map((r) => r.assignedToMemberId?._id).filter(Boolean);
+  const activeRoles = memberIds.length
+    ? await RoleAssignment.find({
+        memberId: { $in: memberIds },
+        state: 'APPROVED',
+        endedAt: { $exists: false },
+      }).lean()
+    : [];
+
+  const rolesByMember = new Map();
+  for (const ra of activeRoles) {
+    const mId = String(ra.memberId);
+    const label = ra.customRoleName || ra.customName || ra.roleCode;
+    if (!rolesByMember.has(mId)) rolesByMember.set(mId, []);
+    rolesByMember.get(mId).push(label);
+  }
+
+  const enhanced = items.map((item) => {
+    const obj = item.toObject();
+    if (obj.assignedToMemberId?._id) {
+      const mId = String(obj.assignedToMemberId._id);
+      const roles = rolesByMember.get(mId) || [];
+      obj.assignedToMemberId.roles = roles;
+      obj.assignedToMemberId.roleText = roles.join(', ') || 'Member';
+
+      const u = obj.assignedToMemberId;
+      const parts = [];
+      if (u.basicUnitId?.name) parts.push(`Basic Unit: ${u.basicUnitId.name}`);
+      if (u.areaId?.name) parts.push(`Area: ${u.areaId.name}`);
+      if (u.districtId?.name) parts.push(`District: ${u.districtId.name}`);
+      if (u.provinceId?.name || u.provinceId?.code) parts.push(u.provinceId.name || u.provinceId.code);
+      obj.assignedToMemberId.unitText = parts.join(' · ') || '';
+    }
+    return obj;
+  });
+
+  ok(res, enhanced);
 });
 
 exports.create = asyncHandler(async (req, res) => {

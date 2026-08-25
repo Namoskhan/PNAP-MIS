@@ -330,28 +330,6 @@ function MemberReport({ memberId, from, to, onClear }) {
           report.responsibilities.completionRate == null ? undefined : `${report.responsibilities.completionRate}% completion`)}
         {stat('Responsibilities pending', report.responsibilities.pending)}
       </div>
-
-      {report.studyContributions.length > 0 && (
-        <div style={{ marginTop: 12 }}>
-          <div className="muted" style={{ fontSize: 11.5, fontWeight: 600, marginBottom: 6 }}>
-            STUDY CIRCLE CONTRIBUTIONS
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="list">
-              <thead><tr><th>Date</th><th>Topic</th><th>Summary</th></tr></thead>
-              <tbody>
-                {report.studyContributions.map((s, i) => (
-                  <tr key={i}>
-                    <td style={{ fontSize: 13 }}>{new Date(s.meetingDate).toLocaleDateString()}</td>
-                    <td>{s.topic}</td>
-                    <td style={{ fontSize: 13 }}>{s.summary}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

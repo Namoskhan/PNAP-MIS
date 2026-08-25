@@ -10,8 +10,7 @@ const { publicRegisterSchema } = require('../validators/memberSchemas');
 // public form cannot be used to flood the approval queue. Skipped
 // outside production so local testing isn't gated. Tunable via the
 // REGISTER_RATE_LIMIT env var when you do want to exercise it.
-const isProd = env.NODE_ENV === 'production';
-const max = parseInt(process.env.REGISTER_RATE_LIMIT || (isProd ? '10' : '0'), 10);
+const max = env.REGISTER_RATE_LIMIT;
 
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

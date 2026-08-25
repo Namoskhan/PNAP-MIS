@@ -22,7 +22,7 @@ const fundTransferSchema = new mongoose.Schema(
   {
     sourceLevel: {
       type: String,
-      enum: ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE'],
+      enum: ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'],
       required: true,
       index: true,
     },
@@ -69,7 +69,7 @@ const fundTransferSchema = new mongoose.Schema(
     // fallback in every filter that uses it.
     body: {
       type: String,
-      enum: ['EXECUTIVE', 'COMMITTEE'],
+      enum: ['EXECUTIVE', 'COMMITTEE', 'JIRGA'],
       default: 'EXECUTIVE',
       index: true,
     },

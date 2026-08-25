@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const mongoose = require('mongoose');
+const Member = require('../models/Member');
 const Donation = require('../models/Donation');
 const Expense = require('../models/Expense');
 const FundTransfer = require('../models/FundTransfer');
@@ -54,13 +55,18 @@ async function nextReceiptNo(unitId, fy) {
 function bodyClause(body) {
   if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
+  if (body === 'CONGRESS') return { body: 'CONGRESS' };
   return null;
 }
 
 // Write-side coercion, same style as activityController's
-// `requestedBody` — anything that isn't COMMITTEE is EXECUTIVE.
+// `requestedBody` — defaults to EXECUTIVE if not COMMITTEE, JIRGA, or CONGRESS.
 function requestedBody(raw) {
-  return raw === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
+  if (raw === 'COMMITTEE') return 'COMMITTEE';
+  if (raw === 'JIRGA') return 'JIRGA';
+  if (raw === 'CONGRESS') return 'CONGRESS';
+  return 'EXECUTIVE';
 }
 
 function applyScopeFilter(filter, unitLevel, unitId, scope, chain) {
@@ -91,7 +97,14 @@ exports.listDonations = asyncHandler(async (req, res) => {
   }
   const bc = bodyClause(body);
   if (bc) Object.assign(filter, bc);
-  const items = await Donation.find(filter).sort({ receivedAt: -1 }).limit(500);
+  const items = await Donation.find(filter)
+    .populate('donorMemberId', 'fullName memberId cnic')
+    .populate('basicUnitId', 'name')
+    .populate('areaId', 'name')
+    .populate('districtId', 'name code')
+    .populate('provinceId', 'name code')
+    .sort({ receivedAt: -1 })
+    .limit(500);
   ok(res, items);
 });
 
@@ -107,6 +120,14 @@ exports.recordDonation = asyncHandler(async (req, res) => {
   }
   if (d.donorType === 'NON_MEMBER' && d.amount > NON_MEMBER_CNIC_THRESHOLD && !d.donorCnic) {
     throw new ApiError(400, 'CNIC_REQUIRED', `Donor CNIC is required for non-member donations above PKR ${NON_MEMBER_CNIC_THRESHOLD}`);
+  }
+
+  if (d.donorType === 'MEMBER' && d.donorMemberId) {
+    const mem = await Member.findById(d.donorMemberId);
+    if (mem) {
+      if (!d.donorName) d.donorName = mem.fullName;
+      if (!d.donorCnic && mem.cnic) d.donorCnic = mem.cnic;
+    }
   }
 
   const chain = await resolveUnitChain(d.unitLevel, d.unitId);
@@ -146,7 +167,13 @@ exports.listExpenses = asyncHandler(async (req, res) => {
   }
   const bc = bodyClause(body);
   if (bc) Object.assign(filter, bc);
-  const items = await Expense.find(filter).sort({ incurredAt: -1 }).limit(500);
+  const items = await Expense.find(filter)
+    .populate('basicUnitId', 'name')
+    .populate('areaId', 'name')
+    .populate('districtId', 'name code')
+    .populate('provinceId', 'name code')
+    .sort({ incurredAt: -1 })
+    .limit(500);
   ok(res, items);
 });
 

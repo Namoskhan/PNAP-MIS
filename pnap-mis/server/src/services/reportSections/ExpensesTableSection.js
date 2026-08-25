@@ -1,10 +1,9 @@
-// EXPENSES_TABLE — category / description / amount / state rows plus
-// total row.
+const { formatUnitArrangedBy } = require('../../utils/unitFormat');
 
 module.exports = {
   kind: 'EXPENSES_TABLE',
   label: 'Expenses table',
-  description: 'Category, description, payee, amount, state, plus total row.',
+  description: 'Category, unit, description, payee, amount, state, plus total row.',
   defaultTitle: 'Expenses',
   defaultConfig: { limit: 500, stateFilter: null },
 
@@ -27,22 +26,25 @@ module.exports = {
 
     let y = doc.y;
     doc.font('Helvetica-Bold').fontSize(9).fillColor('#374151');
-    doc.text('Date',         40,  y, { width: 80 });
-    doc.text('Category',     125, y, { width: 80 });
-    doc.text('Description',  210, y, { width: 200 });
-    doc.text('State',        415, y, { width: 60 });
+    doc.text('Date',         40,  y, { width: 65 });
+    doc.text('Unit',         110, y, { width: 90 });
+    doc.text('Category',     205, y, { width: 75 });
+    doc.text('Description',  285, y, { width: 135 });
+    doc.text('State',        425, y, { width: 50 });
     doc.text('Amount',       480, y, { width: 75, align: 'right' });
     y += 14;
     doc.moveTo(40, y - 2).lineTo(555, y - 2).strokeColor('#e5e7eb').stroke();
 
     let total = 0;
-    doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
+    doc.font('Helvetica').fontSize(8.5).fillColor('#1a1a1a');
     for (const e of rows) {
       const dateStr = e.incurredAt ? new Date(e.incurredAt).toLocaleDateString() : '—';
-      doc.text(dateStr,                                  40,  y, { width: 80 });
-      doc.text(String(e.category || ''),                 125, y, { width: 80 });
-      doc.text(String(e.description || '—'),             210, y, { width: 200, ellipsis: true });
-      doc.text(String(e.state || ''),                    415, y, { width: 60 });
+      const arrBy = e.arrangedBy || formatUnitArrangedBy(e);
+      doc.text(dateStr,                                  40,  y, { width: 65 });
+      doc.text(String(arrBy),                            110, y, { width: 90, ellipsis: true });
+      doc.text(String(e.category || ''),                 205, y, { width: 75 });
+      doc.text(String(e.description || '—'),             285, y, { width: 135, ellipsis: true });
+      doc.text(String(e.state || ''),                    425, y, { width: 50 });
       doc.text(`PKR ${(e.amount || 0).toLocaleString()}`, 480, y, { width: 75, align: 'right' });
       total += e.amount || 0;
       y += 16;
@@ -66,24 +68,26 @@ module.exports = {
     const title = section.title || this.defaultTitle;
     const ws = workbook.addWorksheet(title.slice(0, 30));
     ws.columns = [
-      { header: 'Date',         key: 'date',    width: 14 },
-      { header: 'Category',     key: 'cat',     width: 18 },
-      { header: 'Description',  key: 'desc',    width: 32 },
-      { header: 'Vendor',       key: 'vendor',  width: 22 },
-      { header: 'Mode',         key: 'mode',    width: 16 },
-      { header: 'State',        key: 'state',   width: 14 },
-      { header: 'Amount (PKR)', key: 'amount',  width: 16 },
+      { header: 'Date',               key: 'date',       width: 14 },
+      { header: 'Unit / Incurred By', key: 'arrangedBy', width: 22 },
+      { header: 'Category',           key: 'cat',        width: 18 },
+      { header: 'Description',        key: 'desc',       width: 32 },
+      { header: 'Vendor',             key: 'vendor',     width: 22 },
+      { header: 'Mode',               key: 'mode',       width: 16 },
+      { header: 'State',              key: 'state',      width: 14 },
+      { header: 'Amount (PKR)',       key: 'amount',     width: 16 },
     ];
     let total = 0;
     for (const e of rows) {
       ws.addRow({
-        date:   e.incurredAt ? new Date(e.incurredAt) : null,
-        cat:    e.category || '',
-        desc:   e.description || '',
-        vendor: e.vendor || '',
-        mode:   e.paymentMode || '',
-        state:  e.state || '',
-        amount: e.amount || 0,
+        date:        e.incurredAt ? new Date(e.incurredAt) : null,
+        arrangedBy:  e.arrangedBy || formatUnitArrangedBy(e),
+        cat:         e.category || '',
+        desc:        e.description || '',
+        vendor:      e.vendor || '',
+        mode:        e.paymentMode || '',
+        state:       e.state || '',
+        amount:      e.amount || 0,
       });
       total += e.amount || 0;
     }

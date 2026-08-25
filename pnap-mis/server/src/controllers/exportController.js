@@ -20,6 +20,7 @@ const { resolveUnitChain } = require('../utils/unitScope');
 const env = require('../config/env');
 const settingsService = require('../services/settingsService');
 const eventExportService = require('../services/eventExportService');
+const { formatUnitArrangedBy, getCommitteeTierLabel, getRegularTierLabel } = require('../utils/unitFormat');
 
 // Render a dynamicData value into a cell-friendly form. Numerics
 // stay numeric so XLSX can format them; everything else stringifies
@@ -531,6 +532,8 @@ async function unitName(unitLevel, unitId) {
 // stay pooled and byte-identical to before.
 function meetingBodyClause(body) {
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
+  if (body === 'CONGRESS') return { body: 'CONGRESS' };
   if (body === 'GENERAL_BODY') return { body: 'GENERAL_BODY' };
   if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   return { $or: [{ body: { $in: ['EXECUTIVE', 'GENERAL_BODY'] } }, { body: { $exists: false } }, { body: null }] };
@@ -538,34 +541,59 @@ function meetingBodyClause(body) {
 
 function activityBodyClause(body) {
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
+  if (body === 'CONGRESS') return { body: 'CONGRESS' };
   return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
 }
 
 function financeBodyClause(body) {
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
+  if (body === 'CONGRESS') return { body: 'CONGRESS' };
   return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
 }
 
 function bodyClause(body) {
   if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
+  if (body === 'CONGRESS') return { body: 'CONGRESS' };
   if (body === 'GENERAL_BODY') return { body: 'GENERAL_BODY' };
-  if (body === 'NON_COMMITTEE') return { $or: [{ body: { $ne: 'COMMITTEE' } }, { body: { $exists: false } }, { body: null }] };
+  if (body === 'NON_COMMITTEE') return { $or: [{ body: { $nin: ['COMMITTEE', 'JIRGA', 'CONGRESS'] } }, { body: { $exists: false } }, { body: null }] };
   return null;
 }
 
 // Human label for a body filter, used in report titles and filenames
-// so a printed Committee report says on its face which body it
+// so a printed Committee/Jirga report says on its face which body it
 // covers. Returns '' when `body` is absent, and every call site is
 // written so that '' reproduces the original wording exactly — a
 // combined report is byte-identical to what it was before the split.
 function bodyLabel(body) {
   if (body === 'COMMITTEE') return 'Committee';
+  if (body === 'JIRGA') return 'Jirga';
+  if (body === 'CONGRESS') return 'Congress';
   if (body === 'EXECUTIVE') return 'Executive';
   if (body === 'GENERAL_BODY') return 'General Body';
   return '';
 }
-// Filename fragment: '-committee' / '-executive' / '' so the two
+
+function bodyTierLabel(body, unitLevel) {
+  if (body === 'COMMITTEE') {
+    const tier = getCommitteeTierLabel(unitLevel);
+    return tier ? `${tier} Committee` : 'Committee';
+  }
+  if (body === 'JIRGA') {
+    return unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
+  }
+  if (body === 'CONGRESS') {
+    return 'National Congress';
+  }
+  if (body === 'EXECUTIVE') return 'Executive';
+  if (body === 'GENERAL_BODY') return 'General Body';
+  return '';
+}
+
+// Filename fragment: '-committee' / '-jirga' / '-executive' / '' so the
 // downloads don't overwrite each other in the browser's Downloads
 // folder.
 function bodySuffix(body) {
@@ -602,25 +630,66 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
   const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...financeBodyQ };
   const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...financeBodyQ };
 
+  const isCongress = body === 'CONGRESS';
+  const isComm = body === 'COMMITTEE';
+  const isJrg = body === 'JIRGA';
+
   const [members, meetings, activities, donations, expenses, responsibilities,
     transfersOut, transfersIn] = await Promise.all([
     Member.find({ ...memberQ, status: 'ACTIVE' }).select('fullName memberId cnic phone').lean(),
     Meeting.find({ ...ownQ, ...startClause, ...meetingBodyQ })
       .populate('chairpersonId', 'fullName memberId')
       .populate('attendance.memberId', 'fullName memberId')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
       .lean(),
     // Lead + participants are populated so activity blocks can name
     // people the same way meeting blocks name the chair and roster.
     Activity.find({ ...ownQ, ...startClause, ...activityBodyQ })
       .populate('leadMemberId', 'fullName memberId')
       .populate('participants', 'fullName memberId')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
       .lean(),
-    Donation.find({ ...ownQ, ...recvClause, ...financeBodyQ }).lean(),
-    Expense.find({ ...ownQ, ...incurClause, ...financeBodyQ }).lean(),
-    Responsibility.find(ownQ).populate('assignedToMemberId', 'fullName memberId').lean(),
-    unitOid ? FundTransfer.find(outFilter).lean() : [],
-    unitOid ? FundTransfer.find(inFilter).lean() : [],
+    Donation.find({ ...ownQ, ...recvClause, ...financeBodyQ })
+      .populate('donorMemberId', 'fullName memberId cnic')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
+      .lean(),
+    Expense.find({ ...ownQ, ...incurClause, ...financeBodyQ })
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
+      .lean(),
+    Responsibility.find(ownQ)
+      .populate('assignedToMemberId', 'fullName memberId')
+      .populate('basicUnitId', 'name')
+      .populate('areaId', 'name')
+      .populate('districtId', 'name code')
+      .populate('provinceId', 'name code')
+      .lean(),
+    unitOid && !isCongress ? FundTransfer.find(outFilter).lean() : [],
+    unitOid && !isCongress ? FundTransfer.find(inFilter).lean() : [],
   ]);
+
+  // Attach formatted arrangedBy to every record
+  const attachArrangedBy = (arr) => {
+    arr.forEach((item) => {
+      item.arrangedBy = formatUnitArrangedBy(item, { isCommitteeView: isComm, isJirgaView: isJrg, isCongressView: isCongress });
+    });
+  };
+  attachArrangedBy(meetings);
+  attachArrangedBy(activities);
+  attachArrangedBy(donations);
+  attachArrangedBy(expenses);
+  attachArrangedBy(responsibilities);
 
   const name = await unitName(unitLevel, unitId);
   return {
@@ -633,7 +702,9 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
 exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+  const isCongress = body === 'CONGRESS';
+  const effectiveScope = isCongress ? 'own' : scope;
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope: effectiveScope, body });
 
   const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
   const expApproved = data.expenses.filter((e) => e.state === 'APPROVED').reduce((a, e) => a + (e.amount || 0), 0);
@@ -645,31 +716,32 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
 
   // Acknowledged transfers are real movements of money and belong in
   // the bottom line — the previous Net Balance ignored them and so
-  // disagreed with the Finance page.
+  // disagreed with the Finance page. (Congress has no transfers)
   const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
   const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
 
   const sum = wb.addWorksheet('Summary');
   sum.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 26 }];
   sum.addRow({ k: 'Unit', v: `${data.unitLevel} · ${data.name}` });
-  sum.addRow({ k: 'Scope', v: scope === 'subtree' ? 'Including all subordinate units' : 'This unit only' });
+  if (!isCongress) sum.addRow({ k: 'Scope', v: scope === 'subtree' ? 'Including all subordinate units' : 'This unit only' });
   // Only emitted when the caller asked for one body, so a combined
   // export keeps exactly the rows it had before.
   if (bodyLabel(body)) sum.addRow({ k: 'Body', v: `${bodyLabel(body)} only` });
   sum.addRow({ k: 'Period', v: `${from || 'all'} → ${to || 'all'}` });
   sum.addRow({ k: 'Donations Count', v: data.donations.length });
   sum.addRow({ k: 'Donations Total (PKR)', v: donTotal });
-  sum.addRow({ k: 'Transfers In (PKR)', v: xferInTotal });
+  if (!isCongress) sum.addRow({ k: 'Transfers In (PKR)', v: xferInTotal });
   sum.addRow({ k: 'Expenses Approved (PKR)', v: expApproved });
   sum.addRow({ k: 'Expenses Pending (PKR)', v: expPending });
-  sum.addRow({ k: 'Transfers Out (PKR)', v: xferOutTotal });
-  sum.addRow({ k: 'Net Balance (PKR)', v: donTotal + xferInTotal - expApproved - xferOutTotal });
+  if (!isCongress) sum.addRow({ k: 'Transfers Out (PKR)', v: xferOutTotal });
+  sum.addRow({ k: 'Net Balance (PKR)', v: isCongress ? (donTotal - expApproved) : (donTotal + xferInTotal - expApproved - xferOutTotal) });
   sum.getRow(1).font = { bold: true };
 
   const don = wb.addWorksheet('Donations');
   don.columns = [
     { header: 'Receipt #', key: 'r', width: 14 },
     { header: 'Date', key: 'd', width: 14 },
+    { header: 'Unit / Arranged By', key: 'u', width: 26 },
     { header: 'Donor Type', key: 'dt', width: 14 },
     { header: 'Donor', key: 'dn', width: 28 },
     { header: 'CNIC', key: 'c', width: 18 },
@@ -682,8 +754,9 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     .forEach((d) => don.addRow({
       r: d.receiptNo || '',
       d: new Date(d.receivedAt).toLocaleDateString(),
+      u: d.arrangedBy || formatUnitArrangedBy(d, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
       dt: d.donorType,
-      dn: d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)'),
+      dn: d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
       c: d.donorCnic || '',
       m: d.paymentMode,
       a: d.amount,
@@ -693,6 +766,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   const exp = wb.addWorksheet('Expenses');
   exp.columns = [
     { header: 'Date', key: 'd', width: 14 },
+    { header: 'Unit / Incurred By', key: 'u', width: 26 },
     { header: 'Category', key: 'c', width: 18 },
     { header: 'Description', key: 'desc', width: 36 },
     { header: 'Vendor', key: 'v', width: 24 },
@@ -705,6 +779,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     .sort((a, b) => new Date(b.incurredAt) - new Date(a.incurredAt))
     .forEach((e) => exp.addRow({
       d: new Date(e.incurredAt).toLocaleDateString(),
+      u: e.arrangedBy || formatUnitArrangedBy(e, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
       c: e.category,
       desc: e.description || '',
       v: e.vendor || '',
@@ -714,32 +789,32 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     }));
   exp.getRow(1).font = { bold: true };
 
-  // Transfers get their own sheet rather than being folded into
-  // Expenses — a transfer is not an expense, and conflating them would
-  // double-count against the donation ledger.
-  const xf = wb.addWorksheet('Fund Transfers');
-  xf.columns = [
-    { header: 'Date', key: 'd', width: 14 },
-    { header: 'Direction', key: 'dir', width: 12 },
-    { header: 'Counterparty', key: 'p', width: 32 },
-    { header: 'Mode', key: 'm', width: 18 },
-    { header: 'State', key: 's', width: 16 },
-    { header: 'Amount (PKR)', key: 'a', width: 16 },
-  ];
-  [
-    ...data.transfersIn.map((t) => ({ t, dir: 'Incoming', party: t.sourceName || t.sourceLevel })),
-    ...data.transfersOut.map((t) => ({ t, dir: 'Outgoing', party: t.destinationName || t.destinationLevel })),
-  ]
-    .sort((a, b) => new Date(b.t.transferredAt || b.t.createdAt) - new Date(a.t.transferredAt || a.t.createdAt))
-    .forEach(({ t, dir, party }) => xf.addRow({
-      d: new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
-      dir,
-      p: party || '',
-      m: t.mode || '',
-      s: t.state || '',
-      a: t.amount || 0,
-    }));
-  xf.getRow(1).font = { bold: true };
+  // Transfers get their own sheet for non-Congress bodies
+  if (!isCongress) {
+    const xf = wb.addWorksheet('Fund Transfers');
+    xf.columns = [
+      { header: 'Date', key: 'd', width: 14 },
+      { header: 'Direction', key: 'dir', width: 12 },
+      { header: 'Counterparty', key: 'p', width: 32 },
+      { header: 'Mode', key: 'm', width: 18 },
+      { header: 'State', key: 's', width: 16 },
+      { header: 'Amount (PKR)', key: 'a', width: 16 },
+    ];
+    [
+      ...data.transfersIn.map((t) => ({ t, dir: 'Incoming', party: t.sourceName || t.sourceLevel })),
+      ...data.transfersOut.map((t) => ({ t, dir: 'Outgoing', party: t.destinationName || t.destinationLevel })),
+    ]
+      .sort((a, b) => new Date(b.t.transferredAt || b.t.createdAt) - new Date(a.t.transferredAt || a.t.createdAt))
+      .forEach(({ t, dir, party }) => xf.addRow({
+        d: new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
+        dir,
+        p: party || '',
+        m: t.mode || '',
+        s: t.state || '',
+        a: t.amount || 0,
+      }));
+    xf.getRow(1).font = { bold: true };
+  }
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-finance.xlsx"`);
@@ -859,11 +934,12 @@ function drawKpiBand(doc, tiles, sectionColor) {
   doc.fillColor('#1a1a1a').font('Helvetica').strokeColor('#000000');
 }
 
-// ─── FINANCE-only PDF — summary + donations table + expenses table
 exports.unitFinancePdf = asyncHandler(async (req, res) => {
   const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
-  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
+  const isCongress = body === 'CONGRESS';
+  const effectiveScope = isCongress ? 'own' : scope;
+  const data = await gatherUnitData({ unitLevel, unitId, from, to, scope: effectiveScope, body });
   const branding = await _loadBrandingSafe();
   const sectionColor = branding?.reportBranding?.pdfHeaderColor
     || branding?.theme?.light?.primary
@@ -883,25 +959,31 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
   // Branded header replaces the hardcoded "PKNAP Finance Report" title.
   // The scope is stated explicitly — a District report that aggregates
   // its Areas looks identical to one that does not unless it says so.
-  const scopeLabel = scope === 'subtree' ? 'including all subordinate units' : 'this unit only';
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Finance Report`,
+  const scopeLabel = isCongress ? 'direct assembly records' : (scope === 'subtree' ? 'including all subordinate units' : 'this unit only');
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Finance Report`,
     `${data.unitLevel.replace('_', ' ')} · ${data.name}   |   ${scopeLabel}   |   Period: ${_periodLabel(from, to)}`);
 
   // Acknowledged transfers move real money, so the report's bottom line
-  // has to account for them. The previous formula was
-  // donations - approvedExpenses, which ignored both sides entirely and
-  // disagreed with the Net Balance shown on the Finance page.
+  // has to account for them (non-Congress bodies).
   const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
   const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
-  const net = donTotal + xferInTotal - expApproved - xferOutTotal;
+  const net = isCongress ? (donTotal - expApproved) : (donTotal + xferInTotal - expApproved - xferOutTotal);
 
-  drawKpiBand(doc, [
-    { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
-    { label: 'Transfers In', value: `PKR ${xferInTotal.toLocaleString()}`, color: '#00a266' },
-    { label: 'Approved Expenses', value: `PKR ${expApproved.toLocaleString()}` },
-    { label: 'Transfers Out', value: `PKR ${xferOutTotal.toLocaleString()}`, color: '#e65f00' },
-    { label: 'Net Balance', value: `PKR ${net.toLocaleString()}`, color: net < 0 ? '#cf2e2e' : '#00a266' },
-  ], sectionColor);
+  if (isCongress) {
+    drawKpiBand(doc, [
+      { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
+      { label: 'Approved Expenses', value: `PKR ${expApproved.toLocaleString()}` },
+      { label: 'Net Balance', value: `PKR ${net.toLocaleString()}`, color: net < 0 ? '#cf2e2e' : '#00a266' },
+    ], sectionColor);
+  } else {
+    drawKpiBand(doc, [
+      { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
+      { label: 'Transfers In', value: `PKR ${xferInTotal.toLocaleString()}`, color: '#00a266' },
+      { label: 'Approved Expenses', value: `PKR ${expApproved.toLocaleString()}` },
+      { label: 'Transfers Out', value: `PKR ${xferOutTotal.toLocaleString()}`, color: '#e65f00' },
+      { label: 'Net Balance', value: `PKR ${net.toLocaleString()}`, color: net < 0 ? '#cf2e2e' : '#00a266' },
+    ], sectionColor);
+  }
   if (expPending) {
     doc.font('Helvetica-Oblique').fontSize(8.5).fillColor('#5c6b76')
       .text(`Pending expenses awaiting approval: PKR ${expPending.toLocaleString()} (not included in Net Balance)`,
@@ -921,11 +1003,12 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     sectionColor,
     emptyText: 'No donations recorded in this period.',
     cols: [
-      { label: 'Receipt #', x: 40, w: 68 },
-      { label: 'Date', x: 108, w: 62 },
-      { label: 'Donor', x: 170, w: 168, wrap: true },
-      { label: 'Mode', x: 338, w: 96 },
-      { label: 'Amount (PKR)', x: 434, w: 121, align: 'right' },
+      { label: 'Receipt #', x: 40, w: 55 },
+      { label: 'Date', x: 95, w: 55 },
+      { label: 'Unit', x: 150, w: 105, wrap: true },
+      { label: 'Donor', x: 255, w: 120, wrap: true },
+      { label: 'Mode', x: 375, w: 75 },
+      { label: 'Amount (PKR)', x: 450, w: 105, align: 'right' },
     ],
     rows: data.donations
       .slice()
@@ -933,7 +1016,8 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
       .map((d) => [
         d.receiptNo || '—',
         new Date(d.receivedAt).toLocaleDateString(),
-        d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || '(member)'),
+        d.arrangedBy || formatUnitArrangedBy(d, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
+        d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
         d.paymentMode || '—',
         (d.amount || 0).toLocaleString(),
       ]),
@@ -953,17 +1037,19 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     sectionColor,
     emptyText: 'No expenses recorded in this period.',
     cols: [
-      { label: 'Date', x: 40, w: 62 },
-      { label: 'Category', x: 102, w: 98 },
-      { label: 'Description', x: 200, w: 178, wrap: true },
-      { label: 'State', x: 378, w: 60 },
-      { label: 'Amount (PKR)', x: 438, w: 117, align: 'right' },
+      { label: 'Date', x: 40, w: 55 },
+      { label: 'Unit', x: 95, w: 105, wrap: true },
+      { label: 'Category', x: 200, w: 85 },
+      { label: 'Description', x: 285, w: 135, wrap: true },
+      { label: 'State', x: 420, w: 50 },
+      { label: 'Amount (PKR)', x: 470, w: 85, align: 'right' },
     ],
     rows: data.expenses
       .slice()
       .sort((a, b) => new Date(b.incurredAt) - new Date(a.incurredAt))
       .map((e) => [
         new Date(e.incurredAt).toLocaleDateString(),
+        e.arrangedBy || formatUnitArrangedBy(e, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
         e.category || '—',
         e.description || e.vendor || '—',
         e.state || '—',
@@ -980,39 +1066,41 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     doc.font('Helvetica').fillColor('#1a1a1a');
   }
 
-  // ── Fund transfers — their own ledger, not expenses ─────────────
-  const xfers = [
-    ...data.transfersIn.map((t) => ({ ...t, _dir: 'IN', _party: t.sourceName || t.sourceLevel })),
-    ...data.transfersOut.map((t) => ({ ...t, _dir: 'OUT', _party: t.destinationName || t.destinationLevel })),
-  ].sort((a, b) => new Date(b.transferredAt || b.createdAt) - new Date(a.transferredAt || a.createdAt));
+  // ── Fund transfers — their own ledger, not expenses (non-Congress) ──
+  if (!isCongress) {
+    const xfers = [
+      ...data.transfersIn.map((t) => ({ ...t, _dir: 'IN', _party: t.sourceName || t.sourceLevel })),
+      ...data.transfersOut.map((t) => ({ ...t, _dir: 'OUT', _party: t.destinationName || t.destinationLevel })),
+    ].sort((a, b) => new Date(b.transferredAt || b.createdAt) - new Date(a.transferredAt || a.createdAt));
 
-  if (doc.y > doc.page.height - 220) doc.addPage(); else doc.moveDown(1.2);
-  sectionTitle(`Fund Transfers (${xfers.length})`);
-  drawTable(doc, {
-    sectionColor,
-    emptyText: 'No acknowledged fund transfers in this period.',
-    cols: [
-      { label: 'Date', x: 40, w: 62 },
-      { label: 'Direction', x: 102, w: 62 },
-      { label: 'Counterparty', x: 164, w: 176, wrap: true },
-      { label: 'Mode', x: 340, w: 88 },
-      { label: 'Amount (PKR)', x: 428, w: 127, align: 'right' },
-    ],
-    rows: xfers.map((t) => [
-      new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
-      t._dir === 'IN' ? 'Incoming' : 'Outgoing',
-      t._party || '—',
-      t.mode || '—',
-      (t.amount || 0).toLocaleString(),
-    ]),
-  });
-  if (xfers.length) {
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
-      .text(
-        `In: PKR ${xferInTotal.toLocaleString()}   ·   Out: PKR ${xferOutTotal.toLocaleString()}`,
-        PAGE_L, doc.y, { width: PAGE_R - PAGE_L, align: 'right' },
-      );
-    doc.font('Helvetica').fillColor('#1a1a1a');
+    if (doc.y > doc.page.height - 220) doc.addPage(); else doc.moveDown(1.2);
+    sectionTitle(`Fund Transfers (${xfers.length})`);
+    drawTable(doc, {
+      sectionColor,
+      emptyText: 'No acknowledged fund transfers in this period.',
+      cols: [
+        { label: 'Date', x: 40, w: 62 },
+        { label: 'Direction', x: 102, w: 62 },
+        { label: 'Counterparty', x: 164, w: 176, wrap: true },
+        { label: 'Mode', x: 340, w: 88 },
+        { label: 'Amount (PKR)', x: 428, w: 127, align: 'right' },
+      ],
+      rows: xfers.map((t) => [
+        new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
+        t._dir === 'IN' ? 'Incoming' : 'Outgoing',
+        t._party || '—',
+        t.mode || '—',
+        (t.amount || 0).toLocaleString(),
+      ]),
+    });
+    if (xfers.length) {
+      doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
+        .text(
+          `In: PKR ${xferInTotal.toLocaleString()}   ·   Out: PKR ${xferOutTotal.toLocaleString()}`,
+          PAGE_L, doc.y, { width: PAGE_R - PAGE_L, align: 'right' },
+        );
+      doc.font('Helvetica').fillColor('#1a1a1a');
+    }
   }
 
   _paginateFooters(doc, branding);
@@ -1044,7 +1132,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
 
   sum.mergeCells('A1:B1');
-  sum.getCell('A1').value = `${orgName} — ${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`;
+  sum.getCell('A1').value = `${orgName} — ${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Meetings & Activities Report`;
   sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
   sum.getRow(1).height = 24;
 
@@ -1093,6 +1181,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   const mt = wb.addWorksheet('Meetings');
   mt.columns = [
     { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Arranged By', key: 'ab', width: 24 },
     { header: 'Type', key: 't', width: 16 },
     { header: 'Title', key: 'tt', width: 34 },
     { header: 'State', key: 's', width: 13 },
@@ -1103,7 +1192,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     { header: 'Roster', key: 'r', width: 9 },
     { header: 'Present', key: 'pr', width: 9 },
     { header: 'Late', key: 'la', width: 8 },
-    { header: 'Absent', key: 'ab', width: 9 },
+    { header: 'Absent', key: 'ab_count', width: 9 },
     { header: 'Attendance %', key: 'ap', width: 13, style: { numFmt: '0%' } },
     { header: 'Supervisor', key: 'sup', width: 11 },
     { header: 'Photos', key: 'p', width: 9 },
@@ -1120,6 +1209,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     const absent = att.filter((x) => x.status === 'ABSENT').length;
     const row = {
       d: m.startAt ? new Date(m.startAt) : null,
+      ab: m.arrangedBy || formatUnitArrangedBy(m, { isCommitteeView: body === 'COMMITTEE' }),
       t: m.type,
       tt: m.title || '',
       s: m.state,
@@ -1131,7 +1221,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
       r: att.length,
       pr: present,
       la: late,
-      ab: absent,
+      ab_count: absent,
       ap: att.length ? (present + late) / att.length : null,
       sup: m.supervisorAttended ? 'Yes' : 'No',
       p: (m.photos || []).length,
@@ -1153,6 +1243,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   ac.columns = [
     { header: 'Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
     { header: 'Ends', key: 'e', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'Arranged By', key: 'ab', width: 24 },
     { header: 'Type', key: 't', width: 18 },
     { header: 'Title', key: 'tt', width: 34 },
     { header: 'State', key: 's', width: 13 },
@@ -1181,6 +1272,7 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     const row = {
       d: a.startAt ? new Date(a.startAt) : null,
       e: a.endAt ? new Date(a.endAt) : null,
+      ab: a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' }),
       t: a.type,
       tt: a.title || '',
       s: a.state,
@@ -1284,7 +1376,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
     _resetText(doc);
   };
 
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Meetings & Activities Report`,
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Meetings & Activities Report`,
     `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
 
   // ─── Summary ──────────────────────────────────────────────────────
@@ -1319,6 +1411,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
     const late = att.filter((a) => a.status === 'LATE').length;
     const absent = att.filter((a) => a.status === 'ABSENT').length;
     _metaLines(doc, [
+      ['Arranged By', m.arrangedBy || formatUnitArrangedBy(m, { isCommitteeView: body === 'COMMITTEE' })],
       ['Venue', m.venue || '—'],
       ['Venue GPS', fmtGps(m.gpsLat, m.gpsLng)],
       ['Chair', m.chairpersonId?.fullName || '—'],
@@ -1356,6 +1449,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
 
     const parts = a.participants || [];
     _metaLines(doc, [
+      ['Arranged By', a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' })],
       ['Venue', a.venue || '—'],
       ['Venue GPS', fmtGps(a.gps?.lat, a.gps?.lng)],
       ['Lead', a.leadMemberId?.fullName || '—'],
@@ -1420,6 +1514,7 @@ exports.unitActivitiesXlsx = asyncHandler(async (req, res) => {
   ac.columns = [
     { header: '#', key: 'n', width: 6 },
     { header: 'Date', key: 'd', width: 14 },
+    { header: 'Arranged By', key: 'ab', width: 24 },
     { header: 'Type', key: 't', width: 18 },
     { header: 'Title', key: 'ti', width: 36 },
     { header: 'Lead', key: 'l', width: 26 },
@@ -1430,6 +1525,7 @@ exports.unitActivitiesXlsx = asyncHandler(async (req, res) => {
   data.activities.slice().sort((a, b) => new Date(b.startAt) - new Date(a.startAt)).forEach((a, i) => ac.addRow({
     n: i + 1,
     d: a.startAt ? new Date(a.startAt).toLocaleDateString() : '',
+    ab: a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' }),
     t: a.type || '',
     ti: a.title || '',
     l: a.leadMemberId?.fullName || '',
@@ -1457,7 +1553,7 @@ exports.unitActivitiesPdf = asyncHandler(async (req, res) => {
   const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Activities Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Activities Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
   _sectionHeading(doc, `Activities (${data.activities.length})`, sectionColor, { newPage: false });
   if (data.activities.length === 0) {
     doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No activities recorded in this period.');
@@ -1466,6 +1562,7 @@ exports.unitActivitiesPdf = asyncHandler(async (req, res) => {
     if (doc.y > _bottom(doc) - 120) doc.addPage();
     _recordHeader(doc, idx + 1, a.title || a.type, [a.type, a.state, a.startAt ? new Date(a.startAt).toLocaleString() : ''], sectionColor);
     _metaLines(doc, [
+      ['Arranged By', a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' })],
       ['Venue', a.venue || '—'],
       ['Lead', a.leadMemberId?.fullName || '—'],
       ['Participants', (a.participants || []).map((p) => p?.fullName).filter(Boolean).join(', ') || null],
@@ -1545,7 +1642,7 @@ exports.unitTransfersPdf = asyncHandler(async (req, res) => {
   const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
-  applyBrandedHeader(doc, branding, `${bodyLabel(body) ? `${bodyLabel(body)} ` : ''}Transfers Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
+  applyBrandedHeader(doc, branding, `${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Transfers Report`, `${data.unitLevel} · ${data.name}  ·  Period: ${_periodLabel(from, to)}`);
   _sectionHeading(doc, `Transfers Out (${data.transfersOut.length})`, sectionColor, { newPage: false });
   if (data.transfersOut.length === 0) doc.font('Helvetica-Oblique').fontSize(11).fillColor('#9aa3af').text('No outgoing transfers in this period.');
   data.transfersOut.forEach((t, i) => {
@@ -1711,6 +1808,90 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
 
   _paginateFooters(doc, branding);
   doc.end();
+});
+
+// ─── Per-member Excel performance report ───────────────────────────
+exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { from, to } = req.query;
+  const m = await Member.findById(id).lean();
+  if (!m) throw new ApiError(404, 'NOT_FOUND', 'Member not found');
+
+  const dateFilter = {};
+  if (from) dateFilter.$gte = new Date(from);
+  if (to) dateFilter.$lte = new Date(to);
+  const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
+
+  const [
+    meetingsTotal, meetingsPresent, meetingsLate,
+    activitiesPart, activitiesLed,
+    donAgg, respPending, respCompleted, respCancelled,
+    homeUnit,
+  ] = await Promise.all([
+    Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
+    Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
+    Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'LATE' } }, state: 'FINALIZED', ...startClause }),
+    Activity.countDocuments({ participants: m._id, ...startClause }),
+    Activity.countDocuments({ leadMemberId: m._id, ...startClause }),
+    Donation.aggregate([
+      { $match: { donorMemberId: m._id, ...(Object.keys(dateFilter).length ? { receivedAt: dateFilter } : {}) } },
+      { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+    ]),
+    Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'PENDING' }),
+    Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
+    Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'CANCELLED' }),
+    m.basicUnitId ? BasicUnit.findById(m.basicUnitId).select('name').lean() : null,
+  ]);
+
+  const absent = Math.max(0, meetingsTotal - meetingsPresent - meetingsLate);
+  const attendanceRate = meetingsTotal
+    ? Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100) : null;
+  const respTotal = respPending + respCompleted + (respCancelled || 0);
+  const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
+  const donCount = donAgg[0]?.count || 0;
+  const donTotal = donAgg[0]?.total || 0;
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'PKNAP';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('Performance Summary');
+  ws.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 30 }];
+  ws.addRow({ k: 'Member Name', v: m.fullName });
+  ws.addRow({ k: 'Member ID', v: m.memberId || '—' });
+  ws.addRow({ k: 'CNIC', v: m.cnic });
+  ws.addRow({ k: 'Phone', v: m.phone || '—' });
+  ws.addRow({ k: 'Email', v: m.email || '—' });
+  ws.addRow({ k: 'Basic Unit', v: homeUnit?.name || '—' });
+  ws.addRow({ k: 'Status', v: m.status || 'ACTIVE' });
+  ws.addRow({ k: 'Reporting Period', v: `${from || 'All time'} → ${to || 'Present'}` });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── MEETING ATTENDANCE ───', v: '' });
+  ws.addRow({ k: 'Meetings on Roster (Finalized)', v: meetingsTotal });
+  ws.addRow({ k: 'Present', v: meetingsPresent });
+  ws.addRow({ k: 'Late', v: meetingsLate });
+  ws.addRow({ k: 'Absent', v: absent });
+  ws.addRow({ k: 'Attendance Rate', v: attendanceRate !== null ? `${attendanceRate}%` : 'N/A' });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── ACTIVITIES ───', v: '' });
+  ws.addRow({ k: 'Activities Participated', v: activitiesPart });
+  ws.addRow({ k: 'Activities Led', v: activitiesLed });
+  ws.addRow({ k: 'Total Activities Involved', v: activitiesPart + activitiesLed });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── DONATIONS ───', v: '' });
+  ws.addRow({ k: 'Donations Count', v: donCount });
+  ws.addRow({ k: 'Total Donated (PKR)', v: donTotal });
+  ws.addRow({ k: '', v: '' });
+  ws.addRow({ k: '─── RESPONSIBILITIES ───', v: '' });
+  ws.addRow({ k: 'Pending Tasks', v: respPending });
+  ws.addRow({ k: 'Completed Tasks', v: respCompleted });
+  ws.addRow({ k: 'Completion Rate', v: completionRate !== null ? `${completionRate}%` : 'N/A' });
+  ws.getRow(1).font = { bold: true };
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
 });
 
 // ─── Per-meeting PDF — full details + embedded photographs ──────────

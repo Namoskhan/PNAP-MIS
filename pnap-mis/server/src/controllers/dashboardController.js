@@ -42,6 +42,17 @@ function ownUnitFilter(unitLevel, unitId) {
   return { unitLevel, unitId: oid };
 }
 
+function subtreeFilter(unitLevel, chain) {
+  const oid = (v) => {
+    try { return new mongoose.Types.ObjectId(String(v)); } catch { return null; }
+  };
+  if (unitLevel === 'BASIC_UNIT') return { basicUnitId: oid(chain.basicUnitId) };
+  if (unitLevel === 'AREA') return { areaId: oid(chain.areaId) };
+  if (unitLevel === 'DISTRICT') return { districtId: oid(chain.districtId) };
+  if (unitLevel === 'PROVINCE') return { provinceId: oid(chain.provinceId) };
+  return {}; // CENTRAL — whole organization
+}
+
 exports.unitDashboard = asyncHandler(async (req, res) => {
   const { unitLevel, unitId } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
@@ -54,12 +65,14 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
   }
   const memberFilter = memberScopeFilter(unitLevel, chain);
   const ownFilter = ownUnitFilter(unitLevel, unitId);
+  const subFilter = unitLevel === 'BASIC_UNIT' ? ownFilter : subtreeFilter(unitLevel, chain);
 
   const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000);
 
   const [
     members, activeMembers, pending, meetings30, finalizedMeetings, supSum,
     activities30, donAgg, expAgg, subordinateUnits,
+    rollupMeetings30, rollupActivities30, rollupDonAgg, rollupExpAgg,
   ] = await Promise.all([
     Member.countDocuments(memberFilter),
     Member.countDocuments({ ...memberFilter, status: 'ACTIVE' }),
@@ -74,10 +87,25 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
     Donation.aggregate([{ $match: ownFilter }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     Expense.aggregate([{ $match: { ...ownFilter, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     countSubordinateUnits(unitLevel, chain),
+    // Subtree rollups (all subordinate units + own unit)
+    unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Meeting.countDocuments({ ...subFilter, startAt: { $gte: since30 } }),
+    unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Activity.countDocuments({ ...subFilter, startAt: { $gte: since30 } }),
+    unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Donation.aggregate([{ $match: subFilter }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Expense.aggregate([{ $match: { ...subFilter, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
   ]);
 
   const fm = finalizedMeetings[0] || { total: 0, withSupervisor: 0 };
   const supervisoryComplianceRate = fm.total ? Math.round((fm.withSupervisor / fm.total) * 100) : null;
+
+  const rollup = unitLevel === 'BASIC_UNIT' ? null : {
+    totalUnits: Object.values(subordinateUnits || {}).reduce((a, b) => a + b, 0),
+    totalMembers: activeMembers,
+    meetings30: rollupMeetings30 ?? meetings30,
+    activities30: rollupActivities30 ?? activities30,
+    donations: (rollupDonAgg && rollupDonAgg[0]?.total) || 0,
+    expenses: (rollupExpAgg && rollupExpAgg[0]?.total) || 0,
+    balance: ((rollupDonAgg && rollupDonAgg[0]?.total) || 0) - ((rollupExpAgg && rollupExpAgg[0]?.total) || 0),
+  };
 
   // ─── Analytics derived from meetings + activities (SRS §7-8) ─────
   // Computed in parallel for the same own-unit scope used above.
@@ -371,6 +399,7 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
       balance: (donAgg[0]?.total || 0) - (expAgg[0]?.total || 0),
     },
     subordinateUnits,
+    rollup,
     committee,
     analytics,
   });
@@ -518,9 +547,10 @@ async function rowsFor(children, fkField) {
   return Promise.all(children.map(async (c) => {
     const f = { [fkField]: c._id };
     const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-    const [members, meetings30, donAgg, expAgg, fm] = await Promise.all([
+    const [members, meetings30, activities30, donAgg, expAgg, fm] = await Promise.all([
       Member.countDocuments({ ...f, status: 'ACTIVE' }),
       Meeting.countDocuments({ ...f, startAt: { $gte: since30 } }),
+      Activity.countDocuments({ ...f, startAt: { $gte: since30 } }),
       Donation.aggregate([{ $match: f }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Expense.aggregate([{ $match: { ...f, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Meeting.aggregate([
@@ -535,6 +565,7 @@ async function rowsFor(children, fkField) {
       code: c.code,
       members,
       meetings30,
+      activities30,
       donations: donAgg[0]?.total || 0,
       expenses: expAgg[0]?.total || 0,
       balance: (donAgg[0]?.total || 0) - (expAgg[0]?.total || 0),

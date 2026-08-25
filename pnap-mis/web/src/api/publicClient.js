@@ -1,8 +1,12 @@
 import axios from 'axios';
 
-// Separate axios instance for the public registration form so the
-// auth interceptor cannot kick a guest user to /login on a 401.
-export const publicApi = axios.create({ baseURL: '/api/public' });
+const PUBLIC_BASE =
+  import.meta.env.VITE_PUBLIC_API_BASE_URL ||
+  (import.meta.env.VITE_API_BASE_URL
+    ? `${import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '')}/public`
+    : '/api/public');
+
+export const publicApi = axios.create({ baseURL: PUBLIC_BASE });
 
 export function publicErrorMessage(err) {
   return (

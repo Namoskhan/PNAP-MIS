@@ -106,7 +106,7 @@ export function canManageMeetings(user) {
 export function canManageFinance(user) {
   if (user?.permissions) return hasPermission(user, 'MANAGE_FINANCE');
   return isHigherAdmin(user)
-    || hasRole(user, 'FINANCE_SECRETARY', 'SENIOR_MAWIN', 'SR_VICE_PRESIDENT', 'FIRST_SECRETARY');
+    || hasRole(user, 'FINANCE_SECRETARY', 'SENIOR_MAWIN', 'SR_VICE_PRESIDENT', 'FIRST_SECRETARY', 'GENERAL_SECRETARY');
 }
 export function canApproveExpense(user) {
   if (user?.permissions) return hasPermission(user, 'APPROVE_EXPENSE');
@@ -126,6 +126,12 @@ export function canDecideRole(user) {
 }
 export function canInitiateRole(user) {
   return hasPermission(user, 'INITIATE_ROLE');
+}
+export function canManageJirgaMembers(user) {
+  return hasPermission(user, 'MANAGE_JIRGA_MEMBERS');
+}
+export function canManageCongressMembers(user) {
+  return hasPermission(user, 'MANAGE_CONGRESS_MEMBERS');
 }
 
 // CENTRAL_ADMIN role removed — kept as a no-op for backward

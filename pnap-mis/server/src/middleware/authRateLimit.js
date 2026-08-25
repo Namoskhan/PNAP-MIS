@@ -19,7 +19,7 @@ const { fail } = require('../utils/response');
 // reasons unrelated to what it is asserting.
 
 const WINDOW_MS = 15 * 60 * 1000;
-const CONFIGURED = parseInt(process.env.AUTH_RATE_LIMIT || '0', 10);
+const CONFIGURED = env.AUTH_RATE_LIMIT;
 
 function make(defaultMax, message) {
   const max = CONFIGURED > 0 ? CONFIGURED : defaultMax;

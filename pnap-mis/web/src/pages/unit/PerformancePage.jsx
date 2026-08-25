@@ -61,6 +61,26 @@ export default function PerformancePage() {
     });
   }
 
+  function downloadXlsx() {
+    if (!memberId) return;
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const tokenKey = 'pnap_token';
+    const token = localStorage.getItem(tokenKey);
+    fetch(`/api/exports/member/${memberId}/xlsx?${params.toString()}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }).then(async (res) => {
+      if (!res.ok) { dialog.alert('Export failed.'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `member-${memberId}-performance.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   if (!ctx) return <p>Select a unit context first.</p>;
 
   return (
@@ -105,7 +125,10 @@ export default function PerformancePage() {
                   </div>
                 )}
               </div>
-              <button className="btn secondary" onClick={downloadPdf}>Download PDF</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn secondary" onClick={downloadPdf}>Download PDF</button>
+                <button className="btn secondary" onClick={downloadXlsx}>Download Excel</button>
+              </div>
             </div>
           </div>
 
@@ -126,24 +149,6 @@ export default function PerformancePage() {
               <Kpi label="Completion Rate" value={`${report.responsibilities.completionRate}%`} accent={report.responsibilities.completionRate >= 70 ? 'good' : 'danger'} />
             )}
           </div>
-
-          {report.studyContributions.length > 0 && (
-            <div className="card">
-              <h3 style={{ marginTop: 0 }}>Study Contributions</h3>
-              <table className="list">
-                <thead><tr><th>Date</th><th>Topic</th><th>Summary</th></tr></thead>
-                <tbody>
-                  {report.studyContributions.map((s, i) => (
-                    <tr key={i}>
-                      <td>{new Date(s.meetingDate).toLocaleDateString()}</td>
-                      <td>{s.topic}</td>
-                      <td>{s.summary}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </>
       )}
     </div>
