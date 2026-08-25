@@ -24,6 +24,11 @@ const COMMITTEE_TIER_LABELS = {
   BASIC_UNIT: 'Basic Unit',
 };
 
+const JIRGA_TIER_LABELS = {
+  CENTRAL: 'Qomi Jirga',
+  PROVINCE: 'Sobayi Jirga',
+};
+
 const REGULAR_TIER_LABELS = {
   PROVINCE: 'Province',
   DISTRICT: 'District',
@@ -34,6 +39,10 @@ const REGULAR_TIER_LABELS = {
 
 function getCommitteeTierLabel(level) {
   return COMMITTEE_TIER_LABELS[level] || level || '';
+}
+
+function getJirgaTierLabel(level) {
+  return JIRGA_TIER_LABELS[level] || (level === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga');
 }
 
 function getRegularTierLabel(level) {
@@ -89,21 +98,33 @@ function resolveRecordUnitName(record) {
  * @param {Object} record - The document or POJO
  * @param {Object} [options]
  * @param {boolean} [options.isCommitteeView] - Override/force committee interpretation
- * @returns {string} Formatted label, e.g. "Sobayi · Sindh", "Zilla · Peshawar", "Elaqai · Gulshan", "Basic Unit · Ward 1"
+ * @param {boolean} [options.isJirgaView] - Override/force jirga interpretation
+ * @returns {string} Formatted label, e.g. "Qomi Jirga", "Sobayi Jirga · Sindh", "Sobayi · Sindh", "Zilla · Peshawar"
  */
 function formatUnitArrangedBy(record, options = {}) {
   if (!record) return '—';
   const level = record.unitLevel;
   if (!level) return '—';
 
-  const isCommittee = options.isCommitteeView
+  const isJirga = options.isJirgaView
+    || record.body === 'JIRGA'
+    || record.type === 'JRG'
+    || record.type === 'JIRGA'
+    || record.typeCode === 'JRG'
+    || record.typeCode === 'JIRGA';
+
+  const isCommittee = !isJirga && (
+    options.isCommitteeView
     || record.body === 'COMMITTEE'
     || record.type === 'CMP'
     || record.type === 'COMMITTEE'
     || record.typeCode === 'CMP'
-    || record.typeCode === 'COMMITTEE';
+    || record.typeCode === 'COMMITTEE'
+  );
 
-  const tierLabel = isCommittee ? getCommitteeTierLabel(level) : getRegularTierLabel(level);
+  const tierLabel = isJirga
+    ? getJirgaTierLabel(level)
+    : (isCommittee ? getCommitteeTierLabel(level) : getRegularTierLabel(level));
   const uName = resolveRecordUnitName(record);
 
   if (level === 'CENTRAL') {
@@ -118,8 +139,10 @@ function formatUnitArrangedBy(record, options = {}) {
 
 module.exports = {
   COMMITTEE_TIER_LABELS,
+  JIRGA_TIER_LABELS,
   REGULAR_TIER_LABELS,
   getCommitteeTierLabel,
+  getJirgaTierLabel,
   getRegularTierLabel,
   resolveRecordUnitName,
   formatUnitArrangedBy,

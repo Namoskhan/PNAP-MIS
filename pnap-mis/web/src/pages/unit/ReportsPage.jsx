@@ -40,6 +40,7 @@ function downloadAuthed2(path, filename) {
 export default function ReportsPage() {
   const location = useLocation();
   const queryBody = new URLSearchParams(location.search).get('body');
+  const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
   const { ctx } = useUnit();
   const [from, setFrom] = useState('');
@@ -71,7 +72,7 @@ export default function ReportsPage() {
     if (!ctx) return;
     setMemberId('');
     setReport(null);
-    const bodyTarget = isCommitteeView ? 'COMMITTEE' : 'GENERAL_BODY';
+    const bodyTarget = isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'GENERAL_BODY');
     api.get('/meetings/eligible-attendees', {
       params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: bodyTarget },
     })
@@ -85,14 +86,16 @@ export default function ReportsPage() {
         else if (ctx.unitLevel === 'CENTRAL') params.scope = 'all';
         api.get('/members', { params }).then((r) => setMembers(r.data.data || [])).catch(() => {});
       });
-  }, [ctx, isCommitteeView]);
+  }, [ctx, isCommitteeView, isJirgaView]);
 
   function unitParams(kind) {
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
     if (ctx.unitLevel !== 'BASIC_UNIT' && scope) p.set('scope', scope);
-    if (isCommitteeView) {
+    if (isJirgaView) {
+      p.set('body', 'JIRGA');
+    } else if (isCommitteeView) {
       p.set('body', 'COMMITTEE');
     } else {
       if (kind === 'meetings') {
@@ -108,7 +111,7 @@ export default function ReportsPage() {
     setErr(''); setBusy(true);
     try {
       const ext = format === 'pdf' ? 'pdf' : 'xlsx';
-      const bodySuffix = isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : '');
+      const bodySuffix = isJirgaView ? '-jirga' : (isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : ''));
       const scopeSuffix = (ctx.unitLevel !== 'BASIC_UNIT' && scope === 'subtree') ? '-aggregated' : '';
       await downloadAuthed2(
         `/api/exports/unit/${kind}/${format}?${unitParams(kind)}`,
@@ -151,9 +154,12 @@ export default function ReportsPage() {
   if (!ctx) return <p>Select a unit context first.</p>;
 
   const committeeTier = getCommitteeTierLabel(ctx.unitLevel);
+  const jirgaTier = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
   const regularTier = getRegularTierLabel(ctx.unitLevel);
 
-  const scopeDescription = isCommitteeView ? {
+  const scopeDescription = isJirgaView ? (
+    scope === 'subtree' ? `Aggregated ${jirgaTier} Report` : `${jirgaTier} Direct Records`
+  ) : (isCommitteeView ? {
     BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
     AREA: scope === 'subtree' ? 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)' : 'Elaqai Committee Level Only (Records authored directly at Elaqai)',
     DISTRICT: scope === 'subtree' ? 'Aggregated Zilla Committee Report (Roll-up of all subordinate Elaqai Committees & Basic Units + Zilla Committee activities)' : 'Zilla Committee Level Only (Records authored directly at Zilla)',
@@ -165,19 +171,31 @@ export default function ReportsPage() {
     DISTRICT: scope === 'subtree' ? 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)' : 'District Level Only (Records authored directly at District)',
     PROVINCE: scope === 'subtree' ? 'Aggregated Province Report (Roll-up of all subordinate Districts, Areas & Basic Units + Province activities)' : 'Province Level Only (Records authored directly at Province)',
     CENTRAL: scope === 'subtree' ? 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)' : 'Central Level Only (Records authored directly at Central)',
-  }[ctx.unitLevel] || '';
+  }[ctx.unitLevel] || '');
 
-  const pageTitle = isCommitteeView
+  const pageTitle = isJirgaView
+    ? `${jirgaTier} Reports · ${ctx.unitName}`
+    : (isCommitteeView
     ? `${committeeTier ? `${committeeTier} Committee` : 'Committee'} Reports · ${ctx.unitName}`
-    : `Reports · ${ctx.unitName}`;
+    : `Reports · ${ctx.unitName}`);
 
-  const meetingsReportTitle = isCommitteeView
+  const meetingsReportTitle = isJirgaView
+    ? `${jirgaTier} Meetings & Activities Report`
+    : (isCommitteeView
     ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Meetings & Activities Report`
-    : 'Meetings & Activities Report';
+    : 'Meetings & Activities Report');
 
-  const financeReportTitle = isCommitteeView
+  const financeReportTitle = isJirgaView
+    ? `${jirgaTier} Finance Report`
+    : (isCommitteeView
     ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Finance Report`
-    : 'Finance Report';
+    : 'Finance Report');
+
+  const comprehensiveReportTitle = isJirgaView
+    ? `${jirgaTier} Comprehensive Periodic Report`
+    : (isCommitteeView
+    ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Comprehensive Periodic Report`
+    : 'Comprehensive Periodic Report');
 
   return (
     <div>

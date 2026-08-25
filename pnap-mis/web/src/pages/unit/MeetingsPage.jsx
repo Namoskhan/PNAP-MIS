@@ -99,8 +99,9 @@ export default function MeetingsPage() {
   const [meetingTab, setMeetingTab] = useState('ALL'); // 'ALL' | 'EXECUTIVE' | 'GENERAL_BODY'
   const [showCreate, setShowCreate] = useState(false);
   
-  // URL check: committee vs regular meetings
+  // URL check: committee vs jirga vs regular meetings
   const queryBody = new URLSearchParams(location.search).get('body');
+  const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
   const [form, setForm] = useState(EMPTY_FORM);
   const [finalizing, setFinalizing] = useState(null);
@@ -123,14 +124,20 @@ export default function MeetingsPage() {
   const { types: eventTypes } = useEventTypes('MEETING');
 
   // Filter types based on current stream view:
+  // On Jirga stream: Jirga Meeting only
   // On Committee stream: Committee Meeting only
   // On regular Meetings stream: Executive Meeting and General Body Meeting
   const availableTypes = useMemo(() => {
+    if (isJirgaView) {
+      const jrgTypes = eventTypes.filter((t) => ['JRG', 'JIRGA'].includes(String(t.code).toUpperCase()) || String(t.label).toLowerCase() === 'jirga meeting');
+      return jrgTypes.length ? jrgTypes : [{ code: 'JRG', label: 'Jirga Meeting' }];
+    }
     if (isCommitteeView) {
-      return eventTypes.filter((t) => ['CMP', 'COMMITTEE'].includes(String(t.code).toUpperCase()));
+      const cmTypes = eventTypes.filter((t) => ['CMP', 'COMMITTEE'].includes(String(t.code).toUpperCase()) || String(t.label).toLowerCase() === 'committee meeting');
+      return cmTypes.length ? cmTypes : [{ code: 'CMP', label: 'Committee Meeting' }];
     }
     return eventTypes.filter((t) => ['EXC', 'EXECUTIVE', 'GBM', 'GENERAL_BODY'].includes(String(t.code).toUpperCase()));
-  }, [eventTypes, isCommitteeView]);
+  }, [eventTypes, isCommitteeView, isJirgaView]);
 
   // Resolve the currently-selected type doc so the create dialog can
   // render its custom fields via <DynamicForm>.
@@ -145,9 +152,11 @@ export default function MeetingsPage() {
     if (!showCreate || !ctx) return;
     let active = true;
     setLoadingChairpersons(true);
-    const targetBody = isCommitteeView
-      ? 'COMMITTEE'
-      : (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : 'EXECUTIVE');
+    const targetBody = isJirgaView
+      ? 'JIRGA'
+      : (isCommitteeView
+        ? 'COMMITTEE'
+        : (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : 'EXECUTIVE'));
     api.get('/meetings/eligible-attendees', {
       params: {
         unitLevel: ctx.unitLevel,
@@ -160,15 +169,19 @@ export default function MeetingsPage() {
       .catch(() => {})
       .finally(() => { if (active) setLoadingChairpersons(false); });
     return () => { active = false; };
-  }, [showCreate, ctx, isCommitteeView, form.typeCode]);
+  }, [showCreate, ctx, isCommitteeView, isJirgaView, form.typeCode]);
 
   // Separate meeting collections for pristine categorization
+  const jirgaItems = useMemo(() => {
+    return (items || []).filter((m) => m.body === 'JIRGA' || m.typeCode === 'JRG' || m.typeCode === 'JIRGA' || m.type === 'JRG' || m.type === 'JIRGA');
+  }, [items]);
+
   const committeeItems = useMemo(() => {
     return (items || []).filter((m) => m.body === 'COMMITTEE' || m.typeCode === 'CMP' || m.type === 'CMP' || m.type === 'COMMITTEE' || m.type === 'Committee Meeting');
   }, [items]);
 
   const nonCommitteeItems = useMemo(() => {
-    return (items || []).filter((m) => m.body !== 'COMMITTEE' && m.typeCode !== 'CMP' && m.type !== 'CMP' && m.type !== 'COMMITTEE' && m.type !== 'Committee Meeting');
+    return (items || []).filter((m) => m.body !== 'COMMITTEE' && m.body !== 'JIRGA' && m.typeCode !== 'CMP' && m.type !== 'CMP' && m.type !== 'COMMITTEE' && m.type !== 'Committee Meeting' && m.typeCode !== 'JRG' && m.typeCode !== 'JIRGA' && m.type !== 'JRG' && m.type !== 'JIRGA');
   }, [items]);
 
   const execItems = useMemo(() => {
@@ -180,6 +193,9 @@ export default function MeetingsPage() {
   }, [nonCommitteeItems]);
 
   const displayedItems = useMemo(() => {
+    if (isJirgaView) {
+      return jirgaItems;
+    }
     if (isCommitteeView) {
       return committeeItems;
     }
@@ -190,7 +206,7 @@ export default function MeetingsPage() {
       return gbmItems;
     }
     return nonCommitteeItems;
-  }, [isCommitteeView, meetingTab, committeeItems, execItems, gbmItems, nonCommitteeItems]);
+  }, [isJirgaView, isCommitteeView, meetingTab, jirgaItems, committeeItems, execItems, gbmItems, nonCommitteeItems]);
 
   // Latest-fetch guard — when ctx changes mid-flight (e.g. user
   // drilled into a subordinate) ignore stale responses so they don't
@@ -204,7 +220,9 @@ export default function MeetingsPage() {
       unitLevel: ctx.unitLevel, unitId: ctx.unitId,
       scope: isPureMember ? 'chain' : undefined,
     };
-    if (isCommitteeView) {
+    if (isJirgaView) {
+      params.body = 'JIRGA';
+    } else if (isCommitteeView) {
       params.body = 'COMMITTEE';
     } else if (showBodyToggle) {
       params.body = 'NON_COMMITTEE';
@@ -213,7 +231,7 @@ export default function MeetingsPage() {
     if (myId === fetchIdRef.current) setItems(r.data.data);
   }
 
-  useEffect(() => { reload(); }, [ctx, isCommitteeView, isPureMember]);
+  useEffect(() => { reload(); }, [ctx, isCommitteeView, isJirgaView, isPureMember]);
 
   useEffect(() => {
     if (!ctx) return;
@@ -257,9 +275,11 @@ export default function MeetingsPage() {
   }
 
   function openCreate() {
-    const initialCode = isCommitteeView
-      ? (availableTypes[0]?.code || 'CMP')
-      : (availableTypes.find((t) => t.code === 'EXC')?.code || availableTypes[0]?.code || 'EXC');
+    const initialCode = isJirgaView
+      ? (availableTypes[0]?.code || 'JRG')
+      : (isCommitteeView
+        ? (availableTypes[0]?.code || 'CMP')
+        : (availableTypes.find((t) => t.code === 'EXC')?.code || availableTypes[0]?.code || 'EXC'));
     setForm({ ...EMPTY_FORM, typeCode: initialCode });
     setShowCreate(true);
   }
@@ -277,7 +297,9 @@ export default function MeetingsPage() {
       // the type's snapshot resolved fields.
       const { dynamicData, ...rest } = form;
       const payload = { ...rest, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
-      if (isCommitteeView) {
+      if (isJirgaView) {
+        payload.body = 'JIRGA';
+      } else if (isCommitteeView) {
         payload.body = 'COMMITTEE';
       } else if (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') {
         payload.body = 'GENERAL_BODY';
@@ -288,19 +310,100 @@ export default function MeetingsPage() {
       if (dynamicData && Object.keys(dynamicData).length > 0) payload.dynamicData = dynamicData;
       const r = await api.post('/meetings', payload);
       const m = r.data.data;
-      const bodyLabel = isCommitteeView ? 'Committee' : (payload.body === 'GENERAL_BODY' ? 'General Body' : 'Executive');
+      const bodyLabel = isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : (payload.body === 'GENERAL_BODY' ? 'General Body' : 'Executive'));
       toast.success(
         `${[bodyLabel, m.title || m.type].filter(Boolean).join(' · ')} — ${new Date(m.startAt).toLocaleString()} at ${m.venue}.`,
         { title: 'Meeting scheduled' },
       );
-      setForm(EMPTY_FORM);
       setShowCreate(false);
+      setForm(EMPTY_FORM);
       reload();
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Could not schedule meeting', duration: 7000 });
     } finally {
       setCreating(false);
     }
+  }
+
+  async function openFinalize(m) {
+    // Populate attendance list with all eligible attendees resolved for this meeting stream
+    const targetBody = m.body || (m.typeCode === 'CMP' || m.type === 'CMP' || m.type === 'COMMITTEE' ? 'COMMITTEE' : (m.typeCode === 'JRG' || m.typeCode === 'JIRGA' ? 'JIRGA' : 'EXECUTIVE'));
+    try {
+      const r = await api.get('/meetings/eligible-attendees', {
+        params: {
+          unitLevel: m.unitLevel,
+          unitId: m.unitId,
+          body: targetBody,
+          typeCode: m.typeCode || m.type,
+        },
+      });
+      const eligibleAttendees = r.data.data || [];
+      const roster = eligibleAttendees.map((att) => {
+        const existing = (m.attendance || []).find((a) => String(a.memberId?._id || a.memberId) === String(att._id));
+        return {
+          memberId: att._id,
+          fullName: att.fullName,
+          memberIdCode: att.memberId,
+          phone: att.phone,
+          cnic: att.cnic,
+          roleText: att.roleText,
+          unitText: att.unitText,
+          status: existing ? existing.status : 'PRESENT',
+        };
+      });
+      setFinalizing({
+        meeting: m,
+        attendance: roster,
+        guestAttendees: m.guestAttendees || [],
+        decisions: m.decisions || '',
+        upcomingStrategy: m.upcomingStrategy || '',
+        notes: m.notes || '',
+        supervisorAttended: m.supervisorAttended || false,
+        supervisorMemberId: m.supervisorMemberId?._id || m.supervisorMemberId || '',
+        studyContributions: m.studyContributions || [],
+      });
+    } catch {
+      // Fallback to local roster if attendee endpoint fails
+      const roster = members.map((mem) => {
+        const existing = (m.attendance || []).find((a) => String(a.memberId?._id || a.memberId) === String(mem._id));
+        return {
+          memberId: mem._id,
+          fullName: mem.fullName,
+          memberIdCode: mem.memberId,
+          status: existing ? existing.status : 'PRESENT',
+        };
+      });
+      setFinalizing({
+        meeting: m,
+        attendance: roster,
+        guestAttendees: m.guestAttendees || [],
+        decisions: m.decisions || '',
+        upcomingStrategy: m.upcomingStrategy || '',
+        notes: m.notes || '',
+        supervisorAttended: m.supervisorAttended || false,
+        supervisorMemberId: m.supervisorMemberId?._id || m.supervisorMemberId || '',
+        studyContributions: m.studyContributions || [],
+      });
+    }
+  }
+
+  async function openEdit(m) {
+    setEditing({
+      _id: m._id,
+      title: m.title || '',
+      description: m.description || '',
+      venue: m.venue || '',
+      type: m.type || '',
+      typeCode: m.typeCode || m.type || '',
+      startAt: m.startAt ? new Date(m.startAt).toISOString().slice(0, 16) : '',
+      endAt: m.endAt ? new Date(m.endAt).toISOString().slice(0, 16) : '',
+      agenda: m.agenda || '',
+      chairpersonId: m.chairpersonId?._id || m.chairpersonId || '',
+      upcomingStrategy: m.upcomingStrategy || '',
+      notes: m.notes || '',
+      previousMeetingId: m.previousMeetingId || '',
+      dynamicData: m.dynamicData || {},
+    });
   }
 
   // Photo uploads run through EXIF / GPS / duplicate checks server-side
@@ -390,7 +493,9 @@ export default function MeetingsPage() {
   // report covers exactly the stream the user is looking at.
   function exportParams() {
     const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
-    if (isCommitteeView) {
+    if (isJirgaView) {
+      params.set('body', 'JIRGA');
+    } else if (isCommitteeView) {
       params.set('body', 'COMMITTEE');
     } else if (meetingTab === 'EXECUTIVE') {
       params.set('body', 'EXECUTIVE');
@@ -402,7 +507,7 @@ export default function MeetingsPage() {
     return params;
   }
   function exportName(ext) {
-    const stream = isCommitteeView ? '-committee' : (meetingTab === 'EXECUTIVE' ? '-executive' : meetingTab === 'GENERAL_BODY' ? '-general-body' : '');
+    const stream = isJirgaView ? '-jirga' : (isCommitteeView ? '-committee' : (meetingTab === 'EXECUTIVE' ? '-executive' : meetingTab === 'GENERAL_BODY' ? '-general-body' : ''));
     return `${ctx.unitName}${stream}-meetings.${ext}`;
   }
   function exportPdf() {
@@ -418,14 +523,16 @@ export default function MeetingsPage() {
     <div>
       <div className="page-header">
         <h2>
-          {isCommitteeView ? 'Committee Meetings' : 'Meetings'} · {ctx.unitName}
+          {isJirgaView
+            ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Meetings' : `Sobayi Jirga Meetings · ${ctx.unitName}`)
+            : (isCommitteeView ? `Committee Meetings · ${ctx.unitName}` : `Meetings · ${ctx.unitName}`)}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && (
             <button className="btn" onClick={openCreate}>
-              {isCommitteeView ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'}
+              {isJirgaView ? '+ Schedule Jirga Meeting' : (isCommitteeView ? '+ Schedule Committee Meeting' : '+ Schedule Meeting')}
             </button>
           )}
         </div>
@@ -435,7 +542,9 @@ export default function MeetingsPage() {
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShowCreate(false); }}>
         <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Schedule Meeting">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <h3 style={{ margin: 0 }}>Schedule a Meeting</h3>
+            <h3 style={{ margin: 0 }}>
+              {isJirgaView ? 'Schedule a Jirga Meeting' : (isCommitteeView ? 'Schedule a Committee Meeting' : 'Schedule a Meeting')}
+            </h3>
             <button type="button" className="btn secondary" onClick={() => setShowCreate(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
           <p className="muted" style={{ marginTop: 0 }}>
@@ -450,7 +559,7 @@ export default function MeetingsPage() {
                 onChange={(e) => setForm({ ...form, typeCode: e.target.value, dynamicData: {} })}
               >
                 {availableTypes.length === 0 && <option value="">— Loading types —</option>}
-                {availableTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+                {availableTypes.map((t) => <option key={t.code || t._id} value={t.code}>{t.label}</option>)}
               </select>
             </div>
             <div className="field">
@@ -514,9 +623,6 @@ export default function MeetingsPage() {
               </div>
             )}
           </div>
-          {/* Custom fields configured for this type via the Event
-              Manager catalogue. Renders inline below the standard
-              fields, sorted by the field-library sortOrder. */}
           {selectedType && (selectedType.fields || []).length > 0 && (
             <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
               <div className="muted" style={{ fontSize: 12, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>
@@ -538,7 +644,7 @@ export default function MeetingsPage() {
         </div>
       )}
 
-      {!isCommitteeView && (
+      {!isCommitteeView && !isJirgaView && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="muted" style={{ fontSize: 13, marginRight: 4, fontWeight: 500 }}>Category:</span>
           <button
@@ -579,25 +685,30 @@ export default function MeetingsPage() {
           {displayedItems.length === 0 && (
             <tr>
               <td colSpan="9" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--muted)' }}>
-                {isCommitteeView
+                {isJirgaView
+                  ? 'No Jirga meetings scheduled yet.'
+                  : (isCommitteeView
                   ? 'No committee meetings scheduled yet.'
-                  : meetingTab === 'EXECUTIVE'
+                  : (meetingTab === 'EXECUTIVE'
                   ? 'No executive meetings scheduled yet.'
-                  : meetingTab === 'GENERAL_BODY'
+                  : (meetingTab === 'GENERAL_BODY'
                   ? 'No general body meetings scheduled yet.'
-                  : 'No meetings scheduled yet.'}
+                  : 'No meetings scheduled yet.')))}
               </td>
             </tr>
           )}
           {displayedItems.map((m) => {
-            const isCm = m.body === 'COMMITTEE' || m.typeCode === 'CMP' || m.type === 'CMP' || m.type === 'COMMITTEE' || m.type === 'Committee Meeting';
-            const isGbm = m.body === 'GENERAL_BODY' || m.typeCode === 'GBM' || m.type === 'GBM' || m.type === 'General Body Meeting';
+            const isJrg = m.body === 'JIRGA' || m.typeCode === 'JRG' || m.typeCode === 'JIRGA' || m.type === 'JRG' || m.type === 'JIRGA';
+            const isCm = !isJrg && (m.body === 'COMMITTEE' || m.typeCode === 'CMP' || m.type === 'CMP' || m.type === 'COMMITTEE' || m.type === 'Committee Meeting');
+            const isGbm = !isJrg && (m.body === 'GENERAL_BODY' || m.typeCode === 'GBM' || m.type === 'GBM' || m.type === 'General Body Meeting');
             return (
               <tr key={m._id}>
                 <td>{new Date(m.startAt).toLocaleString()}</td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {isCm ? (
+                    {isJrg ? (
+                      <span className="badge" style={{ backgroundColor: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe', fontWeight: 600, fontSize: 11 }}>Jirga</span>
+                    ) : isCm ? (
                       <span className="badge" style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600, fontSize: 11 }}>Committee</span>
                     ) : isGbm ? (
                       <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontWeight: 600, fontSize: 11 }}>General Body</span>
@@ -938,7 +1049,7 @@ function FinalizeDialog({
                 <tr><td colSpan="4" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
               )}
               {!loadingAttendees && attendance.length === 0 && (
-                <tr><td colSpan="4" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive'} meeting.</td></tr>
+                <tr><td colSpan="4" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'JIRGA' ? 'jirga' : (meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive')} meeting.</td></tr>
               )}
               {!loadingAttendees && attendance.map((r) => (
                 <tr key={r.memberId}>
@@ -1000,14 +1111,20 @@ function toLocalInput(d) {
 }
 
 function EditDialog({ meeting, onClose, onDone }) {
-  const isCommitteeMeeting = meeting.body === 'COMMITTEE';
+  const isJirgaMeeting = meeting.body === 'JIRGA' || meeting.typeCode === 'JRG' || meeting.typeCode === 'JIRGA' || meeting.type === 'JRG';
+  const isCommitteeMeeting = !isJirgaMeeting && (meeting.body === 'COMMITTEE' || meeting.typeCode === 'CMP');
   const { types: eventTypes } = useEventTypes('MEETING');
   const availableTypes = useMemo(() => {
+    if (isJirgaMeeting) {
+      const jrgTypes = eventTypes.filter((t) => ['JRG', 'JIRGA'].includes(String(t.code).toUpperCase()) || String(t.label).toLowerCase() === 'jirga meeting');
+      return jrgTypes.length ? jrgTypes : [{ code: 'JRG', label: 'Jirga Meeting' }];
+    }
     if (isCommitteeMeeting) {
-      return eventTypes.filter((t) => ['CMP', 'COMMITTEE'].includes(String(t.code).toUpperCase()));
+      const cmTypes = eventTypes.filter((t) => ['CMP', 'COMMITTEE'].includes(String(t.code).toUpperCase()) || String(t.label).toLowerCase() === 'committee meeting');
+      return cmTypes.length ? cmTypes : [{ code: 'CMP', label: 'Committee Meeting' }];
     }
     return eventTypes.filter((t) => ['EXC', 'EXECUTIVE', 'GBM', 'GENERAL_BODY'].includes(String(t.code).toUpperCase()));
-  }, [eventTypes, isCommitteeMeeting]);
+  }, [eventTypes, isCommitteeMeeting, isJirgaMeeting]);
 
   const [form, setForm] = useState({
     typeCode: (meeting.typeCode || meeting.type || '').toUpperCase(),
@@ -1038,9 +1155,11 @@ function EditDialog({ meeting, onClose, onDone }) {
   useEffect(() => {
     let active = true;
     setLoadingChairperson(true);
-    const targetBody = isCommitteeMeeting
-      ? 'COMMITTEE'
-      : (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : 'EXECUTIVE');
+    const targetBody = isJirgaMeeting
+      ? 'JIRGA'
+      : (isCommitteeMeeting
+        ? 'COMMITTEE'
+        : (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : 'EXECUTIVE'));
     api.get('/meetings/eligible-attendees', {
       params: {
         unitLevel: meeting.unitLevel,
@@ -1053,14 +1172,16 @@ function EditDialog({ meeting, onClose, onDone }) {
       .catch(() => {})
       .finally(() => { if (active) setLoadingChairperson(false); });
     return () => { active = false; };
-  }, [meeting.unitLevel, meeting.unitId, isCommitteeMeeting, form.typeCode]);
+  }, [meeting.unitLevel, meeting.unitId, isCommitteeMeeting, isJirgaMeeting, form.typeCode]);
 
   async function save() {
     setErr(''); setBusy(true);
     try {
       const { dynamicData, ...rest } = form;
       const payload = { ...rest };
-      if (isCommitteeMeeting) {
+      if (isJirgaMeeting) {
+        payload.body = 'JIRGA';
+      } else if (isCommitteeMeeting) {
         payload.body = 'COMMITTEE';
       } else if (form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') {
         payload.body = 'GENERAL_BODY';

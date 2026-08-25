@@ -55,13 +55,16 @@ async function nextReceiptNo(unitId, fy) {
 function bodyClause(body) {
   if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
   return null;
 }
 
 // Write-side coercion, same style as activityController's
-// `requestedBody` — anything that isn't COMMITTEE is EXECUTIVE.
+// `requestedBody` — defaults to EXECUTIVE if not COMMITTEE or JIRGA.
 function requestedBody(raw) {
-  return raw === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE';
+  if (raw === 'COMMITTEE') return 'COMMITTEE';
+  if (raw === 'JIRGA') return 'JIRGA';
+  return 'EXECUTIVE';
 }
 
 function applyScopeFilter(filter, unitLevel, unitId, scope, chain) {

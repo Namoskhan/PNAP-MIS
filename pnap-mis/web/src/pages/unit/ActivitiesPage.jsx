@@ -30,10 +30,11 @@ export default function ActivitiesPage() {
   const location = useLocation();
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
 
-  // URL check: committee vs regular executive activities
+  // URL check: committee vs jirga vs regular executive activities
   const queryBody = new URLSearchParams(location.search).get('body');
+  const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
-  const targetBody = isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE';
+  const targetBody = isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE');
 
   const [items, setItems] = useState([]);
   const [show, setShow] = useState(false);
@@ -47,11 +48,14 @@ export default function ActivitiesPage() {
   // Active activity types from the EventTypeConfig catalogue for this stream
   const { types: eventTypes } = useEventTypes('ACTIVITY', targetBody);
   const availableTypes = useMemo(() => {
+    if (isJirgaView) {
+      return eventTypes.filter((t) => t.appliesTo?.jirga !== false);
+    }
     if (isCommitteeView) {
       return eventTypes.filter((t) => t.appliesTo?.committee !== false);
     }
     return eventTypes.filter((t) => t.appliesTo?.executive !== false);
-  }, [eventTypes, isCommitteeView]);
+  }, [eventTypes, isCommitteeView, isJirgaView]);
 
   const selectedType = useMemo(() => {
     return availableTypes.find((t) => String(t.code).toUpperCase() === String(form.typeCode).toUpperCase())
@@ -78,10 +82,11 @@ export default function ActivitiesPage() {
   // Clean separation of items for the active stream
   const displayedItems = useMemo(() => {
     return (items || []).filter((a) => {
+      if (isJirgaView) return a.body === 'JIRGA';
       if (isCommitteeView) return a.body === 'COMMITTEE';
-      return a.body === 'EXECUTIVE' || !a.body || a.body !== 'COMMITTEE';
+      return a.body === 'EXECUTIVE' || !a.body || (a.body !== 'COMMITTEE' && a.body !== 'JIRGA');
     });
-  }, [items, isCommitteeView]);
+  }, [items, isCommitteeView, isJirgaView]);
 
   function openCreate() {
     const initialCode = availableTypes[0]?.code || DEFAULT_TYPE_CODE;
@@ -228,14 +233,16 @@ export default function ActivitiesPage() {
     <div>
       <div className="page-header">
         <h2>
-          {isCommitteeView ? 'Committee Activities' : 'Executive Activities'} · {ctx.unitName}
+          {isJirgaView
+            ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Activities' : `Sobayi Jirga Activities · ${ctx.unitName}`)
+            : (isCommitteeView ? `Committee Activities · ${ctx.unitName}` : `Executive Activities · ${ctx.unitName}`)}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
           <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
           {canManage && (
             <button className="btn" onClick={openCreate}>
-              {isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity'}
+              {isJirgaView ? '+ Record Jirga Activity' : (isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity')}
             </button>
           )}
         </div>
@@ -246,7 +253,7 @@ export default function ActivitiesPage() {
           <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Activity">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>
-                {isCommitteeView ? 'Record Committee Activity' : 'Record Activity'}
+                {isJirgaView ? 'Record Jirga Activity' : (isCommitteeView ? 'Record Committee Activity' : 'Record Activity')}
               </h3>
               <button
                 type="button"
@@ -337,7 +344,7 @@ export default function ActivitiesPage() {
           {displayedItems.length === 0 && (
             <tr>
               <td colSpan="7" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                No {isCommitteeView ? 'committee' : 'executive'} activities recorded yet.
+                No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} activities recorded yet.
               </td>
             </tr>
           )}
@@ -349,13 +356,14 @@ export default function ActivitiesPage() {
                   className="badge"
                   style={{
                     marginRight: 6,
-                    background: a.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)',
-                    color: a.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)',
+                    background: a.body === 'JIRGA' ? '#f3e8ff' : (a.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)'),
+                    color: a.body === 'JIRGA' ? '#6b21a8' : (a.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)'),
+                    border: a.body === 'JIRGA' ? '1px solid #d8b4fe' : undefined,
                     fontWeight: 600,
                     fontSize: 11,
                   }}
                 >
-                  {a.body === 'COMMITTEE' ? 'Committee' : 'Executive'}
+                  {a.body === 'JIRGA' ? 'Jirga' : (a.body === 'COMMITTEE' ? 'Committee' : 'Executive')}
                 </span>
                 {a.type}
               </td>
@@ -364,7 +372,7 @@ export default function ActivitiesPage() {
                 {a.unitLevel && (
                   <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
                     <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
-                      {formatUnitArrangedBy(a, { isCommitteeView })}
+                      {formatUnitArrangedBy(a, { isCommitteeView, isJirgaView })}
                     </span>
                   </div>
                 )}

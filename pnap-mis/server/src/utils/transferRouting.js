@@ -39,18 +39,16 @@ const {
 // which has always been a valid recipient and stays one.
 const DESTINATION_LEVELS = LEVEL_ORDER;
 
-// Tiers that may send. Mirrors FundTransfer.sourceLevel's enum —
-// Central sits at the head of the organization and does not initiate
-// transfers. Left as-is per "Center: follow existing permissions".
-const SOURCE_LEVELS = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE'];
+// Tiers that may send. Mirrors FundTransfer.sourceLevel's enum.
+const SOURCE_LEVELS = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 
 function canInitiateFrom(level) {
   return SOURCE_LEVELS.includes(level);
 }
 
-// Only a Province may address units outside its own province.
+// Only a Province or Central may address units outside its own province.
 function canCrossProvinces(sourceLevel) {
-  return sourceLevel === 'PROVINCE';
+  return sourceLevel === 'PROVINCE' || sourceLevel === 'CENTRAL';
 }
 
 // The province a sender is confined to, or null when it is confined to

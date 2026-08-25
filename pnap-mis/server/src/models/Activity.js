@@ -22,11 +22,11 @@ const activitySchema = new mongoose.Schema(
 
     type: { type: String, required: true, uppercase: true, trim: true, index: true },
     // SRS §3.1 — at Area+ levels the body running an activity can be
-    // either the Executive or the full Committee. Same field as on
-    // Meeting so the two streams stay separable.
+    // either the Executive, the full Committee, or Jirga. Same field as on
+    // Meeting so the streams stay separable.
     body: {
       type: String,
-      enum: ['EXECUTIVE', 'COMMITTEE'],
+      enum: ['EXECUTIVE', 'COMMITTEE', 'JIRGA'],
       default: 'EXECUTIVE',
       index: true,
     },

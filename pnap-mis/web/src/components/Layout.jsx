@@ -75,7 +75,7 @@ function committeeLabel(unitLevel) {
 // param still highlights the entry it belongs to.
 function UnitNavLink({ to, body = null, children }) {
   const { search } = useLocation();
-  const norm = (v) => (v === 'COMMITTEE' ? 'COMMITTEE' : 'EXECUTIVE');
+  const norm = (v) => (v === 'COMMITTEE' ? 'COMMITTEE' : v === 'JIRGA' ? 'JIRGA' : 'EXECUTIVE');
   const current = norm(new URLSearchParams(search).get('body'));
   const target = body ? `${to}?body=${body}` : to;
   return (
@@ -96,30 +96,43 @@ function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }
   if (!ctx || ctx.unitLevel === 'BASIC_UNIT') return null;
   const label = committeeLabel(ctx.unitLevel);
   if (!label) return null;
-  const isJirgaTier = ctx.unitLevel === 'CENTRAL' || ctx.unitLevel === 'PROVINCE';
-  const jirgaLabel = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
   return (
-    <>
-      <NavGroup
-        label={label}
-        icon={<UsersIcon size={14} />}
-        storageKey="pnap_nav_committee"
-        defaultOpen={defaultOpen}
-      >
-        <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
-        {showEvents && <UnitNavLink to="/unit/meetings" body="COMMITTEE">Committee Meetings</UnitNavLink>}
-        {showEvents && <UnitNavLink to="/unit/activities" body="COMMITTEE">Committee Activities</UnitNavLink>}
-        {canFinance && <UnitNavLink to="/unit/finance" body="COMMITTEE">Committee Finance</UnitNavLink>}
-        {canFinance && <UnitNavLink to="/unit/transfers" body="COMMITTEE">Committee Transfers</UnitNavLink>}
-        {/* Committee-scoped reports — downloads filtered to the committee body */}
-        <UnitNavLink to="/unit/reports" body="COMMITTEE">Committee Reports</UnitNavLink>
-      </NavGroup>
-      {isJirgaTier && (
-        <nav style={{ marginTop: 2 }}>
-          <NavLink to="/unit/jirga">{jirgaLabel}</NavLink>
-        </nav>
-      )}
-    </>
+    <NavGroup
+      label={label}
+      icon={<UsersIcon size={14} />}
+      storageKey="pnap_nav_committee"
+      defaultOpen={defaultOpen}
+    >
+      <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
+      {showEvents && <UnitNavLink to="/unit/meetings" body="COMMITTEE">Committee Meetings</UnitNavLink>}
+      {showEvents && <UnitNavLink to="/unit/activities" body="COMMITTEE">Committee Activities</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/finance" body="COMMITTEE">Committee Finance</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/transfers" body="COMMITTEE">Committee Transfers</UnitNavLink>}
+      {/* Committee-scoped reports — downloads filtered to the committee body */}
+      <UnitNavLink to="/unit/reports" body="COMMITTEE">Committee Reports</UnitNavLink>
+    </NavGroup>
+  );
+}
+
+// The Jirga hub — dedicated collapsible group for Qomi Jirga (Central)
+// and Sobayi Jirga (Province), each pinned to ?body=JIRGA.
+function JirgaNav({ ctx, canFinance, showEvents = true, defaultOpen = false }) {
+  if (!ctx || (ctx.unitLevel !== 'CENTRAL' && ctx.unitLevel !== 'PROVINCE')) return null;
+  const label = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
+  return (
+    <NavGroup
+      label={label}
+      icon={<UsersIcon size={14} />}
+      storageKey={`pnap_nav_jirga_${ctx.unitLevel.toLowerCase()}`}
+      defaultOpen={defaultOpen}
+    >
+      <UnitNavLink to="/unit/jirga">Composition</UnitNavLink>
+      {showEvents && <UnitNavLink to="/unit/meetings" body="JIRGA">Jirga Meetings</UnitNavLink>}
+      {showEvents && <UnitNavLink to="/unit/activities" body="JIRGA">Jirga Activities</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/finance" body="JIRGA">Jirga Finance</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/transfers" body="JIRGA">Jirga Transfers</UnitNavLink>}
+      <UnitNavLink to="/unit/reports" body="JIRGA">Jirga Reports</UnitNavLink>
+    </NavGroup>
   );
 }
 
@@ -269,13 +282,14 @@ export default function Layout() {
             <nav>
               <NavLink to="/unit" end>Central Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Central Cabinet</NavLink>
-              <NavLink to="/unit/jirga">Qomi Jirga</NavLink>
               <UnitNavLink to="/unit/meetings">Central Meetings</UnitNavLink>
               <UnitNavLink to="/unit/activities">Central Activities</UnitNavLink>
               <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
               <UnitNavLink to="/unit/finance">Central Finance</UnitNavLink>
+              <UnitNavLink to="/unit/transfers">Central Fund Transfers</UnitNavLink>
               <UnitNavLink to="/unit/reports">Central Reports</UnitNavLink>
             </nav>
+            <JirgaNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
             {/* Super Admin removed from Committee group per request. */}
           </>
         )}
@@ -311,11 +325,11 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
               <NavLink to="/members">Province Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Province Cabinet Roles</NavLink>
-              <NavLink to="/unit/jirga">Qomi Jirga</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
+            <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -342,11 +356,11 @@ export default function Layout() {
               <NavLink to="/admin/manage-org">Manage Districts</NavLink>
               <NavLink to="/members">All Province Members</NavLink>
               <NavLink to="/unit/cabinet">Assign District Cabinet Roles</NavLink>
-              <NavLink to="/unit/jirga">Sobayi Jirga</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               <NavLink to="/unit/breakdown">District Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
+            <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -366,7 +380,8 @@ export default function Layout() {
               <NavLink to="/unit/performance">Member Performance</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-                    <CommitteeNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
+            <CommitteeNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
+            <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -386,11 +401,11 @@ export default function Layout() {
               {canFinance && <UnitNavLink to="/unit/finance">Finance Summary</UnitNavLink>}
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            {/* Secretary saw the committee only at AREA / DISTRICT.
-                Kept that bound rather than widening their surface. */}
-            {ctx && (ctx.unitLevel === 'AREA' || ctx.unitLevel === 'DISTRICT') && (
+            {/* Secretary saw the committee at AREA, DISTRICT, PROVINCE, CENTRAL. */}
+            {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
               <CommitteeNav ctx={ctx} canFinance={canFinance} />
             )}
+            <JirgaNav ctx={ctx} canFinance={canFinance} />
           </>
         )}
 
@@ -415,10 +430,9 @@ export default function Layout() {
               )}
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            {/* The Finance Secretary keeps the unit's books for BOTH
-                bodies, so they get the committee ledgers too — minus
-                the meeting / activity surfaces they never had. */}
+            {/* The Finance Secretary keeps the unit's books for Executive, Committee, and Jirga bodies */}
             <CommitteeNav ctx={ctx} canFinance={canFinance} showEvents={false} />
+            <JirgaNav ctx={ctx} canFinance={canFinance} showEvents={false} />
           </>
         )}
 
@@ -455,10 +469,12 @@ export default function Layout() {
               <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
               <NavLink to="/unit/performance">Member Performance</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
+            <JirgaNav ctx={ctx} canFinance={canFinance} />
           </>
         )}
 
@@ -493,6 +509,7 @@ export default function Layout() {
               )}
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
+            <JirgaNav ctx={ctx} canFinance={canFinance} />
           </>
         )}
 

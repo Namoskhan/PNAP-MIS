@@ -532,6 +532,7 @@ async function unitName(unitLevel, unitId) {
 // stay pooled and byte-identical to before.
 function meetingBodyClause(body) {
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
   if (body === 'GENERAL_BODY') return { body: 'GENERAL_BODY' };
   if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   return { $or: [{ body: { $in: ['EXECUTIVE', 'GENERAL_BODY'] } }, { body: { $exists: false } }, { body: null }] };
@@ -539,29 +540,33 @@ function meetingBodyClause(body) {
 
 function activityBodyClause(body) {
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
   return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
 }
 
 function financeBodyClause(body) {
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
   return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
 }
 
 function bodyClause(body) {
   if (body === 'EXECUTIVE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
+  if (body === 'JIRGA') return { body: 'JIRGA' };
   if (body === 'GENERAL_BODY') return { body: 'GENERAL_BODY' };
-  if (body === 'NON_COMMITTEE') return { $or: [{ body: { $ne: 'COMMITTEE' } }, { body: { $exists: false } }, { body: null }] };
+  if (body === 'NON_COMMITTEE') return { $or: [{ body: { $nin: ['COMMITTEE', 'JIRGA'] } }, { body: { $exists: false } }, { body: null }] };
   return null;
 }
 
 // Human label for a body filter, used in report titles and filenames
-// so a printed Committee report says on its face which body it
+// so a printed Committee/Jirga report says on its face which body it
 // covers. Returns '' when `body` is absent, and every call site is
 // written so that '' reproduces the original wording exactly — a
 // combined report is byte-identical to what it was before the split.
 function bodyLabel(body) {
   if (body === 'COMMITTEE') return 'Committee';
+  if (body === 'JIRGA') return 'Jirga';
   if (body === 'EXECUTIVE') return 'Executive';
   if (body === 'GENERAL_BODY') return 'General Body';
   return '';
@@ -572,12 +577,15 @@ function bodyTierLabel(body, unitLevel) {
     const tier = getCommitteeTierLabel(unitLevel);
     return tier ? `${tier} Committee` : 'Committee';
   }
+  if (body === 'JIRGA') {
+    return unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
+  }
   if (body === 'EXECUTIVE') return 'Executive';
   if (body === 'GENERAL_BODY') return 'General Body';
   return '';
 }
 
-// Filename fragment: '-committee' / '-executive' / '' so the two
+// Filename fragment: '-committee' / '-jirga' / '-executive' / '' so the
 // downloads don't overwrite each other in the browser's Downloads
 // folder.
 function bodySuffix(body) {
@@ -661,9 +669,10 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
 
   // Attach formatted arrangedBy to every record
   const isComm = body === 'COMMITTEE';
+  const isJrg = body === 'JIRGA';
   const attachArrangedBy = (arr) => {
     arr.forEach((item) => {
-      item.arrangedBy = formatUnitArrangedBy(item, { isCommitteeView: isComm });
+      item.arrangedBy = formatUnitArrangedBy(item, { isCommitteeView: isComm, isJirgaView: isJrg });
     });
   };
   attachArrangedBy(meetings);

@@ -18,7 +18,7 @@ async function resolveEventConfig(d, entity) {
 
   const { snapshot, config } = await configSnapshotService.materialise(entity, rawCode);
 
-  const requestedBody = (d.body === 'COMMITTEE') ? 'COMMITTEE' : 'EXECUTIVE';
+  const requestedBody = (d.body === 'COMMITTEE') ? 'COMMITTEE' : (d.body === 'JIRGA' ? 'JIRGA' : 'EXECUTIVE');
   const appliesTo = config.appliesTo || {};
   if (requestedBody === 'EXECUTIVE' && appliesTo.executive === false) {
     throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Executive body`);
@@ -53,6 +53,8 @@ exports.list = asyncHandler(async (req, res) => {
     filter.$or = [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }];
   } else if (body === 'COMMITTEE') {
     filter.body = 'COMMITTEE';
+  } else if (body === 'JIRGA') {
+    filter.body = 'JIRGA';
   }
 
   const items = await Activity.find(filter)

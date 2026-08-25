@@ -16,6 +16,7 @@ const BUILTIN_MEETING_TYPES = [
   { code: 'GBM', label: 'General Body Meeting',  sortOrder: 10, description: 'Full membership / General Body meeting at basic unit level.' },
   { code: 'EXC', label: 'Executive Meeting',     sortOrder: 20, description: 'Cabinet / executive meeting.' },
   { code: 'CMP', label: 'Committee Meeting',     sortOrder: 30, description: 'Committee meeting.' },
+  { code: 'JRG', label: 'Jirga Meeting',         sortOrder: 40, description: 'Jirga assembly meeting.' },
 ];
 
 const BUILTIN_ACTIVITY_TYPES = [
@@ -49,7 +50,7 @@ async function _upsertOne({ entity, code, label, description, sortOrder, photoMi
       isSystem: true,
       isActive: true,
       sortOrder,
-      appliesTo: { executive: true, committee: true },
+      appliesTo: { executive: true, committee: true, jirga: true },
       photoPolicy,
       workflow: { extraStates: [], finalizeRequiresPhotos: !!finalizeRequiresPhotos },
       fields: [],
@@ -61,6 +62,7 @@ async function _upsertOne({ entity, code, label, description, sortOrder, photoMi
   // tampered with via a direct DB edit.
   let dirty = false;
   if (!existing.isSystem) { existing.isSystem = true; dirty = true; }
+  if (!existing.isActive) { existing.isActive = true; dirty = true; }
   if (existing.entity !== entity) { existing.entity = entity; dirty = true; }
   if (existing.code !== code) { existing.code = code; dirty = true; }
   if (entity === 'MEETING' && existing.label !== label) { existing.label = label; dirty = true; }
@@ -88,9 +90,9 @@ async function seedEventTypes() {
     if (r === 'reconciled') stats.reconciled++;
   }
 
-  // Deactivate any legacy meeting types in the DB that are not among the 3 canonical types
+  // Deactivate any legacy meeting types in the DB that are not among the canonical types
   await EventTypeConfig.updateMany(
-    { entity: 'MEETING', code: { $nin: ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE'] }, isActive: true },
+    { entity: 'MEETING', code: { $nin: ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE', 'JRG', 'JIRGA'] }, isActive: true },
     { $set: { isActive: false } }
   );
 

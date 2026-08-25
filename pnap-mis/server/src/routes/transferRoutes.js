@@ -16,6 +16,7 @@ router.get('/destination-preview',
   requirePermission('MANAGE_FINANCE', 'APPROVE_EXPENSE'), ctrl.destinationPreview);
 router.post('/', upload.single('receipt'), ctrl.initiate);
 router.post('/:id/acknowledge', ctrl.acknowledge);
+router.post('/:id/ack', ctrl.acknowledge);
 router.post('/:id/reject', ctrl.reject);
 
 module.exports = router;
