@@ -127,6 +127,12 @@ export function canDecideRole(user) {
 export function canInitiateRole(user) {
   return hasPermission(user, 'INITIATE_ROLE');
 }
+export function canManageJirgaMembers(user) {
+  return hasPermission(user, 'MANAGE_JIRGA_MEMBERS');
+}
+export function canManageCongressMembers(user) {
+  return hasPermission(user, 'MANAGE_CONGRESS_MEMBERS');
+}
 
 // CENTRAL_ADMIN role removed — kept as a no-op for backward
 // compatibility with callsites (always returns false).

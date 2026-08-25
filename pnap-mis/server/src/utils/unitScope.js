@@ -283,6 +283,28 @@ async function canManageJirgaMembers(user, unitLevel, unitId) {
   return !!active;
 }
 
+// National Congress members are assigned by the Central General Secretary
+// (or higher admin / Super Admin / Central Admin).
+async function canManageCongressMembers(user, unitLevel, unitId) {
+  if (unitLevel && unitLevel !== 'CENTRAL') return false;
+  if (!user) return false;
+  if (userHasRole(user, 'SUPER_ADMIN', 'CENTRAL_ADMIN')) return true;
+
+  if (!user.memberId) return false;
+  const { rolesWithPermission } = require('./permissions');
+  const grantingCodes = rolesWithPermission('MANAGE_CONGRESS_MEMBERS');
+  if (grantingCodes.length === 0) return false;
+  const RoleAssignment = require('../models/RoleAssignment');
+  const active = await RoleAssignment.findOne({
+    memberId: user.memberId,
+    roleCode: { $in: grantingCodes },
+    unitLevel: 'CENTRAL',
+    state: 'APPROVED',
+    endedAt: { $exists: false },
+  }).lean();
+  return !!active;
+}
+
 module.exports = {
   resolveUnitChain,
   isAdmin,
@@ -295,6 +317,7 @@ module.exports = {
   canPostAnnouncement,
   canManagePermanentMembers,
   canManageJirgaMembers,
+  canManageCongressMembers,
   unitWithinAreaAdminScope,
   memberWithinAreaAdminScope,
   resolveUserChain,
