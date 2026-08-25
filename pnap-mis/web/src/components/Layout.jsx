@@ -22,6 +22,7 @@ import { useBranding } from '../context/BrandingContext';
 import {
   UsersIcon, FolderIcon, BuildingIcon, GearIcon,
   UserIcon, PowerIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon,
+  CommitteeIcon, JirgaIcon, CongressIcon,
 } from './icons';
 
 const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
@@ -99,7 +100,8 @@ function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }
   return (
     <NavGroup
       label={label}
-      icon={<UsersIcon size={14} />}
+      icon={<CommitteeIcon size={14} />}
+      variant="committee"
       storageKey="pnap_nav_committee"
       defaultOpen={defaultOpen}
     >
@@ -122,7 +124,8 @@ function JirgaNav({ ctx, canFinance, showEvents = true, defaultOpen = false }) {
   return (
     <NavGroup
       label={label}
-      icon={<UsersIcon size={14} />}
+      icon={<JirgaIcon size={14} />}
+      variant="jirga"
       storageKey={`pnap_nav_jirga_${ctx.unitLevel.toLowerCase()}`}
       defaultOpen={defaultOpen}
     >
@@ -142,7 +145,8 @@ function CongressNav({ ctx, canFinance, showEvents = true, defaultOpen = false }
   return (
     <NavGroup
       label="National Congress"
-      icon={<UsersIcon size={14} />}
+      icon={<CongressIcon size={14} />}
+      variant="congress"
       storageKey="pnap_nav_congress"
       defaultOpen={defaultOpen}
     >
@@ -598,7 +602,7 @@ export default function Layout() {
 // Collapsible sidebar group — header chips between "open" and "closed",
 // with the open/closed state persisted in localStorage so the user's
 // preference survives reloads. Chevron rotates 90° on toggle.
-function NavGroup({ label, icon, children, storageKey, defaultOpen = false }) {
+function NavGroup({ label, icon, variant = '', children, storageKey, defaultOpen = false }) {
   const [open, setOpen] = useState(() => {
     if (!storageKey) return defaultOpen;
     const v = localStorage.getItem(storageKey);
@@ -614,7 +618,7 @@ function NavGroup({ label, icon, children, storageKey, defaultOpen = false }) {
     });
   }
   return (
-    <div className={`nav-collapsible ${open ? 'open' : ''}`}>
+    <div className={`nav-collapsible ${variant ? `nav-${variant}` : ''} ${open ? 'open' : ''}`}>
       <button type="button" className="nav-collapsible-head" onClick={toggle} aria-expanded={open}>
         {icon && <span className="nav-collapsible-icon" aria-hidden="true">{icon}</span>}
         <span className="nav-collapsible-label">{label}</span>
