@@ -56,14 +56,16 @@ function bodyClause(body) {
   if (body === 'EXECUTIVE' || body === 'NON_COMMITTEE') return { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] };
   if (body === 'COMMITTEE') return { body: 'COMMITTEE' };
   if (body === 'JIRGA') return { body: 'JIRGA' };
+  if (body === 'CONGRESS') return { body: 'CONGRESS' };
   return null;
 }
 
 // Write-side coercion, same style as activityController's
-// `requestedBody` — defaults to EXECUTIVE if not COMMITTEE or JIRGA.
+// `requestedBody` — defaults to EXECUTIVE if not COMMITTEE, JIRGA, or CONGRESS.
 function requestedBody(raw) {
   if (raw === 'COMMITTEE') return 'COMMITTEE';
   if (raw === 'JIRGA') return 'JIRGA';
+  if (raw === 'CONGRESS') return 'CONGRESS';
   return 'EXECUTIVE';
 }
 

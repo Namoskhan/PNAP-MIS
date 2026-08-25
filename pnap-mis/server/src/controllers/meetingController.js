@@ -25,10 +25,11 @@ async function resolveEventConfig(d, entity) {
   // Body applicability — if the type config restricts to one body
   // and the request asks for the other, reject before persisting.
   let requestedBody = d.body ? String(d.body).toUpperCase() : undefined;
-  if (!requestedBody || !['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY', 'JIRGA'].includes(requestedBody)) {
+  if (!requestedBody || !['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY', 'JIRGA', 'CONGRESS'].includes(requestedBody)) {
     if (rawCode === 'GBM' || rawCode === 'GENERAL_BODY') requestedBody = 'GENERAL_BODY';
     else if (rawCode === 'CMP' || rawCode === 'COMMITTEE') requestedBody = 'COMMITTEE';
     else if (rawCode === 'JRG' || rawCode === 'JIRGA') requestedBody = 'JIRGA';
+    else if (rawCode === 'CNG' || rawCode === 'CONGRESS') requestedBody = 'CONGRESS';
     else requestedBody = 'EXECUTIVE';
   }
   const appliesTo = config.appliesTo || {};
@@ -40,6 +41,9 @@ async function resolveEventConfig(d, entity) {
   }
   if (requestedBody === 'JIRGA' && appliesTo.jirga === false) {
     throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Jirga body`);
+  }
+  if (requestedBody === 'CONGRESS' && appliesTo.congress === false) {
+    throw new ApiError(400, 'BODY_NOT_ALLOWED', `Type "${rawCode}" cannot be run by the Congress body`);
   }
 
   // Dynamic-field validation against the snapshot. validate() throws
@@ -92,18 +96,20 @@ exports.list = asyncHandler(async (req, res) => {
   // Body filtering:
   // Legacy records pre-date the `body` field; treat them as EXECUTIVE unless their type is explicitly CMP or GBM.
   if (body === 'EXECUTIVE') {
-    and.push({ $or: [{ body: 'EXECUTIVE' }, { $and: [{ body: { $exists: false } }, { type: { $nin: ['CMP', 'COMMITTEE', 'GBM', 'GENERAL_BODY', 'JRG', 'JIRGA'] } }] }] });
+    and.push({ $or: [{ body: 'EXECUTIVE' }, { $and: [{ body: { $exists: false } }, { type: { $nin: ['CMP', 'COMMITTEE', 'GBM', 'GENERAL_BODY', 'JRG', 'JIRGA', 'CNG', 'CONGRESS'] } }] }] });
   } else if (body === 'COMMITTEE') {
     and.push({ $or: [{ body: 'COMMITTEE' }, { type: 'CMP' }, { type: 'COMMITTEE' }] });
   } else if (body === 'GENERAL_BODY') {
     and.push({ $or: [{ body: 'GENERAL_BODY' }, { type: 'GBM' }, { type: 'GENERAL_BODY' }] });
   } else if (body === 'JIRGA') {
     and.push({ $or: [{ body: 'JIRGA' }, { type: 'JRG' }, { type: 'JIRGA' }] });
+  } else if (body === 'CONGRESS') {
+    and.push({ $or: [{ body: 'CONGRESS' }, { type: 'CNG' }, { type: 'CONGRESS' }] });
   } else if (body === 'NON_COMMITTEE') {
     and.push({
       $and: [
-        { body: { $nin: ['COMMITTEE', 'JIRGA'] } },
-        { type: { $nin: ['CMP', 'COMMITTEE', 'JRG', 'JIRGA'] } },
+        { body: { $nin: ['COMMITTEE', 'JIRGA', 'CONGRESS'] } },
+        { type: { $nin: ['CMP', 'COMMITTEE', 'JRG', 'JIRGA', 'CNG', 'CONGRESS'] } },
       ],
     });
   }

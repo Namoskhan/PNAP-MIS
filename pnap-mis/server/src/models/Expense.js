@@ -38,7 +38,7 @@ const expenseSchema = new mongoose.Schema(
     // filter that uses it.
     body: {
       type: String,
-      enum: ['EXECUTIVE', 'COMMITTEE', 'JIRGA'],
+      enum: ['EXECUTIVE', 'COMMITTEE', 'JIRGA', 'CONGRESS'],
       default: 'EXECUTIVE',
       index: true,
     },

@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // itself no longer enforces this enum (PR 4a cutover): the
 // EventTypeConfig collection is the source of truth, and the
 // meetingController validates `typeCode` against it on create.
-const LEGACY_MEETING_TYPES = ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE', 'JRG', 'JIRGA', 'PRT', 'JLS', 'SEM', 'STC', 'OTH'];
+const LEGACY_MEETING_TYPES = ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE', 'JRG', 'JIRGA', 'CNG', 'CONGRESS', 'PRT', 'JLS', 'SEM', 'STC', 'OTH'];
 const STATES = ['DRAFT', 'SCHEDULED', 'IN_PROGRESS', 'PENDING_REPORT', 'FINALIZED', 'CANCELLED'];
 
 const photoSchema = new mongoose.Schema(
@@ -51,10 +51,10 @@ const meetingSchema = new mongoose.Schema(
     type: { type: String, required: true, uppercase: true, trim: true, index: true },
     // Meetings can be run by Executive (cabinet only), Committee (executive +
     // office-holders + permanent members), General Body (full basic unit membership),
-    // or Jirga (Qomi / Sobayi Jirga assembly).
+    // Jirga (Qomi / Sobayi Jirga assembly), or Congress (National Congress assembly).
     body: {
       type: String,
-      enum: ['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY', 'JIRGA'],
+      enum: ['EXECUTIVE', 'COMMITTEE', 'GENERAL_BODY', 'JIRGA', 'CONGRESS'],
       default: 'EXECUTIVE',
       index: true,
     },

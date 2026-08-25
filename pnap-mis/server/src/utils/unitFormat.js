@@ -106,6 +106,17 @@ function formatUnitArrangedBy(record, options = {}) {
   const level = record.unitLevel;
   if (!level) return '—';
 
+  const isCongress = options.isCongressView
+    || record.body === 'CONGRESS'
+    || record.type === 'CNG'
+    || record.type === 'CONGRESS'
+    || record.typeCode === 'CNG'
+    || record.typeCode === 'CONGRESS';
+
+  if (isCongress) {
+    return 'National Congress · Central';
+  }
+
   const isJirga = options.isJirgaView
     || record.body === 'JIRGA'
     || record.type === 'JRG'

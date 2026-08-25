@@ -17,6 +17,7 @@ const BUILTIN_MEETING_TYPES = [
   { code: 'EXC', label: 'Executive Meeting',     sortOrder: 20, description: 'Cabinet / executive meeting.' },
   { code: 'CMP', label: 'Committee Meeting',     sortOrder: 30, description: 'Committee meeting.' },
   { code: 'JRG', label: 'Jirga Meeting',         sortOrder: 40, description: 'Jirga assembly meeting.' },
+  { code: 'CNG', label: 'Congress Meeting',      sortOrder: 50, description: 'National Congress assembly meeting.' },
 ];
 
 const BUILTIN_ACTIVITY_TYPES = [
@@ -92,7 +93,7 @@ async function seedEventTypes() {
 
   // Deactivate any legacy meeting types in the DB that are not among the canonical types
   await EventTypeConfig.updateMany(
-    { entity: 'MEETING', code: { $nin: ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE', 'JRG', 'JIRGA'] }, isActive: true },
+    { entity: 'MEETING', code: { $nin: ['GBM', 'EXC', 'CMP', 'GENERAL_BODY', 'EXECUTIVE', 'COMMITTEE', 'JRG', 'JIRGA', 'CNG', 'CONGRESS'] }, isActive: true },
     { $set: { isActive: false } }
   );
 

@@ -58,6 +58,14 @@ export function resolveRecordUnitName(record) {
  */
 export function formatUnitArrangedBy(record, options = {}) {
   if (!record) return '';
+  const isCongress = options.isCongressView || record.body === 'CONGRESS';
+  if (isCongress) {
+    return 'National Congress · Central';
+  }
+  const isJirga = options.isJirgaView || record.body === 'JIRGA';
+  if (isJirga) {
+    return options.unitLevel === 'CENTRAL' || record.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : `Sobayi Jirga · ${resolveRecordUnitName(record) || options.unitName || ''}`;
+  }
   const isCommittee = options.isCommitteeView || record.body === 'COMMITTEE';
   const level = record.unitLevel || options.unitLevel;
   const name = resolveRecordUnitName(record) || options.unitName || '';

@@ -113,9 +113,10 @@ export default function FinancePage() {
   }, [user?.memberId, user?.roles?.join(',')]);
 
   const queryBody = new URLSearchParams(location.search).get('body');
+  const isCongressView = queryBody === 'CONGRESS';
   const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
-  const targetBody = isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE');
+  const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
   const [summary, setSummary] = useState(null);
   const [donations, setDonations] = useState([]);
@@ -183,19 +184,21 @@ export default function FinancePage() {
 
   const displayedDonations = useMemo(() => {
     return (donations || []).filter((d) => {
+      if (isCongressView) return d.body === 'CONGRESS';
       if (isJirgaView) return d.body === 'JIRGA';
       if (isCommitteeView) return d.body === 'COMMITTEE';
-      return d.body === 'EXECUTIVE' || !d.body || (d.body !== 'COMMITTEE' && d.body !== 'JIRGA');
+      return d.body === 'EXECUTIVE' || !d.body || (d.body !== 'COMMITTEE' && d.body !== 'JIRGA' && d.body !== 'CONGRESS');
     });
-  }, [donations, isCommitteeView, isJirgaView]);
+  }, [donations, isCommitteeView, isJirgaView, isCongressView]);
 
   const displayedExpenses = useMemo(() => {
     return (expenses || []).filter((e) => {
+      if (isCongressView) return e.body === 'CONGRESS';
       if (isJirgaView) return e.body === 'JIRGA';
       if (isCommitteeView) return e.body === 'COMMITTEE';
-      return e.body === 'EXECUTIVE' || !e.body || (e.body !== 'COMMITTEE' && e.body !== 'JIRGA');
+      return e.body === 'EXECUTIVE' || !e.body || (e.body !== 'COMMITTEE' && e.body !== 'JIRGA' && e.body !== 'CONGRESS');
     });
-  }, [expenses, isCommitteeView, isJirgaView]);
+  }, [expenses, isCommitteeView, isJirgaView, isCongressView]);
 
   useEffect(() => {
     if (!autoRefresh || !ctx) return;
@@ -423,9 +426,11 @@ export default function FinancePage() {
       <div className="page-header">
         <div>
           <h2>
-            {isJirgaView
-              ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Finance' : `Sobayi Jirga Finance · ${ctx.unitName}`)
-              : (isCommitteeView ? `Committee Finance · ${ctx.unitName}` : `Executive Finance · ${ctx.unitName}`)}
+            {isCongressView
+              ? 'National Congress Finance · PKNAP Central'
+              : (isJirgaView
+                ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Finance' : `Sobayi Jirga Finance · ${ctx.unitName}`)
+                : (isCommitteeView ? `Committee Finance · ${ctx.unitName}` : `Executive Finance · ${ctx.unitName}`))}
           </h2>
           <div className="subtitle">{ctx.unitLevel.replace('_', ' ')}</div>
         </div>
@@ -464,7 +469,7 @@ export default function FinancePage() {
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn" onClick={() => { setErr(''); setDonModalOpen(true); }}>
-                {isJirgaView ? '+ Record Jirga Donation' : (isCommitteeView ? '+ Record Committee Donation' : '+ Record Donation')}
+                {isCongressView ? '+ Record Congress Donation' : (isJirgaView ? '+ Record Jirga Donation' : (isCommitteeView ? '+ Record Committee Donation' : '+ Record Donation'))}
               </button>
             </div>
           )}
@@ -473,7 +478,7 @@ export default function FinancePage() {
               <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Donation">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <h3 style={{ margin: 0 }}>
-                    {isJirgaView ? 'Record Jirga Donation' : (isCommitteeView ? 'Record Committee Donation' : 'Record a Donation')}
+                    {isCongressView ? 'Record Congress Donation' : (isJirgaView ? 'Record Jirga Donation' : (isCommitteeView ? 'Record Committee Donation' : 'Record a Donation'))}
                   </h3>
                   <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
@@ -597,6 +602,10 @@ export default function FinancePage() {
                   ? 'Anonymous'
                   : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
 
+                const isCng = d.body === 'CONGRESS';
+                const isJrg = d.body === 'JIRGA';
+                const isCm = d.body === 'COMMITTEE';
+
                 return (
                   <tr key={d._id}>
                     <td>
@@ -605,21 +614,21 @@ export default function FinancePage() {
                           className="badge"
                           style={{
                             marginRight: 6,
-                            background: d.body === 'JIRGA' ? '#f3e8ff' : (d.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)'),
-                            color: d.body === 'JIRGA' ? '#6b21a8' : (d.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)'),
-                            border: d.body === 'JIRGA' ? '1px solid #d8b4fe' : undefined,
+                            background: isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)')),
+                            color: isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)')),
+                            border: isCng ? '1px solid #bae6fd' : (isJrg ? '1px solid #d8b4fe' : undefined),
                             fontWeight: 600,
                             fontSize: 11,
                           }}
                         >
-                          {d.body === 'JIRGA' ? 'Jirga' : (d.body === 'COMMITTEE' ? 'Committee' : 'Executive')}
+                          {isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
                         </span>
                         {d.receiptNo}
                       </div>
                       {d.unitLevel && (
                         <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
                           <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
-                            {formatUnitArrangedBy(d, { isCommitteeView, isJirgaView })}
+                            {formatUnitArrangedBy(d, { isCommitteeView, isJirgaView, isCongressView })}
                           </span>
                         </div>
                       )}
@@ -641,7 +650,7 @@ export default function FinancePage() {
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn" onClick={() => { setErr(''); setExpModalOpen(true); }}>
-                {isJirgaView ? '+ Record Jirga Expense' : (isCommitteeView ? '+ Record Committee Expense' : '+ Record Expense')}
+                {isCongressView ? '+ Record Congress Expense' : (isJirgaView ? '+ Record Jirga Expense' : (isCommitteeView ? '+ Record Committee Expense' : '+ Record Expense'))}
               </button>
             </div>
           )}
@@ -650,7 +659,7 @@ export default function FinancePage() {
               <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Expense">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <h3 style={{ margin: 0 }}>
-                    {isJirgaView ? 'Record Jirga Expense' : (isCommitteeView ? 'Record Committee Expense' : 'Record an Expense')}
+                    {isCongressView ? 'Record Congress Expense' : (isJirgaView ? 'Record Jirga Expense' : (isCommitteeView ? 'Record Committee Expense' : 'Record an Expense'))}
                   </h3>
                   <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
@@ -704,11 +713,15 @@ export default function FinancePage() {
               {displayedExpenses.length === 0 && (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                    No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} expenses recorded yet.
+                    No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} expenses recorded yet.
                   </td>
                 </tr>
               )}
-              {displayedExpenses.map((x) => (
+              {displayedExpenses.map((x) => {
+                const isCng = x.body === 'CONGRESS';
+                const isJrg = x.body === 'JIRGA';
+                const isCm = x.body === 'COMMITTEE';
+                return (
                 <tr key={x._id}>
                   <td>{new Date(x.incurredAt).toLocaleDateString()}</td>
                   <td>
@@ -716,14 +729,14 @@ export default function FinancePage() {
                       className="badge"
                       style={{
                         marginRight: 6,
-                        background: x.body === 'JIRGA' ? '#f3e8ff' : (x.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)'),
-                        color: x.body === 'JIRGA' ? '#6b21a8' : (x.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)'),
-                        border: x.body === 'JIRGA' ? '1px solid #d8b4fe' : undefined,
+                        background: isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)')),
+                        color: isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)')),
+                        border: isCng ? '1px solid #bae6fd' : (isJrg ? '1px solid #d8b4fe' : undefined),
                         fontWeight: 600,
                         fontSize: 11,
                       }}
                     >
-                      {x.body === 'JIRGA' ? 'Jirga' : (x.body === 'COMMITTEE' ? 'Committee' : 'Executive')}
+                      {isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
                     </span>
                     {x.category}
                   </td>
@@ -732,7 +745,7 @@ export default function FinancePage() {
                     {x.unitLevel && (
                       <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
                         <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
-                          {formatUnitArrangedBy(x, { isCommitteeView, isJirgaView })}
+                          {formatUnitArrangedBy(x, { isCommitteeView, isJirgaView, isCongressView })}
                         </span>
                       </div>
                     )}
@@ -746,8 +759,9 @@ export default function FinancePage() {
                       <button className="btn danger" onClick={() => decideExpense(x._id, 'REJECTED')}>Reject</button>
                     </>
                   )}</td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </>

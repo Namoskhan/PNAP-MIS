@@ -75,7 +75,7 @@ function committeeLabel(unitLevel) {
 // param still highlights the entry it belongs to.
 function UnitNavLink({ to, body = null, children }) {
   const { search } = useLocation();
-  const norm = (v) => (v === 'COMMITTEE' ? 'COMMITTEE' : v === 'JIRGA' ? 'JIRGA' : 'EXECUTIVE');
+  const norm = (v) => (v === 'COMMITTEE' ? 'COMMITTEE' : (v === 'JIRGA' ? 'JIRGA' : (v === 'CONGRESS' ? 'CONGRESS' : 'EXECUTIVE')));
   const current = norm(new URLSearchParams(search).get('body'));
   const target = body ? `${to}?body=${body}` : to;
   return (
@@ -137,7 +137,7 @@ function JirgaNav({ ctx, canFinance, showEvents = true, defaultOpen = false }) {
 }
 
 // National Congress hub — supreme assembly at Central level.
-function CongressNav({ ctx, defaultOpen = false }) {
+function CongressNav({ ctx, canFinance, showEvents = true, defaultOpen = false }) {
   if (!ctx || ctx.unitLevel !== 'CENTRAL') return null;
   return (
     <NavGroup
@@ -147,6 +147,10 @@ function CongressNav({ ctx, defaultOpen = false }) {
       defaultOpen={defaultOpen}
     >
       <UnitNavLink to="/unit/congress">Congress Roster</UnitNavLink>
+      {showEvents && <UnitNavLink to="/unit/meetings" body="CONGRESS">Congress Meetings</UnitNavLink>}
+      {showEvents && <UnitNavLink to="/unit/activities" body="CONGRESS">Congress Activities</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/finance" body="CONGRESS">Congress Finance</UnitNavLink>}
+      <UnitNavLink to="/unit/reports" body="CONGRESS">Congress Reports</UnitNavLink>
     </NavGroup>
   );
 }
@@ -305,7 +309,7 @@ export default function Layout() {
               <UnitNavLink to="/unit/transfers">Central Fund Transfers</UnitNavLink>
               <UnitNavLink to="/unit/reports">Central Reports</UnitNavLink>
             </nav>
-            <CongressNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} defaultOpen={false} />
+            <CongressNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
             <JirgaNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
             {/* Super Admin removed from Committee group per request. */}
           </>
@@ -346,7 +350,7 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            <CongressNav ctx={ctx} defaultOpen={false} />
+            <CongressNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
             <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
@@ -399,6 +403,7 @@ export default function Layout() {
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
+            <CongressNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
             <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
@@ -423,6 +428,7 @@ export default function Layout() {
             {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
               <CommitteeNav ctx={ctx} canFinance={canFinance} />
             )}
+            <CongressNav ctx={ctx} canFinance={canFinance} />
             <JirgaNav ctx={ctx} canFinance={canFinance} />
           </>
         )}
@@ -448,8 +454,9 @@ export default function Layout() {
               )}
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            {/* The Finance Secretary keeps the unit's books for Executive, Committee, and Jirga bodies */}
+            {/* The Finance Secretary keeps the unit's books for Executive, Committee, Jirga, and Congress bodies */}
             <CommitteeNav ctx={ctx} canFinance={canFinance} showEvents={false} />
+            <CongressNav ctx={ctx} canFinance={canFinance} showEvents={false} />
             <JirgaNav ctx={ctx} canFinance={canFinance} showEvents={false} />
           </>
         )}
@@ -492,7 +499,7 @@ export default function Layout() {
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
-            <CongressNav ctx={ctx} />
+            <CongressNav ctx={ctx} canFinance={canFinance} />
             <JirgaNav ctx={ctx} canFinance={canFinance} />
           </>
         )}
@@ -528,7 +535,7 @@ export default function Layout() {
               )}
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
-            <CongressNav ctx={ctx} />
+            <CongressNav ctx={ctx} canFinance={canFinance} />
             <JirgaNav ctx={ctx} canFinance={canFinance} />
           </>
         )}

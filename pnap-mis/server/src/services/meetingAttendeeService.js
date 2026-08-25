@@ -6,6 +6,7 @@ const Province = require('../models/Province');
 const Member = require('../models/Member');
 const PermanentMembership = require('../models/PermanentMembership');
 const JirgaMember = require('../models/JirgaMember');
+const CongressMember = require('../models/CongressMember');
 
 const SUBORDINATE_KEY_ROLES = [
   'SECRETARY', 'SENIOR_MAWIN', 'PRESIDENT', 'GENERAL_SECRETARY', 'FIRST_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
@@ -47,9 +48,55 @@ function formatMemberUnitText(m) {
  * 2. Committee Meeting: Committee composition (own cabinet + subordinate key roles + permanent members)
  * 3. General Body Meeting: All members (role holders or not) of that level and below (subordinates)
  * 4. Jirga Meeting: Active Jirga assembly members of that Central / Province unit
+ * 5. Congress Meeting: Active National Congress assembly members (Central level)
  */
 async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
-  const normBody = body || (typeCode === 'GBM' || typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : (typeCode === 'CMP' || typeCode === 'COMMITTEE' ? 'COMMITTEE' : (typeCode === 'JRG' || typeCode === 'JIRGA' ? 'JIRGA' : 'EXECUTIVE')));
+  const normBody = body || (typeCode === 'GBM' || typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : (typeCode === 'CMP' || typeCode === 'COMMITTEE' ? 'COMMITTEE' : (typeCode === 'JRG' || typeCode === 'JIRGA' ? 'JIRGA' : (typeCode === 'CNG' || typeCode === 'CONGRESS' ? 'CONGRESS' : 'EXECUTIVE'))));
+
+  if (normBody === 'CONGRESS') {
+    const congressMembers = await CongressMember.find({
+      isActive: true,
+    })
+      .populate({
+        path: 'memberId',
+        select: 'fullName memberId phone photoUrl cnic status basicUnitId areaId districtId provinceId',
+        populate: [
+          { path: 'basicUnitId', select: 'name' },
+          { path: 'areaId', select: 'name' },
+          { path: 'districtId', select: 'name code' },
+          { path: 'provinceId', select: 'name code' },
+        ],
+      })
+      .lean();
+
+    const attendeesMap = new Map();
+    for (const cm of congressMembers) {
+      if (cm.memberId && cm.memberId._id && cm.memberId.status !== 'INACTIVE') {
+        const idStr = String(cm.memberId._id);
+        const roleLabel = cm.assignedRoleSnapshot?.customRoleName
+          || (cm.assignedRoleSnapshot?.roleCode ? cm.assignedRoleSnapshot.roleCode.replace(/_/g, ' ') : '')
+          || 'Congress Member';
+        const unitName = cm.assignedRoleSnapshot?.unitName ? ` · ${cm.assignedRoleSnapshot.unitName}` : '';
+        const roleTag = `${roleLabel}${unitName}`;
+        attendeesMap.set(idStr, {
+          _id: cm.memberId._id,
+          fullName: cm.memberId.fullName,
+          memberId: cm.memberId.memberId,
+          phone: cm.memberId.phone,
+          cnic: cm.memberId.cnic,
+          roleText: roleTag,
+          unitText: formatMemberUnitText(cm.memberId),
+          basicUnitId: cm.memberId.basicUnitId,
+          areaId: cm.memberId.areaId,
+          districtId: cm.memberId.districtId,
+          provinceId: cm.memberId.provinceId,
+          category: 'CONGRESS',
+        });
+      }
+    }
+
+    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+  }
 
   if (normBody === 'JIRGA') {
     const jirgaMembers = await JirgaMember.find({
