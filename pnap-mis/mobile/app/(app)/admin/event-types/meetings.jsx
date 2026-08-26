@@ -1,4 +1,4 @@
-import { EventTypeList } from './_shared';
+import { EventTypeList } from '../../../../src/components/EventTypeList';
 export default function MeetingTypesScreen() {
   return <EventTypeList entity="MEETING" title="Meeting Types" icon="📅" />;
 }

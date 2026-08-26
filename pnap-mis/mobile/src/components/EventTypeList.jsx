@@ -4,15 +4,15 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { api, errorMessage } from '../../../../src/api/client';
-import { useAuth } from '../../../../src/context/AuthContext';
-import { hasPermission } from '../../../../src/utils/permissions';
-import { confirmAction } from '../../../../src/utils/dialog';
-import { useToast } from '../../../../src/components/Toast';
-import Card from '../../../../src/components/Card';
-import Badge from '../../../../src/components/Badge';
-import EmptyState from '../../../../src/components/EmptyState';
-import { Colors, FontSize, Spacing } from '../../../../src/constants/colors';
+import { api, errorMessage } from '../api/client';
+import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
+import { confirmAction } from '../utils/dialog';
+import { useToast } from './Toast';
+import Card from './Card';
+import Badge from './Badge';
+import EmptyState from './EmptyState';
+import { Colors, FontSize, Spacing } from '../constants/colors';
 
 // Shared component used by both meetings.jsx and activities.jsx
 export function EventTypeList({ entity, title, icon }) {

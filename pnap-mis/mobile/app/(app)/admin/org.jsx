@@ -12,19 +12,18 @@ import Card from '../../../src/components/Card';
 import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
 
-// Role-aware tier map
 const TIER_CONFIG = {
-  CENTRAL_ADMIN:   { title: 'Provinces', singular: 'Province',  listEP: '/org/provinces',  createEP: '/org/provinces',  deleteEP: null, canDelete: false },
-  PROVINCE_ADMIN:  { title: 'Districts', singular: 'District',  listEP: '/org/districts',  createEP: '/org/districts',  deleteEP: null, canDelete: false },
-  DISTRICT_ADMIN:  { title: 'Areas',     singular: 'Area',      listEP: '/org/areas',      createEP: '/org/areas',      deleteEP: null, canDelete: false },
-  AREA_ADMIN:      { title: 'Basic Units', singular: 'Basic Unit', listEP: '/org/basic-units', createEP: '/org/basic-units', deleteEP: null, canDelete: false },
+  CENTRAL_ADMIN:   { title: 'Provinces', singular: 'Province',  listEP: '/org/provinces',  createEP: '/org/provinces',  deleteEP: null, canDelete: false, showCreateAdmin: true, childAdminRole: 'PROVINCE_ADMIN' },
+  PROVINCE_ADMIN:  { title: 'Districts', singular: 'District',  listEP: '/org/districts',  createEP: '/org/districts',  deleteEP: null, canDelete: false, showCreateAdmin: true, childAdminRole: 'DISTRICT_ADMIN' },
+  DISTRICT_ADMIN:  { title: 'Areas',     singular: 'Area',      listEP: '/org/areas',      createEP: '/org/areas',      deleteEP: null, canDelete: false, showCreateAdmin: true, childAdminRole: 'AREA_ADMIN' },
+  AREA_ADMIN:      { title: 'Basic Units', singular: 'Basic Unit', listEP: '/org/basic-units', createEP: '/org/basic-units', deleteEP: null, canDelete: false, showCreateAdmin: false, childAdminRole: null },
 };
 
 const SUPER_LEVELS = [
-  { level: 'PROVINCE', title: 'Provinces', singular: 'Province', listEP: '/org/provinces', createEP: '/org/provinces', deleteEP: (id) => `/org/provinces/${id}`, canDelete: true, parentParam: null },
-  { level: 'DISTRICT', title: 'Districts', singular: 'District', listEP: '/org/districts', createEP: '/org/districts', deleteEP: (id) => `/org/districts/${id}`, canDelete: true, parentParam: 'provinceId' },
-  { level: 'AREA', title: 'Areas', singular: 'Area', listEP: '/org/areas', createEP: '/org/areas', deleteEP: (id) => `/org/areas/${id}`, canDelete: true, parentParam: 'districtId' },
-  { level: 'BASIC_UNIT', title: 'Basic Units', singular: 'Basic Unit', listEP: '/org/basic-units', createEP: '/org/basic-units', deleteEP: (id) => `/org/basic-units/${id}`, canDelete: true, parentParam: 'areaId' }
+  { level: 'PROVINCE', title: 'Provinces', singular: 'Province', listEP: '/org/provinces', createEP: '/org/provinces', deleteEP: (id) => `/org/provinces/${id}`, canDelete: true, parentParam: null, showCreateAdmin: true, childAdminRole: 'PROVINCE_ADMIN' },
+  { level: 'DISTRICT', title: 'Districts', singular: 'District', listEP: '/org/districts', createEP: '/org/districts', deleteEP: (id) => `/org/districts/${id}`, canDelete: true, parentParam: 'provinceId', showCreateAdmin: true, childAdminRole: 'DISTRICT_ADMIN' },
+  { level: 'AREA', title: 'Areas', singular: 'Area', listEP: '/org/areas', createEP: '/org/areas', deleteEP: (id) => `/org/areas/${id}`, canDelete: true, parentParam: 'districtId', showCreateAdmin: true, childAdminRole: 'AREA_ADMIN' },
+  { level: 'BASIC_UNIT', title: 'Basic Units', singular: 'Basic Unit', listEP: '/org/basic-units', createEP: '/org/basic-units', deleteEP: (id) => `/org/basic-units/${id}`, canDelete: true, parentParam: 'areaId', showCreateAdmin: false, childAdminRole: null }
 ];
 
 function detectTier(user) {
@@ -62,6 +61,12 @@ export default function OrgScreen() {
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
+  
+  // Admin fields
+  const [adminFullName, setAdminFullName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('');
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -78,6 +83,14 @@ export default function OrgScreen() {
 
   async function handleCreate() {
     if (!name.trim()) { toast.error('Name is required.'); return; }
+    
+    if (config.showCreateAdmin) {
+      if (!adminFullName.trim()) { toast.error('Admin name is required.'); return; }
+      if (!adminEmail.trim()) { toast.error('Admin email is required.'); return; }
+      if (!adminPassword || adminPassword.length < 6) { toast.error('Admin password must be at least 6 characters.'); return; }
+      if (adminPassword !== adminPasswordConfirm) { toast.error('Passwords do not match.'); return; }
+    }
+
     setSaving(true);
     try {
       const body = {
@@ -85,11 +98,39 @@ export default function OrgScreen() {
         ...(code.trim() ? { code: code.trim().toUpperCase() } : {}),
         ...scopeParams(user, tier, trail),
       };
-      await api.post(config.createEP, body);
+      const r = await api.post(config.createEP, body);
+      const child = r.data.data;
+
+      if (config.showCreateAdmin && config.childAdminRole) {
+        const scope = {};
+        if (config.childAdminRole === 'PROVINCE_ADMIN') scope.provinceId = child._id;
+        if (config.childAdminRole === 'DISTRICT_ADMIN') scope.districtId = child._id;
+        if (config.childAdminRole === 'AREA_ADMIN') scope.areaId = child._id;
+        
+        try {
+          await api.post('/admin/users', {
+            fullName: adminFullName.trim(),
+            email: adminEmail.trim(),
+            password: adminPassword,
+            role: config.childAdminRole,
+            scope,
+          });
+        } catch (adminErr) {
+          toast.error(`${config.singular} created, but admin failed: ${errorMessage(adminErr)}`);
+          setCreateOpen(false);
+          load();
+          return;
+        }
+      }
+
       toast.success(`${config.singular} created successfully.`);
       setCreateOpen(false);
       setName('');
       setCode('');
+      setAdminFullName('');
+      setAdminEmail('');
+      setAdminPassword('');
+      setAdminPasswordConfirm('');
       load();
     } catch (e) { toast.error(errorMessage(e)); }
     finally { setSaving(false); }
@@ -187,7 +228,7 @@ export default function OrgScreen() {
               <Text style={styles.modalClose}>✕</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.modalBody}>
+          <ScrollView style={styles.modalBody}>
             <Text style={styles.fieldLabel}>Name *</Text>
             <TextInput
               style={styles.input}
@@ -204,9 +245,52 @@ export default function OrgScreen() {
               placeholder="e.g. QIL, PES, BL"
               autoCapitalize="characters"
             />
-          </View>
+            
+            {config.showCreateAdmin && (
+              <>
+                <Text style={styles.sectionTitle}>{config.singular} Admin Account</Text>
+                <Text style={styles.sectionDesc}>This {config.childAdminRole?.replace('_', ' ').toLowerCase()} will manage all units below.</Text>
+                
+                <Text style={styles.fieldLabel}>Admin Full Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={adminFullName}
+                  onChangeText={setAdminFullName}
+                  placeholder="e.g. Ali Khan"
+                />
+                
+                <Text style={styles.fieldLabel}>Admin Email *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={adminEmail}
+                  onChangeText={setAdminEmail}
+                  placeholder="admin@example.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                
+                <Text style={styles.fieldLabel}>Password * (min 6 chars)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={adminPassword}
+                  onChangeText={setAdminPassword}
+                  placeholder="Password"
+                  secureTextEntry
+                />
+                
+                <Text style={styles.fieldLabel}>Confirm Password *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={adminPasswordConfirm}
+                  onChangeText={setAdminPasswordConfirm}
+                  placeholder="Confirm Password"
+                  secureTextEntry
+                />
+              </>
+            )}
+          </ScrollView>
           <View style={styles.modalFooter}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setCreateOpen(false); setName(''); setCode(''); }}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => { setCreateOpen(false); setName(''); setCode(''); setAdminFullName(''); setAdminEmail(''); setAdminPassword(''); setAdminPasswordConfirm(''); }}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveBtn} onPress={handleCreate} disabled={saving}>
@@ -251,4 +335,6 @@ const styles = StyleSheet.create({
   backBtnText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.text },
   trailScroll: { alignItems: 'center' },
   trailText: { fontSize: FontSize.sm, fontWeight: '500', color: Colors.textMuted },
+  sectionTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text, marginTop: Spacing.md, marginBottom: 2 },
+  sectionDesc: { fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: Spacing.md },
 });
