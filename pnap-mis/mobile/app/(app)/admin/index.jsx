@@ -1,4 +1,15 @@
-import { ScrollView, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
@@ -9,18 +20,22 @@ import {
   hasRole,
 } from '../../../src/utils/permissions';
 import Badge from '../../../src/components/Badge';
+import { Ionicons } from '@expo/vector-icons';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function AdminHubScreen() {
   const { user } = useAuth();
   const { ctx } = useUnit();
   const router = useRouter();
 
-  // Persona detection
   const isSuper = isSuperAdmin(user);
+  const isCentral = hasRole(user, 'CENTRAL_ADMIN');
   const isProvince = hasRole(user, 'PROVINCE_ADMIN');
   const isDistrict = hasRole(user, 'DISTRICT_ADMIN');
   const isArea = hasRole(user, 'AREA_ADMIN');
-  const isCentral = hasRole(user, 'CENTRAL_ADMIN');
 
   const tierTitle = isSuper
     ? 'Super Admin'
@@ -62,7 +77,9 @@ export default function AdminHubScreen() {
 
   const sections = [
     {
+      key: 'god_mode',
       title: 'God Mode',
+      icon: '👑',
       show: () => isSuper,
       items: [
         { key: 'dashboard', icon: '🏠', title: 'Dashboard', description: 'Central Command Center', route: '/' },
@@ -74,7 +91,9 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'user_manager',
       title: 'User Manager',
+      icon: '👥',
       show: () => isSuper,
       items: [
         { key: 'roles', icon: '🛡️', title: 'Role Management', description: 'Define system roles and configure permissions.', route: '/admin/roles' },
@@ -83,7 +102,9 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'event_manager',
       title: 'Event Manager',
+      icon: '📁',
       show: () => isSuper || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_EVENT_CONFIG'),
       items: [
         { key: 'event-types-meetings', icon: '📅', title: 'Meeting Types', description: 'Configure meeting type taxonomy and rules.', route: '/admin/event-types/meetings' },
@@ -92,7 +113,9 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'unit_mgmt',
       title: 'Unit Management',
+      icon: '🏢',
       show: () => isSuper,
       items: [
         { key: 'unit-mgmt', icon: '🏗️', title: 'Overview', description: 'Unit Management Overview', route: '/admin/units' },
@@ -106,7 +129,9 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'settings',
       title: 'Settings',
+      icon: '⚙️',
       show: () => isSuper || hasPermission(user, 'VIEW_SYSTEM_BRANDING') || hasPermission(user, 'MANAGE_SYSTEM_BRANDING'),
       items: [
         { key: 'settings-brand', icon: '⚙️', title: 'Branding Overview', description: 'View current system identity and branding configuration.', route: '/admin/settings' },
@@ -121,7 +146,9 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'central_tier',
       title: 'Central Tier',
+      icon: '🏛️',
       show: () => isSuper,
       items: [
         { key: 'central-dash', icon: '🏠', title: 'Central Dashboard', description: 'Central level analytics', route: '/' },
@@ -136,7 +163,9 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'congress',
       title: 'National Congress',
+      icon: '🤝',
       show: () => isSuper || isCentral,
       items: [
         { key: 'congress-roster', icon: '👥', title: 'Congress Roster', description: 'National Congress composition & member assignments', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
@@ -147,7 +176,9 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'jirga',
       title: 'Qomi Jirga',
+      icon: '⚖️',
       show: () => isSuper || isCentral,
       items: [
         { key: 'jirga-comp', icon: '⚖️', title: 'Jirga Composition', description: 'Central Jirga members & elders assembly', route: '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' },
@@ -159,16 +190,19 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'communication',
       title: 'Communication',
+      icon: '📢',
       show: () => true,
       items: [
         { key: 'notifications', icon: '🔔', title: 'Notifications', description: 'System alerts and updates', route: '/notifications' },
         { key: 'announcements', icon: '📢', title: 'Announcements', description: 'Org wide broadcasts & direct messages', route: '/announcements' },
       ],
     },
-    // The legacy fallback section for non-super admins.
     {
+      key: 'admin_tools',
       title: 'Administrative Tools',
+      icon: '🛠️',
       show: () => !isSuper && (isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN')),
       items: [
         { key: 'breakdown', icon: '📊', title: breakdownTitle, description: 'Activity, membership & finance stats.', route: '/admin/breakdown', show: () => isProvince || isDistrict || isCentral },
@@ -183,61 +217,81 @@ export default function AdminHubScreen() {
 
   const visibleSections = sections.filter(s => s.show() && s.items.length > 0);
 
+  const [openSections, setOpenSections] = useState({
+    god_mode: true,
+    user_manager: true,
+    communication: true,
+    admin_tools: true,
+  });
+
+  function toggleSection(key) {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function setAllSections(open) {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const updated = {};
+    visibleSections.forEach((s) => { updated[s.key] = open; });
+    setOpenSections(updated);
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Hero Card */}
         <View style={styles.heroRow}>
           <View style={styles.heroHeader}>
             <Text style={styles.heroIcon}>🛡️</Text>
             <View style={styles.heroText}>
               <Text style={styles.heroTitle}>{tierTitle} Panel</Text>
-              <Text style={styles.heroSub}>
-                {ctx?.unitName ? `${ctx.unitName}` : 'Administrative Control Center'}
-              </Text>
+              <Text style={styles.heroSub}>{ctx?.unitName || 'Administrative Control Center'}</Text>
             </View>
           </View>
           <View style={styles.heroTagRow}>
-            <Badge
-              label={user?.roles?.[0]?.replace(/_/g, ' ') || 'Admin'}
-              color="#fff"
-              bg="rgba(255,255,255,0.2)"
-            />
-            {ctx?.unitLevel ? (
-              <Badge
-                label={`Tier: ${ctx.unitLevel}`}
-                color="rgba(255,255,255,0.9)"
-                bg="rgba(0,0,0,0.2)"
-              />
-            ) : null}
+            <Badge label={user?.roles?.[0]?.replace(/_/g, ' ') || 'Admin'} color="#fff" bg="rgba(255,255,255,0.2)" />
+            {ctx?.unitLevel && <Badge label={`Tier: ${ctx.unitLevel}`} color="rgba(255,255,255,0.9)" bg="rgba(0,0,0,0.2)" />}
+          </View>
+        </View>
+
+        <View style={styles.accordionControlsRow}>
+          <Text style={styles.sectionsHeaderLabel}>SECTIONS & MODULES</Text>
+          <View style={styles.accordionBtns}>
+            <TouchableOpacity onPress={() => setAllSections(true)} style={styles.miniBtn}><Text style={styles.miniBtnText}>Expand all</Text></TouchableOpacity>
+            <Text style={styles.miniDivider}>·</Text>
+            <TouchableOpacity onPress={() => setAllSections(false)} style={styles.miniBtn}><Text style={styles.miniBtnText}>Collapse all</Text></TouchableOpacity>
           </View>
         </View>
 
         {visibleSections.length === 0 && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No administrative tools available for your current role.</Text>
-          </View>
+          <View style={styles.empty}><Text style={styles.emptyText}>No administrative tools available for your current role.</Text></View>
         )}
 
-        {visibleSections.map((section) => (
-          <View key={section.title} style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.grid}>
-              {section.items.map((card) => (
-                <TouchableOpacity
-                  key={card.key}
-                  style={styles.card}
-                  onPress={() => router.push(card.route)}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.cardIcon}>{card.icon}</Text>
-                  <Text style={styles.cardTitle}>{card.title}</Text>
-                  <Text style={styles.cardDesc} numberOfLines={2}>{card.description}</Text>
-                </TouchableOpacity>
-              ))}
+        {visibleSections.map((section) => {
+          const isOpen = !!openSections[section.key];
+          return (
+            <View key={section.key} style={styles.sectionContainer}>
+              <TouchableOpacity style={[styles.sectionHeaderBtn, isOpen && styles.sectionHeaderBtnOpen]} onPress={() => toggleSection(section.key)} activeOpacity={0.7}>
+                <View style={styles.sectionHeaderLeft}>
+                  <Text style={styles.sectionHeaderIcon}>{section.icon}</Text>
+                  <Text style={styles.sectionHeaderTitle}>{section.title}</Text>
+                  <View style={styles.countBadge}><Text style={styles.countBadgeText}>{section.items.length}</Text></View>
+                </View>
+                <Ionicons name={isOpen ? 'chevron-down' : 'chevron-forward'} size={20} color={isOpen ? Colors.primary : Colors.textMuted} />
+              </TouchableOpacity>
+              {isOpen && (
+                <View style={styles.grid}>
+                  {section.items.map((card) => (
+                    <TouchableOpacity key={card.key} style={styles.card} onPress={() => router.push(card.route)} activeOpacity={0.75}>
+                      <Text style={styles.cardIcon}>{card.icon}</Text>
+                      <Text style={styles.cardTitle}>{card.title}</Text>
+                      <Text style={styles.cardDesc} numberOfLines={2}>{card.description}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -246,42 +300,32 @@ export default function AdminHubScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   content: { padding: Spacing.lg, paddingBottom: 40 },
-  heroRow: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.xl,
-    shadowColor: Colors.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-  },
+  heroRow: { backgroundColor: Colors.primary, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.lg, shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 6 },
   heroHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
   heroIcon: { fontSize: 32 },
   heroText: { flex: 1 },
   heroTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
   heroSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   heroTagRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  sectionContainer: { marginBottom: Spacing.xl },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginBottom: Spacing.md, marginLeft: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
-    width: '47%',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  cardIcon: { fontSize: 28, marginBottom: Spacing.sm },
-  cardTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text, marginBottom: 4 },
-  cardDesc: { fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 16 },
+  accordionControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md, paddingHorizontal: 4 },
+  sectionsHeaderLabel: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.textMuted, letterSpacing: 0.5 },
+  accordionBtns: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  miniBtn: { paddingVertical: 2, paddingHorizontal: 4 },
+  miniBtnText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
+  miniDivider: { fontSize: FontSize.xs, color: Colors.textLight },
+  sectionContainer: { marginBottom: Spacing.md, backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+  sectionHeaderBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
+  sectionHeaderBtnOpen: { borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: '#f8fafc' },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  sectionHeaderIcon: { fontSize: 20 },
+  sectionHeaderTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text },
+  countBadge: { paddingHorizontal: 7, paddingVertical: 2, backgroundColor: '#eff6ff', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#dbeafe' },
+  countBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, padding: Spacing.md, backgroundColor: Colors.background },
+  card: { backgroundColor: Colors.surface, borderRadius: Radius.md, padding: Spacing.md, width: '47.5%', borderWidth: 1, borderColor: Colors.border, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  cardIcon: { fontSize: 24, marginBottom: Spacing.xs },
+  cardTitle: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text, marginBottom: 2 },
+  cardDesc: { fontSize: 11, color: Colors.textMuted, lineHeight: 15 },
   empty: { alignItems: 'center', paddingVertical: 40 },
   emptyText: { color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center' },
 });
