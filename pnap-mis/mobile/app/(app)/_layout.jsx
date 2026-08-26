@@ -139,6 +139,20 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/event-types/meetings" options={{ href: null, headerTitle: 'Meeting Types', headerShown: true }} />
       <Tabs.Screen name="admin/event-types/activities" options={{ href: null, headerTitle: 'Activity Types', headerShown: true }} />
       <Tabs.Screen name="admin/event-types/[id]" options={{ href: null, headerTitle: 'Event Type Editor', headerShown: true }} />
+      <Tabs.Screen name="admin/event-types/_shared" options={{ href: null, headerTitle: 'Shared', headerShown: true }} />
+      <Tabs.Screen name="admin/finance-overview" options={{ href: null, headerTitle: 'Finance Overview', headerShown: true }} />
+      <Tabs.Screen name="admin/pending-approvals" options={{ href: null, headerTitle: 'Pending Approvals', headerShown: true }} />
+      <Tabs.Screen name="admin/units/index" options={{ href: null, headerTitle: 'Unit Management', headerShown: true }} />
+      <Tabs.Screen name="admin/units/tier-configs" options={{ href: null, headerTitle: 'Unit Type Manager', headerShown: true }} />
+      <Tabs.Screen name="admin/units/cabinet-templates" options={{ href: null, headerTitle: 'Cabinet Structure', headerShown: true }} />
+      <Tabs.Screen name="admin/units/policies" options={{ href: null, headerTitle: 'Unit Policies', headerShown: true }} />
+      <Tabs.Screen name="admin/units/workflows" options={{ href: null, headerTitle: 'Workflow Manager', headerShown: true }} />
+      <Tabs.Screen name="admin/units/responsibility-templates" options={{ href: null, headerTitle: 'Responsibility Templates', headerShown: true }} />
+      <Tabs.Screen name="admin/units/performance-rulesets" options={{ href: null, headerTitle: 'Performance Rules', headerShown: true }} />
+      <Tabs.Screen name="admin/units/report-templates" options={{ href: null, headerTitle: 'Report Templates', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/identity" options={{ href: null, headerTitle: 'System Identity', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/logos" options={{ href: null, headerTitle: 'Logo Manager', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/theme" options={{ href: null, headerTitle: 'Theme Manager', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />

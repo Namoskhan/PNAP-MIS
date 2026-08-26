@@ -17,6 +17,7 @@ import { isPureMember, canManageFinance, roleLabel } from '../../src/utils/permi
 import KpiCard from '../../src/components/KpiCard';
 import Card from '../../src/components/Card';
 import Badge from '../../src/components/Badge';
+import CommandCenter from '../../src/components/CommandCenter';
 import { Colors, FontSize, Spacing } from '../../src/constants/colors';
 import { shortDate, relativeTime, PKR, MEETING_TYPE_LABEL } from '../../src/utils/formatters';
 
@@ -62,11 +63,21 @@ export default function DashboardScreen() {
     }
   }
 
-  useEffect(() => { load(); }, [isMember, ctx?.unitId]);
+  const isSuperOrCentral = user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('CENTRAL_ADMIN') || !!user?.canViewExecutiveDashboard;
+
+  useEffect(() => { 
+    if (!isSuperOrCentral) {
+      load(); 
+    }
+  }, [isMember, ctx?.unitId, isSuperOrCentral]);
 
   function onRefresh() {
     setRefreshing(true);
     load(true);
+  }
+
+  if (isSuperOrCentral) {
+    return <CommandCenter />;
   }
 
   if (loading) {

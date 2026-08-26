@@ -510,34 +510,48 @@ export default function Layout() {
 
         {!isSuperAdmin && !isCentralAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
           <>
-            <div className="nav-group">
-              {user?.canViewExecutiveDashboard ? 'CENTRAL · PKNAP CENTRAL' : 'Global'}
-            </div>
-            <nav>
-              <NavLink to="/" end>{user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}</NavLink>
-              <NavLink to="/members">Members</NavLink>
-              {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
-              {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
-            </nav>
-            {!user?.canViewExecutiveDashboard && (
-              <div className="nav-group">
-                {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
-              </div>
+            {user?.canViewExecutiveDashboard ? (
+              <>
+                <div className="nav-group">CENTRAL · PKNAP CENTRAL</div>
+                <nav>
+                  <NavLink to="/" end>Central Dashboard</NavLink>
+                  <NavLink to="/members">Members</NavLink>
+                  {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
+                  {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
+                  <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
+                  <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+                  <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+                  <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+                  <NavLink to="/unit/performance">Member Performance</NavLink>
+                  {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+                  {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
+                  <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+                </nav>
+              </>
+            ) : (
+              <>
+                <div className="nav-group">
+                  {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+                </div>
+                <nav>
+                  <NavLink to="/unit" end>Dashboard</NavLink>
+                  <NavLink to="/members">Members</NavLink>
+                  {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
+                  {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
+                  <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
+                  <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+                  <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+                  <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+                  <NavLink to="/unit/performance">Member Performance</NavLink>
+                  {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+                  {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
+                  <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+                  {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
+                    <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
+                  )}
+                </nav>
+              </>
             )}
-            <nav>
-              {!user?.canViewExecutiveDashboard && <NavLink to="/unit" end>Dashboard</NavLink>}
-              <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              <NavLink to="/unit/performance">Member Performance</NavLink>
-              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
-              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
-              {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
-                <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
-              )}
-            </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
             <CongressNav ctx={ctx} canFinance={canFinance} />
             <JirgaNav ctx={ctx} canFinance={canFinance} />

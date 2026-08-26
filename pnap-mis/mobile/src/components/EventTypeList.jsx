@@ -213,3 +213,7 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 2, borderRadius: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: Colors.primary },
   saveText: { color: '#fff', fontWeight: '700', fontSize: FontSize.base },
 });
+
+export default function Shared() {
+  return null;
+}

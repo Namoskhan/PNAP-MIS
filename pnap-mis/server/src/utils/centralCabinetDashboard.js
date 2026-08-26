@@ -22,7 +22,7 @@ const SCOPE_KEY = {
 
 async function dashboardAccess(user) {
   if (!user) return null;
-  if (user.roles?.includes('SUPER_ADMIN')) return { level: 'CENTRAL', unitId: null };
+  if (user.roles?.includes('SUPER_ADMIN') || user.roles?.includes('CENTRAL_ADMIN')) return { level: 'CENTRAL', unitId: null };
   if (!user.memberId) return null;
 
   const assignments = await RoleAssignment.find({
