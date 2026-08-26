@@ -150,6 +150,8 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/units/responsibility-templates" options={{ href: null, headerTitle: 'Responsibility Templates', headerShown: true }} />
       <Tabs.Screen name="admin/units/performance-rulesets" options={{ href: null, headerTitle: 'Performance Rules', headerShown: true }} />
       <Tabs.Screen name="admin/units/report-templates" options={{ href: null, headerTitle: 'Report Templates', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/identity" options={{ href: null, headerTitle: 'System Identity', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/logos" options={{ href: null, headerTitle: 'Logo Manager', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
