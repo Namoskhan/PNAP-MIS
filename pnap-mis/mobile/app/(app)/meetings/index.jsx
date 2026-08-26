@@ -22,6 +22,7 @@ import { useToast } from '../../../src/components/Toast';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import EmptyState from '../../../src/components/EmptyState';
+import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
 import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 
@@ -165,9 +166,17 @@ export default function MeetingsScreen() {
             </View>
             <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
               <FormField label="Title *" value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} />
-              <FormField label="Venue" value={form.venue} onChangeText={(v) => setForm((f) => ({ ...f, venue: v }))} />
-              <FormField label="Start Date/Time (ISO)" value={form.startAt} onChangeText={(v) => setForm((f) => ({ ...f, startAt: v }))} placeholder="2026-08-25T10:00:00" keyboardType="default" />
-              <FormField label="End Date/Time (ISO)" value={form.endAt} onChangeText={(v) => setForm((f) => ({ ...f, endAt: v }))} placeholder="2026-08-25T12:00:00" />
+              <FormField label="Venue *" value={form.venue} onChangeText={(v) => setForm((f) => ({ ...f, venue: v }))} />
+              <DatePicker
+                label="Meeting Date *"
+                value={form.startAt ? form.startAt.split('T')[0] : ''}
+                onChange={(d) => setForm((f) => ({
+                  ...f,
+                  startAt: `${d}T10:00:00.000Z`,
+                  endAt: `${d}T12:00:00.000Z`,
+                }))}
+                placeholder="Select meeting date"
+              />
               <FormField label="Agenda" value={form.agenda} onChangeText={(v) => setForm((f) => ({ ...f, agenda: v }))} multiline />
               <FormField label="Description" value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} multiline />
             </ScrollView>

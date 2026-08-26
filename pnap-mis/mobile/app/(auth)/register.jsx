@@ -15,6 +15,7 @@ import { Link, useRouter } from 'expo-router';
 import { api, errorMessage } from '../../src/api/client';
 import { formatCnic, isCompleteCnic } from '../../src/utils/formatters';
 import { useToast } from '../../src/components/Toast';
+import DatePicker from '../../src/components/DatePicker';
 import { Colors, FontSize, Radius, Spacing } from '../../src/constants/colors';
 
 const GENDERS = [
@@ -242,16 +243,13 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Date of Birth (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.input}
-                value={form.dateOfBirth}
-                onChangeText={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))}
-                placeholder="2000-01-01"
-                placeholderTextColor={Colors.textLight}
-              />
-            </View>
+            <DatePicker
+              label="Date of Birth *"
+              value={form.dateOfBirth}
+              onChange={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))}
+              placeholder="Select birth date"
+              maxDate={new Date().toISOString().split('T')[0]}
+            />
 
             <View style={styles.field}>
               <Text style={styles.label}>Address *</Text>

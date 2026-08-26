@@ -6,8 +6,10 @@ import {
   StyleSheet,
   Text,
   View,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { api } from '../../../src/api/client';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
@@ -15,6 +17,9 @@ import Avatar from '../../../src/components/Avatar';
 import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
 import { shortDate, formatCnic } from '../../../src/utils/formatters';
+import { useAuth } from '../../../src/context/AuthContext';
+import { useToast } from '../../../src/components/Toast';
+import { isHigherAdmin, isAreaAdmin } from '../../../src/utils/permissions';
 
 function Row({ label, value }) {
   if (!value) return null;
@@ -28,16 +33,64 @@ function Row({ label, value }) {
 
 export default function MemberDetailScreen() {
   const { id } = useLocalSearchParams();
+  const { user } = useAuth();
+  const toast = useToast();
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  function load() {
     api.get(`/members/${id}`)
       .then((r) => setMember(r.data.data))
       .catch(() => setError('Could not load member.'))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
   }, [id]);
+
+  async function handleApprove() {
+    setBusy(true);
+    try {
+      await api.post(`/members/${id}/approve`);
+      toast.success('Member approved successfully.');
+      load();
+    } catch (e) {
+      toast.error('Could not approve member: ' + e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function handleReject() {
+    Alert.prompt(
+      'Reject Member',
+      'Reason for rejection:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: async (reason) => {
+            if (!reason) return;
+            setBusy(true);
+            try {
+              await api.post(`/members/${id}/reject`, { reason });
+              toast.success('Member rejected.');
+              load();
+            } catch (e) {
+              toast.error('Could not reject member: ' + e.message);
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
+  }
 
   if (loading) {
     return <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>;
@@ -62,6 +115,17 @@ export default function MemberDetailScreen() {
               <Badge label={m.status?.replace(/_/g, ' ') || '—'} status={m.status} />
             </View>
           </View>
+          
+          {m.status === 'PENDING_APPROVAL' && (isHigherAdmin(user) || isAreaAdmin(user)) && (
+            <View style={styles.approvalActions}>
+              <TouchableOpacity style={[styles.actionBtn, styles.approveBtn]} onPress={handleApprove} disabled={busy}>
+                {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.approveText}>Approve Member</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]} onPress={handleReject} disabled={busy}>
+                <Text style={styles.rejectText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </Card>
 
         {/* Personal Info */}
@@ -125,4 +189,10 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '500' },
   infoValue: { fontSize: FontSize.sm, color: Colors.text, fontWeight: '500', flex: 1, textAlign: 'right' },
   rolePills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  approvalActions: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: 1, borderTopColor: Colors.borderLight },
+  actionBtn: { flex: 1, borderRadius: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  approveBtn: { backgroundColor: Colors.success },
+  approveText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
+  rejectBtn: { backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.error },
+  rejectText: { color: Colors.error, fontWeight: '600', fontSize: FontSize.sm },
 });

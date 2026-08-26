@@ -6,13 +6,13 @@ import {
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { canInitiateRole, canDecideRole, isHigherAdmin, isAreaAdmin } from '../../../src/utils/permissions';
+import { canInitiateRole, canDecideRole, isHigherAdmin, isAreaAdmin, hasRole } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import Avatar from '../../../src/components/Avatar';
 import EmptyState from '../../../src/components/EmptyState';
-import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
+import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { shortDate } from '../../../src/utils/formatters';
 
 // These map to the endReason enum in server/src/validators/unitSchemas.js
@@ -47,13 +47,14 @@ const ROLE_LABEL = {
 
 export default function CabinetScreen() {
   const { user } = useAuth();
-  const { ctx } = useUnit();
+  const { ctx, setCtx } = useUnit();
   const toast = useToast();
   const canInitiate = canInitiateRole(user) || canDecideRole(user) || isHigherAdmin(user) || isAreaAdmin(user);
 
   const [cabinet, setCabinet] = useState([]);
   const [pending, setPending] = useState([]);
   const [members, setMembers] = useState([]);
+  const [subordinates, setSubordinates] = useState([]);
   const [memberSearch, setMemberSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -63,14 +64,43 @@ export default function CabinetScreen() {
   const [endReason, setEndReason] = useState('RESIGNED');
   const [saving, setSaving] = useState(false);
 
+  // Load subordinate units for quick cabinet switching (e.g. Area Admin managing Basic Units)
+  useEffect(() => {
+    if (!user) return;
+    if (hasRole(user, 'AREA_ADMIN') && user?.scope?.areaId) {
+      api.get('/org/basic-units', { params: { areaId: user.scope.areaId } })
+        .then((r) => setSubordinates(r.data?.data || []))
+        .catch(() => {});
+    } else if (hasRole(user, 'DISTRICT_ADMIN') && user?.scope?.districtId) {
+      api.get('/org/areas', { params: { districtId: user.scope.districtId } })
+        .then((r) => setSubordinates(r.data?.data || []))
+        .catch(() => {});
+    } else if (hasRole(user, 'PROVINCE_ADMIN') && user?.scope?.provinceId) {
+      api.get('/org/districts', { params: { provinceId: user.scope.provinceId } })
+        .then((r) => setSubordinates(r.data?.data || []))
+        .catch(() => {});
+    }
+  }, [user]);
+
   async function load() {
     if (!ctx?.unitId) { setLoading(false); return; }
     setLoading(true);
     try {
       const [cRes, pRes, mRes] = await Promise.all([
         api.get('/roles/cabinet', { params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId } }),
-        api.get('/roles', { params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, status: 'PENDING_APPROVAL' } }),
-        api.get('/members', { params: { status: 'ACTIVE', unitLevel: ctx.unitLevel, unitId: ctx.unitId, limit: 200 } }),
+        api.get('/roles', { params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, state: 'PROPOSED' } }),
+        api.get('/members', {
+          params: {
+            status: 'ACTIVE',
+            unitLevel: ctx.unitLevel,
+            unitId: ctx.unitId,
+            ...(ctx.unitLevel === 'BASIC_UNIT' ? { basicUnitId: ctx.unitId } :
+                ctx.unitLevel === 'AREA' ? { areaId: ctx.unitId } :
+                ctx.unitLevel === 'DISTRICT' ? { districtId: ctx.unitId } :
+                ctx.unitLevel === 'PROVINCE' ? { provinceId: ctx.unitId } : { scope: 'all' }),
+            limit: 250,
+          },
+        }),
       ]);
       setCabinet(cRes.data?.data || []);
       setPending(pRes.data?.data || []);
@@ -79,14 +109,16 @@ export default function CabinetScreen() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [ctx?.unitId]);
+  useEffect(() => { load(); }, [ctx?.unitId, ctx?.unitLevel]);
 
   const filteredMembers = useMemo(() => {
     if (!memberSearch.trim()) return members;
     const q = memberSearch.toLowerCase();
     return members.filter((m) =>
       (m.fullName || '').toLowerCase().includes(q) ||
-      (m.memberId || '').toLowerCase().includes(q)
+      (m.cnic || '').toLowerCase().includes(q) ||
+      (m.memberId || '').toLowerCase().includes(q) ||
+      (m.phone || '').toLowerCase().includes(q)
     );
   }, [members, memberSearch]);
 
@@ -96,13 +128,21 @@ export default function CabinetScreen() {
     }
     setSaving(true);
     try {
-      await api.post('/roles', {
+      const r = await api.post('/roles', {
         roleCode: assignRole,
         memberId: assignMemberId,
         unitLevel: ctx.unitLevel,
         unitId: ctx.unitId,
       });
-      toast.success('Role assignment proposed.');
+
+      // Admins auto-approve upon creation
+      if (canDecideRole(user) || isHigherAdmin(user) || isAreaAdmin(user)) {
+        try {
+          await api.post(`/roles/${r.data?.data?._id}/decide`, { decision: 'APPROVED' });
+        } catch { /* ignore if already pending */ }
+      }
+
+      toast.success('Role assigned successfully.');
       setAssignOpen(false);
       setAssignRole('');
       setAssignMemberId('');
@@ -112,10 +152,10 @@ export default function CabinetScreen() {
   }
 
   async function handleEnd() {
-    if (!endOpen) return;
+    if (!endOpen || !endOpen.assignment) return;
     setSaving(true);
     try {
-      await api.post(`/roles/${endOpen._id}/end`, { reason: endReason });
+      await api.post(`/roles/${endOpen.assignment._id}/end`, { endReason: endReason });
       toast.success('Role assignment ended.');
       setEndOpen(null);
       setEndReason('RESIGNED');
@@ -126,28 +166,60 @@ export default function CabinetScreen() {
 
   async function handleDecide(assignment, decision) {
     setSaving(true);
+    const validDecision = decision === 'APPROVE' || decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
     try {
-      await api.post(`/roles/${assignment._id}/decide`, { decision });
-      toast.success(decision === 'APPROVE' ? 'Assignment approved.' : 'Assignment rejected.');
+      await api.post(`/roles/${assignment._id}/decide`, { decision: validDecision });
+      toast.success(validDecision === 'APPROVED' ? 'Assignment approved.' : 'Assignment rejected.');
       load();
     } catch (e) { toast.error(errorMessage(e)); }
     finally { setSaving(false); }
   }
 
+  function handleSwitchUnit(sub) {
+    const level = hasRole(user, 'AREA_ADMIN') ? 'BASIC_UNIT' :
+                  hasRole(user, 'DISTRICT_ADMIN') ? 'AREA' : 'DISTRICT';
+    setCtx({ unitLevel: level, unitId: sub._id, unitName: sub.name });
+  }
+
   function renderAssignment({ item: a }) {
+    const isFilled = a.state === 'FILLED';
+    const roleName = ROLE_LABEL[a.roleCode] || a.customRoleName || a.roleCode;
+    
     return (
       <Card style={styles.assignCard}>
         <View style={styles.assignRow}>
-          <Avatar name={a.memberId?.fullName || '?'} size={44} color={Colors.primary} />
+          {isFilled ? (
+            <Avatar name={a.member?.fullName || '?'} size={44} color={Colors.primary} />
+          ) : (
+            <View style={[styles.avatarPlaceholder, { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
+              <Text style={{ fontSize: 20, color: Colors.border }}>👤</Text>
+            </View>
+          )}
           <View style={styles.assignMeta}>
-            <Text style={styles.assignName}>{a.memberId?.fullName || '—'}</Text>
-            <Badge label={ROLE_LABEL[a.roleCode] || a.roleCode} color={Colors.primary} bg="#eff6ff" />
-            {a.startedAt && <Text style={styles.assignDate}>Since {shortDate(a.startedAt)}</Text>}
+            <Text style={[styles.assignName, !isFilled && { color: Colors.textMuted }]}>
+              {isFilled ? a.member?.fullName || 'Unknown Member' : 'Vacant'}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Badge label={roleName} color={isFilled ? Colors.primary : Colors.textMuted} bg={isFilled ? '#eff6ff' : Colors.surfaceAlt} />
+              {a.isRequired && <Badge label="Required" color="#b91c1c" bg="#fef2f2" />}
+            </View>
+            {isFilled && a.assignment?.startedAt && (
+              <Text style={styles.assignDate}>Since {shortDate(a.assignment.startedAt)}</Text>
+            )}
           </View>
           {canInitiate && (
-            <TouchableOpacity onPress={() => { setEndOpen(a); setEndReason('RESIGNED'); }}>
-              <Text style={styles.endBtn}>End</Text>
-            </TouchableOpacity>
+            isFilled ? (
+              <TouchableOpacity onPress={() => { setEndOpen(a); setEndReason('RESIGNED'); }}>
+                <Text style={styles.endBtn}>End</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.inlineAssignBtn} 
+                onPress={() => { setAssignRole(a.roleCode); setAssignMemberId(''); setAssignOpen(true); }}
+              >
+                <Text style={styles.inlineAssignBtnText}>{canDecideRole(user) || isHigherAdmin(user) || isAreaAdmin(user) ? 'Assign' : 'Propose'}</Text>
+              </TouchableOpacity>
+            )
           )}
         </View>
       </Card>
@@ -161,12 +233,30 @@ export default function CabinetScreen() {
           <Text style={styles.headerTitle}>🏛️ Cabinet</Text>
           <Text style={styles.headerSub}>{ctx?.unitName || 'No unit selected'}</Text>
         </View>
-        {canInitiate && (
-          <TouchableOpacity style={styles.createBtn} onPress={() => setAssignOpen(true)}>
-            <Text style={styles.createBtnText}>＋ Assign</Text>
-          </TouchableOpacity>
-        )}
       </View>
+
+      {/* Subordinate Unit Switcher for Admins */}
+      {subordinates.length > 0 && (
+        <View style={styles.subSwitcher}>
+          <Text style={styles.subLabel}>Switch Unit Cabinet:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subList}>
+            {subordinates.map((sub) => {
+              const isSelected = String(ctx?.unitId) === String(sub._id);
+              return (
+                <TouchableOpacity
+                  key={sub._id}
+                  style={[styles.subChip, isSelected && styles.subChipActive]}
+                  onPress={() => handleSwitchUnit(sub)}
+                >
+                  <Text style={[styles.subChipText, isSelected && styles.subChipTextActive]}>
+                    {sub.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.content}>
         {loading && <ActivityIndicator style={{ margin: 20 }} color={Colors.primary} />}
@@ -178,9 +268,9 @@ export default function CabinetScreen() {
             {pending.map((a) => (
               <Card key={a._id} style={[styles.assignCard, styles.pendingCard]}>
                 <View style={styles.assignRow}>
-                  <Avatar name={a.memberId?.fullName || '?'} size={40} color="#f59e0b" />
+                  <Avatar name={a.member?.fullName || '?'} size={40} color="#f59e0b" />
                   <View style={styles.assignMeta}>
-                    <Text style={styles.assignName}>{a.memberId?.fullName || '—'}</Text>
+                    <Text style={styles.assignName}>{a.member?.fullName || '—'}</Text>
                     <Badge label={ROLE_LABEL[a.roleCode] || a.roleCode} color="#92400e" bg="#fef3c7" />
                   </View>
                   {canDecideRole(user) && (
@@ -204,7 +294,11 @@ export default function CabinetScreen() {
         {cabinet.length === 0 && !loading && (
           <EmptyState icon="🏛️" title="No active assignments" subtitle="Tap '+ Assign' to add an office-holder." />
         )}
-        {cabinet.map((a) => renderAssignment({ item: a }))}
+        {cabinet.map((a) => (
+          <View key={a._id}>
+            {renderAssignment({ item: a })}
+          </View>
+        ))}
       </ScrollView>
 
       {/* Assign Role Modal */}
@@ -260,7 +354,7 @@ export default function CabinetScreen() {
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveBtn} onPress={handleAssign} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Propose Assignment</Text>}
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>{canDecideRole(user) || isHigherAdmin(user) || isAreaAdmin(user) ? 'Assign Role' : 'Propose Assignment'}</Text>}
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -277,7 +371,7 @@ export default function CabinetScreen() {
           </View>
           <ScrollView style={styles.modalBody}>
             <Text style={styles.endTarget}>
-              Ending: {ROLE_LABEL[endOpen?.roleCode] || endOpen?.roleCode} — {endOpen?.memberId?.fullName}
+              Ending: {ROLE_LABEL[endOpen?.roleCode] || endOpen?.roleCode} — {endOpen?.member?.fullName}
             </Text>
             <Text style={styles.fieldLabel}>Reason *</Text>
             {END_REASONS.map((r) => (
@@ -315,6 +409,13 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   createBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: Spacing.md, paddingVertical: 8 },
   createBtnText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
+  subSwitcher: { backgroundColor: Colors.surfaceAlt, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  subLabel: { fontSize: FontSize.xs - 1, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', marginBottom: 4 },
+  subList: { flexDirection: 'row', gap: 6 },
+  subChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  subChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  subChipText: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' },
+  subChipTextActive: { color: '#fff', fontWeight: '700' },
   content: { padding: Spacing.md, paddingBottom: 40 },
   sectionLabel: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: Spacing.sm, marginTop: Spacing.md },
   assignCard: { marginBottom: Spacing.sm },
@@ -329,6 +430,9 @@ const styles = StyleSheet.create({
   approveBtnText: { color: '#fff', fontWeight: '700' },
   rejectBtn: { backgroundColor: Colors.error, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   rejectBtnText: { color: '#fff', fontWeight: '700' },
+  inlineAssignBtn: { backgroundColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
+  inlineAssignBtnText: { color: '#fff', fontWeight: '700', fontSize: FontSize.xs },
+
   // Modals
   modal: { flex: 1, backgroundColor: Colors.background },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border },

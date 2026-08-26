@@ -29,6 +29,9 @@ export default function AppLayout() {
   const showFinance = canManageFinance(user);
   const showAdmin = isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_SYSTEM_BRANDING');
 
+  const isAdminOnly = isHigherAdmin(user) || isAreaAdmin(user);
+  const showUnitTabs = !isAdminOnly;
+
   return (
     <Tabs
       screenOptions={{
@@ -54,31 +57,43 @@ export default function AppLayout() {
           headerTitle: 'PNAP MIS',
         }}
       />
-      <Tabs.Screen
-        name="members/index"
-        options={{
-          title: 'Members',
-          tabBarIcon: ({ color, size }) => <TabIcon name="people" color={color} size={size} />,
-          headerTitle: 'Members',
-        }}
-      />
-      <Tabs.Screen
-        name="meetings/index"
-        options={{
-          title: 'Meetings',
-          tabBarIcon: ({ color, size }) => <TabIcon name="calendar" color={color} size={size} />,
-          headerTitle: 'Meetings',
-        }}
-      />
-      <Tabs.Screen
-        name="activities/index"
-        options={{
-          title: 'Activities',
-          tabBarIcon: ({ color, size }) => <TabIcon name="flag" color={color} size={size} />,
-          headerTitle: 'Activities',
-        }}
-      />
-      {showFinance ? (
+      {showUnitTabs ? (
+        <Tabs.Screen
+          name="members/index"
+          options={{
+            title: 'Members',
+            tabBarIcon: ({ color, size }) => <TabIcon name="people" color={color} size={size} />,
+            headerTitle: 'Members',
+          }}
+        />
+      ) : (
+        <Tabs.Screen name="members/index" options={{ href: null }} />
+      )}
+      {showUnitTabs ? (
+        <Tabs.Screen
+          name="meetings/index"
+          options={{
+            title: 'Meetings',
+            tabBarIcon: ({ color, size }) => <TabIcon name="calendar" color={color} size={size} />,
+            headerTitle: 'Meetings',
+          }}
+        />
+      ) : (
+        <Tabs.Screen name="meetings/index" options={{ href: null }} />
+      )}
+      {showUnitTabs ? (
+        <Tabs.Screen
+          name="activities/index"
+          options={{
+            title: 'Activities',
+            tabBarIcon: ({ color, size }) => <TabIcon name="flag" color={color} size={size} />,
+            headerTitle: 'Activities',
+          }}
+        />
+      ) : (
+        <Tabs.Screen name="activities/index" options={{ href: null }} />
+      )}
+      {showFinance && showUnitTabs ? (
         <Tabs.Screen
           name="finance/index"
           options={{
@@ -124,6 +139,8 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/event-types/meetings" options={{ href: null, headerTitle: 'Meeting Types', headerShown: true }} />
       <Tabs.Screen name="admin/event-types/activities" options={{ href: null, headerTitle: 'Activity Types', headerShown: true }} />
       <Tabs.Screen name="admin/event-types/[id]" options={{ href: null, headerTitle: 'Event Type Editor', headerShown: true }} />
+      <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
+      <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
       <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Log', headerShown: true }} />
       <Tabs.Screen name="admin/settings" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />

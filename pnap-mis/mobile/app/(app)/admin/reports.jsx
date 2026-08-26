@@ -3,7 +3,7 @@ import {
   ActivityIndicator, Platform, SafeAreaView, ScrollView,
   StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
@@ -11,6 +11,7 @@ import { canManageFinance, isHigherAdmin, isAreaAdmin, hasRole } from '../../../
 import { Storage } from '../../../src/utils/storage';
 import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
 import Card from '../../../src/components/Card';
+import DatePicker from '../../../src/components/DatePicker';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -18,6 +19,23 @@ async function downloadAndShare(path, filename, params) {
   const token = await Storage.getItem('pnap_token');
   const qs = params ? '?' + new URLSearchParams(params).toString() : '';
   const url = `${API_BASE}${path}${qs}`;
+
+  if (Platform.OS === 'web') {
+    const res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(blobUrl);
+    return;
+  }
 
   const localUri = FileSystem.cacheDirectory + filename;
   try {
@@ -66,6 +84,7 @@ export default function ReportsScreen() {
 
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [scope, setScope] = useState('subtree');
   const [busyKey, setBusyKey] = useState(null);
   const [error, setError] = useState('');
 
@@ -87,6 +106,7 @@ export default function ReportsScreen() {
       const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId };
       if (from) params.from = from;
       if (to) params.to = to;
+      if (ctx.unitLevel !== 'BASIC_UNIT') params.scope = scope;
       await downloadAndShare(`/exports/unit/${key}/${fmt}`, `${key}-report.${fmt}`, params);
     } catch (e) { setError(e.message); }
     finally { setBusyKey(null); }
@@ -105,21 +125,55 @@ export default function ReportsScreen() {
           </View>
         </View>
 
-        {/* Date range pickers (text-based for cross-platform) */}
+        {/* Scope and Date pickers */}
         <Card style={styles.dateCard}>
-          <Text style={styles.sectionTitle}>Date Range (optional)</Text>
+          <Text style={styles.sectionTitle}>Report Parameters</Text>
+          
+          {ctx?.unitLevel !== 'BASIC_UNIT' && (
+            <View style={{ marginBottom: Spacing.md }}>
+              <Text style={styles.dateLabel}>Data Aggregation Scope</Text>
+              <View style={styles.scopeTabs}>
+                <TouchableOpacity 
+                  style={[styles.scopeTab, scope === 'subtree' && styles.scopeTabActive]}
+                  onPress={() => setScope('subtree')}
+                >
+                  <Text style={[styles.scopeTabText, scope === 'subtree' && styles.scopeTabTextActive]}>
+                    Aggregated
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.scopeTab, scope === 'own' && styles.scopeTabActive]}
+                  onPress={() => setScope('own')}
+                >
+                  <Text style={[styles.scopeTabText, scope === 'own' && styles.scopeTabTextActive]}>
+                    Own Unit Only
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.dateHint}>
+                {scope === 'subtree' 
+                  ? 'Includes all subordinate units roll-up.'
+                  : 'Only records authored directly at this unit.'}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.dateRow}>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>From</Text>
-              <TouchableOpacity style={styles.dateInput}>
-                <Text style={styles.dateText}>{from || 'YYYY-MM-DD'}</Text>
-              </TouchableOpacity>
+              <DatePicker
+                label="From"
+                value={from}
+                onChange={setFrom}
+                placeholder="Start Date"
+              />
             </View>
             <View style={styles.dateField}>
-              <Text style={styles.dateLabel}>To</Text>
-              <TouchableOpacity style={styles.dateInput}>
-                <Text style={styles.dateText}>{to || 'YYYY-MM-DD'}</Text>
-              </TouchableOpacity>
+              <DatePicker
+                label="To"
+                value={to}
+                onChange={setTo}
+                placeholder="End Date"
+              />
             </View>
           </View>
           <Text style={styles.dateHint}>Leave blank to export all records for the unit.</Text>
@@ -195,4 +249,9 @@ const styles = StyleSheet.create({
   exportBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: 8, paddingVertical: 10, alignItems: 'center' },
   exportBtnXlsx: { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.primary },
   exportBtnText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
+  scopeTabs: { flexDirection: 'row', backgroundColor: Colors.background, borderRadius: 8, padding: 4, marginBottom: Spacing.xs },
+  scopeTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 },
+  scopeTabActive: { backgroundColor: Colors.surface, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  scopeTabText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted },
+  scopeTabTextActive: { color: Colors.text },
 });
