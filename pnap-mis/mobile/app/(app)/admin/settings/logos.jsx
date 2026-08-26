@@ -209,7 +209,7 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
 
           <View style={styles.uploaderInfo}>
             <Text style={styles.descriptionText}>{description}</Text>
-            {recommended && (
+            {Boolean(recommended) && (
               <Text style={styles.recommendedText}>
                 <Text style={{ fontWeight: '600' }}>Recommended:</Text> {recommended}
               </Text>
@@ -220,10 +220,10 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
                 <Ionicons name="cloud-upload" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
                 <Text style={styles.actionBtnText}>{busy ? 'Uploading...' : (currentUrl ? 'Replace' : 'Upload')}</Text>
               </TouchableOpacity>
-              {currentUrl && !disabled && (
+              {Boolean(currentUrl) && !disabled && (
                 <TouchableOpacity style={[styles.actionBtn, busy && styles.btnDisabled]} onPress={resetImage} disabled={busy}>
-                  <Ionicons name="refresh" size={14} color={Colors.danger} style={{ marginRight: 4 }} />
-                  <Text style={[styles.actionBtnText, { color: Colors.danger }]}>Reset</Text>
+                  <Ionicons name="refresh" size={14} color={Colors.error} style={{ marginRight: 4 }} />
+                  <Text style={[styles.actionBtnText, { color: Colors.error }]}>Reset</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   heroActions: { flexDirection: 'row', gap: Spacing.sm },
   btnOutline: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border, backgroundColor: '#fff' },
   btnOutlineText: { color: Colors.text, fontWeight: '600', fontSize: FontSize.sm },
-  errorText: { color: Colors.danger, backgroundColor: '#fee2e2', padding: Spacing.md, borderRadius: Radius.sm, marginBottom: Spacing.md, overflow: 'hidden' },
+  errorText: { color: Colors.error, backgroundColor: '#fee2e2', padding: Spacing.md, borderRadius: Radius.sm, marginBottom: Spacing.md, overflow: 'hidden' },
   
   infoAlert: { backgroundColor: 'rgba(2, 132, 199, 0.06)', borderWidth: 1, borderColor: 'rgba(2, 132, 199, 0.2)', padding: Spacing.md, borderRadius: Radius.md, marginBottom: Spacing.md },
   infoAlertText: { color: '#0369a1', fontSize: FontSize.sm },
