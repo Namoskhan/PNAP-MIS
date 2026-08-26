@@ -25,6 +25,8 @@ import EmptyState from '../../../src/components/EmptyState';
 import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
 import { shortDate, ACTIVITY_TYPE_LABEL } from '../../../src/utils/formatters';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 
 const TYPE_OPTIONS = ['CAMPAIGN', 'PROTEST', 'JALSA', 'SEMINAR', 'STUDY_CIRCLE', 'TASK', 'COMMUNITY_SERVICE'];
 
@@ -39,13 +41,20 @@ export default function ActivitiesScreen() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ typeCode: 'CAMPAIGN', title: '', venue: '', startAt: '', endAt: '', description: '' });
   const [saving, setSaving] = useState(false);
+  const params = useLocalSearchParams();
+  const queryBody = params.body;
+  
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
+  const isCommitteeView = queryBody === 'COMMITTEE';
+  const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
   async function load(silent = false) {
     if (!ctx?.unitId) { setLoading(false); return; }
     if (!silent) setLoading(true);
     try {
       const res = await api.get('/activities', {
-        params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId },
+        params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: targetBody },
       });
       setItems(res.data.data || []);
     } catch { /* ignore */ } finally {
@@ -61,7 +70,7 @@ export default function ActivitiesScreen() {
     if (!form.title.trim() || !form.startAt) { toast.error('Title and start date are required.'); return; }
     setSaving(true);
     try {
-      await api.post('/activities', { ...form, unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+      await api.post('/activities', { ...form, unitLevel: ctx.unitLevel, unitId: ctx.unitId, body: targetBody });
       toast.success('Activity created.');
       setShowForm(false);
       setForm({ typeCode: 'CAMPAIGN', title: '', venue: '', startAt: '', endAt: '', description: '' });
@@ -84,43 +93,97 @@ export default function ActivitiesScreen() {
   };
 
   function renderItem({ item: a }) {
-    const color = TYPE_COLORS[a.typeCode] || Colors.primary;
+    const isCng = a.body === 'CONGRESS';
+    const isJrg = a.body === 'JIRGA';
+    const isCm = a.body === 'COMMITTEE';
+
+    let typeBadgeLabel = isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'));
+    let typeBadgeBg = isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'));
+    let typeBadgeColor = isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'));
+
     return (
-      <Link href={`/activities/${a._id}`} asChild>
-        <TouchableOpacity>
-          <Card style={styles.card}>
-            <View style={styles.row}>
-              <View style={[styles.typeBar, { backgroundColor: color }]} />
-              <View style={styles.info}>
-                <Text style={styles.title} numberOfLines={1}>{a.title || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode}</Text>
-                <Text style={styles.meta}>{shortDate(a.startAt)} · {a.venue || '—'}</Text>
-              </View>
-              <Badge label={ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode} color={color} bg={color + '15'} />
-            </View>
-          </Card>
-        </TouchableOpacity>
-      </Link>
+      <View style={styles.tr}>
+        <View style={[styles.td, { width: 140 }]}>
+           <Text style={styles.tdText}>{new Date(a.startAt).toLocaleString()}</Text>
+        </View>
+        <View style={[styles.td, { width: 160 }]}>
+           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+             <Badge label={typeBadgeLabel} color={typeBadgeColor} bg={typeBadgeBg} />
+             <Text style={styles.tdText}>{a.type || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode}</Text>
+           </View>
+        </View>
+        <View style={[styles.td, { width: 180 }]}>
+           <Text style={styles.tdText} numberOfLines={2}>{a.title || 'Untitled'}</Text>
+        </View>
+        <View style={[styles.td, { width: 120 }]}>
+           <Text style={styles.tdText} numberOfLines={2}>{a.venue || '—'}</Text>
+        </View>
+        <View style={[styles.td, { width: 100 }]}>
+           <Badge label={a.state || 'DRAFT'} color={a.state === 'COMPLETED' ? '#15803d' : '#b45309'} bg={a.state === 'COMPLETED' ? '#dcfce7' : '#fef3c7'} />
+        </View>
+        <View style={[styles.td, { width: 80 }]}>
+           <Text style={styles.tdText}>{(a.photos || []).length}</Text>
+        </View>
+      </View>
     );
   }
 
+  const tableHeader = () => (
+    <View style={styles.thRow}>
+      <Text style={[styles.th, { width: 140 }]}>When</Text>
+      <Text style={[styles.th, { width: 160 }]}>Type</Text>
+      <Text style={[styles.th, { width: 180 }]}>Title</Text>
+      <Text style={[styles.th, { width: 120 }]}>Venue</Text>
+      <Text style={[styles.th, { width: 100 }]}>State</Text>
+      <Text style={[styles.th, { width: 80 }]}>Photos</Text>
+    </View>
+  );
+
+  let pageTitle = isCongressView
+    ? 'National Congress Activities · PKNAP Central'
+    : (isJirgaView
+      ? (ctx?.unitLevel === 'CENTRAL' ? 'Qomi Jirga Activities' : `Sobayi Jirga Activities · ${ctx?.unitName}`)
+      : (isCommitteeView ? `Committee Activities · ${ctx?.unitName}` : `Executive Activities · ${ctx?.unitName || 'PKNAP Central'}`));
+
   return (
     <SafeAreaView style={styles.safe}>
-      <FlatList
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={(a) => a._id}
-        contentContainerStyle={styles.list}
-        onRefresh={onRefresh}
-        refreshing={refreshing}
-        ListEmptyComponent={!loading && <EmptyState icon="🚩" title="No activities" subtitle="No activities recorded yet." />}
-        ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
-      />
+      <View style={styles.header}>
+        <Text style={styles.pageTitle}>{pageTitle}</Text>
+        <View style={styles.actionsRow}>
+           <TouchableOpacity style={styles.btnSecondary}>
+             <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
+             <Text style={styles.btnSecondaryText}>Export PDF</Text>
+           </TouchableOpacity>
+           <TouchableOpacity style={styles.btnSecondary}>
+             <Ionicons name="stats-chart-outline" size={16} color={Colors.textMuted} />
+             <Text style={styles.btnSecondaryText}>Export Excel</Text>
+           </TouchableOpacity>
+        </View>
+      </View>
 
-      {canManage && ctx?.unitId && (
-        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)}>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
-      )}
+      <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
+        <View style={{ flex: 1 }}>
+          <FlatList
+            data={items}
+            renderItem={renderItem}
+            keyExtractor={(a) => a._id}
+            ListHeaderComponent={tableHeader}
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+            contentContainerStyle={styles.tableWrap}
+            ListEmptyComponent={
+              !loading ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: Colors.textMuted }}>
+                    No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} activities recorded yet.
+                  </Text>
+                </View>
+              ) : null
+            }
+            ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
+          />
+        </View>
+      </ScrollView>
 
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -187,21 +250,20 @@ function FormField({ label, value, onChangeText, placeholder, multiline }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  list: { padding: Spacing.lg },
-  card: { marginBottom: Spacing.sm },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  typeBar: { width: 4, height: 44, borderRadius: 2 },
-  info: { flex: 1 },
-  title: { fontSize: FontSize.base, fontWeight: '600', color: Colors.text, marginBottom: 2 },
-  meta: { fontSize: FontSize.xs, color: Colors.textMuted },
-  fab: {
-    position: 'absolute', bottom: 24, right: 24,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-  },
-  fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
+  header: { padding: Spacing.lg, paddingBottom: 0, backgroundColor: Colors.background },
+  pageTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.text, marginBottom: Spacing.md },
+  actionsRow: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap', marginBottom: Spacing.md },
+  btnSecondary: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 6 },
+  btnSecondaryText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
+  btnPrimary: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, gap: 6 },
+  btnPrimaryText: { fontSize: FontSize.sm, fontWeight: '600', color: '#fff' },
+
+  tableWrap: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+  thRow: { flexDirection: 'row', backgroundColor: Colors.surfaceAlt, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  th: { padding: 12, fontSize: FontSize.sm, fontWeight: '600', color: Colors.text, textAlign: 'left' },
+  tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, alignItems: 'center' },
+  td: { padding: 12, justifyContent: 'center' },
+  tdText: { fontSize: FontSize.sm, color: Colors.text },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     padding: Spacing.lg, backgroundColor: Colors.surface,

@@ -86,18 +86,25 @@ export default function CabinetScreen() {
     if (!ctx?.unitId) { setLoading(false); return; }
     setLoading(true);
     try {
+      let resolvedUnitId = ctx.unitId;
+      if (ctx.unitLevel === 'CENTRAL' && ctx.unitId === 'CENTRAL') {
+        const cRes = await api.get('/org/central');
+        resolvedUnitId = cRes.data?.data?._id;
+        if (!resolvedUnitId) throw new Error('Could not resolve central unit');
+      }
+
       const [cRes, pRes, mRes] = await Promise.all([
-        api.get('/roles/cabinet', { params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId } }),
-        api.get('/roles', { params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, state: 'PROPOSED' } }),
+        api.get('/roles/cabinet', { params: { unitLevel: ctx.unitLevel, unitId: resolvedUnitId } }),
+        api.get('/roles', { params: { unitLevel: ctx.unitLevel, unitId: resolvedUnitId, state: 'PROPOSED' } }),
         api.get('/members', {
           params: {
             status: 'ACTIVE',
             unitLevel: ctx.unitLevel,
-            unitId: ctx.unitId,
-            ...(ctx.unitLevel === 'BASIC_UNIT' ? { basicUnitId: ctx.unitId } :
-                ctx.unitLevel === 'AREA' ? { areaId: ctx.unitId } :
-                ctx.unitLevel === 'DISTRICT' ? { districtId: ctx.unitId } :
-                ctx.unitLevel === 'PROVINCE' ? { provinceId: ctx.unitId } : { scope: 'all' }),
+            unitId: resolvedUnitId,
+            ...(ctx.unitLevel === 'BASIC_UNIT' ? { basicUnitId: resolvedUnitId } :
+                ctx.unitLevel === 'AREA' ? { areaId: resolvedUnitId } :
+                ctx.unitLevel === 'DISTRICT' ? { districtId: resolvedUnitId } :
+                ctx.unitLevel === 'PROVINCE' ? { provinceId: resolvedUnitId } : { scope: 'all' }),
             limit: 250,
           },
         }),
@@ -128,11 +135,17 @@ export default function CabinetScreen() {
     }
     setSaving(true);
     try {
+      let targetUnitId = ctx.unitId;
+      if (ctx.unitLevel === 'CENTRAL' && ctx.unitId === 'CENTRAL') {
+        const cRes = await api.get('/org/central');
+        targetUnitId = cRes.data?.data?._id;
+      }
+
       const r = await api.post('/roles', {
         roleCode: assignRole,
         memberId: assignMemberId,
         unitLevel: ctx.unitLevel,
-        unitId: ctx.unitId,
+        unitId: targetUnitId,
       });
 
       // Admins auto-approve upon creation
@@ -196,13 +209,17 @@ export default function CabinetScreen() {
             </View>
           )}
           <View style={styles.assignMeta}>
-            <Text style={[styles.assignName, !isFilled && { color: Colors.textMuted }]}>
-              {isFilled ? a.member?.fullName || 'Unknown Member' : 'Vacant'}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Badge label={roleName} color={isFilled ? Colors.primary : Colors.textMuted} bg={isFilled ? '#eff6ff' : Colors.surfaceAlt} />
-              {a.isRequired && <Badge label="Required" color="#b91c1c" bg="#fef2f2" />}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+              <Badge label={roleName} color={Colors.text} bg={Colors.surfaceAlt} />
+              {a.isMandatory ? <Badge label="Required" color="#166534" bg="#dcfce7" /> : <Badge label="Optional" color={Colors.textMuted} bg={Colors.surfaceAlt} />}
+              {isFilled ? <Badge label="Filled" color="#166534" bg="#dcfce7" /> : <Badge label="Vacant" color="#b45309" bg="#fef3c7" />}
             </View>
+            <Text style={[styles.assignName, !isFilled && { color: Colors.textMuted }]}>
+              {isFilled ? a.member?.fullName || '—' : '— vacant —'}
+            </Text>
+            {isFilled && a.member?.phone ? (
+              <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>📞 {a.member.phone}</Text>
+            ) : null}
             {isFilled && a.assignment?.startedAt && (
               <Text style={styles.assignDate}>Since {shortDate(a.assignment.startedAt)}</Text>
             )}

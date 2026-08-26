@@ -36,8 +36,20 @@ export function UnitProvider({ children }) {
   // Hydrate stored context for the current user, or fallback to home tier.
   useEffect(() => {
     if (!user?._id) { setCtxRaw(null); setReady(true); return; }
-    readStored(user._id).then((stored) => {
+    readStored(user._id).then(async (stored) => {
       if (stored) {
+        if (stored.unitLevel === 'CENTRAL' && (!stored.unitId || stored.unitId === 'CENTRAL')) {
+          try {
+            const r = await api.get('/org/central');
+            if (r.data?.data?._id) {
+              const updated = { unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' };
+              setCtxRaw(updated);
+              await writeStored(updated, user._id);
+              setReady(true);
+              return;
+            }
+          } catch {}
+        }
         setCtxRaw(stored);
       } else {
         const home = homeTierOf(user);
@@ -45,9 +57,21 @@ export function UnitProvider({ children }) {
         const unitId = homeUnitIdOf(user);
         let unitName = s.basicUnitName || s.areaName || s.districtName || s.provinceName || 'My Unit';
         if (home.level === 'CENTRAL') {
-          unitName = 'Central Party';
+          unitName = 'PKNAP Central';
+          try {
+            const r = await api.get('/org/central');
+            if (r.data?.data?._id) {
+              const updated = { unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' };
+              setCtxRaw(updated);
+              await writeStored(updated, user._id);
+              setReady(true);
+              return;
+            }
+          } catch {}
+          setCtxRaw({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName });
+        } else {
+          setCtxRaw({ unitLevel: home.level, unitId: unitId, unitName });
         }
-        setCtxRaw({ unitLevel: home.level, unitId: unitId || 'CENTRAL', unitName });
       }
       setReady(true);
     });
@@ -60,9 +84,18 @@ export function UnitProvider({ children }) {
   }, [user]);
 
   async function setCtx(newCtx) {
-    setCtxRaw(newCtx);
-    if (newCtx && user?._id) await writeStored(newCtx, user._id);
-    else if (!newCtx) await Storage.removeItem(STORAGE_KEY);
+    let resolvedCtx = newCtx;
+    if (resolvedCtx && resolvedCtx.unitLevel === 'CENTRAL' && (!resolvedCtx.unitId || resolvedCtx.unitId === 'CENTRAL')) {
+      try {
+        const r = await api.get('/org/central');
+        if (r.data?.data?._id) {
+          resolvedCtx = { ...resolvedCtx, unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' };
+        }
+      } catch {}
+    }
+    setCtxRaw(resolvedCtx);
+    if (resolvedCtx && user?._id) await writeStored(resolvedCtx, user._id);
+    else if (!resolvedCtx) await Storage.removeItem(STORAGE_KEY);
   }
 
   return (

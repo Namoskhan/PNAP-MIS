@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -25,11 +25,7 @@ import EmptyState from '../../../src/components/EmptyState';
 import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
 import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
-
-const BODY_TABS = [
-  { label: 'Executive', value: 'EXECUTIVE' },
-  { label: 'Committee', value: 'COMMITTEE' },
-];
+import { Ionicons } from '@expo/vector-icons';
 
 const EMPTY_FORM = {
   typeCode: 'EXC',
@@ -46,7 +42,10 @@ export default function MeetingsScreen() {
   const { ctx } = useUnit();
   const toast = useToast();
   const canManage = canManageMeetings(user);
-  const [body, setBody] = useState('EXECUTIVE');
+
+  const isCentral = ctx?.unitLevel === 'CENTRAL';
+
+  const [bodyTab, setBodyTab] = useState('ALL');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,22 +54,52 @@ export default function MeetingsScreen() {
   const [saving, setSaving] = useState(false);
 
   async function load(silent = false) {
-    if (!ctx?.unitId) { setLoading(false); return; }
+    if (!ctx?.unitId) {
+      setLoading(false);
+      return;
+    }
     if (!silent) setLoading(true);
     try {
-      const res = await api.get('/meetings', {
-        params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId, body },
-      });
+      const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId };
+      
+      // Just fetch NON_COMMITTEE
+      params.body = 'NON_COMMITTEE';
+
+      const res = await api.get('/meetings', { params });
       setItems(res.data.data || []);
-    } catch { /* ignore */ } finally {
+    } catch {
+      // ignore
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }
 
-  useEffect(() => { load(); }, [ctx?.unitId, body]);
+  useEffect(() => {
+    load();
+  }, [ctx?.unitId, bodyTab]);
 
-  function onRefresh() { setRefreshing(true); load(true); }
+  function onRefresh() {
+    setRefreshing(true);
+    load(true);
+  }
+
+  const congressItems = [];
+  const jirgaItems = [];
+  const committeeItems = [];
+  
+  const nonCommitteeItems = useMemo(() => items.filter((m) => !['COMMITTEE', 'JIRGA', 'CONGRESS', 'CMP', 'JRG', 'CNG'].includes(m.body) && !['COMMITTEE', 'JIRGA', 'CONGRESS', 'CMP', 'JRG', 'CNG'].includes(m.typeCode)), [items]);
+  const execItems = useMemo(() => nonCommitteeItems.filter((m) => m.body === 'EXECUTIVE' || (!m.body && m.typeCode !== 'GBM')), [nonCommitteeItems]);
+  const gbmItems = useMemo(() => nonCommitteeItems.filter((m) => m.body === 'GENERAL_BODY' || m.typeCode === 'GBM'), [nonCommitteeItems]);
+
+  const displayedItems = useMemo(() => {
+    if (bodyTab === 'CONGRESS') return congressItems;
+    if (bodyTab === 'JIRGA') return jirgaItems;
+    if (bodyTab === 'COMMITTEE') return committeeItems;
+    if (bodyTab === 'EXECUTIVE') return execItems;
+    if (bodyTab === 'GENERAL_BODY') return gbmItems;
+    return nonCommitteeItems;
+  }, [bodyTab, congressItems, jirgaItems, committeeItems, execItems, gbmItems, nonCommitteeItems]);
 
   async function handleCreate() {
     if (!form.title.trim() || !form.startAt) {
@@ -81,7 +110,7 @@ export default function MeetingsScreen() {
     try {
       await api.post('/meetings', {
         ...form,
-        body,
+        body: bodyTab === 'ALL' ? 'EXECUTIVE' : bodyTab,
         unitLevel: ctx.unitLevel,
         unitId: ctx.unitId,
       });
@@ -97,59 +126,133 @@ export default function MeetingsScreen() {
   }
 
   function renderItem({ item: m }) {
+    const isCng = m.body === 'CONGRESS' || m.typeCode === 'CNG' || m.typeCode === 'CONGRESS';
+    const isJrg = !isCng && (m.body === 'JIRGA' || m.typeCode === 'JRG' || m.typeCode === 'JIRGA');
+    const isCm = !isCng && !isJrg && (m.body === 'COMMITTEE' || m.typeCode === 'CMP' || m.type === 'CMP');
+    const isGbm = !isCng && !isJrg && (m.body === 'GENERAL_BODY' || m.typeCode === 'GBM' || m.type === 'GBM');
+    
+    let typeBadgeLabel = 'Executive';
+    let typeBadgeBg = '#eef2ff';
+    let typeBadgeColor = '#4338ca';
+
+    if (isCng) { typeBadgeLabel = 'Congress'; typeBadgeBg = '#e0f2fe'; typeBadgeColor = '#0369a1'; }
+    else if (isJrg) { typeBadgeLabel = 'Jirga'; typeBadgeBg = '#f3e8ff'; typeBadgeColor = '#6b21a8'; }
+    else if (isCm) { typeBadgeLabel = 'Committee'; typeBadgeBg = '#fef3c7'; typeBadgeColor = '#92400e'; }
+    else if (isGbm) { typeBadgeLabel = 'General Body'; typeBadgeBg = '#ecfdf5'; typeBadgeColor = '#065f46'; }
+
     return (
-      <Link href={`/meetings/${m._id}`} asChild>
-        <TouchableOpacity>
-          <Card style={styles.card}>
-            <View style={styles.row}>
-              <View style={styles.dateBox}>
-                <Text style={styles.dateDay}>{new Date(m.startAt).getDate()}</Text>
-                <Text style={styles.dateMon}>{new Date(m.startAt).toLocaleString('default', { month: 'short' })}</Text>
-              </View>
-              <View style={styles.info}>
-                <Text style={styles.title} numberOfLines={1}>{m.title || MEETING_TYPE_LABEL[m.typeCode] || m.typeCode}</Text>
-                <Text style={styles.meta} numberOfLines={1}>{m.venue || 'No venue'} · {shortDate(m.startAt)}</Text>
-              </View>
-              <Badge label={MEETING_TYPE_LABEL[m.typeCode] || m.typeCode} color={Colors.primary} bg="#eff6ff" />
-            </View>
-          </Card>
-        </TouchableOpacity>
-      </Link>
+      <View style={styles.tr}>
+        <View style={[styles.td, { width: 140 }]}>
+           <Text style={styles.tdText}>{new Date(m.startAt).toLocaleString()}</Text>
+        </View>
+        <View style={[styles.td, { width: 160 }]}>
+           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+             <Badge label={typeBadgeLabel} color={typeBadgeColor} bg={typeBadgeBg} />
+             <Text style={styles.tdText} numberOfLines={2}>{m.title ? `${m.type} · ${m.title}` : m.type}</Text>
+           </View>
+        </View>
+        <View style={[styles.td, { width: 120 }]}>
+           <Text style={styles.tdText} numberOfLines={2}>{m.venue || ''}</Text>
+        </View>
+        <View style={[styles.td, { width: 140 }]}>
+           <Text style={styles.tdText} numberOfLines={2}>{m.chairpersonId?.fullName || m.chairpersonId || ''}</Text>
+        </View>
+        <View style={[styles.td, { width: 100 }]}>
+           <Text style={styles.tdText}>{(m.attendance || []).filter((a) => a.status === 'PRESENT' || a.status === 'LATE').length} / {(m.attendance || []).length} present</Text>
+        </View>
+        <View style={[styles.td, { width: 100 }]}>
+           <Badge label={m.state || 'DRAFT'} color={m.state === 'FINALIZED' ? '#15803d' : '#b45309'} bg={m.state === 'FINALIZED' ? '#dcfce7' : '#fef3c7'} />
+        </View>
+        <View style={[styles.td, { width: 80 }]}>
+           <Text style={styles.tdText}>{(m.photos || []).length}</Text>
+        </View>
+        <View style={[styles.td, { width: 80 }]}>
+           <Text style={styles.tdText}>{(m.documents || []).length}</Text>
+        </View>
+      </View>
     );
   }
 
+  const tableHeader = () => (
+    <View style={styles.thRow}>
+      <Text style={[styles.th, { width: 140 }]}>When</Text>
+      <Text style={[styles.th, { width: 160 }]}>Type</Text>
+      <Text style={[styles.th, { width: 120 }]}>Venue</Text>
+      <Text style={[styles.th, { width: 140 }]}>Chairperson</Text>
+      <Text style={[styles.th, { width: 100 }]}>Attendance</Text>
+      <Text style={[styles.th, { width: 100 }]}>State</Text>
+      <Text style={[styles.th, { width: 80 }]}>Photos</Text>
+      <Text style={[styles.th, { width: 80 }]}>Docs</Text>
+    </View>
+  );
+
+  let pageTitle = `Meetings · PKNAP Central`;
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Body Toggle */}
-      <View style={styles.tabRow}>
-        {BODY_TABS.map((t) => (
-          <TouchableOpacity
-            key={t.value}
-            style={[styles.tab, body === t.value && styles.tabActive]}
-            onPress={() => setBody(t.value)}
-          >
-            <Text style={[styles.tabText, body === t.value && styles.tabTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
+      {/* Header matching web */}
+      <View style={styles.header}>
+        <Text style={styles.pageTitle}>{pageTitle}</Text>
+        
+        <View style={styles.actionsRow}>
+           <TouchableOpacity style={styles.btnSecondary}>
+             <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
+             <Text style={styles.btnSecondaryText}>Export PDF</Text>
+           </TouchableOpacity>
+           <TouchableOpacity style={styles.btnSecondary}>
+             <Ionicons name="stats-chart-outline" size={16} color={Colors.textMuted} />
+             <Text style={styles.btnSecondaryText}>Export Excel</Text>
+           </TouchableOpacity>
+        </View>
       </View>
 
-      <FlatList
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={(m) => m._id}
-        contentContainerStyle={styles.list}
-        onRefresh={onRefresh}
-        refreshing={refreshing}
-        ListEmptyComponent={!loading && <EmptyState icon="📅" title="No meetings" subtitle="No meetings recorded yet." />}
-        ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
-      />
+      {/* Category Sub-Tabs */}
+      <View style={styles.categoryRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+          <Text style={styles.categoryLabel}>Category:</Text>
+          
+          <TouchableOpacity style={[styles.catChip, bodyTab === 'ALL' && styles.catChipActive]} onPress={() => setBodyTab('ALL')}>
+            <Text style={[styles.catChipText, bodyTab === 'ALL' && styles.catChipTextActive]}>All Meetings</Text>
+            <Text style={styles.catChipCount}>({nonCommitteeItems.length})</Text>
+          </TouchableOpacity>
 
-      {/* FAB — create meeting */}
-      {canManage && ctx?.unitId && (
-        <TouchableOpacity style={styles.fab} onPress={() => setShowForm(true)}>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
-      )}
+          <TouchableOpacity style={[styles.catChip, bodyTab === 'EXECUTIVE' && styles.catChipActive]} onPress={() => setBodyTab('EXECUTIVE')}>
+            <Text style={[styles.catChipText, bodyTab === 'EXECUTIVE' && styles.catChipTextActive]}>🏛️ Executive Meetings</Text>
+            <Text style={styles.catChipCount}>({execItems.length})</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.catChip, bodyTab === 'GENERAL_BODY' && styles.catChipActive]} onPress={() => setBodyTab('GENERAL_BODY')}>
+            <Text style={[styles.catChipText, bodyTab === 'GENERAL_BODY' && styles.catChipTextActive]}>👥 General Body Meetings</Text>
+            <Text style={styles.catChipCount}>({gbmItems.length})</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
+        <View style={{ flex: 1 }}>
+          <FlatList
+            data={displayedItems}
+            renderItem={renderItem}
+            keyExtractor={(m) => m._id}
+            ListHeaderComponent={tableHeader}
+            onRefresh={onRefresh}
+            refreshing={refreshing}
+            contentContainerStyle={styles.tableWrap}
+            ListEmptyComponent={
+              !loading ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: Colors.textMuted }}>
+                    {bodyTab === 'EXECUTIVE' ? 'No executive meetings scheduled yet.' :
+                    bodyTab === 'GENERAL_BODY' ? 'No general body meetings scheduled yet.' :
+                    'No meetings scheduled yet.'}
+                  </Text>
+                </View>
+              ) : null
+            }
+            ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
+          />
+        </View>
+      </ScrollView>
 
       {/* Create Meeting Modal */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
@@ -159,7 +262,7 @@ export default function MeetingsScreen() {
               <TouchableOpacity onPress={() => setShowForm(false)}>
                 <Text style={styles.modalCancel}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>New Meeting</Text>
+              <Text style={styles.modalTitle}>Schedule a Meeting</Text>
               <TouchableOpacity onPress={handleCreate} disabled={saving}>
                 {saving ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>Save</Text>}
               </TouchableOpacity>
@@ -207,28 +310,35 @@ function FormField({ label, value, onChangeText, placeholder, multiline, keyboar
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  tabRow: { flexDirection: 'row', backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.primary },
-  tabText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted },
-  tabTextActive: { color: Colors.primary },
-  list: { padding: Spacing.lg },
-  card: { marginBottom: Spacing.sm },
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  dateBox: { width: 44, alignItems: 'center', backgroundColor: Colors.primaryLight + '15', borderRadius: 10, paddingVertical: 6 },
-  dateDay: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.primary, lineHeight: 26 },
-  dateMon: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.primaryLight, textTransform: 'uppercase' },
-  info: { flex: 1 },
-  title: { fontSize: FontSize.base, fontWeight: '600', color: Colors.text, marginBottom: 2 },
-  meta: { fontSize: FontSize.xs, color: Colors.textMuted },
-  fab: {
-    position: 'absolute', bottom: 24, right: 24,
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-  },
-  fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 34 },
+  header: { padding: Spacing.lg, paddingBottom: Spacing.sm, backgroundColor: Colors.surface },
+  pageTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.text, marginBottom: 12 },
+  actionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  btnSecondary: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: Colors.surfaceAlt, borderRadius: 8, borderWidth: 1, borderColor: Colors.border },
+  btnSecondaryText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted },
+  btnPrimary: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: Colors.primary, borderRadius: 8 },
+  btnPrimaryText: { fontSize: FontSize.sm, fontWeight: '600', color: '#fff' },
+
+  tabScrollWrap: { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  mainTab: { paddingHorizontal: Spacing.md, paddingVertical: 8, marginRight: 8, borderRadius: 20 },
+  mainTabActive: { backgroundColor: Colors.primaryLight + '20' },
+  mainTabText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted },
+  mainTabTextActive: { color: Colors.primary },
+
+  categoryRow: { borderBottomWidth: 1, borderBottomColor: Colors.border, paddingVertical: 12, backgroundColor: Colors.background },
+  categoryLabel: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted, marginRight: 4, alignSelf: 'center' },
+  catChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
+  catChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  catChipText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
+  catChipTextActive: { color: '#fff' },
+  catChipCount: { fontSize: FontSize.xs, color: Colors.textMuted },
+
+  tableWrap: { backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+  thRow: { flexDirection: 'row', backgroundColor: Colors.surfaceAlt, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  th: { padding: 12, fontSize: FontSize.sm, fontWeight: '600', color: Colors.text, textAlign: 'left' },
+  tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, alignItems: 'center' },
+  td: { padding: 12, justifyContent: 'center' },
+  tdText: { fontSize: FontSize.sm, color: Colors.text },
+  
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     padding: Spacing.lg, backgroundColor: Colors.surface,

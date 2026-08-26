@@ -13,9 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
-import { canManageMeetings } from '../../../src/utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../../src/utils/permissions';
 import { api, errorMessage } from '../../../src/api/client';
 import { confirmAction } from '../../../src/utils/dialog';
 import { useToast } from '../../../src/components/Toast';
@@ -46,7 +47,7 @@ export default function ResponsibilitiesScreen() {
   const { ctx } = useUnit();
   const { user } = useAuth();
   const toast = useToast();
-  const canManage = canManageMeetings(user);
+  const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
 
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -154,121 +155,116 @@ export default function ResponsibilitiesScreen() {
     (m.memberId || '').toLowerCase().includes(memberSearch.toLowerCase())
   );
 
+  const tableHeader = () => (
+    <View style={styles.thRow}>
+      <Text style={[styles.th, { width: 220 }]}>Title</Text>
+      <Text style={[styles.th, { width: 180 }]}>Assigned to</Text>
+      <Text style={[styles.th, { width: 100 }]}>Due</Text>
+      <Text style={[styles.th, { width: 100 }]}>State</Text>
+      <Text style={[styles.th, { width: 150 }]}></Text>
+    </View>
+  );
+
   function renderItem({ item: r }) {
     const stateInfo = STATE_CONFIG[r.state] || STATE_CONFIG.PENDING;
     const assignee = r.assignedToMemberId;
     return (
-      <Card style={styles.card}>
-        <View style={styles.cardTop}>
-          <View style={{ flex: 1, marginRight: Spacing.sm }}>
-            <Text style={styles.respTitle}>{r.title}</Text>
-            {r.dueDate ? (
-              <Text style={styles.respDue}>Due: {shortDate(r.dueDate)}</Text>
-            ) : null}
-          </View>
+      <View style={styles.tr}>
+        <View style={[styles.td, { width: 220 }]}>
+          <Text style={[styles.tdText, { fontWeight: '700' }]}>{r.title}</Text>
+          {r.description ? <Text style={styles.tdSubtext} numberOfLines={2}>{r.description}</Text> : null}
+        </View>
+
+        <View style={[styles.td, { width: 180 }]}>
+          <Text style={[styles.tdText, { fontWeight: '700' }]}>{assignee?.fullName || '—'}</Text>
+          {assignee?.roleText ? (
+            <Badge label={assignee.roleText} color="#0369a1" bg="#e0f2fe" style={{ marginTop: 2, alignSelf: 'flex-start' }} />
+          ) : null}
+          {assignee?.unitText ? <Text style={[styles.tdSubtext, { marginTop: 2 }]}>{assignee.unitText}</Text> : null}
+        </View>
+
+        <View style={[styles.td, { width: 100 }]}>
+          <Text style={styles.tdText}>{r.dueDate ? shortDate(r.dueDate) : '—'}</Text>
+        </View>
+
+        <View style={[styles.td, { width: 100 }]}>
           <Badge label={stateInfo.label} color={stateInfo.color} bg={stateInfo.bg} />
         </View>
 
-        {r.description ? (
-          <Text style={styles.respDesc} numberOfLines={3}>{r.description}</Text>
-        ) : null}
-
-        {/* Assignee Row */}
-        <View style={styles.assigneeRow}>
-          <Avatar name={assignee?.fullName || '?'} size={32} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.assigneeName}>{assignee?.fullName || 'Unassigned'}</Text>
-            {assignee?.memberId ? <Text style={styles.assigneeId}>{assignee.memberId}</Text> : null}
-          </View>
-        </View>
-
-        {/* Status Action Buttons */}
-        {canManage ? (
-          <View style={styles.actionRow}>
-            {r.state !== 'IN_PROGRESS' && r.state !== 'COMPLETED' && (
-              <TouchableOpacity
-                style={[styles.statusBtn, { borderColor: Colors.primary }]}
-                onPress={() => handleUpdateState(r._id, 'IN_PROGRESS')}
-              >
-                <Text style={[styles.statusBtnText, { color: Colors.primary }]}>▶ Start</Text>
-              </TouchableOpacity>
-            )}
-
-            {r.state !== 'COMPLETED' && (
-              <TouchableOpacity
-                style={[styles.statusBtn, { borderColor: Colors.success }]}
-                onPress={() => handleUpdateState(r._id, 'COMPLETED')}
-              >
-                <Text style={[styles.statusBtnText, { color: Colors.success }]}>✓ Done</Text>
-              </TouchableOpacity>
-            )}
-
-            {r.state !== 'CANCELLED' && (
-              <TouchableOpacity
-                style={[styles.statusBtn, { borderColor: Colors.textMuted }]}
-                onPress={() => handleUpdateState(r._id, 'CANCELLED')}
-              >
-                <Text style={[styles.statusBtnText, { color: Colors.textMuted }]}>✕ Cancel</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={[styles.statusBtn, { borderColor: Colors.error }]}
-              onPress={() => handleDelete(r)}
-            >
-              <Text style={[styles.statusBtnText, { color: Colors.error }]}>🗑</Text>
+        <View style={[styles.td, { width: 150, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }]}>
+          {canManage && r.state === 'PENDING' && (
+            <TouchableOpacity style={styles.btnSecondary} onPress={() => handleUpdateState(r._id, 'IN_PROGRESS')}>
+              <Text style={styles.btnSecondaryText}>Start</Text>
             </TouchableOpacity>
-          </View>
-        ) : null}
-      </Card>
+          )}
+          {canManage && r.state !== 'COMPLETED' && r.state !== 'CANCELLED' && (
+            <TouchableOpacity style={styles.btnPrimary} onPress={() => handleUpdateState(r._id, 'COMPLETED')}>
+              <Text style={styles.btnPrimaryText}>Mark Done</Text>
+            </TouchableOpacity>
+          )}
+          {canManage && r.state !== 'CANCELLED' && r.state !== 'COMPLETED' && (
+            <TouchableOpacity style={styles.btnDanger} onPress={() => handleUpdateState(r._id, 'CANCELLED')}>
+              <Text style={styles.btnDangerText}>Cancel</Text>
+            </TouchableOpacity>
+          )}
+          {canManage && (
+            <TouchableOpacity style={styles.btnGhost} onPress={() => handleDelete(r)}>
+              <Text style={styles.btnGhostText}>Delete</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header Banner */}
-      <View style={styles.banner}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>📋 Unit Responsibilities</Text>
-          <Text style={styles.bannerSub}>{ctx?.unitName || 'Select a unit'}</Text>
+      <View style={styles.header}>
+        <Text style={styles.pageTitle}>Responsibilities · {ctx?.unitName}</Text>
+        <View style={styles.actionsRow}>
+           <View style={styles.pickerContainer}>
+             <Text style={styles.pickerLabel}>State:</Text>
+             <View style={styles.pickerWrapper}>
+               <Picker
+                 selectedValue={filterState}
+                 onValueChange={(itemValue) => setFilterState(itemValue)}
+                 style={styles.picker}
+               >
+                 {FILTERS.map(f => (
+                   <Picker.Item key={f.value} label={f.label} value={f.value} />
+                 ))}
+               </Picker>
+             </View>
+           </View>
+           {!!canManage && (
+             <TouchableOpacity style={styles.btnPrimary} onPress={() => setShowCreate(true)}>
+               <Text style={styles.btnPrimaryText}>+ Assign Responsibility</Text>
+             </TouchableOpacity>
+           )}
         </View>
       </View>
 
-      {/* Filter Tabs */}
-      <View style={styles.filterStrip}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList}>
-          {FILTERS.map((f) => (
-            <TouchableOpacity
-              key={f.value}
-              style={[styles.filterPill, filterState === f.value && styles.filterPillActive]}
-              onPress={() => setFilterState(f.value)}
-            >
-              <Text style={[styles.filterText, filterState === f.value && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <FlatList
-        data={items}
-        renderItem={renderItem}
-        keyExtractor={(r) => r._id}
-        contentContainerStyle={styles.list}
-        onRefresh={reload}
-        refreshing={loading}
-        ListEmptyComponent={
-          !loading && <EmptyState icon="📋" title="No responsibilities" subtitle="No tasks or responsibilities assigned for this filter." />
-        }
-      />
-
-      {/* FAB Button */}
-      {canManage && (
-        <TouchableOpacity style={styles.fab} onPress={() => setShowCreate(true)}>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
-      )}
+      <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
+        <View style={{ flex: 1, minWidth: 780 }}>
+          {tableHeader()}
+          {loading ? (
+             <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator /></View>
+          ) : items.length === 0 ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+               <Text style={{ color: Colors.textMuted }}>No responsibilities yet.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={items}
+              renderItem={renderItem}
+              keyExtractor={(r) => r._id}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+            />
+          )}
+        </View>
+      </ScrollView>
 
       {/* Assign Responsibility Modal */}
       <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
@@ -360,58 +356,30 @@ export default function ResponsibilitiesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  banner: { backgroundColor: Colors.primary, padding: Spacing.lg, flexDirection: 'row', alignItems: 'center' },
-  bannerTitle: { fontSize: FontSize.lg, fontWeight: '800', color: '#fff' },
-  bannerSub: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  filterStrip: { backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  filterList: { padding: Spacing.sm, gap: 8, flexDirection: 'row' },
-  filterPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.background },
-  filterPillActive: { borderColor: Colors.primary, backgroundColor: '#eff6ff' },
-  filterText: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600' },
-  filterTextActive: { color: Colors.primary, fontWeight: '700' },
-  list: { padding: Spacing.md, paddingBottom: 80 },
-  card: { marginBottom: Spacing.md, padding: Spacing.md },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  respTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text },
-  respDue: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  respDesc: { fontSize: FontSize.xs, color: Colors.textLight, lineHeight: 18, marginBottom: Spacing.sm },
-  assigneeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: Colors.surfaceAlt,
-    padding: Spacing.sm,
-    borderRadius: Radius.md,
-    marginBottom: Spacing.sm,
-  },
-  assigneeName: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
-  assigneeId: { fontSize: FontSize.xs - 1, color: Colors.textMuted },
-  actionRow: { flexDirection: 'row', gap: 8, borderTopWidth: 1, borderTopColor: Colors.borderLight, paddingTop: Spacing.sm },
-  statusBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    backgroundColor: Colors.surface,
-  },
-  statusBtnText: { fontSize: FontSize.xs, fontWeight: '600' },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  fabText: { color: '#fff', fontSize: 30, fontWeight: '300', lineHeight: 32 },
+  header: { padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.surface, gap: Spacing.sm },
+  pageTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.text },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md, marginTop: Spacing.xs, flexWrap: 'wrap' },
+  pickerContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  pickerLabel: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted, marginRight: Spacing.sm },
+  pickerWrapper: { flex: 1, backgroundColor: Colors.surface, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', height: 40, justifyContent: 'center' },
+  picker: { width: '100%', height: 40, color: Colors.text },
+  btnPrimary: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.md, paddingVertical: 10, borderRadius: 8 },
+  btnPrimaryText: { color: '#fff', fontSize: FontSize.sm, fontWeight: '700' },
+  btnSecondary: { backgroundColor: Colors.surfaceAlt, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border },
+  btnSecondaryText: { color: Colors.text, fontSize: FontSize.sm, fontWeight: '600' },
+  btnDanger: { backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, borderWidth: 1, borderColor: '#fca5a5' },
+  btnDangerText: { color: '#b91c1c', fontSize: FontSize.sm, fontWeight: '600' },
+  btnGhost: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
+  btnGhostText: { color: Colors.textMuted, fontSize: FontSize.sm, fontWeight: '600' },
+
+  thRow: { flexDirection: 'row', borderBottomWidth: 2, borderBottomColor: Colors.border, paddingBottom: Spacing.sm, marginBottom: Spacing.sm },
+  th: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text, paddingHorizontal: Spacing.sm },
+  tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.borderLight, paddingVertical: Spacing.md, alignItems: 'center' },
+  td: { paddingHorizontal: Spacing.sm },
+  tdText: { fontSize: FontSize.sm, color: Colors.text },
+  tdSubtext: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  
+  // Modal styles
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',

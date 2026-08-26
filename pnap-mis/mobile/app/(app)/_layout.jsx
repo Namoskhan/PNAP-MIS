@@ -154,8 +154,14 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/settings/logos" options={{ href: null, headerTitle: 'Logo Manager', headerShown: true }} />
       <Tabs.Screen name="admin/settings/theme" options={{ href: null, headerTitle: 'Theme Manager', headerShown: true }} />
       <Tabs.Screen name="admin/settings/typography" options={{ href: null, headerTitle: 'Typography', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/dashboard" options={{ href: null, headerTitle: 'UI Preferences', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/reports" options={{ href: null, headerTitle: 'Report Branding', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/login" options={{ href: null, headerTitle: 'Login Customization', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/history" options={{ href: null, headerTitle: 'Settings History', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
+      <Tabs.Screen name="admin/congress" options={{ href: null, headerTitle: 'National Congress', headerShown: true }} />
+      <Tabs.Screen name="admin/meetings" options={{ href: null, headerTitle: 'Central Meetings', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
       <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Log', headerShown: true }} />
       <Tabs.Screen name="admin/settings" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />
