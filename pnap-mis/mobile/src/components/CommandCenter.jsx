@@ -53,7 +53,19 @@ export default function CommandCenter() {
           <Text style={styles.bannerTitle}>National Standing</Text>
           <Text style={styles.bannerSub}>Command Center</Text>
         </View>
-        <Badge label="Live" color="#fff" bg="rgba(255,255,255,0.2)" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+          <Link href="/announcements" asChild>
+            <TouchableOpacity style={styles.headerBtn}>
+              <Text style={{ fontSize: 18 }}>📣</Text>
+            </TouchableOpacity>
+          </Link>
+          <Link href="/notifications" asChild>
+            <TouchableOpacity style={styles.headerBtn}>
+              <Text style={{ fontSize: 18 }}>🔔</Text>
+            </TouchableOpacity>
+          </Link>
+          <Badge label="Live" color="#fff" bg="rgba(255,255,255,0.2)" />
+        </View>
       </View>
 
       {/* Tabs */}
@@ -96,6 +108,14 @@ const styles = StyleSheet.create({
   },
   bannerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
   bannerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  headerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: Colors.primary,

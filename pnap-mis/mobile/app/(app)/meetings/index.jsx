@@ -13,7 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { useLocalSearchParams, Link } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage } from '../../../src/api/client';
@@ -41,9 +41,28 @@ export default function MeetingsScreen() {
   const { user } = useAuth();
   const { ctx } = useUnit();
   const toast = useToast();
+  const params = useLocalSearchParams();
   const canManage = canManageMeetings(user);
 
-  const isCentral = ctx?.unitLevel === 'CENTRAL';
+  const queryBody = params.body || '';
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
+  const isCommitteeView = queryBody === 'COMMITTEE';
+  const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : (params.body || 'NON_COMMITTEE')));
+
+  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
+  const [resolvedUnitId, setResolvedUnitId] = useState(params.unitId || ctx?.unitId);
+
+  useEffect(() => {
+    let rawId = params.unitId || ctx?.unitId;
+    if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
+      api.get('/org/central').then((r) => {
+        if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
+      }).catch(() => {});
+    } else {
+      setResolvedUnitId(rawId);
+    }
+  }, [params.unitId, params.unitLevel, ctx?.unitId]);
 
   const [bodyTab, setBodyTab] = useState('ALL');
   const [items, setItems] = useState([]);
@@ -54,18 +73,20 @@ export default function MeetingsScreen() {
   const [saving, setSaving] = useState(false);
 
   async function load(silent = false) {
-    if (!ctx?.unitId) {
+    if (!resolvedUnitId || resolvedUnitId === 'CENTRAL') {
       setLoading(false);
       return;
     }
     if (!silent) setLoading(true);
     try {
-      const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId };
-      
-      // Just fetch NON_COMMITTEE
-      params.body = 'NON_COMMITTEE';
+      const qParams = { unitLevel: activeLevel, unitId: resolvedUnitId };
+      if (isCongressView || isJirgaView || isCommitteeView) {
+        qParams.body = targetBody;
+      } else {
+        qParams.body = 'NON_COMMITTEE';
+      }
 
-      const res = await api.get('/meetings', { params });
+      const res = await api.get('/meetings', { params: qParams });
       setItems(res.data.data || []);
     } catch {
       // ignore
@@ -77,29 +98,29 @@ export default function MeetingsScreen() {
 
   useEffect(() => {
     load();
-  }, [ctx?.unitId, bodyTab]);
+  }, [activeLevel, resolvedUnitId, targetBody, bodyTab]);
 
   function onRefresh() {
     setRefreshing(true);
     load(true);
   }
 
-  const congressItems = [];
-  const jirgaItems = [];
-  const committeeItems = [];
-  
-  const nonCommitteeItems = useMemo(() => items.filter((m) => !['COMMITTEE', 'JIRGA', 'CONGRESS', 'CMP', 'JRG', 'CNG'].includes(m.body) && !['COMMITTEE', 'JIRGA', 'CONGRESS', 'CMP', 'JRG', 'CNG'].includes(m.typeCode)), [items]);
+  const nonCommitteeItems = useMemo(() => {
+    if (isCongressView) return items.filter(m => m.body === 'CONGRESS' || m.typeCode === 'CNG');
+    if (isJirgaView) return items.filter(m => m.body === 'JIRGA' || m.typeCode === 'JRG');
+    if (isCommitteeView) return items.filter(m => m.body === 'COMMITTEE' || m.typeCode === 'CMP');
+    return items.filter((m) => !['COMMITTEE', 'JIRGA', 'CONGRESS', 'CMP', 'JRG', 'CNG'].includes(m.body) && !['COMMITTEE', 'JIRGA', 'CONGRESS', 'CMP', 'JRG', 'CNG'].includes(m.typeCode));
+  }, [items, isCongressView, isJirgaView, isCommitteeView]);
+
   const execItems = useMemo(() => nonCommitteeItems.filter((m) => m.body === 'EXECUTIVE' || (!m.body && m.typeCode !== 'GBM')), [nonCommitteeItems]);
   const gbmItems = useMemo(() => nonCommitteeItems.filter((m) => m.body === 'GENERAL_BODY' || m.typeCode === 'GBM'), [nonCommitteeItems]);
 
   const displayedItems = useMemo(() => {
-    if (bodyTab === 'CONGRESS') return congressItems;
-    if (bodyTab === 'JIRGA') return jirgaItems;
-    if (bodyTab === 'COMMITTEE') return committeeItems;
+    if (isCongressView || isJirgaView || isCommitteeView) return nonCommitteeItems;
     if (bodyTab === 'EXECUTIVE') return execItems;
     if (bodyTab === 'GENERAL_BODY') return gbmItems;
     return nonCommitteeItems;
-  }, [bodyTab, congressItems, jirgaItems, committeeItems, execItems, gbmItems, nonCommitteeItems]);
+  }, [bodyTab, execItems, gbmItems, nonCommitteeItems, isCongressView, isJirgaView, isCommitteeView]);
 
   async function handleCreate() {
     if (!form.title.trim() || !form.startAt) {
@@ -110,9 +131,9 @@ export default function MeetingsScreen() {
     try {
       await api.post('/meetings', {
         ...form,
-        body: bodyTab === 'ALL' ? 'EXECUTIVE' : bodyTab,
-        unitLevel: ctx.unitLevel,
-        unitId: ctx.unitId,
+        body: isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : (bodyTab === 'ALL' ? 'EXECUTIVE' : bodyTab))),
+        unitLevel: activeLevel,
+        unitId: resolvedUnitId,
       });
       toast.success('Meeting created.');
       setShowForm(false);
@@ -186,7 +207,13 @@ export default function MeetingsScreen() {
     </View>
   );
 
-  let pageTitle = `Meetings · PKNAP Central`;
+  let pageTitle = isCongressView
+    ? 'National Congress Meetings · PKNAP Central'
+    : (isJirgaView
+      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Meetings · PKNAP Central' : `Sobayi Jirga Meetings · ${ctx?.unitName || 'Central'}`)
+      : (isCommitteeView
+        ? `Committee Meetings · ${ctx?.unitName || 'PKNAP Central'}`
+        : `Meetings · ${ctx?.unitName || 'PKNAP Central'}`));
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -195,38 +222,40 @@ export default function MeetingsScreen() {
         <Text style={styles.pageTitle}>{pageTitle}</Text>
         
         <View style={styles.actionsRow}>
-           <TouchableOpacity style={styles.btnSecondary}>
+           <TouchableOpacity style={styles.btnSecondary} onPress={() => toast.success('Exporting PDF...')}>
              <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
              <Text style={styles.btnSecondaryText}>Export PDF</Text>
            </TouchableOpacity>
-           <TouchableOpacity style={styles.btnSecondary}>
+           <TouchableOpacity style={styles.btnSecondary} onPress={() => toast.success('Exporting Excel...')}>
              <Ionicons name="stats-chart-outline" size={16} color={Colors.textMuted} />
              <Text style={styles.btnSecondaryText}>Export Excel</Text>
            </TouchableOpacity>
         </View>
       </View>
 
-      {/* Category Sub-Tabs */}
-      <View style={styles.categoryRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-          <Text style={styles.categoryLabel}>Category:</Text>
-          
-          <TouchableOpacity style={[styles.catChip, bodyTab === 'ALL' && styles.catChipActive]} onPress={() => setBodyTab('ALL')}>
-            <Text style={[styles.catChipText, bodyTab === 'ALL' && styles.catChipTextActive]}>All Meetings</Text>
-            <Text style={styles.catChipCount}>({nonCommitteeItems.length})</Text>
-          </TouchableOpacity>
+      {/* Category Sub-Tabs (only when not in specialized body view) */}
+      {!isCongressView && !isJirgaView && !isCommitteeView && (
+        <View style={styles.categoryRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+            <Text style={styles.categoryLabel}>Category:</Text>
+            
+            <TouchableOpacity style={[styles.catChip, bodyTab === 'ALL' && styles.catChipActive]} onPress={() => setBodyTab('ALL')}>
+              <Text style={[styles.catChipText, bodyTab === 'ALL' && styles.catChipTextActive]}>All Meetings</Text>
+              <Text style={styles.catChipCount}>({nonCommitteeItems.length})</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.catChip, bodyTab === 'EXECUTIVE' && styles.catChipActive]} onPress={() => setBodyTab('EXECUTIVE')}>
-            <Text style={[styles.catChipText, bodyTab === 'EXECUTIVE' && styles.catChipTextActive]}>🏛️ Executive Meetings</Text>
-            <Text style={styles.catChipCount}>({execItems.length})</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={[styles.catChip, bodyTab === 'EXECUTIVE' && styles.catChipActive]} onPress={() => setBodyTab('EXECUTIVE')}>
+              <Text style={[styles.catChipText, bodyTab === 'EXECUTIVE' && styles.catChipTextActive]}>🏛️ Executive Meetings</Text>
+              <Text style={styles.catChipCount}>({execItems.length})</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.catChip, bodyTab === 'GENERAL_BODY' && styles.catChipActive]} onPress={() => setBodyTab('GENERAL_BODY')}>
-            <Text style={[styles.catChipText, bodyTab === 'GENERAL_BODY' && styles.catChipTextActive]}>👥 General Body Meetings</Text>
-            <Text style={styles.catChipCount}>({gbmItems.length})</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+            <TouchableOpacity style={[styles.catChip, bodyTab === 'GENERAL_BODY' && styles.catChipActive]} onPress={() => setBodyTab('GENERAL_BODY')}>
+              <Text style={[styles.catChipText, bodyTab === 'GENERAL_BODY' && styles.catChipTextActive]}>👥 General Body Meetings</Text>
+              <Text style={styles.catChipCount}>({gbmItems.length})</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
 
       <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
         <View style={{ flex: 1 }}>

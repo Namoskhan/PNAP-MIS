@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage } from '../../../src/api/client';
@@ -36,8 +37,29 @@ export default function FinanceScreen() {
   const { user } = useAuth();
   const { ctx } = useUnit();
   const toast = useToast();
+  const params = useLocalSearchParams();
   const canRecord = canManageFinance(user);
   const canApprove = canApproveExpense(user);
+
+  const queryBody = params.body || '';
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
+  const isCommitteeView = queryBody === 'COMMITTEE';
+  const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
+
+  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
+  const [resolvedUnitId, setResolvedUnitId] = useState(params.unitId || ctx?.unitId);
+
+  useEffect(() => {
+    let rawId = params.unitId || ctx?.unitId;
+    if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
+      api.get('/org/central').then((r) => {
+        if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
+      }).catch(() => {});
+    } else {
+      setResolvedUnitId(rawId);
+    }
+  }, [params.unitId, params.unitLevel, ctx?.unitId]);
 
   const [tab, setTab] = useState('DONATIONS');
   const [donations, setDonations] = useState([]);
@@ -59,14 +81,14 @@ export default function FinanceScreen() {
   const [saving, setSaving] = useState(false);
 
   async function load(silent = false) {
-    if (!ctx?.unitId) { setLoading(false); return; }
+    if (!resolvedUnitId || resolvedUnitId === 'CENTRAL') { setLoading(false); return; }
     if (!silent) setLoading(true);
-    const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId };
+    const qParams = { unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody };
     try {
       const [dRes, eRes, sRes] = await Promise.all([
-        api.get('/finance/donations', { params }),
-        api.get('/finance/expenses', { params }),
-        api.get('/finance/summary', { params }).catch(() => ({ data: { data: null } })),
+        api.get('/finance/donations', { params: qParams }),
+        api.get('/finance/expenses', { params: qParams }),
+        api.get('/finance/summary', { params: qParams }).catch(() => ({ data: { data: null } })),
       ]);
       setDonations(dRes.data.data || []);
       setExpenses(eRes.data.data || []);
@@ -78,31 +100,32 @@ export default function FinanceScreen() {
   }
 
   async function loadMonthly() {
-    if (!ctx?.unitId) return;
+    if (!resolvedUnitId || resolvedUnitId === 'CENTRAL') return;
     try {
-      const params = {
-        unitLevel: ctx.unitLevel,
-        unitId: ctx.unitId,
+      const qParams = {
+        unitLevel: activeLevel,
+        unitId: resolvedUnitId,
+        body: targetBody,
         from: monthFrom || undefined,
         to: monthTo || undefined,
       };
-      const r = await api.get('/finance/monthly', { params });
+      const r = await api.get('/finance/monthly', { params: qParams });
       setMonthly(r.data.data || []);
     } catch { /* ignore */ }
   }
 
-  useEffect(() => { load(); }, [ctx?.unitId]);
+  useEffect(() => { load(); }, [activeLevel, resolvedUnitId, targetBody]);
   useEffect(() => {
     if (tab === 'MONTHLY') {
       loadMonthly();
     }
-  }, [ctx?.unitId, tab, monthFrom, monthTo]);
+  }, [activeLevel, resolvedUnitId, tab, targetBody, monthFrom, monthTo]);
 
   async function saveDonation() {
     if (!donationForm.amount) { toast.error('Amount is required.'); return; }
     setSaving(true);
     try {
-      await api.post('/finance/donations', { ...donationForm, amount: Number(donationForm.amount), unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+      await api.post('/finance/donations', { ...donationForm, amount: Number(donationForm.amount), unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody });
       toast.success('Donation recorded.');
       setShowDonation(false);
       setDonationForm({ amount: '', donorType: 'MEMBER', donorName: '', donorCnic: '', paymentMode: 'CASH', receivedAt: '' });
@@ -114,7 +137,7 @@ export default function FinanceScreen() {
     if (!expenseForm.amount || !expenseForm.description) { toast.error('Amount and description are required.'); return; }
     setSaving(true);
     try {
-      await api.post('/finance/expenses', { ...expenseForm, amount: Number(expenseForm.amount), unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+      await api.post('/finance/expenses', { ...expenseForm, amount: Number(expenseForm.amount), unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody });
       toast.success('Expense recorded.');
       setShowExpense(false);
       setExpenseForm({ amount: '', category: 'OFFICE', description: '', vendor: '', paymentMode: 'CASH', incurredAt: '' });
@@ -164,11 +187,25 @@ export default function FinanceScreen() {
     }
   }
 
+  const pageTitle = isCongressView
+    ? 'National Congress Finance · PKNAP Central'
+    : (isJirgaView
+      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Finance · PKNAP Central' : `Sobayi Jirga Finance · ${ctx?.unitName || 'Central'}`)
+      : (isCommitteeView
+        ? `Committee Finance · ${ctx?.unitName || 'PKNAP Central'}`
+        : `Finance · ${ctx?.unitName || 'PKNAP Central'}`));
+
+  const pageSubtitle = isCongressView
+    ? 'National Congress Separate Financial Ledger'
+    : (isJirgaView
+      ? 'Jirga Separate Financial Ledger'
+      : (activeLevel?.replace('_', ' ') || 'CENTRAL'));
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.pageTitle}>Finance · {ctx?.unitName}</Text>
-        <Text style={styles.pageSubtitle}>{ctx?.unitLevel?.replace('_', ' ')}</Text>
+        <Text style={styles.pageTitle}>{pageTitle}</Text>
+        <Text style={styles.pageSubtitle}>{pageSubtitle}</Text>
       </View>
 
       <ScrollView style={{ flex: 1 }}>

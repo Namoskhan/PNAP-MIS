@@ -27,9 +27,12 @@ const ROLE_OPTIONS = [
   { value: 'NO_ROLE', label: 'No Role' },
 ];
 
-export default function CongressScreen() {
+export default function JirgaScreen() {
   const { ctx } = useUnit();
   const toast = useToast();
+
+  const isCentral = ctx?.unitLevel === 'CENTRAL';
+  const label = isCentral ? 'Qomi Jirga · قومي جرګه' : 'Sobayi Jirga · صوبايي جرګه';
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +41,6 @@ export default function CongressScreen() {
   // Roster filters
   const [rosterSearch, setRosterSearch] = useState('');
   const [rosterRoleFilter, setRosterRoleFilter] = useState('ALL');
-  const [rosterProvFilter, setRosterProvFilter] = useState('ALL');
 
   // Assign modal
   const [assignOpen, setAssignOpen] = useState(false);
@@ -46,6 +48,7 @@ export default function CongressScreen() {
   const [candidatesLoading, setCandidatesLoading] = useState(false);
   const [candidateSearch, setCandidateSearch] = useState('');
   const [selectedMember, setSelectedMember] = useState(null);
+  const [nominationNote, setNominationNote] = useState('');
   const [assigning, setAssigning] = useState(false);
 
   const fetchIdRef = useRef(0);
@@ -64,8 +67,8 @@ export default function CongressScreen() {
     setErr('');
     try {
       const resolvedUnitId = await getResolvedUnitId();
-      const res = await api.get('/congress/composition', {
-        params: { unitLevel: 'CENTRAL', unitId: resolvedUnitId },
+      const res = await api.get('/jirga/composition', {
+        params: { unitLevel: ctx?.unitLevel || 'CENTRAL', unitId: resolvedUnitId },
       });
       if (myId === fetchIdRef.current) {
         setData(res.data.data);
@@ -93,12 +96,12 @@ export default function CongressScreen() {
     getResolvedUnitId().then((resolvedUnitId) => {
       if (!active) return;
       const params = {
-        unitLevel: 'CENTRAL',
+        unitLevel: ctx?.unitLevel || 'CENTRAL',
         unitId: resolvedUnitId,
         search: candidateSearch.trim() || undefined,
         limit: 50,
       };
-      return api.get('/congress/eligible-members', { params });
+      return api.get('/jirga/eligible-members', { params });
     })
     .then((res) => {
       if (active) setCandidates(res?.data?.data?.candidates || []);
@@ -113,8 +116,6 @@ export default function CongressScreen() {
     return () => { active = false; };
   }, [assignOpen, candidateSearch, ctx?.unitLevel, ctx?.unitId]);
 
-  const [nominationNote, setNominationNote] = useState('');
-
   async function handleAssign() {
     if (!selectedMember) {
       toast.error('Please select a member.');
@@ -123,13 +124,13 @@ export default function CongressScreen() {
     setAssigning(true);
     try {
       const resolvedUnitId = await getResolvedUnitId();
-      await api.post('/congress/members', {
-        unitLevel: 'CENTRAL',
+      await api.post('/jirga/members', {
+        unitLevel: ctx?.unitLevel || 'CENTRAL',
         unitId: data?.unit?.unitId || resolvedUnitId,
         memberId: selectedMember._id,
         nominationNote: nominationNote.trim() || undefined,
       });
-      toast.success(`${selectedMember.fullName} assigned to Congress.`);
+      toast.success(`${selectedMember.fullName} assigned to ${isCentral ? 'Qomi Jirga' : 'Sobayi Jirga'}.`);
       setSelectedMember(null);
       setNominationNote('');
       setAssignOpen(false);
@@ -144,7 +145,7 @@ export default function CongressScreen() {
   function handleRemove(recordId, memberName) {
     Alert.alert(
       'Remove Member',
-      `Are you sure you want to remove ${memberName || 'this member'} from Congress?`,
+      `Are you sure you want to remove ${memberName || 'this member'} from the Jirga?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -152,8 +153,8 @@ export default function CongressScreen() {
           style: 'destructive', 
           onPress: async () => {
             try {
-              await api.post(`/congress/members/${recordId}/remove`);
-              toast.success('Member removed from Congress.');
+              await api.post(`/jirga/members/${recordId}/remove`);
+              toast.success('Member removed from Jirga.');
               reload();
             } catch (e) {
               toast.error(errorMessage(e));
@@ -183,32 +184,29 @@ export default function CongressScreen() {
           if (!hasRole) return false;
         }
       }
-      if (rosterProvFilter !== 'ALL') {
-        if (m.homeUnit?.provinceName !== rosterProvFilter) return false;
-      }
       return true;
     });
-  }, [data?.members, rosterSearch, rosterRoleFilter, rosterProvFilter]);
+  }, [data?.members, rosterSearch, rosterRoleFilter]);
 
   const stats = useMemo(() => {
-    if (!data?.members) return { total: 0, officeHolders: 0, workers: 0, provinces: 0 };
+    if (!data?.members) return { total: 0, officeHolders: 0, workers: 0 };
     const total = data.members.length;
     let officeHolders = 0;
     let workers = 0;
-    const provSet = new Set();
     data.members.forEach((m) => {
       if (m.activeRoles && m.activeRoles.length > 0) officeHolders++;
       else workers++;
-      if (m.homeUnit?.provinceName) provSet.add(m.homeUnit.provinceName);
     });
-    return { total, officeHolders, workers, provinces: provSet.size };
+    return { total, officeHolders, workers };
   }, [data?.members]);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>National Congress · قومي کانګرس</Text>
-        <Text style={styles.headerSub}>Central Supreme Consultative & Representative Assembly</Text>
+        <Text style={styles.headerTitle}>{label}</Text>
+        <Text style={styles.headerSub}>
+          {isCentral ? 'National Elders & Consultative Assembly' : 'Provincial Consultative Assembly'}
+        </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -226,10 +224,6 @@ export default function CongressScreen() {
           <Card style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>General Workers</Text>
             <Text style={styles.kpiValue}>{loading ? '…' : stats.workers}</Text>
-          </Card>
-          <Card style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Provinces Represented</Text>
-            <Text style={styles.kpiValue}>{loading ? '…' : stats.provinces}</Text>
           </Card>
         </View>
 
@@ -253,19 +247,6 @@ export default function CongressScreen() {
             <View style={styles.pickerRow}>
               <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={rosterProvFilter}
-                  onValueChange={(v) => setRosterProvFilter(v)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="All Provinces" value="ALL" />
-                  {Array.from(new Set((data?.members || []).map(m => m.homeUnit?.provinceName).filter(Boolean))).map((prov) => (
-                    <Picker.Item key={prov} label={prov} value={prov} />
-                  ))}
-                </Picker>
-              </View>
-
-              <View style={styles.pickerContainer}>
-                <Picker
                   selectedValue={rosterRoleFilter}
                   onValueChange={(v) => setRosterRoleFilter(v)}
                   style={styles.picker}
@@ -279,11 +260,11 @@ export default function CongressScreen() {
 
             <View style={styles.rosterList}>
               {filteredRoster.length === 0 ? (
-                <EmptyState icon="👥" title="No members found" subtitle="No Congress members match your search or filters." />
+                <EmptyState icon="⚖️" title="No Jirga members found" subtitle="No members match your search or filters." />
               ) : (
                 filteredRoster.map((m) => {
                   const roles = m.activeRoles || [];
-                  const recordId = m.congressRecordId;
+                  const recordId = m.jirgaRecordId;
                   return (
                     <Card key={m._id} style={styles.memberCard}>
                       <View style={styles.memberHeaderRow}>
@@ -300,29 +281,22 @@ export default function CongressScreen() {
                       </View>
 
                       <View style={styles.detailsBlock}>
-                        {/* Active Roles */}
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>Role:</Text>
                           <View style={styles.detailValue}>
                             {roles.length > 0 ? (
                               roles.map((r, idx) => (
                                 <View key={r._id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: idx !== roles.length - 1 ? 4 : 0 }}>
-                                  <Badge label={r.customRoleName || r.roleCode.replace(/_/g, ' ')} color="#166534" bg="#dcfce7" />
+                                  <Badge label={r.customRoleName || r.roleCode.replace(/_/g, ' ')} color="#6b21a8" bg="#f3e8ff" />
                                   <Text style={styles.unitText}>· {r.unitName}</Text>
                                 </View>
                               ))
-                            ) : m.assignedRoleSnapshot?.roleCode ? (
-                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Badge label={m.assignedRoleSnapshot.customRoleName || m.assignedRoleSnapshot.roleCode.replace(/_/g, ' ')} color="#166534" bg="#dcfce7" />
-                                <Text style={styles.unitText}>· {m.assignedRoleSnapshot.unitName}</Text>
-                              </View>
                             ) : (
                               <Text style={styles.noRoleText}>General Party Worker</Text>
                             )}
                           </View>
                         </View>
 
-                        {/* Hierarchy */}
                         <View style={styles.detailRow}>
                           <Text style={styles.detailLabel}>Home:</Text>
                           <View style={styles.detailValue}>
@@ -333,16 +307,6 @@ export default function CongressScreen() {
                                 m.homeUnit?.areaName && `Area: ${m.homeUnit.areaName}`,
                                 m.homeUnit?.basicUnitName && `BU: ${m.homeUnit.basicUnitName}`
                               ].filter(Boolean).join(', ') || '—'}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Appointed Date */}
-                        <View style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>Appointed:</Text>
-                          <View style={styles.detailValue}>
-                            <Text style={styles.footerLabel}>
-                              {m.assignedAt ? new Date(m.assignedAt).toLocaleDateString() : '—'}
                             </Text>
                           </View>
                         </View>
@@ -360,7 +324,7 @@ export default function CongressScreen() {
       <Modal visible={assignOpen} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add to Congress</Text>
+            <Text style={styles.modalTitle}>Add to {isCentral ? 'Qomi Jirga' : 'Sobayi Jirga'}</Text>
             <TouchableOpacity onPress={() => setAssignOpen(false)} style={styles.modalClose}>
               <Ionicons name="close" size={24} color={Colors.textMuted} />
             </TouchableOpacity>
@@ -438,7 +402,7 @@ const styles = StyleSheet.create({
   errorText: { color: Colors.error, marginBottom: Spacing.md },
   
   kpiGrid: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md, flexWrap: 'wrap' },
-  kpiCard: { flex: 1, minWidth: '45%', padding: Spacing.md, backgroundColor: '#fff', alignItems: 'center' },
+  kpiCard: { flex: 1, minWidth: '30%', padding: Spacing.md, backgroundColor: '#fff', alignItems: 'center' },
   kpiLabel: { fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', marginBottom: 4 },
   kpiValue: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.primary },
 
@@ -462,11 +426,9 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', alignItems: 'flex-start' },
   detailLabel: { width: 75, fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, marginTop: 2 },
   detailValue: { flex: 1, justifyContent: 'center' },
-  rolesRow: { gap: 4 },
   unitText: { fontSize: FontSize.xs, color: Colors.text, marginLeft: 4 },
   noRoleText: { fontSize: FontSize.xs, color: Colors.textLight, fontStyle: 'italic', marginTop: 2 },
   hierarchyText: { fontSize: FontSize.xs, color: Colors.text, lineHeight: 18, marginTop: 2 },
-  footerLabel: { fontSize: FontSize.xs, color: Colors.text, marginTop: 2 },
 
   modal: { flex: 1, backgroundColor: Colors.background },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },

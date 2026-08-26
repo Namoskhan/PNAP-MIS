@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, hasRole } from '../../../src/utils/permissions';
@@ -80,7 +81,12 @@ function ExportCard({ icon, title, description, onDownload, busy }) {
 export default function ReportsScreen() {
   const { user } = useAuth();
   const { ctx } = useUnit();
+  const params = useLocalSearchParams();
   const canFinance = canManageFinance(user);
+
+  const queryBody = params.body || '';
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
 
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -103,14 +109,27 @@ export default function ReportsScreen() {
     setError('');
     setBusyKey(`${key}-${fmt}`);
     try {
-      const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId };
-      if (from) params.from = from;
-      if (to) params.to = to;
-      if (ctx.unitLevel !== 'BASIC_UNIT') params.scope = scope;
-      await downloadAndShare(`/exports/unit/${key}/${fmt}`, `${key}-report.${fmt}`, params);
+      const qParams = { unitLevel: ctx.unitLevel, unitId: ctx.unitId };
+      if (queryBody) qParams.body = queryBody;
+      if (from) qParams.from = from;
+      if (to) qParams.to = to;
+      if (ctx.unitLevel !== 'BASIC_UNIT') qParams.scope = scope;
+      await downloadAndShare(`/exports/unit/${key}/${fmt}`, `${key}-${queryBody ? queryBody.toLowerCase() + '-' : ''}report.${fmt}`, qParams);
     } catch (e) { setError(e.message); }
     finally { setBusyKey(null); }
   }
+
+  const pageTitle = isCongressView
+    ? 'National Congress Reports'
+    : (isJirgaView
+      ? 'Qomi Jirga Reports'
+      : 'Exports & Reports');
+
+  const pageSub = isCongressView
+    ? 'PKNAP Central · National Congress'
+    : (isJirgaView
+      ? (ctx?.unitLevel === 'CENTRAL' ? 'PKNAP Central · Qomi Jirga' : `${ctx?.unitName} · Sobayi Jirga`)
+      : (ctx?.unitName ? ctx.unitName : 'Select a unit context first'));
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -118,10 +137,8 @@ export default function ReportsScreen() {
         <View style={styles.banner}>
           <Text style={styles.bannerIcon}>📊</Text>
           <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>Exports & Reports</Text>
-            <Text style={styles.bannerSub}>
-              {ctx?.unitName ? ctx.unitName : 'Select a unit context first'}
-            </Text>
+            <Text style={styles.bannerTitle}>{pageTitle}</Text>
+            <Text style={styles.bannerSub}>{pageSub}</Text>
           </View>
         </View>
 

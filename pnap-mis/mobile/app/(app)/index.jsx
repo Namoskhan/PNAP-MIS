@@ -97,16 +97,23 @@ export default function DashboardScreen() {
       >
         {/* Welcome Banner */}
         <View style={styles.banner}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.bannerEyebrow}>{isMember ? 'MEMBER PORTAL' : 'UNIT DASHBOARD'}</Text>
             <Text style={styles.bannerName}>Welcome, {firstName}</Text>
             {ctx?.unitName && <Text style={styles.bannerUnit}>{ctx.unitName}</Text>}
           </View>
-          <Link href="/notifications" asChild>
-            <TouchableOpacity style={styles.bellBtn}>
-              <Text style={styles.bellIcon}>🔔</Text>
-            </TouchableOpacity>
-          </Link>
+          <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <Link href="/announcements" asChild>
+              <TouchableOpacity style={styles.bellBtn}>
+                <Text style={styles.bellIcon}>📣</Text>
+              </TouchableOpacity>
+            </Link>
+            <Link href="/notifications" asChild>
+              <TouchableOpacity style={styles.bellBtn}>
+                <Text style={styles.bellIcon}>🔔</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
 
         {/* Role pills */}

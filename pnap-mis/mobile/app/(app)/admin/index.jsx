@@ -136,19 +136,34 @@ export default function AdminHubScreen() {
       ],
     },
     {
-      title: 'Committees',
-      show: () => isSuper,
+      title: 'National Congress',
+      show: () => isSuper || isCentral,
       items: [
-        { key: 'nat-congress', icon: '🤝', title: 'National Congress', description: 'Congress meetings and members', route: '/admin/congress' },
-        { key: 'qomi-jirga', icon: '⚖️', title: 'Qomi Jirga', description: 'Jirga meetings and members', route: '/admin/jirga' },
+        { key: 'congress-roster', icon: '👥', title: 'Congress Roster', description: 'National Congress composition & member assignments', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'congress-meetings', icon: '📅', title: 'Congress Meetings', description: 'Schedule and manage National Congress assemblies', route: '/meetings?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'congress-activities', icon: '🚩', title: 'Congress Activities', description: 'Log and monitor National Congress events & campaigns', route: '/activities?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'congress-finance', icon: '💰', title: 'Congress Finance', description: 'Donations, expenses & funds for National Congress', route: '/finance?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'congress-reports', icon: '📊', title: 'Congress Reports', description: 'Performance and financial reports for Congress', route: '/admin/reports?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
+      ],
+    },
+    {
+      title: 'Qomi Jirga',
+      show: () => isSuper || isCentral,
+      items: [
+        { key: 'jirga-comp', icon: '⚖️', title: 'Jirga Composition', description: 'Central Jirga members & elders assembly', route: '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'jirga-meetings', icon: '📅', title: 'Jirga Meetings', description: 'Central Jirga meeting records', route: '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'jirga-activities', icon: '🚩', title: 'Jirga Activities', description: 'Central Jirga activities & events', route: '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'jirga-finance', icon: '💰', title: 'Jirga Finance', description: 'Central Jirga financial ledger', route: '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'jirga-transfers', icon: '💸', title: 'Jirga Transfers', description: 'Central Jirga fund transfers', route: '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'jirga-reports', icon: '📊', title: 'Jirga Reports', description: 'Central Jirga reports & exports', route: '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
       ],
     },
     {
       title: 'Communication',
-      show: () => isSuper,
+      show: () => true,
       items: [
         { key: 'notifications', icon: '🔔', title: 'Notifications', description: 'System alerts and updates', route: '/notifications' },
-        { key: 'announcements', icon: '📢', title: 'Announcements', description: 'Org wide announcements', route: '/announcements' },
+        { key: 'announcements', icon: '📢', title: 'Announcements', description: 'Org wide broadcasts & direct messages', route: '/announcements' },
       ],
     },
     // The legacy fallback section for non-super admins.

@@ -130,6 +130,7 @@ export default function AppLayout() {
       <Tabs.Screen name="meetings/[id]" options={{ href: null, headerTitle: 'Meeting Detail', headerShown: true }} />
       <Tabs.Screen name="activities/[id]" options={{ href: null, headerTitle: 'Activity Detail', headerShown: true }} />
       <Tabs.Screen name="notifications" options={{ href: null, headerTitle: 'Notifications', headerShown: true }} />
+      <Tabs.Screen name="announcements" options={{ href: null, headerTitle: 'Announcements', headerShown: false }} />
       {/* Phase 2 — Admin screens (hidden from tab bar, reachable via router.push) */}
       <Tabs.Screen name="cabinet/index" options={{ href: null, headerTitle: 'Cabinet', headerShown: true }} />
       <Tabs.Screen name="admin/org" options={{ href: null, headerTitle: 'Org Structure', headerShown: true }} />
@@ -161,6 +162,7 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
       <Tabs.Screen name="admin/congress" options={{ href: null, headerTitle: 'National Congress', headerShown: true }} />
+      <Tabs.Screen name="admin/jirga" options={{ href: null, headerTitle: 'Jirga Composition', headerShown: true }} />
       <Tabs.Screen name="admin/meetings" options={{ href: null, headerTitle: 'Central Meetings', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
       <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Log', headerShown: true }} />
