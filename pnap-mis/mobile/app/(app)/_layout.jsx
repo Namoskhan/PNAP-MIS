@@ -3,7 +3,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
-import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission } from '../../src/utils/permissions';
+import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
 
 function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size} color={color} />;
@@ -27,7 +27,7 @@ export default function AppLayout() {
   if (!user) return <Redirect href="/login" />;
 
   const showFinance = canManageFinance(user);
-  const showAdmin = isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_SYSTEM_BRANDING');
+  const showAdmin = !isPureMember(user);
 
   const isAdminOnly = isHigherAdmin(user) || isAreaAdmin(user);
   const showUnitTabs = !isAdminOnly;
@@ -156,6 +156,7 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/settings/typography" options={{ href: null, headerTitle: 'Typography', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
+      <Tabs.Screen name="admin/performance" options={{ href: null, headerTitle: 'Member Performance', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
       <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Log', headerShown: true }} />
       <Tabs.Screen name="admin/settings" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />

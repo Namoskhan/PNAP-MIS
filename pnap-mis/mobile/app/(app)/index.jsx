@@ -27,6 +27,7 @@ export default function DashboardScreen() {
   const [data, setData] = useState(null);
   const [meetings, setMeetings] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,12 +41,20 @@ export default function DashboardScreen() {
         const params = user?.scope?.basicUnitId
           ? { unitLevel: 'BASIC_UNIT', unitId: user.scope.basicUnitId }
           : {};
-        const [mRes, aRes] = await Promise.all([
+        const tasks = [
           api.get('/meetings', { params }),
           api.get('/activities', { params }),
-        ]);
+        ];
+        if (user?.memberId) {
+          tasks.push(api.get(`/members/${user.memberId}`).catch(() => ({ data: { data: null } })));
+        } else {
+          tasks.push(Promise.resolve({ data: { data: null } }));
+        }
+
+        const [mRes, aRes, meRes] = await Promise.all(tasks);
         setMeetings((mRes.data.data || []).slice(0, 5));
         setActivities((aRes.data.data || []).slice(0, 5));
+        setMe(meRes.data?.data);
       } else if (ctx?.unitLevel && ctx?.unitId) {
         const params = { unitLevel: ctx.unitLevel, unitId: ctx.unitId };
         const [dashRes, mRes, aRes] = await Promise.all([
@@ -109,13 +118,68 @@ export default function DashboardScreen() {
           </Link>
         </View>
 
+        {/* Member Summary Chips */}
+        {isMember && me && (
+          <View style={styles.chipsRow}>
+            <View style={styles.chip}><Text style={styles.chipIcon}>●</Text><Text style={styles.chipText}>{me.status?.replace('_', ' ').toLowerCase() || '—'}</Text></View>
+            <View style={styles.chip}><Text style={styles.chipIcon}>🪪</Text><Text style={styles.chipText}>{me.memberId || '—'}</Text></View>
+            <View style={styles.chip}><Text style={styles.chipIcon}>📋</Text><Text style={styles.chipText}>{meetings.length} Meetings</Text></View>
+            <View style={styles.chip}><Text style={styles.chipIcon}>🎯</Text><Text style={styles.chipText}>{activities.length} Activities</Text></View>
+          </View>
+        )}
+
         {/* Role pills */}
-        {user?.roles && user.roles.length > 0 && (
+        {user?.roles && user.roles.length > 0 && !isMember && (
           <View style={styles.rolePills}>
             {user.roles.slice(0, 3).map((r) => (
               <Badge key={r} label={roleLabel(user, r)} color={Colors.primaryLight} bg="#eff6ff" />
             ))}
           </View>
+        )}
+
+        {/* Member Profile */}
+        {isMember && (
+          <Card style={styles.itemCard}>
+            <Text style={styles.sectionTitle}>My Profile</Text>
+            {me ? (
+              <View style={styles.profileGrid}>
+                <View style={styles.profileCol}>
+                  <Text style={styles.mutedLabel}>Name</Text>
+                  <Text style={styles.profileValue}>{me.fullName}</Text>
+                </View>
+                <View style={styles.profileCol}>
+                  <Text style={styles.mutedLabel}>Member ID</Text>
+                  <Text style={styles.profileValue}>{me.memberId || '—'}</Text>
+                </View>
+                <View style={styles.profileCol}>
+                  <Text style={styles.mutedLabel}>CNIC</Text>
+                  <Text style={styles.profileValue}>{me.cnic || '—'}</Text>
+                </View>
+                <View style={styles.profileCol}>
+                  <Text style={styles.mutedLabel}>Phone</Text>
+                  <Text style={styles.profileValue}>{me.phone || '—'}</Text>
+                </View>
+                <View style={styles.profileCol}>
+                  <Text style={styles.mutedLabel}>Status</Text>
+                  <Badge label={me.status || '—'} />
+                </View>
+                <View style={styles.profileCol}>
+                  <Text style={styles.mutedLabel}>Basic Unit</Text>
+                  <Text style={styles.profileValue}>{me.basicUnitId?.name || '—'}</Text>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.mutedLabel}>Could not load your profile.</Text>
+            )}
+            
+            {user?.memberId && (
+              <Link href={`/members/${user.memberId}`} asChild>
+                <TouchableOpacity style={styles.secondaryBtn}>
+                  <Text style={styles.secondaryBtnText}>View & Update Profile</Text>
+                </TouchableOpacity>
+              </Link>
+            )}
+          </Card>
         )}
 
         {/* KPI Grid — operator only */}
@@ -236,4 +300,14 @@ const styles = StyleSheet.create({
   emptyBox: { alignItems: 'center', paddingVertical: 48 },
   emptyIcon: { fontSize: 40, marginBottom: Spacing.md },
   emptyText: { fontSize: FontSize.base, color: Colors.textMuted, textAlign: 'center' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
+  chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderLight },
+  chipIcon: { fontSize: FontSize.sm, marginRight: 6 },
+  chipText: { fontSize: FontSize.xs, color: Colors.text, fontWeight: '600' },
+  profileGrid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: Spacing.xs },
+  profileCol: { width: '50%', marginBottom: Spacing.md },
+  mutedLabel: { fontSize: FontSize.xs, color: Colors.textMuted, marginBottom: 2 },
+  profileValue: { fontSize: FontSize.sm, color: Colors.text, fontWeight: '600' },
+  secondaryBtn: { backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingVertical: 10, alignItems: 'center', marginTop: Spacing.sm },
+  secondaryBtnText: { color: Colors.text, fontWeight: '600', fontSize: FontSize.sm },
 });

@@ -6,7 +6,8 @@ import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors
 import {
   isSuperAdmin, isHigherAdmin, isAreaAdmin,
   hasPermission, canDecideRole, canInitiateRole,
-  hasRole,
+  hasRole, isOperatorPersona, isPresidentPersona, isFinanceOnly,
+  isProvinceAdminOnly, isDistrictAdminOnly, isCentralAdminOnly
 } from '../../../src/utils/permissions';
 import Badge from '../../../src/components/Badge';
 
@@ -17,10 +18,14 @@ export default function AdminHubScreen() {
 
   // Persona detection
   const isSuper = isSuperAdmin(user);
-  const isProvince = hasRole(user, 'PROVINCE_ADMIN');
-  const isDistrict = hasRole(user, 'DISTRICT_ADMIN');
-  const isArea = hasRole(user, 'AREA_ADMIN');
-  const isCentral = hasRole(user, 'CENTRAL_ADMIN');
+  const isProvince = isProvinceAdminOnly(user);
+  const isDistrict = isDistrictAdminOnly(user);
+  const isArea = isAreaAdmin(user);
+  const isCentral = isCentralAdminOnly(user);
+  const isSeniorMawin = isOperatorPersona(user);
+  const isFinanceSec = isFinanceOnly(user);
+  const isPresident = isPresidentPersona(user);
+  const isSecretary = hasRole(user, 'SECRETARY') && !isHigherAdmin(user) && !isArea;
 
   const tierTitle = isSuper
     ? 'Super Admin'
@@ -59,6 +64,13 @@ export default function AdminHubScreen() {
     : isArea
     ? 'Assign Cabinet Roles'
     : 'Cabinet & Roles';
+
+  const adminSectionTitle = isCentral ? 'My Organization'
+    : isProvince ? 'My Province'
+    : isDistrict ? 'My District'
+    : isArea ? 'My Area'
+    : ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}`
+    : 'Administrative Tools';
 
   const sections = [
     {
@@ -151,17 +163,17 @@ export default function AdminHubScreen() {
         { key: 'announcements', icon: '📢', title: 'Announcements', description: 'Org wide announcements', route: '/announcements' },
       ],
     },
-    // The legacy fallback section for non-super admins.
     {
-      title: 'Administrative Tools',
-      show: () => !isSuper && (isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN')),
+      title: adminSectionTitle,
+      show: () => !isSuper && (isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || isSeniorMawin || isSecretary || isFinanceSec || isPresident || hasPermission(user, 'APPROVE_MEMBER')),
       items: [
-        { key: 'breakdown', icon: '📊', title: breakdownTitle, description: 'Activity, membership & finance stats.', route: '/admin/breakdown', show: () => isProvince || isDistrict || isCentral },
+        { key: 'breakdown', icon: '📊', title: breakdownTitle, description: 'Activity, membership & finance stats.', route: '/admin/breakdown', show: () => isProvince || isDistrict || isCentral || isFinanceSec || hasPermission(user, 'VIEW_BREAKDOWN') },
         { key: 'org', icon: '🏢', title: orgManageTitle, description: 'Create and manage the administrative hierarchy below you.', route: '/admin/org', show: () => isHigherAdmin(user) || isAreaAdmin(user) },
-        { key: 'cabinet', icon: '🏛️', title: cabinetTitle, description: 'Assign office-holders and approve cabinet proposals.', route: '/cabinet', show: () => isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) },
-        { key: 'responsibilities', icon: '📋', title: 'Responsibilities', description: 'Assign tasks to unit members and track progress.', route: '/admin/responsibilities', show: () => isHigherAdmin(user) || isAreaAdmin(user) || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN') },
-        { key: 'members', icon: '👥', title: 'Unit Members', description: 'Browse, filter, and register members in your territory.', route: '/members', show: () => isHigherAdmin(user) || isAreaAdmin(user) },
-        { key: 'reports', icon: '📈', title: 'Exports & Reports', description: 'Download PDF and Excel reports for meetings, finance, and transfers.', route: '/admin/reports', show: () => isHigherAdmin(user) || isAreaAdmin(user) || hasRole(user, 'SENIOR_MAWIN', 'SECRETARY', 'FINANCE_SECRETARY') },
+        { key: 'pending', icon: '⏳', title: 'Member Approvals', description: 'Review and approve new member registrations.', route: '/members/pending', show: () => hasPermission(user, 'APPROVE_MEMBER') },
+        { key: 'cabinet', icon: '🏛️', title: cabinetTitle, description: 'Assign office-holders and approve cabinet proposals.', route: '/cabinet', show: () => isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || isSeniorMawin || isSecretary || isPresident },
+        { key: 'responsibilities', icon: '📋', title: 'Responsibilities', description: 'Assign tasks to unit members and track progress.', route: '/admin/responsibilities', show: () => isHigherAdmin(user) || isAreaAdmin(user) || isSeniorMawin || isSecretary || isPresident || isFinanceSec },
+        { key: 'performance', icon: '📈', title: 'Member Performance', description: 'Analyze performance metrics and generate reports.', route: '/admin/performance', show: () => isHigherAdmin(user) || isAreaAdmin(user) || isSeniorMawin || isSecretary || isPresident },
+        { key: 'reports', icon: '📈', title: 'Exports & Reports', description: 'Download PDF and Excel reports for meetings, finance, and transfers.', route: '/admin/reports', show: () => isHigherAdmin(user) || isAreaAdmin(user) || isSeniorMawin || isSecretary || isFinanceSec || isPresident },
       ].filter((i) => (i.show ? i.show() : true)),
     }
   ];
