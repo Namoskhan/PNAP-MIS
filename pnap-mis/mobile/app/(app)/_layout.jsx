@@ -153,6 +153,7 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/settings/identity" options={{ href: null, headerTitle: 'System Identity', headerShown: true }} />
       <Tabs.Screen name="admin/settings/logos" options={{ href: null, headerTitle: 'Logo Manager', headerShown: true }} />
       <Tabs.Screen name="admin/settings/theme" options={{ href: null, headerTitle: 'Theme Manager', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/typography" options={{ href: null, headerTitle: 'Typography', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
