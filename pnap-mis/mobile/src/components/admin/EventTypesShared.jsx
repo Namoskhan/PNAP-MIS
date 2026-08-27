@@ -1,18 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Modal, SafeAreaView,
-  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { api, errorMessage } from '../../../../src/api/client';
-import { useAuth } from '../../../../src/context/AuthContext';
-import { hasPermission } from '../../../../src/utils/permissions';
-import { confirmAction } from '../../../../src/utils/dialog';
-import { useToast } from '../../../../src/components/Toast';
-import Card from '../../../../src/components/Card';
-import Badge from '../../../../src/components/Badge';
-import EmptyState from '../../../../src/components/EmptyState';
-import { Colors, FontSize, Spacing } from '../../../../src/constants/colors';
+import { api, errorMessage } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
+import { hasPermission } from '../../utils/permissions';
+import { confirmAction } from '../../utils/dialog';
+import { useToast } from '../Toast';
+import Card from '../Card';
+import Badge from '../Badge';
+import EmptyState from '../EmptyState';
+import { Colors, FontSize, Spacing } from '../../constants/colors';
 
 // Shared component used by both meetings.jsx and activities.jsx
 export function EventTypeList({ entity, title, icon }) {
@@ -32,11 +40,16 @@ export function EventTypeList({ entity, title, icon }) {
     try {
       const r = await api.get('/admin/events/types', { params: { entity } });
       setTypes(r.data?.data || []);
-    } catch (e) { toast.error(errorMessage(e)); }
-    finally { setLoading(false); }
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setLoading(false);
+    }
   }
 
-  useEffect(() => { load(); }, [entity]);
+  useEffect(() => {
+    load();
+  }, [entity]);
 
   const sorted = useMemo(() => {
     return [...types].sort((a, b) => {
@@ -48,7 +61,8 @@ export function EventTypeList({ entity, title, icon }) {
 
   async function handleCreate() {
     if (!form.code.trim() || !form.label.trim()) {
-      toast.error('Code and label are required.'); return;
+      toast.error('Code and label are required.');
+      return;
     }
     setSaving(true);
     try {
@@ -57,8 +71,11 @@ export function EventTypeList({ entity, title, icon }) {
       setCreateOpen(false);
       setForm({ code: '', label: '', description: '' });
       load();
-    } catch (e) { toast.error(errorMessage(e)); }
-    finally { setSaving(false); }
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleDelete(t) {
@@ -70,7 +87,9 @@ export function EventTypeList({ entity, title, icon }) {
           await api.delete(`/admin/events/types/${t._id}`);
           toast.success('Type deleted.');
           load();
-        } catch (e) { toast.error(errorMessage(e)); }
+        } catch (e) {
+          toast.error(errorMessage(e));
+        }
       },
       { confirmText: 'Delete', destructive: true }
     );
@@ -198,7 +217,6 @@ const styles = StyleSheet.create({
   actionBtn: { backgroundColor: Colors.background, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border },
   actionDanger: { borderColor: Colors.error + '40' },
   actionText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
-  // Modal
   modal: { flex: 1, backgroundColor: Colors.background },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border },
   modalTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
@@ -213,7 +231,3 @@ const styles = StyleSheet.create({
   saveBtn: { flex: 2, borderRadius: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: Colors.primary },
   saveText: { color: '#fff', fontWeight: '700', fontSize: FontSize.base },
 });
-
-export default function Shared() {
-  return null;
-}
