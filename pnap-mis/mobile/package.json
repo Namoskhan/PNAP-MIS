@@ -36,10 +36,10 @@
     "typescript": "~5.9.2"
   },
   "scripts": {
-    "start": "cross-env NODE_OPTIONS=--max-old-space-size=4096 expo start -c",
-    "android": "cross-env NODE_OPTIONS=--max-old-space-size=4096 expo start --android -c",
-    "ios": "cross-env NODE_OPTIONS=--max-old-space-size=4096 expo start --ios -c",
-    "web": "cross-env NODE_OPTIONS=--max-old-space-size=4096 expo start --web -c",
+    "start": "expo start -c",
+    "android": "expo start --android -c",
+    "ios": "expo start --ios -c",
+    "web": "expo start --web -c",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios"
   },
