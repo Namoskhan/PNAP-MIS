@@ -60,6 +60,7 @@ const Announcement        = require('../src/models/Announcement');
 const Counter             = require('../src/models/Counter');
 const Role                = require('../src/models/Role');
 const EventTypeConfig     = require('../src/models/EventTypeConfig');
+const { DEFAULT_PERMISSIONS } = require('../src/utils/permissions');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/pnap_mis';
 const CONFIRMED = process.argv.includes('--yes');
@@ -254,7 +255,13 @@ async function run() {
   // ── 1. Role catalogue ──────────────────────────────────────────
   console.log('[seed-all] seeding role catalogue…');
   for (const r of ROLE_CATALOGUE) {
-    await Role.create({ code: r.code, label: r.label, permissions: [], isActive: true, isSystem: true });
+    await Role.create({ 
+      code: r.code, 
+      label: r.label, 
+      permissions: DEFAULT_PERMISSIONS[r.code] || [], 
+      isActive: true, 
+      isSystem: true 
+    });
   }
 
   // ── 2. Cabinet templates ───────────────────────────────────────
