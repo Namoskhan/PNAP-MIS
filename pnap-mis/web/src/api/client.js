@@ -31,5 +31,13 @@ export function unwrap(promise) {
 }
 
 export function errorMessage(err) {
-  return err?.response?.data?.error?.message || err.message || 'Unknown error';
+  const errObj = err?.response?.data?.error;
+  if (!errObj) return err?.message || 'Unknown error';
+  if (errObj.details?.fieldErrors) {
+    const fields = Object.entries(errObj.details.fieldErrors)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+      .join('; ');
+    if (fields) return `${errObj.message || 'Validation error'}: ${fields}`;
+  }
+  return errObj.message || err?.message || 'Unknown error';
 }

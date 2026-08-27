@@ -38,6 +38,16 @@ export function resolveServerBaseUrl() {
 export const API_BASE = resolveApiBaseUrl();
 export const SERVER_BASE = resolveServerBaseUrl();
 
+export function resolveMediaUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  const cleanBase = SERVER_BASE.replace(/\/+$/, '');
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${cleanBase}${cleanPath}`;
+}
+
 export const api = axios.create({
   baseURL: API_BASE,
   timeout: 15000,
@@ -82,5 +92,13 @@ export function unwrap(promise) {
 
 // Extracts a user-facing error message from an axios error.
 export function errorMessage(err) {
-  return err?.response?.data?.error?.message || err?.message || 'Something went wrong.';
+  const errObj = err?.response?.data?.error;
+  if (!errObj) return err?.message || 'Something went wrong.';
+  if (errObj.details?.fieldErrors) {
+    const fields = Object.entries(errObj.details.fieldErrors)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+      .join('; ');
+    if (fields) return `${errObj.message || 'Validation error'}: ${fields}`;
+  }
+  return errObj.message || err?.message || 'Something went wrong.';
 }

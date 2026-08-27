@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,6 +16,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useToast } from '../../../src/components/Toast';
@@ -39,8 +41,11 @@ const STATUS_FILTERS = [
 const GENDERS = [
   { label: 'Male', value: 'MALE' },
   { label: 'Female', value: 'FEMALE' },
-  { label: 'Other', value: 'PREFER_NOT_TO_SAY' },
+  { label: 'Prefer not to say', value: 'PREFER_NOT_TO_SAY' },
 ];
+
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const PHONE_RX = /^(\+92|0)?3\d{2}[- ]?\d{7}$/;
 
 const INITIAL_FORM = {
   fullName: '',
@@ -49,8 +54,12 @@ const INITIAL_FORM = {
   phone: '',
   email: '',
   password: '',
+  passwordConfirm: '',
   dateOfBirth: '2000-01-01',
   gender: 'MALE',
+  bloodGroup: '',
+  education: '',
+  occupation: '',
   address: '',
   basicUnitId: '',
 };
@@ -70,8 +79,10 @@ export default function MembersScreen() {
   // Register Modal state
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [photo, setPhoto] = useState(null);
   const [saving, setSaving] = useState(false);
   const [modalErr, setModalErr] = useState('');
+  const [cnicTaken, setCnicTaken] = useState(null);
 
   // Cascading Unit Pickers for Register Modal
   const [provinces, setProvinces] = useState([]);
@@ -83,7 +94,7 @@ export default function MembersScreen() {
   const [districtId, setDistrictId] = useState('');
   const [areaId, setAreaId] = useState('');
 
-  // Super and Central are the two unbounded tiers — mirrors server hierarchy
+  // Super and Central are the two unbounded tiers
   const isSuper = (user?.roles || []).includes('SUPER_ADMIN');
   const isCentral = (user?.roles || []).includes('CENTRAL_ADMIN');
   const isHigherAdmin = isSuper || isCentral;
@@ -123,7 +134,7 @@ export default function MembersScreen() {
       }
       setPage(pg);
     } catch (e) {
-      toast.error('Could not load members. Please retry.');
+      toast.error(errorMessage(e));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -149,11 +160,32 @@ export default function MembersScreen() {
     }
   }
 
+  // Live duplicate check once all 13 digits are typed
+  useEffect(() => {
+    if (!isCompleteCnic(form.cnic)) {
+      setCnicTaken(null);
+      return;
+    }
+    let stale = false;
+    api.get('/members', { params: { q: form.cnic, limit: 1 } })
+      .then((r) => {
+        if (stale) return;
+        const memberList = r.data?.data || [];
+        setCnicTaken(memberList.some((m) => m.cnic === form.cnic));
+      })
+      .catch(() => {
+        if (!stale) setCnicTaken(null);
+      });
+    return () => { stale = true; };
+  }, [form.cnic]);
+
   // Load Org Hierarchy for registration modal
   useEffect(() => {
     if (!showCreate) return;
     setForm(INITIAL_FORM);
+    setPhoto(null);
     setModalErr('');
+    setCnicTaken(null);
     setProvinceId(user?.scope?.provinceId || '');
     setDistrictId(user?.scope?.districtId || '');
     setAreaId(user?.scope?.areaId || '');
@@ -196,43 +228,108 @@ export default function MembersScreen() {
       .catch(() => {});
   }, [areaId]);
 
+  async function pickPhoto() {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        toast.error('Permission is required to access your photo gallery.');
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (!res.canceled && res.assets?.[0]) {
+        setPhoto(res.assets[0]);
+      }
+    } catch (e) {
+      toast.error('Could not pick photo: ' + errorMessage(e));
+    }
+  }
+
   async function handleCreateMember() {
-    if (
-      !form.fullName.trim() ||
-      !form.fatherOrHusbandName.trim() ||
-      !form.cnic ||
-      !form.phone ||
-      !form.email ||
-      !form.basicUnitId
-    ) {
-      setModalErr('Please fill in all required fields (marked *).');
+    setModalErr('');
+    if (!form.fullName.trim()) {
+      setModalErr('Full name is required (min 3 characters).');
+      return;
+    }
+    if (!form.fatherOrHusbandName.trim()) {
+      setModalErr('Father / Husband name is required.');
       return;
     }
     if (!isCompleteCnic(form.cnic)) {
       setModalErr('CNIC must be 13 digits (XXXXX-XXXXXXX-X).');
       return;
     }
+    if (cnicTaken) {
+      setModalErr('A member with this CNIC already exists.');
+      return;
+    }
+    if (!form.phone.trim() || !PHONE_RX.test(form.phone.trim())) {
+      setModalErr('Enter a valid Pakistan mobile number (03XX-XXXXXXX).');
+      return;
+    }
+    if (!form.email.trim()) {
+      setModalErr('Email address is required.');
+      return;
+    }
     if (!form.password || form.password.length < 6) {
-      setModalErr('Initial password must be at least 6 characters.');
+      setModalErr('Password must be at least 6 characters.');
+      return;
+    }
+    if (form.password !== form.passwordConfirm) {
+      setModalErr('Password and confirmation do not match.');
+      return;
+    }
+    if (!form.dateOfBirth) {
+      setModalErr('Date of birth is required.');
+      return;
+    }
+    if (!form.address.trim() || form.address.trim().length < 5) {
+      setModalErr('Residential address must be at least 5 characters.');
+      return;
+    }
+    if (!form.basicUnitId) {
+      setModalErr('Please select a Basic Unit in the hierarchy.');
       return;
     }
 
-    setModalErr('');
     setSaving(true);
     try {
-      await api.post('/members', {
-        fullName: form.fullName.trim(),
-        fatherOrHusbandName: form.fatherOrHusbandName.trim(),
-        cnic: form.cnic,
-        phone: form.phone.trim(),
-        email: form.email.trim(),
-        password: form.password,
-        dateOfBirth: form.dateOfBirth,
-        gender: form.gender,
-        address: form.address.trim() || 'Not specified',
-        basicUnitId: form.basicUnitId,
+      const fd = new FormData();
+      fd.append('fullName', form.fullName.trim());
+      fd.append('fatherOrHusbandName', form.fatherOrHusbandName.trim());
+      fd.append('cnic', form.cnic);
+      fd.append('phone', form.phone.trim());
+      fd.append('email', form.email.trim());
+      fd.append('password', form.password);
+      fd.append('dateOfBirth', form.dateOfBirth);
+      fd.append('gender', form.gender);
+      fd.append('address', form.address.trim());
+      fd.append('basicUnitId', form.basicUnitId);
+
+      if (form.bloodGroup) fd.append('bloodGroup', form.bloodGroup);
+      if (form.education?.trim()) fd.append('education', form.education.trim());
+      if (form.occupation?.trim()) fd.append('occupation', form.occupation.trim());
+
+      if (photo) {
+        if (Platform.OS === 'web' && photo.file) {
+          fd.append('photo', photo.file);
+        } else {
+          const uri = photo.uri;
+          const name = photo.fileName || uri.split('/').pop() || 'photo.jpg';
+          const match = /\.(\w+)$/.exec(name);
+          const type = photo.mimeType || (match ? `image/${match[1]}` : 'image/jpeg');
+          fd.append('photo', { uri, name, type });
+        }
+      }
+
+      await api.post('/members', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success('Member registered successfully!');
+      toast.success('Member submitted for approval successfully!');
       setShowCreate(false);
       load(1, true);
     } catch (e) {
@@ -248,170 +345,176 @@ export default function MembersScreen() {
 
   function renderItem({ item: m }) {
     const unitName = m.basicUnitId?.name || '';
-    const districtName = m.districtId?.name || m.basicUnitId?.areaId?.districtId?.name || '';
-    const provinceName = m.provinceId?.name || '';
-    const locationParts = [unitName, districtName, provinceName].filter(Boolean);
-    const locationText = locationParts.length > 0 ? locationParts.join(' · ') : '—';
+    const districtName = m.districtId?.name || '';
+    const areaName = m.areaId?.name || '';
+    const locationParts = [unitName, areaName, districtName].filter(Boolean);
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => router.push(`/members/${m._id}`)}
-      >
-        <Card style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Avatar name={m.fullName} size={42} />
-            <View style={styles.cardHeaderInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.name} numberOfLines={1}>{m.fullName}</Text>
-                {m.memberId ? (
-                  <View style={styles.idPill}>
-                    <Text style={styles.idText}>{m.memberId}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={styles.cnicText}>{m.cnic || 'No CNIC'} · {m.phone || 'No Phone'}</Text>
+      <Card style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Avatar name={m.fullName} photoUrl={m.photoUrl} size={42} />
+          <View style={styles.cardHeaderInfo}>
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>{m.fullName}</Text>
+              {m.memberId ? (
+                <View style={styles.idPill}>
+                  <Text style={styles.idText}>ID: {m.memberId}</Text>
+                </View>
+              ) : null}
             </View>
-            <Badge label={m.status?.replace('_', ' ') || '—'} status={m.status} />
+            <Text style={styles.cnicText}>{formatCnic(m.cnic)}</Text>
           </View>
+          <Badge label={m.status?.replace(/_/g, ' ') || '—'} status={m.status} />
+        </View>
 
-          <View style={styles.cardFooter}>
-            <View style={styles.locationBox}>
-              <Ionicons name="location-outline" size={13} color={Colors.textMuted} style={{ marginRight: 4 }} />
-              <Text style={styles.locationText} numberOfLines={1}>{locationText}</Text>
-            </View>
-            <View style={styles.viewLink}>
-              <Text style={styles.viewLinkText}>View</Text>
-              <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
-            </View>
+        <View style={styles.cardFooter}>
+          <View style={styles.locationBox}>
+            <Ionicons name="location-outline" size={13} color={Colors.textMuted} style={{ marginRight: 3 }} />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {locationParts.length ? locationParts.join(' · ') : '—'}
+            </Text>
           </View>
-        </Card>
-      </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.viewLink}
+            onPress={() => router.push(`/members/${m._id}`)}
+          >
+            <Text style={styles.viewLinkText}>View</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+      </Card>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
+      {/* Search and Action Bar */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{pageTitle}</Text>
           <Text style={styles.headerSub}>
-            {meta.total} {meta.total === 1 ? 'member' : 'members'} total
+            {meta.total ? `${meta.total} registered members` : 'Manage and search members'}
           </Text>
         </View>
-
         {showRegisterButton && (
-          <TouchableOpacity style={styles.registerBtn} onPress={() => setShowCreate(true)}>
-            <Ionicons name="person-add" size={16} color="#fff" style={{ marginRight: 5 }} />
-            <Text style={styles.registerBtnText}>Register Member</Text>
+          <TouchableOpacity
+            style={styles.registerBtn}
+            onPress={() => setShowCreate(true)}
+          >
+            <Ionicons name="person-add-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.registerBtnText}>Register</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Search Toolbar */}
       <View style={styles.searchBar}>
         <View style={styles.searchInputWrap}>
-          <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={{ marginRight: 8 }} />
+          <Ionicons name="search" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
           <TextInput
             style={styles.searchInput}
+            placeholder="Search by name, CNIC, or ID..."
+            placeholderTextColor={Colors.textMuted}
             value={q}
             onChangeText={setQ}
             onSubmitEditing={handleSearchSubmit}
             returnKeyType="search"
-            placeholder="Search by name, CNIC, phone, member ID"
-            placeholderTextColor={Colors.textLight}
-            autoCapitalize="none"
           />
-          {q.length > 0 && (
+          {q ? (
             <TouchableOpacity onPress={() => { setQ(''); load(1, true); }}>
-              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+              <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
         <TouchableOpacity style={styles.searchActionBtn} onPress={handleSearchSubmit}>
-          <Text style={styles.searchActionBtnText}>Search</Text>
+          <Text style={styles.searchActionBtnText}>Filter</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Status filter tabs */}
+      {/* Filter Chips */}
       <View style={styles.filterWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {STATUS_FILTERS.map((s) => {
-            const active = status === s.value;
-            return (
-              <TouchableOpacity
-                key={s.value}
-                style={[styles.filterPill, active && styles.filterPillActive]}
-                onPress={() => setStatus(s.value)}
-              >
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>
-                  {s.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {STATUS_FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f.value}
+              style={[styles.filterPill, status === f.value && styles.filterPillActive]}
+              onPress={() => setStatus(f.value)}
+            >
+              <Text style={[styles.filterText, status === f.value && styles.filterTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
       </View>
 
-      {/* Member list */}
+      {/* List */}
       <FlatList
         data={items}
+        keyExtractor={(item) => item._id}
         renderItem={renderItem}
-        keyExtractor={(m) => m._id}
         contentContainerStyle={styles.list}
-        onRefresh={onRefresh}
-        refreshing={refreshing}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         ListEmptyComponent={
           !loading && (
             <EmptyState
-              icon="🔍"
+              icon="👥"
               title="No members found"
-              message={q || status ? 'Try adjusting your search or filters.' : 'Be the first to register a member.'}
+              subtitle={q ? `No results matching "${q}"` : 'No members found in this status filter.'}
             />
           )
         }
         ListFooterComponent={
           loading && !refreshing ? (
-            <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} />
+            <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 20 }} />
           ) : null
         }
       />
 
-      {/* Register Member Modal */}
-      <Modal
-        visible={showCreate}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { if (!saving) setShowCreate(false); }}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
+      {/* ─── REGISTER MEMBER MODAL ─── */}
+      <Modal visible={showCreate} animationType="slide" transparent>
+        <SafeAreaView style={styles.modalOverlay}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
+            style={styles.modalContainer}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Register Member</Text>
-              <TouchableOpacity
-                onPress={() => { if (!saving) setShowCreate(false); }}
-                disabled={saving}
-                style={{ padding: 4 }}
-              >
-                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              <TouchableOpacity onPress={() => !saving && setShowCreate(false)} disabled={saving}>
+                <Ionicons name="close" size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={styles.modalBody}>
               {modalErr ? (
                 <View style={styles.errorBanner}>
-                  <Ionicons name="alert-circle" size={16} color={Colors.error} style={{ marginRight: 6 }} />
+                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 6 }} />
                   <Text style={styles.errorText}>{modalErr}</Text>
                 </View>
               ) : null}
 
-              <Text style={styles.formSection}>Personal Info</Text>
+              {/* Photo Upload Section */}
+              <View style={styles.photoUploadRow}>
+                {photo ? (
+                  <Image source={{ uri: photo.uri }} style={styles.avatarPreview} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Ionicons name="person" size={32} color={Colors.textMuted} />
+                  </View>
+                )}
+                <View style={{ flex: 1, marginLeft: Spacing.md }}>
+                  <Text style={styles.photoHeading}>Member Photo</Text>
+                  <Text style={styles.photoSub}>Optional. Square photo (max 5 MB)</Text>
+                  <TouchableOpacity style={styles.pickPhotoBtn} onPress={pickPhoto}>
+                    <Ionicons name="camera-outline" size={16} color={Colors.primary} style={{ marginRight: 5 }} />
+                    <Text style={styles.pickPhotoBtnText}>{photo ? 'Change Photo' : 'Upload Photo'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <Text style={styles.formSection}>Personal Details</Text>
 
               <View style={styles.field}>
                 <Text style={styles.label}>Full Name *</Text>
@@ -419,8 +522,8 @@ export default function MembersScreen() {
                   style={styles.input}
                   value={form.fullName}
                   onChangeText={(v) => setForm((f) => ({ ...f, fullName: v }))}
-                  placeholder="e.g. Tariq Mehmood"
-                  placeholderTextColor={Colors.textLight}
+                  placeholder="e.g. Ahmad Khan"
+                  placeholderTextColor={Colors.textMuted}
                 />
               </View>
 
@@ -431,7 +534,7 @@ export default function MembersScreen() {
                   value={form.fatherOrHusbandName}
                   onChangeText={(v) => setForm((f) => ({ ...f, fatherOrHusbandName: v }))}
                   placeholder="e.g. Mehmood Khan"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={Colors.textMuted}
                 />
               </View>
 
@@ -442,10 +545,17 @@ export default function MembersScreen() {
                   value={form.cnic}
                   onChangeText={(v) => setForm((f) => ({ ...f, cnic: formatCnic(v) }))}
                   placeholder="XXXXX-XXXXXXX-X"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={Colors.textMuted}
                   keyboardType="numeric"
                   maxLength={15}
                 />
+                {cnicTaken ? (
+                  <Text style={{ color: Colors.error, fontSize: 11, marginTop: 4 }}>A member with this CNIC already exists.</Text>
+                ) : isCompleteCnic(form.cnic) && cnicTaken === false ? (
+                  <Text style={{ color: Colors.success, fontSize: 11, marginTop: 4 }}>✓ CNIC available</Text>
+                ) : (
+                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 4 }}>Just type digits — dashes are added automatically.</Text>
+                )}
               </View>
 
               <View style={styles.field}>
@@ -455,7 +565,7 @@ export default function MembersScreen() {
                   value={form.phone}
                   onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
                   placeholder="03XX-XXXXXXX"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={Colors.textMuted}
                   keyboardType="phone-pad"
                 />
               </View>
@@ -467,7 +577,7 @@ export default function MembersScreen() {
                   value={form.email}
                   onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
                   placeholder="member@example.com"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={Colors.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -480,7 +590,20 @@ export default function MembersScreen() {
                   value={form.password}
                   onChangeText={(v) => setForm((f) => ({ ...f, password: v }))}
                   placeholder="••••••••"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={Colors.textMuted}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Confirm Password *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.passwordConfirm}
+                  onChangeText={(v) => setForm((f) => ({ ...f, passwordConfirm: v }))}
+                  placeholder="••••••••"
+                  placeholderTextColor={Colors.textMuted}
                   secureTextEntry
                   autoCapitalize="none"
                 />
@@ -503,6 +626,23 @@ export default function MembersScreen() {
                 </View>
               </View>
 
+              <View style={styles.field}>
+                <Text style={styles.label}>Blood Group</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                  {BLOOD_GROUPS.map((bg) => (
+                    <TouchableOpacity
+                      key={bg}
+                      style={[styles.chip, form.bloodGroup === bg && styles.chipActive]}
+                      onPress={() => setForm((f) => ({ ...f, bloodGroup: f.bloodGroup === bg ? '' : bg }))}
+                    >
+                      <Text style={[styles.chipText, form.bloodGroup === bg && styles.chipTextActive]}>
+                        {bg}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
               <DatePicker
                 label="Date of Birth *"
                 value={form.dateOfBirth}
@@ -518,9 +658,31 @@ export default function MembersScreen() {
                   value={form.address}
                   onChangeText={(v) => setForm((f) => ({ ...f, address: v }))}
                   placeholder="Street address, city/village"
-                  placeholderTextColor={Colors.textLight}
+                  placeholderTextColor={Colors.textMuted}
                   multiline
                   numberOfLines={2}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Education</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.education}
+                  onChangeText={(v) => setForm((f) => ({ ...f, education: v }))}
+                  placeholder="e.g. Master's in Political Science"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Occupation</Text>
+                <TextInput
+                  style={styles.input}
+                  value={form.occupation}
+                  onChangeText={(v) => setForm((f) => ({ ...f, occupation: v }))}
+                  placeholder="e.g. Teacher, Advocate, Business"
+                  placeholderTextColor={Colors.textMuted}
                 />
               </View>
 
@@ -789,8 +951,36 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginRight: 2,
   },
+  listAvatarImg: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
 
   // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
+    padding: Platform.OS === 'web' ? Spacing.lg : 0,
+  },
+  modalContainer: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    ...(Platform.OS === 'web' ? {
+      borderRadius: Radius.xl,
+      width: '100%',
+      maxWidth: 620,
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+    } : {}),
+    maxHeight: '90%',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -809,6 +999,58 @@ const styles = StyleSheet.create({
   modalBody: {
     padding: Spacing.lg,
     paddingBottom: 40,
+  },
+  photoUploadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceAlt || '#f8fafc',
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+  },
+  avatarPreview: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  avatarPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoHeading: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  photoSub: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  pickPhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: Radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  pickPhotoBtnText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   formSection: {
     fontSize: FontSize.sm,
@@ -843,7 +1085,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   multiline: {
-    height: 60,
+    height: 65,
     textAlignVertical: 'top',
   },
   chipRow: {
