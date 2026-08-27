@@ -35,9 +35,10 @@ export default function AppLayout() {
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
           borderTopColor: Colors.border,
+          borderTopWidth: 1,
           backgroundColor: Colors.surface,
           paddingTop: 6,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 6,
           height: Platform.OS === 'ios' ? 84 : 64,
           elevation: 8,
           shadowColor: '#000',
@@ -45,8 +46,19 @@ export default function AppLayout() {
           shadowOpacity: 0.05,
           shadowRadius: 4,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
-        tabBarItemStyle: { paddingVertical: 2 },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          marginBottom: 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
+        },
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100%',
+        },
       }}
     >
       {/* ─── 1. Dashboard Tab ─── */}
