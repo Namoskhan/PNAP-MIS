@@ -82,18 +82,16 @@ exports.create = asyncHandler(async (req, res) => {
     cleanScope.provinceId = p._id;
   } else if (role === 'DISTRICT_ADMIN') {
     if (!scope?.districtId) throw new ApiError(400, 'VALIDATION_ERROR', 'scope.districtId required for DISTRICT_ADMIN');
+    const District = require('../models/District');
+    const d = await District.findById(scope.districtId);
+    if (!d) throw new ApiError(400, 'INVALID_DISTRICT', 'District not found');
     if (!myRoles.includes('SUPER_ADMIN')) {
-      const District = require('../models/District');
-      const d = await District.findById(scope.districtId);
-      if (!d) throw new ApiError(400, 'INVALID_DISTRICT', 'District not found');
       if (String(d.provinceId) !== String(me.scope?.provinceId || '')) {
         throw new ApiError(403, 'FORBIDDEN', 'You can only create District Admins within your own province');
       }
-      cleanScope.provinceId = d.provinceId;
-    } else if (scope.provinceId) {
-      cleanScope.provinceId = scope.provinceId;
     }
-    cleanScope.districtId = scope.districtId;
+    cleanScope.provinceId = d.provinceId;
+    cleanScope.districtId = d._id;
   } else if (role === 'AREA_ADMIN') {
     if (!scope?.areaId) throw new ApiError(400, 'VALIDATION_ERROR', 'scope.areaId required for AREA_ADMIN');
     const Area = require('../models/Area');

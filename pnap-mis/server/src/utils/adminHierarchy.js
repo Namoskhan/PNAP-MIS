@@ -92,10 +92,11 @@ function isGlobalAdmin(user) {
 function creatableRoles(user) {
   const tier = adminTierOf(user);
   if (!tier) return [];
+  if (tier === 'SUPER_ADMIN') {
+    return ['CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'];
+  }
   const direct = MANAGES_ROLE[tier];
-  const out = direct ? [direct] : [];
-  if (tier === 'SUPER_ADMIN') out.push('PROVINCE_ADMIN');
-  return out;
+  return direct ? [direct] : [];
 }
 
 // Can `actor` administer the account of `targetUser` — reset its
