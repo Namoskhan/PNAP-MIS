@@ -509,8 +509,8 @@ function RenderDialog({ template, onClose }) {
       if (body) params.set('body', body);
       
       const token = await api.getToken?.();
-      const baseUrl = api.defaults.baseURL || 'http://localhost:8000'; // fallback
-      const url = `${baseUrl}/api/reports/templates/${template._id}/render?${params}`;
+      const baseUrl = api.defaults.baseURL;
+      const url = `${baseUrl}/reports/templates/${template._id}/render?${params}`;
       
       // For mobile, we typically can't just fetch blob + createObjectURL to download.
       // Easiest is to open the URL in the system browser so the OS handles the download.

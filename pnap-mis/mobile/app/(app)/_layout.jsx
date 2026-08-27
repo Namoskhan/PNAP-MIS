@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
@@ -27,10 +27,8 @@ export default function AppLayout() {
   if (!user) return <Redirect href="/login" />;
 
   const showFinance = canManageFinance(user);
-  const showAdmin = !isPureMember(user);
-
-  const isAdminOnly = isHigherAdmin(user) || isAreaAdmin(user);
-  const showUnitTabs = !isAdminOnly;
+  const showAdmin = !isPureMember(user) || isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_SYSTEM_BRANDING');
+  const showUnitTabs = true;
 
   return (
     <Tabs
@@ -42,11 +40,18 @@ export default function AppLayout() {
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
           borderTopColor: Colors.border,
-          paddingTop: 4,
-          paddingBottom: 4,
-          height: 60,
+          backgroundColor: Colors.surface,
+          paddingTop: 6,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
+        tabBarItemStyle: { paddingVertical: 2 },
       }}
     >
       <Tabs.Screen
@@ -130,6 +135,8 @@ export default function AppLayout() {
       <Tabs.Screen name="meetings/[id]" options={{ href: null, headerTitle: 'Meeting Detail', headerShown: true }} />
       <Tabs.Screen name="activities/[id]" options={{ href: null, headerTitle: 'Activity Detail', headerShown: true }} />
       <Tabs.Screen name="notifications" options={{ href: null, headerTitle: 'Notifications', headerShown: true }} />
+      <Tabs.Screen name="announcements" options={{ href: null, headerTitle: 'Announcements', headerShown: false }} />
+      <Tabs.Screen name="finance/transfers" options={{ href: null, headerTitle: 'Transfers', headerShown: true }} />
       {/* Phase 2 — Admin screens (hidden from tab bar, reachable via router.push) */}
       <Tabs.Screen name="cabinet/index" options={{ href: null, headerTitle: 'Cabinet', headerShown: true }} />
       <Tabs.Screen name="admin/org" options={{ href: null, headerTitle: 'Org Structure', headerShown: true }} />
@@ -139,7 +146,6 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/event-types/meetings" options={{ href: null, headerTitle: 'Meeting Types', headerShown: true }} />
       <Tabs.Screen name="admin/event-types/activities" options={{ href: null, headerTitle: 'Activity Types', headerShown: true }} />
       <Tabs.Screen name="admin/event-types/[id]" options={{ href: null, headerTitle: 'Event Type Editor', headerShown: true }} />
-      <Tabs.Screen name="admin/event-types/_shared" options={{ href: null, headerTitle: 'Shared', headerShown: true }} />
       <Tabs.Screen name="admin/finance-overview" options={{ href: null, headerTitle: 'Finance Overview', headerShown: true }} />
       <Tabs.Screen name="admin/pending-approvals" options={{ href: null, headerTitle: 'Pending Approvals', headerShown: true }} />
       <Tabs.Screen name="admin/units/index" options={{ href: null, headerTitle: 'Unit Management', headerShown: true }} />
@@ -154,9 +160,16 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/settings/logos" options={{ href: null, headerTitle: 'Logo Manager', headerShown: true }} />
       <Tabs.Screen name="admin/settings/theme" options={{ href: null, headerTitle: 'Theme Manager', headerShown: true }} />
       <Tabs.Screen name="admin/settings/typography" options={{ href: null, headerTitle: 'Typography', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/dashboard" options={{ href: null, headerTitle: 'UI Preferences', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/reports" options={{ href: null, headerTitle: 'Report Branding', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/login" options={{ href: null, headerTitle: 'Login Customization', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/history" options={{ href: null, headerTitle: 'Settings History', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
       <Tabs.Screen name="admin/performance" options={{ href: null, headerTitle: 'Member Performance', headerShown: true }} />
+      <Tabs.Screen name="admin/congress" options={{ href: null, headerTitle: 'National Congress', headerShown: true }} />
+      <Tabs.Screen name="admin/jirga" options={{ href: null, headerTitle: 'Jirga Composition', headerShown: true }} />
+      <Tabs.Screen name="admin/meetings" options={{ href: null, headerTitle: 'Central Meetings', headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
       <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Log', headerShown: true }} />
       <Tabs.Screen name="admin/settings" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />

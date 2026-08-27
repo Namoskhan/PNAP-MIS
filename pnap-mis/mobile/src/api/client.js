@@ -1,16 +1,49 @@
 import axios from 'axios';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { Storage } from '../utils/storage';
 
-// The API base URL is set via EXPO_PUBLIC_API_BASE_URL in your .env file.
-// For local development on a physical device, use your machine's LAN IP:
-//   EXPO_PUBLIC_API_BASE_URL=http://192.168.1.x:5000/api
-// For emulators, Android uses 10.0.2.2, iOS simulator can use localhost.
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+export function resolveApiBaseUrl() {
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+
+  // When running in Expo Go or dev on a physical device or emulator:
+  // hostUri provides the development machine's IP (e.g. "192.168.18.129:8081")
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    Constants.manifest2?.extra?.expoClient?.hostUri ||
+    Constants.manifest?.debuggerHost;
+
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip) {
+      return `http://${ip}:5000/api`;
+    }
+  }
+
+  if (Platform.OS === 'android') {
+    // Android emulator fallback
+    return 'http://10.0.2.2:5000/api';
+  }
+
+  return 'http://localhost:5000/api';
+}
+
+export function resolveServerBaseUrl() {
+  const apiBase = resolveApiBaseUrl();
+  return apiBase.replace(/\/api\/?$/, '');
+}
+
+export const API_BASE = resolveApiBaseUrl();
+export const SERVER_BASE = resolveServerBaseUrl();
 
 export const api = axios.create({
   baseURL: API_BASE,
   timeout: 15000,
 });
+
+api.getToken = () => Storage.getItem('pnap_token');
 
 // Attach JWT token from Storage on every request.
 api.interceptors.request.use(async (config) => {

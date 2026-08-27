@@ -4,7 +4,7 @@ import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 import {
-  canManageFinance, canApproveExpense, isCentralAdminOversight, isSuperAdminOversight,
+  canManageFinance, canApproveExpense, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin,
   hasRole, OPERATOR_AUTOPIN_ROLES,
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
@@ -51,7 +51,17 @@ export default function FinancePage() {
   const { user } = useAuth();
   const location = useLocation();
   const toast = useToast();
-  const canRecord = canManageFinance(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
+
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
+  const isCommitteeView = queryBody === 'COMMITTEE';
+  const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
+
+  const canRecord = canManageFinance(user)
+    && !isCentralAdminOversight(user)
+    && !isSuperAdminOversight(user)
+    && !(isSuperAdmin(user) && (ctx?.unitLevel === 'CENTRAL' || isCongressView));
   const canApprove = canApproveExpense(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
   // The view-only banner only triggers for personas without write
   // powers (e.g. Secretary). Senior Mawin (and equivalents) now share
@@ -111,12 +121,6 @@ export default function FinancePage() {
       })
       .catch(() => {});
   }, [user?.memberId, user?.roles?.join(',')]);
-
-  const queryBody = new URLSearchParams(location.search).get('body');
-  const isCongressView = queryBody === 'CONGRESS';
-  const isJirgaView = queryBody === 'JIRGA';
-  const isCommitteeView = queryBody === 'COMMITTEE';
-  const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
   const [summary, setSummary] = useState(null);
   const [donations, setDonations] = useState([]);

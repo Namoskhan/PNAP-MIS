@@ -19,7 +19,7 @@
     "android": {
       "package": "com.pnap.mis",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#1e3a8a"
       },
       "predictiveBackGestureEnabled": false

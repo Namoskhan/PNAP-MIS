@@ -47,13 +47,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   label: {
-    width: 100, // Fixed width to align bars
+    width: 85,
     color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontSize: FontSize.xs,
+    fontWeight: '600',
   },
   track: {
     flex: 1,
@@ -67,10 +67,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   value: {
-    width: 36, // Fixed width for values to right-align properly if needed
+    minWidth: 32,
     textAlign: 'right',
     color: Colors.text,
-    fontWeight: '600',
-    fontSize: FontSize.sm,
+    fontWeight: '700',
+    fontSize: FontSize.xs,
   }
 });

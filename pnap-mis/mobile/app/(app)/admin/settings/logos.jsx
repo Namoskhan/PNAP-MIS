@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } fr
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { api, errorMessage } from '../../../../src/api/client';
+import { api, errorMessage, SERVER_BASE } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
@@ -139,7 +139,8 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
       const headers = { 'Content-Type': 'multipart/form-data' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       
-      const res = await fetch(`${api.defaults.baseURL || 'http://localhost:8000'}/api/settings/logos/${slot}`, {
+      const baseUrl = api.defaults.baseURL;
+      const res = await fetch(`${baseUrl}/settings/logos/${slot}`, {
         method: 'POST',
         headers,
         body: fd
@@ -186,7 +187,7 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
     );
   }
 
-  const displayUrl = previewUri || (currentUrl ? `${api.defaults.baseURL || 'http://localhost:8000'}${currentUrl}` : null);
+  const displayUrl = previewUri || (currentUrl ? (currentUrl.startsWith('http') ? currentUrl : `${SERVER_BASE}${currentUrl}`) : null);
 
   return (
     <View style={styles.card}>
