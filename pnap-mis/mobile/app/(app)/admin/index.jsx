@@ -381,13 +381,15 @@ export default function AdminHubScreen() {
                       key={card.key}
                       style={styles.card}
                       onPress={() => router.push(card.route)}
-                      activeOpacity={0.75}
+                      activeOpacity={0.7}
                     >
                       <View style={styles.cardTop}>
-                        <Text style={styles.cardIcon}>{card.icon}</Text>
-                        <Text style={styles.cardArrow}>›</Text>
+                        <View style={styles.cardIconBox}>
+                          <Text style={styles.cardIcon}>{card.icon}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
                       </View>
-                      <Text style={styles.cardTitle}>{card.title}</Text>
+                      <Text style={styles.cardTitle} numberOfLines={2}>{card.title}</Text>
                       <Text style={styles.cardDesc} numberOfLines={2}>
                         {card.description}
                       </Text>
@@ -543,39 +545,43 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    padding: Spacing.sm,
+    backgroundColor: '#f8fafc',
     gap: 8,
-    padding: Spacing.md,
-    backgroundColor: Colors.background,
   },
   card: {
-    flex: 1,
-    minWidth: '47%',
+    width: '48.5%',
     backgroundColor: Colors.surface,
     borderRadius: Radius.md,
     padding: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    justifyContent: 'space-between',
+    minHeight: 110,
   },
   cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  cardIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardIcon: {
-    fontSize: 20,
-  },
-  cardArrow: {
     fontSize: 18,
-    color: Colors.textMuted,
-    fontWeight: '800',
   },
   cardTitle: {
     fontSize: FontSize.sm,
-    fontWeight: '800',
+    fontWeight: '700',
     color: Colors.text,
-    marginBottom: 4,
+    marginBottom: 3,
+    lineHeight: 18,
   },
   cardDesc: {
     fontSize: 11,
