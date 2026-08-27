@@ -28,6 +28,7 @@ import Badge from '../../../src/components/Badge';
 import OrgTree from '../../../src/components/OrgTree';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import { shortDate, PKR } from '../../../src/utils/formatters';
+import { downloadAndShare } from '../../../src/utils/export';
 
 const LEVEL_LABEL = {
   BASIC_UNIT: 'Basic Unit', AREA: 'Area', DISTRICT: 'District',
@@ -38,7 +39,7 @@ const PAYMENT_MODES = ['BANK_TRANSFER', 'CASH', 'MOBILE_WALLET', 'CHEQUE'];
 
 export default function TransfersScreen() {
   const { user } = useAuth();
-  const { ctx, setCtx } = useUnit();
+  const { ctx, setCtx, provinces } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
 
@@ -51,25 +52,42 @@ export default function TransfersScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
-  const [resolvedUnitId, setResolvedUnitId] = useState(ctx?.unitId);
+  const [selectedLevel, setSelectedLevel] = useState(() => {
+    if (params.unitLevel) return params.unitLevel;
+    if (isJirgaView && provinces && provinces.length > 0) return 'PROVINCE';
+    return ctx?.unitLevel || 'CENTRAL';
+  });
+
+  const [selectedUnitId, setSelectedUnitId] = useState(() => {
+    if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
+    if (isJirgaView && provinces && provinces.length > 0) return provinces[0]._id;
+    return ctx?.unitId || '';
+  });
+
+  // Sync with provinces when they become available
+  useEffect(() => {
+    if (isJirgaView && !selectedUnitId && provinces && provinces.length > 0) {
+      setSelectedLevel('PROVINCE');
+      setSelectedUnitId(provinces[0]._id);
+    }
+  }, [provinces, isJirgaView]);
+
+  const activeLevel = selectedLevel;
+  const [resolvedUnitId, setResolvedUnitId] = useState(selectedUnitId);
 
   // Resolve CENTRAL unit ObjectId if passed as string 'CENTRAL'
   useEffect(() => {
-    let rawId = params.unitId || ctx?.unitId;
+    let rawId = selectedUnitId;
     if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
       api.get('/org/central').then((r) => {
         if (r.data?.data?._id) {
           setResolvedUnitId(r.data.data._id);
-          if (ctx?.unitLevel === 'CENTRAL' && ctx?.unitId === 'CENTRAL') {
-            setCtx({ unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' });
-          }
         }
       }).catch(() => {});
     } else {
       setResolvedUnitId(rawId);
     }
-  }, [params.unitId, params.unitLevel, ctx]);
+  }, [selectedUnitId, activeLevel]);
 
   const canSend = canManageFinance(user);
 
@@ -85,8 +103,18 @@ export default function TransfersScreen() {
   const [receipt, setReceipt] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
-
   const [modalErr, setModalErr] = useState('');
+
+  function openInitiate() {
+    setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
+    setReceipt(null);
+    setPicked(null);
+    setPreview(null);
+    setPreviewErr('');
+    setModalErr('');
+    setConfirmOpen(false);
+    setTransferModalOpen(true);
+  }
 
   async function reload() {
     if (!activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') return;
@@ -220,7 +248,7 @@ export default function TransfersScreen() {
       const headers = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
       
-      const baseURL = api.defaults.baseURL || 'http://localhost:5000/api';
+      const baseURL = api.defaults.baseURL;
       const res = await fetch(`${baseURL}/transfers`, {
         method: 'POST',
         headers,
@@ -301,32 +329,107 @@ export default function TransfersScreen() {
     return t.body === 'EXECUTIVE' || !t.body || (t.body !== 'COMMITTEE' && t.body !== 'JIRGA');
   });
 
-  const unitDisplayName = ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : 'My Unit');
+  const selectedProvince = (provinces || []).find((p) => String(p._id) === String(selectedUnitId));
+  const unitDisplayName = selectedProvince?.name || ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : 'My Unit');
 
   const pageTitle = isJirgaView
     ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Fund Transfers' : `Sobayi Jirga Fund Transfers · ${unitDisplayName}`)
     : (isCommitteeView ? `Committee Transfers · ${unitDisplayName}` : `Executive Transfers · ${unitDisplayName}`);
+
+  const [exporting, setExporting] = useState(null);
+
+  async function handleExport(fmt) {
+    if (exporting) return;
+    setExporting(fmt);
+    try {
+      const qParams = {
+        unitLevel: activeLevel,
+        unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : ctx?.unitId),
+      };
+      if (isJirgaView) qParams.body = 'JIRGA';
+      else if (isCommitteeView) qParams.body = 'COMMITTEE';
+      else qParams.body = 'EXECUTIVE';
+
+      const safeName = (ctx?.unitName || (activeLevel === 'CENTRAL' ? 'central' : 'unit')).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `${safeName}-transfers.${fmt}`;
+      await downloadAndShare(`/exports/unit/transfers/${fmt}`, filename, qParams);
+      toast.success(`${fmt.toUpperCase()} export downloaded.`);
+    } catch (e) {
+      toast.error(e.message || `Export ${fmt.toUpperCase()} failed.`);
+    } finally {
+      setExporting(null);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <Text style={styles.pageTitle}>{pageTitle}</Text>
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.btnSecondary} onPress={() => toast.success('Exporting PDF...')}>
+          <TouchableOpacity
+            style={[styles.btnSecondary, exporting === 'pdf' && { opacity: 0.6 }]}
+            onPress={() => handleExport('pdf')}
+            disabled={!!exporting}
+          >
+            {exporting === 'pdf' ? (
+              <ActivityIndicator size="small" color={Colors.text} />
+            ) : null}
             <Text style={styles.btnSecondaryText}>Export PDF</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnSecondary} onPress={() => toast.success('Exporting Excel...')}>
+          <TouchableOpacity
+            style={[styles.btnSecondary, exporting === 'xlsx' && { opacity: 0.6 }]}
+            onPress={() => handleExport('xlsx')}
+            disabled={!!exporting}
+          >
+            {exporting === 'xlsx' ? (
+              <ActivityIndicator size="small" color={Colors.text} />
+            ) : null}
             <Text style={styles.btnSecondaryText}>Export Excel</Text>
           </TouchableOpacity>
           {canSend && (
-            <TouchableOpacity style={styles.btnPrimary} onPress={() => setTransferModalOpen(true)}>
-              <Text style={styles.btnPrimaryText}>
-                {isJirgaView ? '+ Initiate Jirga Fund Transfer' : (isCommitteeView ? '+ Initiate Committee Fund Transfer' : '+ Initiate Fund Transfer')}
-              </Text>
+            <TouchableOpacity style={styles.btnPrimary} onPress={openInitiate}>
+              <Ionicons name="send" size={16} color="#fff" />
+              <Text style={styles.btnPrimaryText}>Transfer Funds</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
+
+      {/* Province Switcher Pills for Jirga */}
+      {isJirgaView && provinces && provinces.length > 0 && (
+        <View style={styles.tierPillsWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
+            {provinces.map((prov) => {
+              const isActive = selectedLevel === 'PROVINCE' && String(selectedUnitId) === String(prov._id);
+              return (
+                <TouchableOpacity
+                  key={prov._id}
+                  style={[styles.tierPill, isActive && styles.tierPillActive]}
+                  onPress={() => {
+                    setSelectedLevel('PROVINCE');
+                    setSelectedUnitId(prov._id);
+                  }}
+                >
+                  <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
+                    {prov.name} Sobayi Jirga
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={[styles.tierPill, selectedLevel === 'CENTRAL' && styles.tierPillActive]}
+              onPress={() => {
+                setSelectedLevel('CENTRAL');
+                setSelectedUnitId('CENTRAL');
+              }}
+            >
+              <Text style={[styles.tierPillText, selectedLevel === 'CENTRAL' && styles.tierPillTextActive]}>
+                Qomi Jirga (Central)
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Scope banner */}
       <View style={styles.banner}>
@@ -720,6 +823,13 @@ const styles = StyleSheet.create({
   btnSecondaryText: { color: Colors.text, fontSize: FontSize.sm, fontWeight: '500' },
   btnSmall: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   
+  tierPillsWrapper: { paddingHorizontal: Spacing.lg, paddingVertical: 10, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  tierPillsScroll: { flexDirection: 'row', gap: 8 },
+  tierPill: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border },
+  tierPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tierPillText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.text },
+  tierPillTextActive: { color: '#fff', fontWeight: '700' },
+
   banner: { marginHorizontal: Spacing.lg, marginVertical: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
   bannerText: { fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18 },
 

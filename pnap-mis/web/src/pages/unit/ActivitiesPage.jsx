@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
-import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import useEventTypes from '../../hooks/useEventTypes';
@@ -28,7 +28,6 @@ export default function ActivitiesPage() {
   const { user } = useAuth();
   const toast = useToast();
   const location = useLocation();
-  const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
 
   // URL check: committee vs jirga vs congress vs regular executive activities
   const queryBody = new URLSearchParams(location.search).get('body');
@@ -36,6 +35,11 @@ export default function ActivitiesPage() {
   const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
+
+  const canManage = canManageMeetings(user)
+    && !isCentralAdminOversight(user)
+    && !isSuperAdminOversight(user)
+    && !(isSuperAdmin(user) && (ctx?.unitLevel === 'CENTRAL' || isCongressView));
 
   const [items, setItems] = useState([]);
   const [show, setShow] = useState(false);

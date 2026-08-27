@@ -11,6 +11,8 @@ import Avatar from '../../../src/components/Avatar';
 import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 
+import { useLocalSearchParams } from 'expo-router';
+
 const ROLE_OPTIONS = [
   { value: 'ALL', label: 'All Roles' },
   { value: 'GENERAL_SECRETARY', label: 'General Secretary' },
@@ -28,11 +30,39 @@ const ROLE_OPTIONS = [
 ];
 
 export default function JirgaScreen() {
-  const { ctx } = useUnit();
+  const params = useLocalSearchParams();
+  const { ctx, provinces } = useUnit();
   const toast = useToast();
 
-  const isCentral = ctx?.unitLevel === 'CENTRAL';
-  const label = isCentral ? 'Qomi Jirga · قومي جرګه' : 'Sobayi Jirga · صوبايي جرګه';
+  // Determine initial level & unitId
+  // If Central Admin and provinces exist, default to first province or Central if requested
+  const [selectedLevel, setSelectedLevel] = useState(() => {
+    if (params.unitLevel) return params.unitLevel;
+    if (ctx?.unitLevel === 'PROVINCE') return 'PROVINCE';
+    if (provinces && provinces.length > 0) return 'PROVINCE';
+    return ctx?.unitLevel || 'CENTRAL';
+  });
+
+  const [selectedUnitId, setSelectedUnitId] = useState(() => {
+    if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
+    if (ctx?.unitLevel === 'PROVINCE' && ctx?.unitId) return ctx.unitId;
+    if (provinces && provinces.length > 0) return provinces[0]._id;
+    return ctx?.unitId || '';
+  });
+
+  // Sync with provinces when they become available
+  useEffect(() => {
+    if (!selectedUnitId && provinces && provinces.length > 0) {
+      setSelectedLevel('PROVINCE');
+      setSelectedUnitId(provinces[0]._id);
+    }
+  }, [provinces]);
+
+  const isCentralTier = selectedLevel === 'CENTRAL';
+  const selectedProvince = (provinces || []).find((p) => String(p._id) === String(selectedUnitId));
+  const label = isCentralTier
+    ? 'Qomi Jirga · قومي جرګه'
+    : (selectedProvince ? `${selectedProvince.name} Sobayi Jirga · صوبايي جرګه` : 'Sobayi Jirga · صوبايي جرګه');
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,11 +84,11 @@ export default function JirgaScreen() {
   const fetchIdRef = useRef(0);
 
   async function getResolvedUnitId() {
-    if (ctx?.unitLevel === 'CENTRAL' && ctx?.unitId === 'CENTRAL') {
+    if (selectedLevel === 'CENTRAL' && (!selectedUnitId || selectedUnitId === 'CENTRAL')) {
       const res = await api.get('/org/central');
       return res.data?.data?._id;
     }
-    return ctx?.unitId;
+    return selectedUnitId;
   }
 
   async function reload() {
@@ -67,8 +97,12 @@ export default function JirgaScreen() {
     setErr('');
     try {
       const resolvedUnitId = await getResolvedUnitId();
+      if (!resolvedUnitId && selectedLevel !== 'CENTRAL') {
+        setLoading(false);
+        return;
+      }
       const res = await api.get('/jirga/composition', {
-        params: { unitLevel: ctx?.unitLevel || 'CENTRAL', unitId: resolvedUnitId },
+        params: { unitLevel: selectedLevel, unitId: resolvedUnitId },
       });
       if (myId === fetchIdRef.current) {
         setData(res.data.data);
@@ -86,7 +120,7 @@ export default function JirgaScreen() {
 
   useEffect(() => {
     reload();
-  }, [ctx?.unitLevel, ctx?.unitId]);
+  }, [selectedLevel, selectedUnitId]);
 
   useEffect(() => {
     if (!assignOpen) return;
@@ -96,9 +130,10 @@ export default function JirgaScreen() {
     getResolvedUnitId().then((resolvedUnitId) => {
       if (!active) return;
       const params = {
-        unitLevel: ctx?.unitLevel || 'CENTRAL',
+        unitLevel: selectedLevel,
         unitId: resolvedUnitId,
         search: candidateSearch.trim() || undefined,
+        provinceId: selectedLevel === 'PROVINCE' ? resolvedUnitId : undefined,
         limit: 50,
       };
       return api.get('/jirga/eligible-members', { params });
@@ -114,7 +149,7 @@ export default function JirgaScreen() {
     });
 
     return () => { active = false; };
-  }, [assignOpen, candidateSearch, ctx?.unitLevel, ctx?.unitId]);
+  }, [assignOpen, candidateSearch, selectedLevel, selectedUnitId]);
 
   async function handleAssign() {
     if (!selectedMember) {
@@ -125,12 +160,12 @@ export default function JirgaScreen() {
     try {
       const resolvedUnitId = await getResolvedUnitId();
       await api.post('/jirga/members', {
-        unitLevel: ctx?.unitLevel || 'CENTRAL',
+        unitLevel: selectedLevel,
         unitId: data?.unit?.unitId || resolvedUnitId,
         memberId: selectedMember._id,
         nominationNote: nominationNote.trim() || undefined,
       });
-      toast.success(`${selectedMember.fullName} assigned to ${isCentral ? 'Qomi Jirga' : 'Sobayi Jirga'}.`);
+      toast.success(`${selectedMember.fullName} assigned to ${isCentralTier ? 'Qomi Jirga' : 'Sobayi Jirga'}.`);
       setSelectedMember(null);
       setNominationNote('');
       setAssignOpen(false);
@@ -205,11 +240,47 @@ export default function JirgaScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{label}</Text>
         <Text style={styles.headerSub}>
-          {isCentral ? 'National Elders & Consultative Assembly' : 'Provincial Consultative Assembly'}
+          {isCentralTier ? 'National Elders & Consultative Assembly · Qomi' : `Provincial Consultative Assembly · ${selectedProvince?.name || 'Province'}`}
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Province / Tier Switcher Pills */}
+        {provinces && provinces.length > 0 && (
+          <View style={styles.tierPillsWrapper}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
+              {provinces.map((prov) => {
+                const isActive = selectedLevel === 'PROVINCE' && String(selectedUnitId) === String(prov._id);
+                return (
+                  <TouchableOpacity
+                    key={prov._id}
+                    style={[styles.tierPill, isActive && styles.tierPillActive]}
+                    onPress={() => {
+                      setSelectedLevel('PROVINCE');
+                      setSelectedUnitId(prov._id);
+                    }}
+                  >
+                    <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
+                      {prov.name} Sobayi Jirga
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity
+                style={[styles.tierPill, isCentralTier && styles.tierPillActive]}
+                onPress={() => {
+                  setSelectedLevel('CENTRAL');
+                  setSelectedUnitId('CENTRAL');
+                }}
+              >
+                <Text style={[styles.tierPillText, isCentralTier && styles.tierPillTextActive]}>
+                  Qomi Jirga (Central)
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
         {err ? <Text style={styles.errorText}>{err}</Text> : null}
 
         <View style={styles.kpiGrid}>
@@ -324,7 +395,7 @@ export default function JirgaScreen() {
       <Modal visible={assignOpen} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add to {isCentral ? 'Qomi Jirga' : 'Sobayi Jirga'}</Text>
+            <Text style={styles.modalTitle}>Add to {isCentralTier ? 'Qomi Jirga' : (selectedProvince ? `${selectedProvince.name} Sobayi Jirga` : 'Sobayi Jirga')}</Text>
             <TouchableOpacity onPress={() => setAssignOpen(false)} style={styles.modalClose}>
               <Ionicons name="close" size={24} color={Colors.textMuted} />
             </TouchableOpacity>
@@ -401,6 +472,13 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.md, paddingBottom: 60 },
   errorText: { color: Colors.error, marginBottom: Spacing.md },
   
+  tierPillsWrapper: { marginBottom: Spacing.md },
+  tierPillsScroll: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
+  tierPill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  tierPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  tierPillText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.text },
+  tierPillTextActive: { color: '#fff', fontWeight: '700' },
+
   kpiGrid: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md, flexWrap: 'wrap' },
   kpiCard: { flex: 1, minWidth: '30%', padding: Spacing.md, backgroundColor: '#fff', alignItems: 'center' },
   kpiLabel: { fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', marginBottom: 4 },

@@ -131,6 +131,16 @@ export function isFinanceOnly(user) {
     && !hasRole(user, 'SENIOR_MAWIN') && !hasRole(user, 'SECRETARY');
 }
 
+export function isAreaAdminOnly(user) {
+  return hasRole(user, 'AREA_ADMIN') && !isHigherAdmin(user);
+}
+
+export function isSecretaryOnly(user) {
+  return hasRole(user, 'SECRETARY')
+    && !isHigherAdmin(user) && !hasRole(user, 'AREA_ADMIN')
+    && !hasRole(user, 'SENIOR_MAWIN') && !hasRole(user, 'FIRST_SECRETARY');
+}
+
 export function isProvinceAdminOnly(user) {
   return hasRole(user, 'PROVINCE_ADMIN') && !hasRole(user, 'SUPER_ADMIN') && !hasRole(user, 'CENTRAL_ADMIN');
 }
@@ -142,3 +152,4 @@ export function isDistrictAdminOnly(user) {
 export function isCentralAdminOnly(user) {
   return hasRole(user, 'CENTRAL_ADMIN') && !hasRole(user, 'SUPER_ADMIN');
 }
+

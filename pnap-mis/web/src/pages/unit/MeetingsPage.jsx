@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
-import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, roleLabel } from '../../utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, roleLabel } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
@@ -11,8 +11,6 @@ import { useToast } from '../../components/Toast';
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
 import { formatUnitArrangedBy } from '../../utils/unitFormat';
-// Default starting type when no types have loaded yet — kept here so
-// the form has a sensible empty state. The picker itself is sourced
 // Default starting type when no types have loaded yet — kept here so
 // the form has a sensible empty state. The picker itself is sourced
 // from /api/events/types (active types only) so admins can extend
@@ -75,7 +73,18 @@ export default function MeetingsPage() {
   const { user } = useAuth();
   const location = useLocation();
   const toast = useToast();
-  const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
+
+  // URL check: committee vs jirga vs congress vs regular meetings
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
+  const isCommitteeView = queryBody === 'COMMITTEE';
+
+  const canManage = canManageMeetings(user)
+    && !isCentralAdminOversight(user)
+    && !isSuperAdminOversight(user)
+    && !(isSuperAdmin(user) && (ctx?.unitLevel === 'CENTRAL' || isCongressView));
+
   // Pure-member viewers (no admin / cabinet / operator role) shouldn't
   // see the "this unit only / subtree" scope selector — they're
   // pinned to a single Basic Unit and the option is meaningless.
@@ -98,12 +107,6 @@ export default function MeetingsPage() {
   const [loadingChairpersons, setLoadingChairpersons] = useState(false);
   const [meetingTab, setMeetingTab] = useState('ALL'); // 'ALL' | 'EXECUTIVE' | 'GENERAL_BODY'
   const [showCreate, setShowCreate] = useState(false);
-  
-  // URL check: committee vs jirga vs congress vs regular meetings
-  const queryBody = new URLSearchParams(location.search).get('body');
-  const isCongressView = queryBody === 'CONGRESS';
-  const isJirgaView = queryBody === 'JIRGA';
-  const isCommitteeView = queryBody === 'COMMITTEE';
   const [form, setForm] = useState(EMPTY_FORM);
   const [finalizing, setFinalizing] = useState(null);
   const [editing, setEditing] = useState(null);

@@ -17,7 +17,7 @@ import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors
 import {
   isSuperAdmin, isHigherAdmin, isAreaAdmin,
   hasPermission, canDecideRole, canInitiateRole,
-  hasRole,
+  hasRole, isOperatorPersona, isSecretaryOnly,
 } from '../../../src/utils/permissions';
 import Badge from '../../../src/components/Badge';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,10 +32,12 @@ export default function AdminHubScreen() {
   const router = useRouter();
 
   const isSuper = isSuperAdmin(user);
-  const isCentral = hasRole(user, 'CENTRAL_ADMIN');
-  const isProvince = hasRole(user, 'PROVINCE_ADMIN');
-  const isDistrict = hasRole(user, 'DISTRICT_ADMIN');
-  const isArea = hasRole(user, 'AREA_ADMIN');
+  const isCentral = hasRole(user, 'CENTRAL_ADMIN') && !isSuper;
+  const isProvince = hasRole(user, 'PROVINCE_ADMIN') && !isSuper && !hasRole(user, 'CENTRAL_ADMIN');
+  const isDistrict = hasRole(user, 'DISTRICT_ADMIN') && !isSuper && !isHigherAdmin(user);
+  const isArea = isAreaAdmin(user);
+  const isOperator = isOperatorPersona(user);
+  const isSecretary = isSecretaryOnly(user);
 
   const tierTitle = isSuper
     ? 'Super Admin'
@@ -47,35 +49,14 @@ export default function AdminHubScreen() {
     ? 'District Admin'
     : isArea
     ? 'Area Admin'
-    : 'Admin';
+    : (user?.roles?.[0]?.replace(/_/g, ' ') || 'Admin');
 
-  const orgManageTitle = isProvince
-    ? 'Manage Districts'
-    : isDistrict
-    ? 'Manage Areas'
-    : isArea
-    ? 'Manage Basic Units'
-    : isCentral
-    ? 'Manage Provinces'
-    : 'Org Structure';
-
-  const breakdownTitle = isProvince
-    ? 'District Breakdown'
-    : isDistrict
-    ? 'Area Breakdown'
-    : isCentral
-    ? 'Province Breakdown'
-    : 'Subordinate Breakdown';
-
-  const cabinetTitle = isProvince
-    ? 'Assign District Cabinet'
-    : isDistrict
-    ? 'Assign Area Cabinet'
-    : isArea
-    ? 'Assign Cabinet Roles'
-    : 'Cabinet & Roles';
+  const unitDisplayName = isCentral || isSuper
+    ? 'PKNAP Central'
+    : (ctx?.unitName || 'Administrative Control Center');
 
   const sections = [
+    // 1. Super Admin God Mode
     {
       key: 'god_mode',
       title: 'God Mode',
@@ -162,11 +143,94 @@ export default function AdminHubScreen() {
         { key: 'central-rep', icon: '📈', title: 'Central Reports', description: 'Central tier exports', route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
       ],
     },
+
+    // 2. Central Admin: My Organization (FIRST SECTION)
+    {
+      key: 'my_org',
+      title: 'My Organization',
+      icon: '🏛️',
+      show: () => isCentral,
+      items: [
+        { key: 'c-dash', icon: '🏠', title: 'Dashboard', description: 'Central Command & Analytics', route: '/' },
+        { key: 'c-org', icon: '🏢', title: 'Manage Provinces', description: 'Create and manage province tier units.', route: '/admin/org' },
+        { key: 'c-members', icon: '👥', title: 'Province Members', description: 'Browse and filter members across provinces.', route: '/members' },
+        { key: 'c-cab', icon: '🏛️', title: 'Assign Province Cabinet Roles', description: 'Appoint provincial office-holders and review cabinet.', route: '/cabinet' },
+        { key: 'c-resp', icon: '📋', title: 'Responsibilities', description: 'Central task allocations and monitoring.', route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'c-breakdown', icon: '📊', title: 'Province Breakdown', description: 'Comparative provincial activity, membership & finance stats.', route: '/admin/breakdown' },
+        { key: 'c-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for Central.', route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
+      ],
+    },
+
+    // 3. Province Admin: My Province
+    {
+      key: 'my_province',
+      title: 'My Province',
+      icon: '🏢',
+      show: () => isProvince,
+      items: [
+        { key: 'p-dash', icon: '🏠', title: 'Dashboard', description: 'Provincial Command & Analytics', route: '/' },
+        { key: 'p-org', icon: '🏢', title: 'Manage Districts', description: 'Create and manage district tier units.', route: '/admin/org' },
+        { key: 'p-members', icon: '👥', title: 'All Province Members', description: 'Browse and filter members across the province.', route: '/members' },
+        { key: 'p-cab', icon: '🏛️', title: 'Assign District Cabinet Roles', description: 'Appoint district office-holders and review cabinet.', route: '/cabinet' },
+        { key: 'p-resp', icon: '📋', title: 'Responsibilities', description: 'Provincial task allocations and monitoring.', route: '/admin/responsibilities' },
+        { key: 'p-breakdown', icon: '📊', title: 'District Breakdown', description: 'Comparative district activity, membership & finance stats.', route: '/admin/breakdown' },
+        { key: 'p-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for the province.', route: '/admin/reports' },
+      ],
+    },
+
+    // 4. District Admin: My District
+    {
+      key: 'my_district',
+      title: 'My District',
+      icon: '🏢',
+      show: () => isDistrict,
+      items: [
+        { key: 'd-dash', icon: '🏠', title: 'Dashboard', description: 'District Command & Analytics', route: '/' },
+        { key: 'd-org', icon: '🏢', title: 'Manage Areas', description: 'Create and manage area tier units.', route: '/admin/org' },
+        { key: 'd-members', icon: '👥', title: 'Members', description: 'Browse and filter members in the district.', route: '/members' },
+        { key: 'd-cab', icon: '🏛️', title: 'Assign Area Cabinet Roles', description: 'Appoint area office-holders and review cabinet.', route: '/cabinet' },
+        { key: 'd-resp', icon: '📋', title: 'Responsibilities', description: 'District task allocations and monitoring.', route: '/admin/responsibilities' },
+        { key: 'd-breakdown', icon: '📊', title: 'Area Breakdown', description: 'Comparative area activity, membership & finance stats.', route: '/admin/breakdown' },
+        { key: 'd-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for the district.', route: '/admin/reports' },
+      ],
+    },
+
+    // 5. Area Admin: My Area
+    {
+      key: 'my_area',
+      title: 'My Area',
+      icon: '🏢',
+      show: () => isArea,
+      items: [
+        { key: 'a-dash', icon: '🏠', title: 'Dashboard', description: 'Area Command & Analytics', route: '/' },
+        { key: 'a-org', icon: '🏢', title: 'Manage Basic Units', description: 'Create and manage basic units.', route: '/admin/org' },
+        { key: 'a-approvals', icon: '⏳', title: 'Member Approvals', description: 'Review and approve pending member registrations.', route: '/members' },
+        { key: 'a-members', icon: '👥', title: 'All Members', description: 'Browse and filter members in the area.', route: '/members' },
+        { key: 'a-cab', icon: '🏛️', title: 'Assign Cabinet Roles', description: 'Assign office-holders and approve proposals.', route: '/cabinet' },
+        { key: 'a-resp', icon: '📋', title: 'Responsibilities', description: 'Area task allocations and tracking.', route: '/admin/responsibilities' },
+      ],
+    },
+
+    // 6. Generic Administrative Tools (for other staff/roles who don't have dedicated tier hubs)
+    {
+      key: 'admin_tools',
+      title: 'Administrative Tools',
+      icon: '🛠️',
+      show: () => !isSuper && !isCentral && !isProvince && !isDistrict && !isArea && (isHigherAdmin(user) || canInitiateRole(user) || canDecideRole(user) || isOperator || isSecretary),
+      items: [
+        { key: 'gen-cab', icon: '🏛️', title: 'Cabinet & Roles', description: 'Cabinet assignments & proposals', route: '/cabinet' },
+        { key: 'gen-resp', icon: '📋', title: 'Responsibilities', description: 'Unit tasks and responsibilities', route: '/admin/responsibilities' },
+        { key: 'gen-members', icon: '👥', title: 'Members', description: 'Browse members in your unit', route: '/members' },
+        { key: 'gen-reports', icon: '📈', title: 'Exports & Reports', description: 'Download PDF and Excel reports', route: '/admin/reports' },
+      ],
+    },
+
+    // 7. National Congress (for Super Admin only)
     {
       key: 'congress',
       title: 'National Congress',
       icon: '🤝',
-      show: () => isSuper || isCentral,
+      show: () => isSuper,
       items: [
         { key: 'congress-roster', icon: '👥', title: 'Congress Roster', description: 'National Congress composition & member assignments', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'congress-meetings', icon: '📅', title: 'Congress Meetings', description: 'Schedule and manage National Congress assemblies', route: '/meetings?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
@@ -175,20 +239,24 @@ export default function AdminHubScreen() {
         { key: 'congress-reports', icon: '📊', title: 'Congress Reports', description: 'Performance and financial reports for Congress', route: '/admin/reports?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
       ],
     },
+
+    // 8. Jirga (Sobayi Jirga for Central Admin & Province Admin / Qomi Jirga for Super Admin)
     {
       key: 'jirga',
-      title: 'Qomi Jirga',
+      title: isSuper ? 'Qomi Jirga' : 'Sobayi Jirga',
       icon: '⚖️',
-      show: () => isSuper || isCentral,
+      show: () => isSuper || isCentral || isProvince,
       items: [
-        { key: 'jirga-comp', icon: '⚖️', title: 'Jirga Composition', description: 'Central Jirga members & elders assembly', route: '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'jirga-meetings', icon: '📅', title: 'Jirga Meetings', description: 'Central Jirga meeting records', route: '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'jirga-activities', icon: '🚩', title: 'Jirga Activities', description: 'Central Jirga activities & events', route: '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'jirga-finance', icon: '💰', title: 'Jirga Finance', description: 'Central Jirga financial ledger', route: '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'jirga-transfers', icon: '💸', title: 'Jirga Transfers', description: 'Central Jirga fund transfers', route: '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'jirga-reports', icon: '📊', title: 'Jirga Reports', description: 'Central Jirga reports & exports', route: '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'jirga-comp', icon: '⚖️', title: 'Composition', description: isSuper ? 'Central Jirga members & elders assembly' : 'Sobayi Jirga members & elders assembly', route: isSuper ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/jirga' },
+        { key: 'jirga-meetings', icon: '📅', title: 'Jirga Meetings', description: 'Jirga assembly meeting records', route: isSuper ? '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/meetings?body=JIRGA' },
+        { key: 'jirga-activities', icon: '🚩', title: 'Jirga Activities', description: 'Jirga activities, gatherings & events', route: isSuper ? '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/activities?body=JIRGA' },
+        { key: 'jirga-finance', icon: '💰', title: 'Jirga Finance', description: 'Jirga donations & expenses ledger', route: isSuper ? '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance?body=JIRGA' },
+        { key: 'jirga-transfers', icon: '💸', title: 'Jirga Transfers', description: 'Jirga fund transfers', route: isSuper ? '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance/transfers?body=JIRGA' },
+        { key: 'jirga-reports', icon: '📊', title: 'Jirga Reports', description: 'Jirga reports & exports', route: isSuper ? '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/reports?body=JIRGA' },
       ],
     },
+
+    // 9. Communication (Always available)
     {
       key: 'communication',
       title: 'Communication',
@@ -199,20 +267,6 @@ export default function AdminHubScreen() {
         { key: 'announcements', icon: '📢', title: 'Announcements', description: 'Org wide broadcasts & direct messages', route: '/announcements' },
       ],
     },
-    {
-      key: 'admin_tools',
-      title: 'Administrative Tools',
-      icon: '🛠️',
-      show: () => !isSuper && (isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN')),
-      items: [
-        { key: 'breakdown', icon: '📊', title: breakdownTitle, description: 'Activity, membership & finance stats.', route: '/admin/breakdown', show: () => isProvince || isDistrict || isCentral },
-        { key: 'org', icon: '🏢', title: orgManageTitle, description: 'Create and manage the administrative hierarchy below you.', route: '/admin/org', show: () => isHigherAdmin(user) || isAreaAdmin(user) },
-        { key: 'cabinet', icon: '🏛️', title: cabinetTitle, description: 'Assign office-holders and approve cabinet proposals.', route: '/cabinet', show: () => isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) },
-        { key: 'responsibilities', icon: '📋', title: 'Responsibilities', description: 'Assign tasks to unit members and track progress.', route: '/admin/responsibilities', show: () => isHigherAdmin(user) || isAreaAdmin(user) || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN') },
-        { key: 'members', icon: '👥', title: 'Unit Members', description: 'Browse, filter, and register members in your territory.', route: '/members', show: () => isHigherAdmin(user) || isAreaAdmin(user) },
-        { key: 'reports', icon: '📈', title: 'Exports & Reports', description: 'Download PDF and Excel reports for meetings, finance, and transfers.', route: '/admin/reports', show: () => isHigherAdmin(user) || isAreaAdmin(user) || hasRole(user, 'SENIOR_MAWIN', 'SECRETARY', 'FINANCE_SECRETARY') },
-      ].filter((i) => (i.show ? i.show() : true)),
-    }
   ];
 
   const visibleSections = sections.filter(s => s.show() && s.items.length > 0);
@@ -220,8 +274,14 @@ export default function AdminHubScreen() {
   const [openSections, setOpenSections] = useState({
     god_mode: true,
     user_manager: true,
-    communication: true,
+    my_org: true,
+    my_province: true,
+    my_district: true,
+    my_area: true,
     admin_tools: true,
+    congress: false,
+    jirga: false,
+    communication: true,
   });
 
   function toggleSection(key) {
@@ -244,7 +304,7 @@ export default function AdminHubScreen() {
             <Text style={styles.heroIcon}>🛡️</Text>
             <View style={styles.heroText}>
               <Text style={styles.heroTitle}>{tierTitle} Panel</Text>
-              <Text style={styles.heroSub}>{ctx?.unitName || 'Administrative Control Center'}</Text>
+              <Text style={styles.heroSub}>{unitDisplayName}</Text>
             </View>
           </View>
           <View style={styles.heroTagRow}>
@@ -321,8 +381,28 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text },
   countBadge: { paddingHorizontal: 7, paddingVertical: 2, backgroundColor: '#eff6ff', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#dbeafe' },
   countBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, padding: Spacing.md, backgroundColor: Colors.background },
-  card: { backgroundColor: Colors.surface, borderRadius: Radius.md, padding: Spacing.md, width: '47.5%', borderWidth: 1, borderColor: Colors.border, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  grid: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: Spacing.sm, 
+    padding: Spacing.sm, 
+    backgroundColor: Colors.background 
+  },
+  card: { 
+    backgroundColor: Colors.surface, 
+    borderRadius: Radius.md, 
+    padding: Spacing.md, 
+    flexGrow: 1, 
+    flexBasis: '47%', 
+    minWidth: 140, 
+    borderWidth: 1, 
+    borderColor: Colors.border, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.04, 
+    shadowRadius: 4, 
+    shadowOffset: { width: 0, height: 1 }, 
+    elevation: 1 
+  },
   cardIcon: { fontSize: 24, marginBottom: Spacing.xs },
   cardTitle: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text, marginBottom: 2 },
   cardDesc: { fontSize: 11, color: Colors.textMuted, lineHeight: 15 },

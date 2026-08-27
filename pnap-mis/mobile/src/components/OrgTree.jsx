@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -243,14 +243,16 @@ export default function OrgTree({ selectedId, disabledId, source, onSelect }) {
         ) : visible.length === 0 ? (
           <Text style={styles.emptyText}>No units found.</Text>
         ) : (
-          <FlatList
-            data={visible}
-            keyExtractor={item => item.node.id}
-            renderItem={renderItem}
+          <ScrollView 
             contentContainerStyle={{ paddingVertical: 8 }}
-            initialNumToRender={20}
-            maxToRenderPerBatch={20}
-          />
+            nestedScrollEnabled={true}
+          >
+            {visible.map((item, index) => (
+              <React.Fragment key={item.node.id}>
+                {renderItem({ item, index })}
+              </React.Fragment>
+            ))}
+          </ScrollView>
         )}
       </View>
     </View>

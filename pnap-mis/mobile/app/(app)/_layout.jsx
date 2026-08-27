@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission } from '../../src/utils/permissions';
@@ -42,11 +42,18 @@ export default function AppLayout() {
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
           borderTopColor: Colors.border,
-          paddingTop: 4,
-          paddingBottom: 4,
-          height: 60,
+          backgroundColor: Colors.surface,
+          paddingTop: 6,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          height: Platform.OS === 'ios' ? 84 : 64,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
+        tabBarItemStyle: { paddingVertical: 2 },
       }}
     >
       <Tabs.Screen
