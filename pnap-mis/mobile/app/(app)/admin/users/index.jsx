@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { isSuperAdmin } from '../../../../src/utils/permissions';
@@ -61,17 +64,34 @@ export default function UsersScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState(params?.role || '');
   const [statusFilter, setStatusFilter] = useState('');
-  
+
   // Modals & Dialogs
   const [selectedUser, setSelectedUser] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [resetPwdOpen, setResetPwdOpen] = useState(false);
   const [targetUser, setTargetUser] = useState(null);
   const [newPassword, setNewPassword] = useState('123456');
+
+  // Deactivate / Activate Confirmation Dialog State
+  const [confirmToggleUser, setConfirmToggleUser] = useState(null);
+  const [toggling, setToggling] = useState(false);
+
+  // Edit User State
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    username: '',
+    email: '',
+    cnic: '',
+    roles: [],
+    isActive: true,
+  });
+  const [editSaving, setEditSaving] = useState(false);
 
   // Create Form State
   const [createForm, setCreateForm] = useState({
@@ -92,15 +112,15 @@ export default function UsersScreen() {
       if (q.trim()) apiParams.q = q.trim();
       if (roleFilter) apiParams.role = roleFilter;
       if (statusFilter !== '') apiParams.isActive = statusFilter;
-      
+
       const r = await api.get('/admin/users', { params: apiParams });
       const resData = r.data?.data;
       const userList = Array.isArray(resData) ? resData : (resData?.items || []);
       const tot = resData?.total ?? userList.length;
-      
+
       if (refresh || pg === 1) setItems(userList);
       else setItems((prev) => [...prev, ...userList]);
-      
+
       setTotal(tot);
       setHasMore(userList.length === PAGE_SIZE);
     } catch (e) {
@@ -129,6 +149,7 @@ export default function UsersScreen() {
     load(next);
   }
 
+  // ─── Create User ──────────────────────────────────────────────────
   async function handleCreate() {
     if (!createForm.fullName.trim()) {
       toast.error('Full name is required.');
@@ -176,35 +197,103 @@ export default function UsersScreen() {
     }
   }
 
-  async function toggleActive(u) {
+  // ─── Activate / Deactivate ─────────────────────────────────────────
+  function requestToggleActive(u) {
     if (!canWrite) return;
-    const next = !u.isActive;
-    Alert.alert(
-      `${next ? 'Activate' : 'Deactivate'} User`,
-      `Are you sure you want to ${next ? 'activate' : 'deactivate'} ${u.fullName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: next ? 'Activate' : 'Deactivate',
-          style: next ? 'default' : 'destructive',
-          onPress: async () => {
-            setItems((prev) => prev.map((x) => (x._id === u._id ? { ...x, isActive: next } : x)));
-            if (selectedUser?._id === u._id) {
-              setSelectedUser((prev) => ({ ...prev, isActive: next }));
-            }
-            try {
-              await api.post(`/admin/users/${u._id}/${u.isActive ? 'deactivate' : 'activate'}`);
-              toast.success(`${u.fullName} is now ${next ? 'active' : 'inactive'}.`);
-            } catch (e) {
-              setItems((prev) => prev.map((x) => (x._id === u._id ? { ...x, isActive: u.isActive } : x)));
-              toast.error(errorMessage(e));
-            }
-          },
-        },
-      ]
-    );
+    setConfirmToggleUser(u);
   }
 
+  async function handleConfirmToggle() {
+    if (!confirmToggleUser || toggling) return;
+    const u = confirmToggleUser;
+    const next = !u.isActive;
+    setToggling(true);
+
+    // Optimistic UI update
+    setItems((prev) => prev.map((x) => (x._id === u._id ? { ...x, isActive: next } : x)));
+    if (selectedUser?._id === u._id) {
+      setSelectedUser((prev) => ({ ...prev, isActive: next }));
+    }
+
+    try {
+      await api.post(`/admin/users/${u._id}/${u.isActive ? 'deactivate' : 'activate'}`);
+      toast.success(`${u.fullName} is now ${next ? 'active' : 'inactive'}.`);
+      setConfirmToggleUser(null);
+    } catch (e) {
+      // Revert on failure
+      setItems((prev) => prev.map((x) => (x._id === u._id ? { ...x, isActive: u.isActive } : x)));
+      if (selectedUser?._id === u._id) {
+        setSelectedUser((prev) => ({ ...prev, isActive: u.isActive }));
+      }
+      toast.error(errorMessage(e));
+    } finally {
+      setToggling(false);
+    }
+  }
+
+  // ─── Edit User ─────────────────────────────────────────────────────
+  function openEditUser(u) {
+    setEditingUser(u);
+    setEditForm({
+      fullName: u.fullName || '',
+      username: u.username || '',
+      email: u.email || '',
+      cnic: u.cnic || '',
+      roles: u.roles || [],
+      isActive: u.isActive !== false,
+    });
+    setEditOpen(true);
+  }
+
+  function toggleRoleSelection(r) {
+    setEditForm((prev) => {
+      const exists = prev.roles.includes(r);
+      const nextRoles = exists ? prev.roles.filter((x) => x !== r) : [...prev.roles, r];
+      return { ...prev, roles: nextRoles };
+    });
+  }
+
+  async function handleSaveEdit() {
+    if (!editingUser || editSaving) return;
+    if (!editForm.fullName.trim()) {
+      toast.error('Full name is required.');
+      return;
+    }
+    if (!editForm.email.trim()) {
+      toast.error('Email address is required.');
+      return;
+    }
+
+    setEditSaving(true);
+    try {
+      const payload = {
+        fullName: editForm.fullName.trim(),
+        username: editForm.username.trim() || undefined,
+        email: editForm.email.trim(),
+        cnic: editForm.cnic.trim() || undefined,
+        roles: editForm.roles,
+        isActive: editForm.isActive,
+      };
+
+      const res = await api.patch(`/admin/users/${editingUser._id}`, payload);
+      const updated = res.data?.data || { ...editingUser, ...payload };
+
+      setItems((prev) => prev.map((x) => (x._id === editingUser._id ? { ...x, ...updated } : x)));
+      if (selectedUser?._id === editingUser._id) {
+        setSelectedUser((prev) => ({ ...prev, ...updated }));
+      }
+
+      toast.success(`User ${editForm.fullName} updated successfully.`);
+      setEditOpen(false);
+      setEditingUser(null);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  // ─── Reset Password ────────────────────────────────────────────────
   async function handleResetPassword() {
     if (!targetUser || !newPassword) return;
     setSaving(true);
@@ -257,7 +346,7 @@ export default function UsersScreen() {
           {/* Status Badge */}
           <TouchableOpacity
             style={[styles.statusPill, u.isActive ? styles.statusActive : styles.statusInactive]}
-            onPress={() => toggleActive(u)}
+            onPress={() => requestToggleActive(u)}
             activeOpacity={0.7}
           >
             <View style={[styles.statusDot, { backgroundColor: u.isActive ? Colors.success : Colors.textMuted }]} />
@@ -286,18 +375,26 @@ export default function UsersScreen() {
           <View style={styles.cardActions}>
             <TouchableOpacity
               style={styles.actionBtn}
+              onPress={() => openEditUser(u)}
+            >
+              <Ionicons name="pencil" size={13} color={Colors.primary} />
+              <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionBtn}
               onPress={() => {
                 setTargetUser(u);
                 setResetPwdOpen(true);
               }}
             >
               <Text style={styles.actionBtnIcon}>🔑</Text>
-              <Text style={styles.actionBtnText}>Reset Password</Text>
+              <Text style={styles.actionBtnText}>Reset Pwd</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.actionBtn, { borderColor: u.isActive ? '#fee2e2' : '#dcfce7' }]}
-              onPress={() => toggleActive(u)}
+              onPress={() => requestToggleActive(u)}
             >
               <Text style={styles.actionBtnIcon}>{u.isActive ? '⏻' : '✓'}</Text>
               <Text style={[styles.actionBtnText, { color: u.isActive ? Colors.error : Colors.success }]}>
@@ -309,8 +406,8 @@ export default function UsersScreen() {
               style={[styles.actionBtn, styles.actionBtnPrimary]}
               onPress={() => setSelectedUser(u)}
             >
-              <Text style={styles.actionBtnIcon}>👁️</Text>
-              <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Details</Text>
+              <Ionicons name="eye-outline" size={13} color={Colors.text} />
+              <Text style={styles.actionBtnText}>Details</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -450,51 +547,41 @@ export default function UsersScreen() {
         }}
         refreshing={refreshing}
         onEndReached={onLoadMore}
-        onEndReachedThreshold={0.3}
+        onEndReachedThreshold={0.4}
         ListEmptyComponent={
           !loading && (
             <EmptyState
-              icon={isCentralAdminView ? '🏛️' : '👤'}
-              title={isCentralAdminView ? 'No Central Admins found' : 'No users found'}
-              subtitle="Try adjusting your search criteria or create a new account."
+              icon="👥"
+              title="No users found"
+              message={q || roleFilter || statusFilter ? 'Try adjusting your search or active filters.' : 'No user credentials registered.'}
             />
           )
         }
-        ListFooterComponent={
-          loading && !refreshing ? (
-            <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} />
-          ) : null
-        }
       />
 
-      {/* ─── Create Central Admin / User Modal ─── */}
+      {/* ─── Create User Modal ─── */}
       <Modal visible={createOpen} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalSafe}>
           <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalTitle}>
-                {isCentralAdminView ? 'Create Central Admin' : 'Create User'}
-              </Text>
-              <Text style={styles.modalSub}>
-                {isCentralAdminView
-                  ? 'National scope · Administers Provinces'
-                  : 'Add new user credentials to the system'}
-              </Text>
-            </View>
+            <Text style={styles.modalTitle}>
+              {isCentralAdminView ? 'Create Central Admin' : 'Create User'}
+            </Text>
             <TouchableOpacity onPress={() => setCreateOpen(false)} style={styles.closeBtn}>
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
-            {isCentralAdminView && (
-              <View style={styles.infoBanner}>
-                <Text style={styles.infoBannerTitle}>🏛️ National Tier Account</Text>
-                <Text style={styles.infoBannerText}>
-                  A Central Admin structures the Provinces and administers the Province Admins. The account is national — it carries no territorial scope.
-                </Text>
-              </View>
-            )}
+          <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
+            <View style={styles.infoBanner}>
+              <Text style={styles.infoBannerTitle}>
+                {isCentralAdminView ? 'Central Administrator' : 'User Account Provisioning'}
+              </Text>
+              <Text style={styles.infoBannerText}>
+                {isCentralAdminView
+                  ? 'Central Admins have global authority over provinces, regional administrators, and nationwide reporting.'
+                  : 'Provision initial login credentials and specify role assignments for the system.'}
+              </Text>
+            </View>
 
             <Text style={styles.inputLabel}>Full Name <Text style={{ color: Colors.error }}>*</Text></Text>
             <TextInput
@@ -605,6 +692,167 @@ export default function UsersScreen() {
         </SafeAreaView>
       </Modal>
 
+      {/* ─── Edit User Modal (Matches Web Edit Dialog) ─── */}
+      <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalSafe}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Edit User</Text>
+                <Text style={styles.modalSub}>{editingUser?.fullName || 'User Profile'}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditOpen(false)} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
+              <Text style={styles.inputLabel}>Full Name <Text style={{ color: Colors.error }}>*</Text></Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editForm.fullName}
+                onChangeText={(v) => setEditForm((p) => ({ ...p, fullName: v }))}
+                placeholder="Full name"
+                placeholderTextColor={Colors.textLight}
+              />
+
+              <Text style={styles.inputLabel}>Username</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editForm.username}
+                onChangeText={(v) => setEditForm((p) => ({ ...p, username: v }))}
+                placeholder="Username (optional)"
+                placeholderTextColor={Colors.textLight}
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.inputLabel}>Email Address <Text style={{ color: Colors.error }}>*</Text></Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editForm.email}
+                onChangeText={(v) => setEditForm((p) => ({ ...p, email: v }))}
+                placeholder="Email address"
+                placeholderTextColor={Colors.textLight}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.inputLabel}>CNIC</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editForm.cnic}
+                onChangeText={(v) => setEditForm((p) => ({ ...p, cnic: v }))}
+                placeholder="XXXXX-XXXXXXX-X"
+                placeholderTextColor={Colors.textLight}
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.inputLabel}>Roles Assignment</Text>
+              <View style={styles.rolePillGrid}>
+                {ROLE_OPTIONS.map((r) => {
+                  const selected = editForm.roles.includes(r);
+                  return (
+                    <TouchableOpacity
+                      key={r}
+                      style={[styles.roleGridPill, selected && styles.roleGridPillActive]}
+                      onPress={() => toggleRoleSelection(r)}
+                    >
+                      <Ionicons
+                        name={selected ? 'checkbox' : 'square-outline'}
+                        size={14}
+                        color={selected ? '#fff' : Colors.textMuted}
+                        style={{ marginRight: 4 }}
+                      />
+                      <Text style={[styles.roleGridPillText, selected && styles.roleGridPillTextActive]}>
+                        {r.replace(/_/g, ' ')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.accountActiveRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.accountActiveTitle}>Account Active Status</Text>
+                  <Text style={styles.accountActiveSub}>
+                    {editForm.isActive ? 'User can log in and access authorized features.' : 'User account is deactivated.'}
+                  </Text>
+                </View>
+                <Switch
+                  value={editForm.isActive}
+                  onValueChange={(val) => setEditForm((p) => ({ ...p, isActive: val }))}
+                  trackColor={{ false: Colors.border, true: '#93c5fd' }}
+                  thumbColor={editForm.isActive ? Colors.primary : '#f4f3f4'}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.footerCancelBtn}
+                onPress={() => setEditOpen(false)}
+                disabled={editSaving}
+              >
+                <Text style={styles.footerCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.footerSaveBtn, editSaving && { opacity: 0.6 }]}
+                onPress={handleSaveEdit}
+                disabled={editSaving}
+              >
+                {editSaving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.footerSaveText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ─── Deactivate / Activate Confirmation Dialog ─── */}
+      <Modal visible={!!confirmToggleUser} animationType="fade" transparent>
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.dialogCard}>
+            <Text style={styles.dialogTitle}>
+              {confirmToggleUser?.isActive ? 'Deactivate User Account' : 'Activate User Account'}
+            </Text>
+            <Text style={styles.dialogSub}>
+              Are you sure you want to {confirmToggleUser?.isActive ? 'deactivate' : 'activate'}{' '}
+              <Text style={{ fontWeight: '700', color: Colors.text }}>{confirmToggleUser?.fullName}</Text>?
+              {confirmToggleUser?.isActive ? ' The user will lose access to system login.' : ' The user will regain login access.'}
+            </Text>
+
+            <View style={styles.dialogButtons}>
+              <TouchableOpacity
+                style={styles.dialogCancelBtn}
+                onPress={() => setConfirmToggleUser(null)}
+                disabled={toggling}
+              >
+                <Text style={styles.dialogCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.dialogConfirmBtn,
+                  { backgroundColor: confirmToggleUser?.isActive ? Colors.error : Colors.success },
+                ]}
+                onPress={handleConfirmToggle}
+                disabled={toggling}
+              >
+                {toggling ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.dialogConfirmText}>
+                    {confirmToggleUser?.isActive ? 'Deactivate' : 'Activate'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ─── Reset Password Modal ─── */}
       <Modal visible={resetPwdOpen} animationType="fade" transparent>
         <View style={styles.overlayBackdrop}>
@@ -711,16 +959,30 @@ export default function UsersScreen() {
             </ScrollView>
 
             {canWrite && (
-              <View style={styles.modalFooter}>
+              <View style={[styles.modalFooter, { flexDirection: 'column', gap: 8 }]}>
+                <TouchableOpacity
+                  style={[styles.actionLargeBtn, { backgroundColor: Colors.primary }]}
+                  onPress={() => {
+                    const u = selectedUser;
+                    setSelectedUser(null);
+                    openEditUser(u);
+                  }}
+                >
+                  <Text style={styles.actionLargeBtnText}>✎ Edit User Account</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[
                     styles.actionLargeBtn,
                     { backgroundColor: selectedUser.isActive ? Colors.error : Colors.success },
                   ]}
-                  onPress={() => toggleActive(selectedUser)}
+                  onPress={() => {
+                    const u = selectedUser;
+                    requestToggleActive(u);
+                  }}
                 >
                   <Text style={styles.actionLargeBtnText}>
-                    {selectedUser.isActive ? 'Deactivate User Account' : 'Activate User Account'}
+                    {selectedUser.isActive ? '⏻ Deactivate User Account' : '✓ Activate User Account'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -742,11 +1004,6 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     borderBottomLeftRadius: Radius.xl,
     borderBottomRightRadius: Radius.xl,
-    shadowColor: Colors.primaryDark,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
   },
   heroTop: {
     flexDirection: 'row',
@@ -978,6 +1235,54 @@ const styles = StyleSheet.create({
   roleSelectChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   roleSelectText: { fontSize: FontSize.xs, color: Colors.text, fontWeight: '500' },
   roleSelectTextActive: { color: '#fff', fontWeight: '700' },
+
+  // Role Pill Grid for Edit Modal
+  rolePillGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
+    marginBottom: Spacing.md,
+  },
+  roleGridPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  roleGridPillActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  roleGridPillText: {
+    fontSize: FontSize.xs,
+    color: Colors.text,
+    fontWeight: '500',
+  },
+  roleGridPillTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+
+  accountActiveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xl,
+  },
+  accountActiveTitle: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text },
+  accountActiveSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+
   modalFooter: {
     flexDirection: 'row',
     padding: Spacing.lg,
@@ -1020,9 +1325,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     padding: Spacing.xl,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
     elevation: 8,
   },
   dialogTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text, marginBottom: 4 },
@@ -1080,7 +1382,7 @@ const styles = StyleSheet.create({
   infoVal: { fontSize: FontSize.sm, color: Colors.text, fontWeight: '500' },
   rolesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   actionLargeBtn: {
-    flex: 1,
+    width: '100%',
     paddingVertical: 14,
     borderRadius: Radius.md,
     alignItems: 'center',

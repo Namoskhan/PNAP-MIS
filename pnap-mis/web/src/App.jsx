@@ -91,7 +91,7 @@ function GlobalShortcuts() {
       <MemberRegisterModal
         open={registerOpen}
         onClose={() => setRegisterOpen(false)}
-        onSuccess={() => {}}
+        onSuccess={() => { }}
       />
     </>
   );
@@ -101,87 +101,87 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrandingProvider>
-      <ToastProvider>
-        {/* One host for every dialog.confirm/prompt/alert in the app. */}
-        <DialogHost />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          {/* Account recovery. These MUST sit outside ProtectedRoute —
+        <ToastProvider>
+          {/* One host for every dialog.confirm/prompt/alert in the app. */}
+          <DialogHost />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            {/* Account recovery. These MUST sit outside ProtectedRoute —
               someone following a reset link has no session by
               definition, and the catch-all redirect below lives inside
               the guard, so an unguarded route registered there would
               bounce every one of these visitors to /login and discard
               the token. */}
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-          <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
-          <Route path="/resend-verification" element={<ResendVerificationPage />} />
-          <Route
-            element={
-              <ProtectedRoute>
-                <>
-                  <Layout />
-                  <GlobalShortcuts />
-                </>
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/members" element={<MemberListPage />} />
-            <Route path="/members/new" element={<Navigate to="/members" replace />} />
-            <Route path="/members/pending" element={<PendingApprovalPage />} />
-            <Route path="/members/:id" element={<MemberDetailPage />} />
-            <Route path="/unit" element={<UnitDashboardPage />} />
-            <Route path="/unit/cabinet" element={<CabinetPage />} />
-            <Route path="/unit/meetings" element={<MeetingsPage />} />
-            <Route path="/unit/activities" element={<ActivitiesPage />} />
-            <Route path="/unit/finance" element={<FinancePage />} />
-            <Route path="/unit/breakdown" element={<BreakdownPage />} />
-            <Route path="/unit/committee" element={<CommitteePage />} />
-            <Route path="/unit/jirga" element={<JirgaPage />} />
-            <Route path="/unit/congress" element={<CongressPage />} />
-            <Route path="/admin/unit-proposals" element={<UnitProposalsPage />} />
-            <Route path="/unit/transfers" element={<TransfersPage />} />
-            <Route path="/unit/responsibilities" element={<ResponsibilitiesPage />} />
-            <Route path="/unit/performance" element={<PerformancePage />} />
-            <Route path="/unit/role-approvals" element={<PendingRoleApprovalsPage />} />
-            <Route path="/unit/reports" element={<ReportsPage />} />
-            <Route path="/admin/provinces" element={<ManageProvincesPage />} />
-            <Route path="/admin/manage-org" element={<ManageOrgPage />} />
-            <Route path="/admin/pending-approvals" element={<GlobalPendingApprovalsPage />} />
-            <Route path="/admin/users" element={<UsersPage />} />
-            <Route path="/admin/audit" element={<AuditLogPage />} />
-            <Route path="/admin/finance-overview" element={<FinanceOverviewPage />} />
-            <Route path="/admin/roles" element={<RolesPage />} />
-            <Route path="/admin/roles/:id/permissions" element={<RolePermissionsPage />} />
-            <Route path="/admin/events/meeting-types" element={<MeetingTypesPage />} />
-            <Route path="/admin/events/activity-types" element={<ActivityTypesPage />} />
-            <Route path="/admin/events/types/:id" element={<EventTypeEditorPage />} />
-            <Route path="/admin/events/fields" element={<FieldLibraryPage />} />
-            <Route path="/admin/units" element={<UnitManagementLandingPage />} />
-            <Route path="/admin/units/tier-configs" element={<UnitTierConfigsPage />} />
-            <Route path="/admin/units/cabinet-templates" element={<CabinetTemplatesPage />} />
-            <Route path="/admin/units/policies" element={<UnitPoliciesPage />} />
-            <Route path="/admin/units/workflows" element={<WorkflowsPage />} />
-            <Route path="/admin/units/responsibility-templates" element={<ResponsibilityTemplatesPage />} />
-            <Route path="/admin/units/performance-rulesets" element={<PerformanceRuleSetsPage />} />
-            <Route path="/admin/units/report-templates" element={<ReportTemplatesPage />} />
-            <Route path="/admin/settings" element={<SettingsLandingPage />} />
-            <Route path="/admin/settings/identity" element={<SystemIdentityPage />} />
-            <Route path="/admin/settings/login" element={<LoginCustomizationPage />} />
-            <Route path="/admin/settings/logos" element={<LogoManagerPage />} />
-            <Route path="/admin/settings/theme" element={<ThemeManagerPage />} />
-            <Route path="/admin/settings/typography" element={<TypographyPage />} />
-            <Route path="/admin/settings/dashboard" element={<DashboardAppearancePage />} />
-            <Route path="/admin/settings/reports" element={<ReportBrandingPage />} />
-            <Route path="/admin/settings/history" element={<SettingsHistoryPage />} />
-            <Route path="/national" element={<NationalPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/announcements" element={<AnnouncementsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </ToastProvider>
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+            <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+            <Route path="/resend-verification" element={<ResendVerificationPage />} />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <>
+                    <Layout />
+                    <GlobalShortcuts />
+                  </>
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/members" element={<MemberListPage />} />
+              <Route path="/members/new" element={<Navigate to="/members" replace />} />
+              <Route path="/members/pending" element={<PendingApprovalPage />} />
+              <Route path="/members/:id" element={<MemberDetailPage />} />
+              <Route path="/unit" element={<UnitDashboardPage />} />
+              <Route path="/unit/cabinet" element={<CabinetPage />} />
+              <Route path="/unit/meetings" element={<MeetingsPage />} />
+              <Route path="/unit/activities" element={<ActivitiesPage />} />
+              <Route path="/unit/finance" element={<FinancePage />} />
+              <Route path="/unit/breakdown" element={<BreakdownPage />} />
+              <Route path="/unit/committee" element={<CommitteePage />} />
+              <Route path="/unit/jirga" element={<JirgaPage />} />
+              <Route path="/unit/congress" element={<CongressPage />} />
+              <Route path="/admin/unit-proposals" element={<UnitProposalsPage />} />
+              <Route path="/unit/transfers" element={<TransfersPage />} />
+              <Route path="/unit/responsibilities" element={<ResponsibilitiesPage />} />
+              <Route path="/unit/performance" element={<PerformancePage />} />
+              <Route path="/unit/role-approvals" element={<PendingRoleApprovalsPage />} />
+              <Route path="/unit/reports" element={<ReportsPage />} />
+              <Route path="/admin/provinces" element={<ManageProvincesPage />} />
+              <Route path="/admin/manage-org" element={<ManageOrgPage />} />
+              <Route path="/admin/pending-approvals" element={<GlobalPendingApprovalsPage />} />
+              <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/audit" element={<AuditLogPage />} />
+              <Route path="/admin/finance-overview" element={<FinanceOverviewPage />} />
+              <Route path="/admin/roles" element={<RolesPage />} />
+              <Route path="/admin/roles/:id/permissions" element={<RolePermissionsPage />} />
+              <Route path="/admin/events/meeting-types" element={<MeetingTypesPage />} />
+              <Route path="/admin/events/activity-types" element={<ActivityTypesPage />} />
+              <Route path="/admin/events/types/:id" element={<EventTypeEditorPage />} />
+              <Route path="/admin/events/fields" element={<FieldLibraryPage />} />
+              <Route path="/admin/units" element={<UnitManagementLandingPage />} />
+              <Route path="/admin/units/tier-configs" element={<UnitTierConfigsPage />} />
+              <Route path="/admin/units/cabinet-templates" element={<CabinetTemplatesPage />} />
+              <Route path="/admin/units/policies" element={<UnitPoliciesPage />} />
+              <Route path="/admin/units/workflows" element={<WorkflowsPage />} />
+              <Route path="/admin/units/responsibility-templates" element={<ResponsibilityTemplatesPage />} />
+              <Route path="/admin/units/performance-rulesets" element={<PerformanceRuleSetsPage />} />
+              <Route path="/admin/units/report-templates" element={<ReportTemplatesPage />} />
+              <Route path="/admin/settings" element={<SettingsLandingPage />} />
+              <Route path="/admin/settings/identity" element={<SystemIdentityPage />} />
+              <Route path="/admin/settings/login" element={<LoginCustomizationPage />} />
+              <Route path="/admin/settings/logos" element={<LogoManagerPage />} />
+              <Route path="/admin/settings/theme" element={<ThemeManagerPage />} />
+              <Route path="/admin/settings/typography" element={<TypographyPage />} />
+              <Route path="/admin/settings/dashboard" element={<DashboardAppearancePage />} />
+              <Route path="/admin/settings/reports" element={<ReportBrandingPage />} />
+              <Route path="/admin/settings/history" element={<SettingsHistoryPage />} />
+              <Route path="/national" element={<NationalPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/announcements" element={<AnnouncementsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </ToastProvider>
       </BrandingProvider>
     </ErrorBoundary>
   );
