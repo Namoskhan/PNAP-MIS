@@ -28,9 +28,7 @@ export default function AppLayout() {
 
   const showFinance = canManageFinance(user);
   const showAdmin = isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_SYSTEM_BRANDING');
-
-  const isAdminOnly = isHigherAdmin(user) || isAreaAdmin(user);
-  const showUnitTabs = !isAdminOnly;
+  const showUnitTabs = true;
 
   return (
     <Tabs

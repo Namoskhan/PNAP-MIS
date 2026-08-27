@@ -14,24 +14,26 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../../src/utils/permissions';
 import { api, errorMessage } from '../../../src/api/client';
 import { confirmAction } from '../../../src/utils/dialog';
 import { useToast } from '../../../src/components/Toast';
+import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import Avatar from '../../../src/components/Avatar';
+import EmptyState from '../../../src/components/EmptyState';
 import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { shortDate } from '../../../src/utils/formatters';
-import { Ionicons } from '@expo/vector-icons';
 
 const STATE_CONFIG = {
-  PENDING: { label: 'Pending', color: '#d97706', bg: '#fef3c7' },
-  IN_PROGRESS: { label: 'In Progress', color: Colors.primary, bg: '#eff6ff' },
-  COMPLETED: { label: 'Completed', color: Colors.success, bg: Colors.successBg },
-  CANCELLED: { label: 'Cancelled', color: Colors.textMuted, bg: Colors.borderLight },
+  PENDING: { label: 'Pending', color: '#d97706', bg: '#fef3c7', badgeStatus: 'PENDING' },
+  IN_PROGRESS: { label: 'In Progress', color: Colors.primary, bg: '#eff6ff', badgeStatus: 'ACTIVE' },
+  COMPLETED: { label: 'Completed', color: Colors.success, bg: Colors.successBg, badgeStatus: 'ACTIVE' },
+  CANCELLED: { label: 'Cancelled', color: Colors.textMuted, bg: Colors.surfaceAlt, badgeStatus: 'INACTIVE' },
 };
 
 const FILTERS = [
@@ -47,21 +49,27 @@ export default function ResponsibilitiesScreen() {
   const { user } = useAuth();
   const toast = useToast();
   const params = useLocalSearchParams();
+
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
 
   const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
   const [resolvedUnitId, setResolvedUnitId] = useState(params.unitId || ctx?.unitId);
+  const [resolvedUnitName, setResolvedUnitName] = useState(ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : activeLevel));
 
   useEffect(() => {
     let rawId = params.unitId || ctx?.unitId;
     if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
       api.get('/org/central').then((r) => {
-        if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
+        if (r.data?.data?._id) {
+          setResolvedUnitId(r.data.data._id);
+          if (r.data.data.name) setResolvedUnitName(r.data.data.name);
+        }
       }).catch(() => {});
     } else {
       setResolvedUnitId(rawId);
+      if (ctx?.unitName) setResolvedUnitName(ctx.unitName);
     }
-  }, [params.unitId, params.unitLevel, ctx?.unitId]);
+  }, [params.unitId, params.unitLevel, ctx?.unitId, ctx?.unitName, activeLevel]);
 
   const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
@@ -211,78 +219,86 @@ export default function ResponsibilitiesScreen() {
     );
   }, [members, memberSearch]);
 
-  const unitDisplayName = ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : activeLevel);
-
-  const tableHeader = () => (
-    <View style={styles.thRow}>
-      <Text style={[styles.th, { width: 240 }]}>Title</Text>
-      <Text style={[styles.th, { width: 200 }]}>Assigned to</Text>
-      <Text style={[styles.th, { width: 110 }]}>Due</Text>
-      <Text style={[styles.th, { width: 110 }]}>State</Text>
-      <Text style={[styles.th, { width: 220 }]}>Actions</Text>
-    </View>
-  );
-
   function renderItem({ item: r }) {
     const stateInfo = STATE_CONFIG[r.state] || STATE_CONFIG.PENDING;
     const assignee = r.assignedToMemberId;
+
     return (
-      <View style={styles.tr}>
-        <View style={[styles.td, { width: 240 }]}>
-          <Text style={[styles.tdText, { fontWeight: '700' }]}>{r.title}</Text>
-          {r.description ? <Text style={styles.tdSubtext} numberOfLines={2}>{r.description}</Text> : null}
-        </View>
-
-        <View style={[styles.td, { width: 200 }]}>
-          <Text style={[styles.tdText, { fontWeight: '700' }]}>{assignee?.fullName || '—'}</Text>
-          {assignee?.roleText ? (
-            <Badge
-              label={assignee.roleText}
-              color="#0369a1"
-              bg="#e0f2fe"
-              style={{ marginTop: 3, alignSelf: 'flex-start' }}
-            />
-          ) : null}
-          {assignee?.unitText ? <Text style={[styles.tdSubtext, { marginTop: 2 }]}>{assignee.unitText}</Text> : null}
-        </View>
-
-        <View style={[styles.td, { width: 110 }]}>
-          <Text style={styles.tdText}>{r.dueDate ? shortDate(r.dueDate) : '—'}</Text>
-        </View>
-
-        <View style={[styles.td, { width: 110 }]}>
+      <Card style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{r.title}</Text>
+            {r.description ? (
+              <Text style={styles.cardDesc} numberOfLines={3}>{r.description}</Text>
+            ) : null}
+          </View>
           <Badge label={stateInfo.label} color={stateInfo.color} bg={stateInfo.bg} />
         </View>
 
-        <View style={[styles.td, { width: 220, flexDirection: 'row', gap: 6, flexWrap: 'wrap', alignItems: 'center' }]}>
-          {canManage && r.state === 'PENDING' && (
-            <TouchableOpacity style={styles.btnSecondary} onPress={() => handleUpdateState(r._id, { state: 'IN_PROGRESS' })}>
-              <Text style={styles.btnSecondaryText}>Start</Text>
-            </TouchableOpacity>
-          )}
-          {canManage && r.state !== 'COMPLETED' && r.state !== 'CANCELLED' && (
-            <TouchableOpacity
-              style={styles.btnPrimarySmall}
-              onPress={() => {
-                setCompleteItem(r);
-                setCompletionNote('');
-              }}
-            >
-              <Text style={styles.btnPrimarySmallText}>Mark Done</Text>
-            </TouchableOpacity>
-          )}
-          {canManage && r.state !== 'CANCELLED' && r.state !== 'COMPLETED' && (
-            <TouchableOpacity style={styles.btnDanger} onPress={() => handleUpdateState(r._id, { state: 'CANCELLED' })}>
-              <Text style={styles.btnDangerText}>Cancel</Text>
-            </TouchableOpacity>
-          )}
-          {canManage && (
-            <TouchableOpacity style={styles.btnGhost} onPress={() => handleDelete(r)}>
-              <Text style={styles.btnGhostText}>Delete</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.cardDivider} />
+
+        <View style={styles.cardMetaRow}>
+          <View style={styles.assigneeBox}>
+            <Avatar name={assignee?.fullName || '?'} size={36} />
+            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+              <Text style={styles.assigneeName}>{assignee?.fullName || '—'}</Text>
+              {assignee?.roleText ? (
+                <Text style={styles.assigneeRole}>{assignee.roleText}</Text>
+              ) : null}
+              {assignee?.unitText ? (
+                <Text style={styles.assigneeUnit} numberOfLines={1}>{assignee.unitText}</Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.dueBox}>
+            <Ionicons name="calendar-outline" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
+            <Text style={styles.dueText}>
+              {r.dueDate ? shortDate(r.dueDate) : 'No due date'}
+            </Text>
+          </View>
         </View>
-      </View>
+
+        {canManage && (
+          <View style={styles.actionsRow}>
+            {r.state === 'PENDING' && (
+              <TouchableOpacity
+                style={styles.btnSecondary}
+                onPress={() => handleUpdateState(r._id, { state: 'IN_PROGRESS' })}
+              >
+                <Ionicons name="play" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.btnSecondaryText}>Start</Text>
+              </TouchableOpacity>
+            )}
+
+            {r.state !== 'COMPLETED' && r.state !== 'CANCELLED' && (
+              <TouchableOpacity
+                style={styles.btnPrimarySmall}
+                onPress={() => {
+                  setCompleteItem(r);
+                  setCompletionNote('');
+                }}
+              >
+                <Ionicons name="checkmark-done" size={13} color="#fff" style={{ marginRight: 4 }} />
+                <Text style={styles.btnPrimarySmallText}>Mark Done</Text>
+              </TouchableOpacity>
+            )}
+
+            {r.state !== 'CANCELLED' && r.state !== 'COMPLETED' && (
+              <TouchableOpacity
+                style={styles.btnDanger}
+                onPress={() => handleUpdateState(r._id, { state: 'CANCELLED' })}
+              >
+                <Text style={styles.btnDangerText}>Cancel</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.btnGhost} onPress={() => handleDelete(r)}>
+              <Ionicons name="trash-outline" size={15} color={Colors.error} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </Card>
     );
   }
 
@@ -290,76 +306,99 @@ export default function ResponsibilitiesScreen() {
     <SafeAreaView style={styles.safe}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.pageTitle}>Responsibilities · {unitDisplayName}</Text>
-        
-        {/* Filter & Action row */}
-        <View style={styles.actionsRow}>
-          {/* State Filter Chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            {FILTERS.map((f) => {
-              const active = filterState === f.value;
-              return (
-                <TouchableOpacity
-                  key={f.value}
-                  style={[styles.filterChip, active && styles.filterChipActive]}
-                  onPress={() => setFilterState(f.value)}
-                >
-                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{f.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+        <View style={styles.headerTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerScope}>
+              {activeLevel ? `${activeLevel.replace('_', ' ')} RESPONSIBILITIES` : 'RESPONSIBILITIES'}
+            </Text>
+            <Text style={styles.pageTitle}>Responsibilities · {resolvedUnitName}</Text>
+          </View>
 
           {!!canManage && (
             <TouchableOpacity style={styles.btnPrimary} onPress={() => setShowCreate(true)}>
               <Ionicons name="add" size={16} color="#fff" style={{ marginRight: 4 }} />
-              <Text style={styles.btnPrimaryText}>Assign Responsibility</Text>
+              <Text style={styles.btnPrimaryText}>Assign</Text>
             </TouchableOpacity>
           )}
         </View>
+
+        {/* State Filter Chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          {FILTERS.map((f) => {
+            const active = filterState === f.value;
+            return (
+              <TouchableOpacity
+                key={f.value}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setFilterState(f.value)}
+              >
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      {/* Table Content */}
-      <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
-        <View style={{ flex: 1, minWidth: 880 }}>
-          {tableHeader()}
-          {loading && !refreshing ? (
-            <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator color={Colors.primary} /></View>
-          ) : items.length === 0 ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
-              <Text style={{ color: Colors.textMuted }}>No responsibilities yet.</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={items}
-              renderItem={renderItem}
-              keyExtractor={(r) => r._id}
-              onRefresh={onRefresh}
-              refreshing={refreshing}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 100 }}
+      {/* List Content */}
+      <FlatList
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={(r) => r._id}
+        onRefresh={onRefresh}
+        refreshing={refreshing}
+        contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          !loading && (
+            <EmptyState
+              icon="📋"
+              title="No responsibilities yet"
+              message={
+                filterState
+                  ? 'No tasks found for this filter state.'
+                  : 'Tap "+ Assign" to allocate a task or responsibility to a member.'
+              }
             />
-          )}
-        </View>
-      </ScrollView>
+          )
+        }
+        ListFooterComponent={
+          loading && !refreshing ? (
+            <ActivityIndicator style={{ padding: 20 }} color={Colors.primary} />
+          ) : null
+        }
+      />
 
       {/* Assign Responsibility Modal */}
-      <Modal visible={showCreate} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowCreate(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <Modal
+        visible={showCreate}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => { if (!saving) setShowCreate(false); }}
+      >
+        <SafeAreaView style={styles.modalSafe}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1 }}
+          >
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowCreate(false)}>
-                <Text style={styles.modalCancel}>Cancel</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>Assign a responsibility</Text>
-              <TouchableOpacity onPress={handleCreate} disabled={saving}>
-                {saving ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>Assign</Text>}
+              <View>
+                <Text style={styles.modalTitle}>Assign a responsibility</Text>
+                <Text style={styles.modalSub}>{resolvedUnitName}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => { if (!saving) setShowCreate(false); }}
+                disabled={saving}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
               {formErr ? (
                 <View style={styles.errorBanner}>
+                  <Ionicons name="alert-circle" size={16} color={Colors.error} style={{ marginRight: 6 }} />
                   <Text style={styles.errorText}>{formErr}</Text>
                 </View>
               ) : null}
@@ -371,26 +410,29 @@ export default function ResponsibilitiesScreen() {
                   value={form.title}
                   onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
                   placeholder="e.g. Mobilize voters in Block 4"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={Colors.textLight}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Assign to *</Text>
+                <Text style={styles.label}>Assign to Member *</Text>
                 <TextInput
                   style={[styles.input, { marginBottom: Spacing.xs }]}
                   value={memberSearch}
                   onChangeText={setMemberSearch}
-                  placeholder="Search member by name, ID, or phone..."
-                  placeholderTextColor={Colors.textMuted}
+                  placeholder="Filter member by name, ID, or phone..."
+                  placeholderTextColor={Colors.textLight}
+                  autoCapitalize="none"
                 />
                 <ScrollView style={styles.memberList} nestedScrollEnabled>
                   {filteredMembers.length === 0 ? (
                     <View style={{ padding: 16, alignItems: 'center' }}>
-                      <Text style={{ color: Colors.textMuted, fontSize: FontSize.xs }}>No eligible members found</Text>
+                      <Text style={{ color: Colors.textMuted, fontSize: FontSize.xs }}>
+                        No eligible members found
+                      </Text>
                     </View>
                   ) : (
-                    filteredMembers.slice(0, 30).map((m) => {
+                    filteredMembers.slice(0, 40).map((m) => {
                       const isSelected = form.assignedToMemberId === m._id;
                       const role = m.roleText || 'Member';
                       const unit = m.unitText || (m.basicUnitId?.name ? `Basic Unit: ${m.basicUnitId.name}` : '');
@@ -406,8 +448,10 @@ export default function ResponsibilitiesScreen() {
                         >
                           <Avatar name={m.fullName || '?'} size={32} />
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.memberName}>{m.fullName} {m.memberId ? `(${m.memberId})` : ''}</Text>
-                            {meta ? <Text style={styles.memberMeta}>{meta}</Text> : null}
+                            <Text style={[styles.memberNameText, isSelected && { color: Colors.primary }]}>
+                              {m.fullName} {m.memberId ? `(${m.memberId})` : ''}
+                            </Text>
+                            {meta ? <Text style={styles.memberMetaText}>{meta}</Text> : null}
                           </View>
                           {isSelected && (
                             <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
@@ -433,20 +477,49 @@ export default function ResponsibilitiesScreen() {
                   value={form.description}
                   onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
                   placeholder="Details and instructions..."
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={Colors.textLight}
                   multiline
                   numberOfLines={3}
                 />
               </View>
             </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => { if (!saving) setShowCreate(false); }}
+                disabled={saving}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+                onPress={handleCreate}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.saveText}>Assign Responsibility</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
       {/* Mark Done / Completion Note Modal */}
-      <Modal visible={!!completeItem} transparent animationType="fade" onRequestClose={() => setCompleteItem(null)}>
+      <Modal
+        visible={!!completeItem}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!completing) setCompleteItem(null); }}
+      >
         <View style={styles.promptBackdrop}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.promptCard}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.promptCard}
+          >
             <Text style={styles.promptTitle}>Mark Completed</Text>
             <Text style={styles.promptSubtitle}>"{completeItem?.title}"</Text>
 
@@ -456,28 +529,28 @@ export default function ResponsibilitiesScreen() {
               value={completionNote}
               onChangeText={setCompletionNote}
               placeholder="e.g. All attendees confirmed and venue booked."
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={Colors.textLight}
               multiline
               numberOfLines={3}
             />
 
             <View style={styles.promptActions}>
               <TouchableOpacity
-                style={styles.btnSecondary}
+                style={styles.cancelBtn}
                 onPress={() => setCompleteItem(null)}
                 disabled={completing}
               >
-                <Text style={styles.btnSecondaryText}>Cancel</Text>
+                <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.btnPrimary}
+                style={styles.saveBtn}
                 onPress={handleCompleteSubmit}
                 disabled={completing}
               >
                 {completing ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.btnPrimaryText}>Mark Done</Text>
+                  <Text style={styles.saveText}>Mark Done</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -491,27 +564,32 @@ export default function ResponsibilitiesScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   header: {
-    padding: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
     gap: Spacing.sm,
   },
-  pageTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.text },
-  actionsRow: {
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.md,
-    marginTop: Spacing.xs,
-    flexWrap: 'wrap',
   },
+  headerScope: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  pageTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text, marginTop: 1 },
   filterScroll: { flexDirection: 'row', gap: 6, paddingVertical: 4 },
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: Colors.surfaceAlt,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.surfaceAlt || '#f1f5f9',
     borderWidth: 1,
     borderColor: Colors.border,
   },
@@ -526,6 +604,7 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: '#fff',
+    fontWeight: '700',
   },
   btnPrimary: {
     flexDirection: 'row',
@@ -533,20 +612,78 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.md,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: Radius.md,
   },
   btnPrimaryText: { color: '#fff', fontSize: FontSize.sm, fontWeight: '700' },
+  list: { padding: Spacing.md, paddingBottom: 40 },
+  card: { marginBottom: Spacing.sm, padding: Spacing.md },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  cardTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text },
+  cardDesc: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 3, lineHeight: 16 },
+  cardDivider: { height: 1, backgroundColor: Colors.borderLight || '#f1f5f9', marginVertical: 10 },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.sm,
+  },
+  assigneeBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  assigneeName: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text },
+  assigneeRole: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginTop: 1,
+  },
+  assigneeUnit: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  dueBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceAlt || '#f8fafc',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  dueText: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '500' },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight || '#f1f5f9',
+  },
   btnPrimarySmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.primary,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: Radius.sm,
   },
   btnPrimarySmallText: { color: '#fff', fontSize: FontSize.xs, fontWeight: '700' },
   btnSecondary: {
-    backgroundColor: Colors.surfaceAlt,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceAlt || '#f1f5f9',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: Radius.sm,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -555,39 +692,19 @@ const styles = StyleSheet.create({
   btnDanger: {
     backgroundColor: '#fee2e2',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: Radius.sm,
     borderWidth: 1,
     borderColor: '#fca5a5',
   },
   btnDangerText: { color: '#b91c1c', fontSize: FontSize.xs, fontWeight: '600' },
   btnGhost: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: Radius.sm,
+    padding: 6,
+    marginLeft: 'auto',
   },
-  btnGhostText: { color: Colors.textMuted, fontSize: FontSize.xs, fontWeight: '600' },
-
-  thRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.border,
-    paddingBottom: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  th: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text, paddingHorizontal: Spacing.sm },
-  tr: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-  },
-  td: { paddingHorizontal: Spacing.sm },
-  tdText: { fontSize: FontSize.sm, color: Colors.text },
-  tdSubtext: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
 
   // Modal styles
+  modalSafe: { flex: 1, backgroundColor: Colors.background },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -598,9 +715,8 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  modalTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
-  modalCancel: { fontSize: FontSize.base, color: Colors.textMuted },
-  modalSave: { fontSize: FontSize.base, fontWeight: '700', color: Colors.primary },
+  modalTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text },
+  modalSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   modalBody: { padding: Spacing.lg, paddingBottom: 40 },
   field: { marginBottom: Spacing.md },
   label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.text, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -608,7 +724,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
     fontSize: FontSize.sm,
@@ -618,10 +734,11 @@ const styles = StyleSheet.create({
   memberList: {
     maxHeight: 180,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
     borderRadius: Radius.md,
     overflow: 'hidden',
     marginTop: 4,
+    backgroundColor: Colors.surface,
   },
   memberOption: {
     flexDirection: 'row',
@@ -629,21 +746,49 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     padding: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderBottomColor: Colors.borderLight || '#f1f5f9',
     backgroundColor: Colors.surface,
   },
   memberOptionActive: { backgroundColor: '#eff6ff' },
-  memberName: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
-  memberMeta: { fontSize: FontSize.xs - 1, color: Colors.textMuted, marginTop: 1 },
+  memberNameText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
+  memberMetaText: { fontSize: 10, color: Colors.textMuted, marginTop: 1 },
   errorBanner: {
-    backgroundColor: Colors.errorBg,
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    borderRadius: Radius.md,
     padding: Spacing.md,
     marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.error + '30',
+    borderColor: '#fecaca',
   },
-  errorText: { color: Colors.error, fontSize: FontSize.sm, fontWeight: '500' },
+  errorText: { color: Colors.error, fontSize: FontSize.xs, fontWeight: '500', flex: 1 },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    padding: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  cancelBtn: {
+    flex: 1,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cancelText: { color: Colors.text, fontWeight: '600', fontSize: FontSize.sm },
+  saveBtn: {
+    flex: 2,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+  },
+  saveText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
 
   // Prompt card modal
   promptBackdrop: {
@@ -673,4 +818,3 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
 });
-
