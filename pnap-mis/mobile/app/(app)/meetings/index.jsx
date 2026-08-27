@@ -84,35 +84,21 @@ export default function MeetingsScreen() {
   const { types: eventTypes } = useEventTypes('MEETING', targetBody);
   const availableTypes = useMemo(() => {
     if (isCongressView) {
-      const list = (eventTypes || []).filter((t) => t.appliesTo?.congress !== false);
-      return list.length ? list : [
-        { code: 'CNG', label: 'National Congress' },
-        { code: 'WCG', label: 'Workers Congress' },
-        { code: 'EXC', label: 'Executive Council' },
-      ];
+      const cngTypes = (eventTypes || []).filter((t) => ['CNG', 'CONGRESS'].includes(String(t.code).toUpperCase()) || String(t.label).toLowerCase().includes('congress meeting'));
+      return cngTypes.length ? cngTypes : [{ code: 'CNG', label: 'Congress Meeting' }];
     }
     if (isJirgaView) {
-      const list = (eventTypes || []).filter((t) => t.appliesTo?.jirga !== false);
-      return list.length ? list : [
-        { code: 'JRG', label: 'Jirga' },
-        { code: 'EXC', label: 'Executive' },
-        { code: 'GBM', label: 'General Body' },
-      ];
+      const jrgTypes = (eventTypes || []).filter((t) => ['JRG', 'JIRGA'].includes(String(t.code).toUpperCase()) || String(t.label).toLowerCase() === 'jirga meeting');
+      return jrgTypes.length ? jrgTypes : [{ code: 'JRG', label: 'Jirga Meeting' }];
     }
     if (isCommitteeView) {
-      const list = (eventTypes || []).filter((t) => t.appliesTo?.committee !== false);
-      return list.length ? list : [
-        { code: 'CMP', label: 'Committee Plenum' },
-        { code: 'EXC', label: 'Executive' },
-      ];
+      const cmTypes = (eventTypes || []).filter((t) => ['CMP', 'COMMITTEE'].includes(String(t.code).toUpperCase()) || String(t.label).toLowerCase() === 'committee meeting');
+      return cmTypes.length ? cmTypes : [{ code: 'CMP', label: 'Committee Meeting' }];
     }
-    const list = (eventTypes || []).filter((t) => t.appliesTo?.executive !== false);
-    return list.length ? list : [
+    const execTypes = (eventTypes || []).filter((t) => ['EXC', 'EXECUTIVE', 'GBM', 'GENERAL_BODY'].includes(String(t.code).toUpperCase()));
+    return execTypes.length ? execTypes : [
       { code: 'EXC', label: 'Executive Council' },
       { code: 'GBM', label: 'General Body' },
-      { code: 'STC', label: 'Study Circle' },
-      { code: 'WC', label: 'Workers Convention' },
-      { code: 'OTH', label: 'Other' },
     ];
   }, [eventTypes, isCommitteeView, isJirgaView, isCongressView]);
 

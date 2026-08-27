@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
+import { Colors, FontSize, Radius, Spacing, Shadow } from '../../../src/constants/colors';
 import {
   isSuperAdmin, isHigherAdmin, isAreaAdmin,
   hasPermission, canDecideRole, canInitiateRole,
@@ -46,14 +46,14 @@ export default function AdminHubScreen() {
   const tierTitle = isSuper
     ? 'Super Admin'
     : isCentral
-    ? 'Central Admin'
-    : isProvince
-    ? 'Province Admin'
-    : isDistrict
-    ? 'District Admin'
-    : isArea
-    ? 'Area Admin'
-    : (user?.roles?.[0]?.replace(/_/g, ' ') || 'Admin');
+      ? 'Central Admin'
+      : isProvince
+        ? 'Province Admin'
+        : isDistrict
+          ? 'District Admin'
+          : isArea
+            ? 'Area Admin'
+            : (user?.roles?.[0]?.replace(/_/g, ' ') || 'Admin');
 
   const unitDisplayName = isCentral || isSuper
     ? 'PKNAP Central'
@@ -69,8 +69,11 @@ export default function AdminHubScreen() {
       items: [
         { key: 'dashboard', icon: '🏠', title: 'Dashboard', description: 'Central Command Center', route: '/' },
         { key: 'central-admins', icon: '🏛️', title: 'Central Admins', description: 'Manage Central Admin users, credentials, and access.', route: '/admin/users?role=CENTRAL_ADMIN' },
-        { key: 'org', icon: '🏢', title: 'Manage Units', description: 'Create and manage the administrative hierarchy.', route: '/admin/org' },
+        { key: 'org', icon: '🏢', title: 'Manage Units', description: 'Create and manage the administrative hierarchy.', route: '/admin/manage-org' },
         { key: 'members', icon: '👥', title: 'All Members', description: 'Browse, filter, and register members globally.', route: '/members' },
+        { key: 'meetings', icon: '📅', title: 'Meetings', description: 'Browse and monitor all meetings.', route: '/meetings' },
+        { key: 'activities', icon: '🚩', title: 'Activities', description: 'Browse and monitor all activities.', route: '/activities' },
+        { key: 'finance', icon: '💰', title: 'Finance Ledger', description: 'Donations, expenses and balances.', route: '/finance' },
         { key: 'pending-approvals', icon: '⏳', title: 'Pending Role Approvals', description: 'Approve or reject roles.', route: '/admin/pending-approvals' },
         { key: 'finance-overview', icon: '💰', title: 'Finance Overview', description: 'System-wide finance stats.', route: '/admin/finance-overview' },
       ],
@@ -87,18 +90,8 @@ export default function AdminHubScreen() {
       ],
     },
     {
-      key: 'event_manager',
-      title: 'Event Manager',
-      icon: '📁',
-      show: () => isSuper || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_EVENT_CONFIG'),
-      items: [
-        { key: 'event-types-meetings', icon: '📅', title: 'Meeting Types', description: 'Configure meeting type taxonomy and rules.', route: '/admin/event-types/meetings' },
-        { key: 'event-types-activities', icon: '🚩', title: 'Activity Types', description: 'Configure activity type taxonomy and rules.', route: '/admin/event-types/activities' },
-      ],
-    },
-    {
       key: 'unit_mgmt',
-      title: 'Unit Management',
+      title: 'Unit Management Engine',
       icon: '🏢',
       show: () => isSuper,
       items: [
@@ -113,8 +106,19 @@ export default function AdminHubScreen() {
       ],
     },
     {
+      key: 'event_manager',
+      title: 'Event Manager',
+      icon: '📁',
+      show: () => isSuper || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_EVENT_CONFIG'),
+      items: [
+        { key: 'event-types-meetings', icon: '📅', title: 'Meeting Types', description: 'Configure meeting type taxonomy and rules.', route: '/admin/event-types/meetings' },
+        { key: 'event-types-activities', icon: '🚩', title: 'Activity Types', description: 'Configure activity type taxonomy and rules.', route: '/admin/event-types/activities' },
+        { key: 'event-types-fields', icon: '📝', title: 'Field Library', description: 'Configure custom fields.', route: '/admin/events/fields' },
+      ],
+    },
+    {
       key: 'settings',
-      title: 'Settings',
+      title: 'Settings & Identity',
       icon: '⚙️',
       show: () => isSuper || hasPermission(user, 'VIEW_SYSTEM_BRANDING') || hasPermission(user, 'MANAGE_SYSTEM_BRANDING'),
       items: [
@@ -129,23 +133,6 @@ export default function AdminHubScreen() {
         { key: 'settings-history', icon: '🕒', title: 'Settings History', description: 'Changelog of settings', route: '/admin/settings/history' },
       ],
     },
-    {
-      key: 'central_tier',
-      title: 'Central Tier',
-      icon: '🏛️',
-      show: () => isSuper,
-      items: [
-        { key: 'central-dash', icon: '🏠', title: 'Central Dashboard', description: 'Central level analytics', route: '/' },
-        { key: 'central-cab', icon: '🏛️', title: 'Central Cabinet', description: 'Manage central cabinet', route: '/cabinet?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'central-congress', icon: '🤝', title: 'National Congress', description: 'National Congress details', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'central-meet', icon: '📅', title: 'Central Meetings', description: 'Central tier meetings', route: '/meetings?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'central-act', icon: '🚩', title: 'Central Activities', description: 'Central tier activities', route: '/activities?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'central-resp', icon: '📋', title: 'Central Responsibilities', description: 'Central tier tasks', route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'central-fin', icon: '💰', title: 'Central Finance', description: 'Central tier finances', route: '/finance?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'central-trans', icon: '💸', title: 'Central Fund Transfers', description: 'Central tier transfers', route: '/finance/transfers?unitLevel=CENTRAL&unitId=CENTRAL' },
-        { key: 'central-rep', icon: '📈', title: 'Central Reports', description: 'Central tier exports', route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
-      ],
-    },
 
     // 2. Central Admin: My Organization
     {
@@ -155,8 +142,12 @@ export default function AdminHubScreen() {
       show: () => isCentral,
       items: [
         { key: 'c-dash', icon: '🏠', title: 'Dashboard', description: 'Central Command & Analytics', route: '/' },
-        { key: 'c-org', icon: '🏢', title: 'Manage Provinces', description: 'Create and manage province tier units.', route: '/admin/org' },
+        { key: 'c-org', icon: '🏢', title: 'Manage Provinces', description: 'Create and manage province tier units.', route: '/admin/manage-org' },
         { key: 'c-members', icon: '👥', title: 'Province Members', description: 'Browse and filter members across provinces.', route: '/members' },
+        { key: 'c-meet', icon: '📅', title: 'Central Meetings', description: 'Schedule and manage central tier meetings.', route: '/meetings' },
+        { key: 'c-act', icon: '🚩', title: 'Central Activities', description: 'Schedule and monitor central tier activities.', route: '/activities' },
+        { key: 'c-fin', icon: '💰', title: 'Central Finance', description: 'Ledger of donations, expenses and balances.', route: '/finance' },
+        { key: 'c-trans', icon: '💸', title: 'Fund Transfers', description: 'Manage inter-unit and hierarchy fund transfers.', route: '/finance/transfers' },
         { key: 'c-cab', icon: '🏛️', title: 'Assign Province Cabinet Roles', description: 'Appoint provincial office-holders and review cabinet.', route: '/cabinet' },
         { key: 'c-resp', icon: '📋', title: 'Responsibilities', description: 'Central task allocations and monitoring.', route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'c-perf', icon: '📈', title: 'Member Performance', description: 'Analyze performance metrics and generate reports.', route: '/admin/performance' },
@@ -165,33 +156,38 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 3. Province Admin: My Province
+    // 3. Province Admin: My Province (KPK Admin Hub)
     {
       key: 'my_province',
-      title: 'My Province',
+      title: `My Province · ${ctx?.unitName || 'Province'}`,
       icon: '🏢',
       show: () => isProvince,
       items: [
-        { key: 'p-dash', icon: '🏠', title: 'Dashboard', description: 'Provincial Command & Analytics', route: '/' },
+        { key: 'p-dash', icon: '🏠', title: 'Dashboard', description: 'Provincial Command & Unit Analytics', route: '/' },
         { key: 'p-org', icon: '🏢', title: 'Manage Districts', description: 'Create and manage district tier units.', route: '/admin/org' },
-        { key: 'p-members', icon: '👥', title: 'All Province Members', description: 'Browse and filter members across the province.', route: '/members' },
+        { key: 'p-members', icon: '👥', title: 'All Province Members', description: 'Browse, search, and manage all provincial members.', route: '/members' },
+        { key: 'p-meetings', icon: '📅', title: 'Meetings Management', description: 'Schedule, log, and monitor provincial meetings.', route: '/meetings' },
+        { key: 'p-activities', icon: '🚩', title: 'Activities Management', description: 'Create and track provincial events and activities.', route: '/activities' },
+        { key: 'p-finance', icon: '💰', title: 'Finance & Accounts', description: 'Track donations, approve expenses, and net balance.', route: '/finance' },
+        { key: 'p-transfers', icon: '💸', title: 'Fund Transfers', description: 'Inter-unit and district fund transfers.', route: '/finance/transfers' },
         { key: 'p-cab', icon: '🏛️', title: 'Assign District Cabinet Roles', description: 'Appoint district office-holders and review cabinet.', route: '/cabinet' },
-        { key: 'p-resp', icon: '📋', title: 'Responsibilities', description: 'Provincial task allocations and monitoring.', route: '/admin/responsibilities' },
+        { key: 'p-resp', icon: '📋', title: 'Responsibilities & Tasks', description: 'Provincial task allocations, assignments & tracking.', route: '/admin/responsibilities' },
         { key: 'p-perf', icon: '📈', title: 'Member Performance', description: 'Analyze performance metrics and generate reports.', route: '/admin/performance' },
         { key: 'p-breakdown', icon: '📊', title: 'District Breakdown', description: 'Comparative district activity, membership & finance stats.', route: '/admin/breakdown' },
-        { key: 'p-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for the province.', route: '/admin/reports' },
+        { key: 'p-reports', icon: '📈', title: 'Reports Center', description: 'Generate and download PDF and Excel summary packages.', route: '/admin/reports' },
+        { key: 'p-pending', icon: '⏳', title: 'Pending Approvals', description: 'Review and approve member registrations and roles.', route: '/admin/pending-approvals' },
       ],
     },
 
     // 4. District Admin: My District
     {
       key: 'my_district',
-      title: 'My District',
+      title: `My District · ${ctx?.unitName || 'District'}`,
       icon: '🏢',
-      show: () => isDistrict,
+      show: () => isDistrict || hasRole(user, 'DISTRICT_ADMIN'),
       items: [
-        { key: 'd-dash', icon: '🏠', title: 'Dashboard', description: 'District Command & Analytics', route: '/' },
-        { key: 'd-org', icon: '🏢', title: 'Manage Areas', description: 'Create and manage area tier units.', route: '/admin/org' },
+        { key: 'd-dash', icon: '🏠', title: 'Dashboard', description: 'District Command & Unit Analytics', route: '/' },
+        { key: 'd-org', icon: '🏢', title: 'Manage Areas', description: 'Create and manage area tier units in your district.', route: '/admin/manage-org' },
         { key: 'd-members', icon: '👥', title: 'Members', description: 'Browse and filter members in the district.', route: '/members' },
         { key: 'd-cab', icon: '🏛️', title: 'Assign Area Cabinet Roles', description: 'Appoint area office-holders and review cabinet.', route: '/cabinet' },
         { key: 'd-resp', icon: '📋', title: 'Responsibilities', description: 'District task allocations and monitoring.', route: '/admin/responsibilities' },
@@ -204,12 +200,12 @@ export default function AdminHubScreen() {
     // 5. Area Admin: My Area
     {
       key: 'my_area',
-      title: 'My Area',
+      title: `My Area · ${ctx?.unitName || 'Area'}`,
       icon: '🏢',
-      show: () => isArea,
+      show: () => isArea || hasRole(user, 'AREA_ADMIN'),
       items: [
         { key: 'a-dash', icon: '🏠', title: 'Dashboard', description: 'Area Command & Analytics', route: '/' },
-        { key: 'a-org', icon: '🏢', title: 'Manage Basic Units', description: 'Create and manage basic units.', route: '/admin/org' },
+        { key: 'a-org', icon: '🏢', title: 'Manage Basic Units', description: 'Create and manage basic units in your area.', route: '/admin/org' },
         { key: 'a-approvals', icon: '⏳', title: 'Member Approvals', description: 'Review and approve pending member registrations.', route: '/members?status=PENDING_APPROVAL' },
         { key: 'a-members', icon: '👥', title: 'All Members', description: 'Browse and filter members in the area.', route: '/members' },
         { key: 'a-cab', icon: '🏛️', title: 'Assign Cabinet Roles', description: 'Assign office-holders and approve proposals.', route: '/cabinet' },
@@ -225,12 +221,16 @@ export default function AdminHubScreen() {
       icon: '🛠️',
       show: () => !isSuper && !isCentral && !isProvince && !isDistrict && !isArea && (isHigherAdmin(user) || canInitiateRole(user) || canDecideRole(user) || isSeniorMawin || isSecretary || isFinanceSec || isPresident || hasPermission(user, 'APPROVE_MEMBER')),
       items: [
+        { key: 'gen-dash', icon: '🏠', title: 'Dashboard', description: 'Unit Dashboard', route: '/' },
         { key: 'gen-cab', icon: '🏛️', title: 'Cabinet & Roles', description: 'Cabinet assignments & proposals', route: '/cabinet' },
         { key: 'gen-resp', icon: '📋', title: 'Responsibilities', description: 'Unit tasks and responsibilities', route: '/admin/responsibilities' },
         { key: 'gen-perf', icon: '📈', title: 'Member Performance', description: 'Analyze member performance metrics', route: '/admin/performance' },
         { key: 'gen-approvals', icon: '⏳', title: 'Member Approvals', description: 'Review pending member registrations', route: '/members?status=PENDING_APPROVAL' },
         { key: 'gen-members', icon: '👥', title: 'Members', description: 'Browse members in your unit', route: '/members' },
         { key: 'gen-breakdown', icon: '📊', title: 'Breakdown', description: 'Comparative activity & stats', route: '/admin/breakdown' },
+        { key: 'gen-meetings', icon: '📅', title: 'Meetings', description: 'Unit meetings', route: '/meetings' },
+        { key: 'gen-activities', icon: '🚩', title: 'Activities', description: 'Unit activities', route: '/activities' },
+        { key: 'gen-finance', icon: '💰', title: 'Finance', description: 'Unit finance', route: '/finance' },
         { key: 'gen-reports', icon: '📈', title: 'Exports & Reports', description: 'Download PDF and Excel reports', route: '/admin/reports' },
       ],
     },
@@ -269,28 +269,31 @@ export default function AdminHubScreen() {
     // 9. Communication (Always available)
     {
       key: 'communication',
-      title: 'Communication',
+      title: 'Communication & Broadcasts',
       icon: '📢',
       show: () => true,
       items: [
         { key: 'notifications', icon: '🔔', title: 'Notifications', description: 'System alerts and updates', route: '/notifications' },
-        { key: 'announcements', icon: '📢', title: 'Announcements', description: 'Org wide broadcasts & direct messages', route: '/announcements' },
+        { key: 'announcements', icon: '📢', title: 'Announcements', description: 'Org-wide broadcasts & direct messages', route: '/announcements' },
       ],
     },
   ];
 
-  const visibleSections = sections.filter(s => s.show() && s.items.length > 0);
+  const visibleSections = sections.filter((s) => s.show() && s.items.length > 0);
 
   const [openSections, setOpenSections] = useState({
     god_mode: true,
     user_manager: true,
+    unit_mgmt: true,
+    event_manager: true,
+    settings: true,
     my_org: true,
     my_province: true,
     my_district: true,
     my_area: true,
     admin_tools: true,
     congress: false,
-    jirga: false,
+    jirga: true,
     communication: true,
   });
 
@@ -302,16 +305,21 @@ export default function AdminHubScreen() {
   function setAllSections(open) {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const updated = {};
-    visibleSections.forEach((s) => { updated[s.key] = open; });
+    visibleSections.forEach((s) => {
+      updated[s.key] = open;
+    });
     setOpenSections(updated);
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Admin Header Banner */}
         <View style={styles.heroRow}>
           <View style={styles.heroHeader}>
-            <Text style={styles.heroIcon}>🛡️</Text>
+            <View style={styles.heroIconBox}>
+              <Text style={styles.heroIcon}>🛡️</Text>
+            </View>
             <View style={styles.heroText}>
               <Text style={styles.heroTitle}>{tierTitle} Panel</Text>
               <Text style={styles.heroSub}>{unitDisplayName}</Text>
@@ -323,38 +331,66 @@ export default function AdminHubScreen() {
           </View>
         </View>
 
+        {/* Section Accordion Controls */}
         <View style={styles.accordionControlsRow}>
           <Text style={styles.sectionsHeaderLabel}>SECTIONS & MODULES</Text>
           <View style={styles.accordionBtns}>
-            <TouchableOpacity onPress={() => setAllSections(true)} style={styles.miniBtn}><Text style={styles.miniBtnText}>Expand all</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setAllSections(true)} style={styles.miniBtn}>
+              <Text style={styles.miniBtnText}>Expand all</Text>
+            </TouchableOpacity>
             <Text style={styles.miniDivider}>·</Text>
-            <TouchableOpacity onPress={() => setAllSections(false)} style={styles.miniBtn}><Text style={styles.miniBtnText}>Collapse all</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setAllSections(false)} style={styles.miniBtn}>
+              <Text style={styles.miniBtnText}>Collapse all</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         {visibleSections.length === 0 && (
-          <View style={styles.empty}><Text style={styles.emptyText}>No administrative tools available for your current role.</Text></View>
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>No administrative tools available for your current role.</Text>
+          </View>
         )}
 
+        {/* Sections List */}
         {visibleSections.map((section) => {
           const isOpen = !!openSections[section.key];
           return (
             <View key={section.key} style={styles.sectionContainer}>
-              <TouchableOpacity style={[styles.sectionHeaderBtn, isOpen && styles.sectionHeaderBtnOpen]} onPress={() => toggleSection(section.key)} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={[styles.sectionHeaderBtn, isOpen && styles.sectionHeaderBtnOpen]}
+                onPress={() => toggleSection(section.key)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.sectionHeaderLeft}>
                   <Text style={styles.sectionHeaderIcon}>{section.icon}</Text>
                   <Text style={styles.sectionHeaderTitle}>{section.title}</Text>
-                  <View style={styles.countBadge}><Text style={styles.countBadgeText}>{section.items.length}</Text></View>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{section.items.length}</Text>
+                  </View>
                 </View>
-                <Ionicons name={isOpen ? 'chevron-down' : 'chevron-forward'} size={20} color={isOpen ? Colors.primary : Colors.textMuted} />
+                <Ionicons
+                  name={isOpen ? 'chevron-down' : 'chevron-forward'}
+                  size={18}
+                  color={isOpen ? Colors.primary : Colors.textMuted}
+                />
               </TouchableOpacity>
               {isOpen && (
                 <View style={styles.grid}>
                   {section.items.map((card) => (
-                    <TouchableOpacity key={card.key} style={styles.card} onPress={() => router.push(card.route)} activeOpacity={0.75}>
-                      <Text style={styles.cardIcon}>{card.icon}</Text>
+                    <TouchableOpacity
+                      key={card.key}
+                      style={styles.card}
+                      onPress={() => router.push(card.route)}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.cardTop}>
+                        <Text style={styles.cardIcon}>{card.icon}</Text>
+                        <Text style={styles.cardArrow}>›</Text>
+                      </View>
                       <Text style={styles.cardTitle}>{card.title}</Text>
-                      <Text style={styles.cardDesc} numberOfLines={2}>{card.description}</Text>
+                      <Text style={styles.cardDesc} numberOfLines={2}>
+                        {card.description}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -368,54 +404,190 @@ export default function AdminHubScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  content: { padding: Spacing.lg, paddingBottom: 40 },
-  heroRow: { backgroundColor: Colors.primary, borderRadius: Radius.lg, padding: Spacing.lg, marginBottom: Spacing.lg, shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 10, elevation: 6 },
-  heroHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.md },
-  heroIcon: { fontSize: 32 },
-  heroText: { flex: 1 },
-  heroTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
-  heroSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-  heroTagRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  accordionControlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.md, paddingHorizontal: 4 },
-  sectionsHeaderLabel: { fontSize: FontSize.xs, fontWeight: '800', color: Colors.textMuted, letterSpacing: 0.5 },
-  accordionBtns: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  miniBtn: { paddingVertical: 2, paddingHorizontal: 4 },
-  miniBtnText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '600' },
-  miniDivider: { fontSize: FontSize.xs, color: Colors.textLight },
-  sectionContainer: { marginBottom: Spacing.md, backgroundColor: Colors.surface, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  sectionHeaderBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
-  sectionHeaderBtnOpen: { borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: '#f8fafc' },
-  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  sectionHeaderIcon: { fontSize: 20 },
-  sectionHeaderTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text },
-  countBadge: { paddingHorizontal: 7, paddingVertical: 2, backgroundColor: '#eff6ff', borderRadius: Radius.pill, borderWidth: 1, borderColor: '#dbeafe' },
-  countBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
-  grid: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: Spacing.sm, 
-    padding: Spacing.sm, 
-    backgroundColor: Colors.background 
+  safe: {
+    flex: 1,
+    backgroundColor: Colors.background,
   },
-  card: { 
-    backgroundColor: Colors.surface, 
-    borderRadius: Radius.md, 
-    padding: Spacing.md, 
-    flexGrow: 1, 
-    flexBasis: '47%', 
-    minWidth: 140, 
-    borderWidth: 1, 
-    borderColor: Colors.border, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.04, 
-    shadowRadius: 4, 
-    shadowOffset: { width: 0, height: 1 }, 
-    elevation: 1 
+  content: {
+    padding: Spacing.md,
+    paddingBottom: 40,
   },
-  cardIcon: { fontSize: 24, marginBottom: Spacing.xs },
-  cardTitle: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text, marginBottom: 2 },
-  cardDesc: { fontSize: 11, color: Colors.textMuted, lineHeight: 15 },
-  empty: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center' },
+  heroRow: {
+    backgroundColor: '#1e3a8a',
+    borderRadius: Radius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  heroHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: Spacing.sm,
+  },
+  heroIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroIcon: {
+    fontSize: 22,
+  },
+  heroText: {
+    flex: 1,
+  },
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  heroSub: {
+    fontSize: FontSize.sm,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  heroTagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.15)',
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  accordionControlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+    paddingHorizontal: 2,
+  },
+  sectionsHeaderLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 0.8,
+  },
+  accordionBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  miniBtn: {
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  miniBtnText: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  miniDivider: {
+    color: Colors.textMuted,
+  },
+  sectionContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.sm,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadow.sm,
+  },
+  sectionHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
+    backgroundColor: Colors.surface,
+  },
+  sectionHeaderBtnOpen: {
+    backgroundColor: Colors.surfaceAlt,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  sectionHeaderIcon: {
+    fontSize: 16,
+  },
+  sectionHeaderTitle: {
+    fontSize: FontSize.base,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  countBadge: {
+    backgroundColor: 'rgba(30, 64, 175, 0.1)',
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    borderRadius: Radius.pill,
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: Spacing.md,
+    backgroundColor: Colors.background,
+  },
+  card: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'space-between',
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  cardIcon: {
+    fontSize: 20,
+  },
+  cardArrow: {
+    fontSize: 18,
+    color: Colors.textMuted,
+    fontWeight: '800',
+  },
+  cardTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  cardDesc: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    lineHeight: 15,
+  },
+  empty: {
+    padding: Spacing.xl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+  },
 });

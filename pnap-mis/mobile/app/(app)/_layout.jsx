@@ -1,16 +1,12 @@
 import { Redirect, Tabs } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { ActivityIndicator, Text, View, Platform } from 'react-native';
+import { ActivityIndicator, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
 
 function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size} color={color} />;
-}
-
-function ShieldIcon({ color, size }) {
-  return <Text style={{ fontSize: size - 4, lineHeight: size, color }}>🛡️</Text>;
 }
 
 export default function AppLayout() {
@@ -28,7 +24,6 @@ export default function AppLayout() {
 
   const showFinance = canManageFinance(user);
   const showAdmin = !isPureMember(user) || isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_SYSTEM_BRANDING');
-  const showUnitTabs = true;
 
   return (
     <Tabs
@@ -54,6 +49,7 @@ export default function AppLayout() {
         tabBarItemStyle: { paddingVertical: 2 },
       }}
     >
+      {/* ─── 1. Dashboard Tab ─── */}
       <Tabs.Screen
         name="index"
         options={{
@@ -62,54 +58,8 @@ export default function AppLayout() {
           headerTitle: 'PNAP MIS',
         }}
       />
-      {showUnitTabs ? (
-        <Tabs.Screen
-          name="members/index"
-          options={{
-            title: 'Members',
-            tabBarIcon: ({ color, size }) => <TabIcon name="people" color={color} size={size} />,
-            headerTitle: 'Members',
-          }}
-        />
-      ) : (
-        <Tabs.Screen name="members/index" options={{ href: null }} />
-      )}
-      {showUnitTabs ? (
-        <Tabs.Screen
-          name="meetings/index"
-          options={{
-            title: 'Meetings',
-            tabBarIcon: ({ color, size }) => <TabIcon name="calendar" color={color} size={size} />,
-            headerTitle: 'Meetings',
-          }}
-        />
-      ) : (
-        <Tabs.Screen name="meetings/index" options={{ href: null }} />
-      )}
-      {showUnitTabs ? (
-        <Tabs.Screen
-          name="activities/index"
-          options={{
-            title: 'Activities',
-            tabBarIcon: ({ color, size }) => <TabIcon name="flag" color={color} size={size} />,
-            headerTitle: 'Activities',
-          }}
-        />
-      ) : (
-        <Tabs.Screen name="activities/index" options={{ href: null }} />
-      )}
-      {showFinance && showUnitTabs ? (
-        <Tabs.Screen
-          name="finance/index"
-          options={{
-            title: 'Finance',
-            tabBarIcon: ({ color, size }) => <TabIcon name="wallet" color={color} size={size} />,
-            headerTitle: 'Finance',
-          }}
-        />
-      ) : (
-        <Tabs.Screen name="finance/index" options={{ href: null }} />
-      )}
+
+      {/* ─── 2. Profile Tab ─── */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -118,61 +68,86 @@ export default function AppLayout() {
           headerTitle: 'My Profile',
         }}
       />
+
+      {/* ─── 3. Admin Tab ─── */}
       {showAdmin ? (
         <Tabs.Screen
           name="admin/index"
           options={{
             title: 'Admin',
-            tabBarIcon: ({ color, size }) => <ShieldIcon color={color} size={size} />,
+            tabBarIcon: ({ color, size }) => <TabIcon name="shield-checkmark" color={color} size={size} />,
             headerTitle: 'Admin Panel',
           }}
         />
       ) : (
         <Tabs.Screen name="admin/index" options={{ href: null }} />
       )}
-      {/* Hidden screens — navigable via stack but not in tabs */}
-      <Tabs.Screen name="members/[id]" options={{ href: null, headerTitle: 'Member Detail', headerShown: true }} />
-      <Tabs.Screen name="meetings/[id]" options={{ href: null, headerTitle: 'Meeting Detail', headerShown: true }} />
+
+      {/* ─── All Sub-Screens Hidden from Tab Bar (href: null) ─── */}
+      {/* Activities & Meetings */}
+      <Tabs.Screen name="activities/index" options={{ href: null, headerTitle: 'Activities', headerShown: true }} />
       <Tabs.Screen name="activities/[id]" options={{ href: null, headerTitle: 'Activity Detail', headerShown: true }} />
-      <Tabs.Screen name="notifications" options={{ href: null, headerTitle: 'Notifications', headerShown: true }} />
-      <Tabs.Screen name="announcements" options={{ href: null, headerTitle: 'Announcements', headerShown: false }} />
+      <Tabs.Screen name="meetings/index" options={{ href: null, headerTitle: 'Meetings', headerShown: true }} />
+      <Tabs.Screen name="meetings/[id]" options={{ href: null, headerTitle: 'Meeting Detail', headerShown: true }} />
+
+      {/* Members & Finance */}
+      <Tabs.Screen name="members/index" options={{ href: null, headerTitle: 'Members', headerShown: true }} />
+      <Tabs.Screen name="members/[id]" options={{ href: null, headerTitle: 'Member Detail', headerShown: true }} />
+      <Tabs.Screen name="finance/index" options={{ href: null, headerTitle: 'Finance', headerShown: true }} />
       <Tabs.Screen name="finance/transfers" options={{ href: null, headerTitle: 'Transfers', headerShown: true }} />
-      {/* Phase 2 — Admin screens (hidden from tab bar, reachable via router.push) */}
+
+      {/* Cabinet, Announcements, Notifications, Unit */}
       <Tabs.Screen name="cabinet/index" options={{ href: null, headerTitle: 'Cabinet', headerShown: true }} />
+      <Tabs.Screen name="announcements" options={{ href: null, headerTitle: 'Announcements', headerShown: false }} />
+      <Tabs.Screen name="notifications" options={{ href: null, headerTitle: 'Notifications', headerShown: true }} />
+      <Tabs.Screen name="unit/jirga" options={{ href: null, headerTitle: 'Sobayi Jirga', headerShown: true }} />
+
+      {/* Admin Modules */}
+      <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Logs', headerShown: true }} />
+      <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Unit Breakdown', headerShown: true }} />
+      <Tabs.Screen name="admin/congress" options={{ href: null, headerTitle: 'National Congress', headerShown: true }} />
+      <Tabs.Screen name="admin/finance-overview" options={{ href: null, headerTitle: 'Finance Overview', headerShown: true }} />
+      <Tabs.Screen name="admin/jirga" options={{ href: null, headerTitle: 'Sobayi Jirga', headerShown: true }} />
+      <Tabs.Screen name="admin/meetings" options={{ href: null, headerTitle: 'Meetings', headerShown: true }} />
       <Tabs.Screen name="admin/org" options={{ href: null, headerTitle: 'Org Structure', headerShown: true }} />
-      <Tabs.Screen name="admin/users/index" options={{ href: null, headerTitle: 'Users', headerShown: true }} />
+      <Tabs.Screen name="admin/manage-org" options={{ href: null, headerTitle: 'Manage Units', headerShown: true }} />
+      <Tabs.Screen name="admin/pending-approvals" options={{ href: null, headerTitle: 'Pending Approvals', headerShown: true }} />
+      <Tabs.Screen name="admin/performance" options={{ href: null, headerTitle: 'Member Performance', headerShown: true }} />
+      <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Reports Center', headerShown: true }} />
+      <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
+      <Tabs.Screen name="admin/settings" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />
+
+      {/* Admin Event Types & Fields */}
+      <Tabs.Screen name="admin/event-types/activities" options={{ href: null, headerTitle: 'Activity Types', headerShown: true }} />
+      <Tabs.Screen name="admin/event-types/meetings" options={{ href: null, headerTitle: 'Meeting Types', headerShown: true }} />
+      <Tabs.Screen name="admin/event-types/[id]" options={{ href: null, headerTitle: 'Event Type Detail', headerShown: true }} />
+      <Tabs.Screen name="admin/events/fields" options={{ href: null, headerTitle: 'Event Fields', headerShown: true }} />
+
+      {/* Admin Roles & Users */}
       <Tabs.Screen name="admin/roles/index" options={{ href: null, headerTitle: 'Role Manager', headerShown: true }} />
       <Tabs.Screen name="admin/roles/[id]" options={{ href: null, headerTitle: 'Role Permissions', headerShown: true }} />
-      <Tabs.Screen name="admin/event-types/meetings" options={{ href: null, headerTitle: 'Meeting Types', headerShown: true }} />
-      <Tabs.Screen name="admin/event-types/activities" options={{ href: null, headerTitle: 'Activity Types', headerShown: true }} />
-      <Tabs.Screen name="admin/event-types/[id]" options={{ href: null, headerTitle: 'Event Type Editor', headerShown: true }} />
-      <Tabs.Screen name="admin/finance-overview" options={{ href: null, headerTitle: 'Finance Overview', headerShown: true }} />
-      <Tabs.Screen name="admin/pending-approvals" options={{ href: null, headerTitle: 'Pending Approvals', headerShown: true }} />
-      <Tabs.Screen name="admin/units/index" options={{ href: null, headerTitle: 'Unit Management', headerShown: true }} />
-      <Tabs.Screen name="admin/units/tier-configs" options={{ href: null, headerTitle: 'Unit Type Manager', headerShown: true }} />
-      <Tabs.Screen name="admin/units/cabinet-templates" options={{ href: null, headerTitle: 'Cabinet Structure', headerShown: true }} />
-      <Tabs.Screen name="admin/units/policies" options={{ href: null, headerTitle: 'Unit Policies', headerShown: true }} />
-      <Tabs.Screen name="admin/units/workflows" options={{ href: null, headerTitle: 'Workflow Manager', headerShown: true }} />
-      <Tabs.Screen name="admin/units/responsibility-templates" options={{ href: null, headerTitle: 'Responsibility Templates', headerShown: true }} />
-      <Tabs.Screen name="admin/units/performance-rulesets" options={{ href: null, headerTitle: 'Performance Rules', headerShown: true }} />
-      <Tabs.Screen name="admin/units/report-templates" options={{ href: null, headerTitle: 'Report Templates', headerShown: true }} />
+      <Tabs.Screen name="admin/users/index" options={{ href: null, headerTitle: 'Users', headerShown: true }} />
+
+      {/* Admin Settings Sub-pages */}
+      <Tabs.Screen name="admin/settings/dashboard" options={{ href: null, headerTitle: 'Dashboard Settings', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/history" options={{ href: null, headerTitle: 'Settings History', headerShown: true }} />
       <Tabs.Screen name="admin/settings/identity" options={{ href: null, headerTitle: 'System Identity', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/index" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/login" options={{ href: null, headerTitle: 'Login Settings', headerShown: true }} />
       <Tabs.Screen name="admin/settings/logos" options={{ href: null, headerTitle: 'Logo Manager', headerShown: true }} />
+      <Tabs.Screen name="admin/settings/reports" options={{ href: null, headerTitle: 'Report Settings', headerShown: true }} />
       <Tabs.Screen name="admin/settings/theme" options={{ href: null, headerTitle: 'Theme Manager', headerShown: true }} />
       <Tabs.Screen name="admin/settings/typography" options={{ href: null, headerTitle: 'Typography', headerShown: true }} />
-      <Tabs.Screen name="admin/settings/dashboard" options={{ href: null, headerTitle: 'UI Preferences', headerShown: true }} />
-      <Tabs.Screen name="admin/settings/reports" options={{ href: null, headerTitle: 'Report Branding', headerShown: true }} />
-      <Tabs.Screen name="admin/settings/login" options={{ href: null, headerTitle: 'Login Customization', headerShown: true }} />
-      <Tabs.Screen name="admin/settings/history" options={{ href: null, headerTitle: 'Settings History', headerShown: true }} />
-      <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Breakdown', headerShown: true }} />
-      <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: 'Responsibilities', headerShown: true }} />
-      <Tabs.Screen name="admin/performance" options={{ href: null, headerTitle: 'Member Performance', headerShown: true }} />
-      <Tabs.Screen name="admin/congress" options={{ href: null, headerTitle: 'National Congress', headerShown: true }} />
-      <Tabs.Screen name="admin/jirga" options={{ href: null, headerTitle: 'Jirga Composition', headerShown: true }} />
-      <Tabs.Screen name="admin/meetings" options={{ href: null, headerTitle: 'Central Meetings', headerShown: true }} />
-      <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: 'Exports & Reports', headerShown: true }} />
-      <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Log', headerShown: true }} />
-      <Tabs.Screen name="admin/settings" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />
+
+      {/* Admin Units Sub-pages */}
+      <Tabs.Screen name="admin/units/cabinet-templates" options={{ href: null, headerTitle: 'Cabinet Templates', headerShown: true }} />
+      <Tabs.Screen name="admin/units/index" options={{ href: null, headerTitle: 'Unit Management', headerShown: true }} />
+      <Tabs.Screen name="admin/units/performance-rulesets" options={{ href: null, headerTitle: 'Performance Rules', headerShown: true }} />
+      <Tabs.Screen name="admin/units/policies" options={{ href: null, headerTitle: 'Unit Policies', headerShown: true }} />
+      <Tabs.Screen name="admin/units/report-templates" options={{ href: null, headerTitle: 'Report Templates', headerShown: true }} />
+      <Tabs.Screen name="admin/units/responsibility-templates" options={{ href: null, headerTitle: 'Task Templates', headerShown: true }} />
+      <Tabs.Screen name="admin/units/tier-configs" options={{ href: null, headerTitle: 'Unit Tiers', headerShown: true }} />
+      <Tabs.Screen name="admin/units/workflows" options={{ href: null, headerTitle: 'Approval Workflows', headerShown: true }} />
     </Tabs>
   );
 }
