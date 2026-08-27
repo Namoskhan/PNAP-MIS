@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useToast } from '../../../src/components/Toast';
@@ -55,9 +55,10 @@ const INITIAL_FORM = {
 export default function MembersScreen() {
   const { user } = useAuth();
   const toast = useToast();
+  const { status: initialStatus } = useLocalSearchParams();
   const [items, setItems] = useState([]);
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(initialStatus || '');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);

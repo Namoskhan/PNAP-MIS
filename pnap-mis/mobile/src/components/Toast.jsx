@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from 'react-native';
 import { Colors, FontSize, Radius, Spacing } from '../constants/colors';
 
@@ -91,11 +92,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderRadius: Radius.md,
     gap: Spacing.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 6px rgba(0,0,0,0.2)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 8,
+      },
+    }),
   },
   toastText: {
     flex: 1,
