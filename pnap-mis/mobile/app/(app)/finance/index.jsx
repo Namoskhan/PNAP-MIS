@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +30,7 @@ import {
 } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Badge from '../../../src/components/Badge';
+import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import { shortDate, PKR, formatCnic, isCompleteCnic } from '../../../src/utils/formatters';
 import { downloadAndShare } from '../../../src/utils/export';
@@ -38,7 +39,8 @@ import { formatUnitArrangedBy } from '../../../src/utils/unitFormat';
 const FINANCE_TABS = [
   { label: 'Donations', value: 'DONATIONS', icon: 'cash-outline' },
   { label: 'Expenses', value: 'EXPENSES', icon: 'receipt-outline' },
-  { label: 'Monthly Statements', value: 'MONTHLY', icon: 'bar-chart-outline' },
+  { label: 'Transfers', value: 'TRANSFERS', icon: 'swap-horizontal-outline' },
+  { label: 'Monthly', value: 'MONTHLY', icon: 'bar-chart-outline' },
 ];
 
 const EXPENSE_CATEGORIES = [
@@ -82,44 +84,42 @@ export default function FinanceScreen() {
   const isCommitteeView = queryBody === 'COMMITTEE';
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
-  const [selectedLevel, setSelectedLevel] = useState(() => {
+  const [jirgaLevel, setJirgaLevel] = useState(() => {
     if (params.unitLevel) return params.unitLevel;
-    if (isJirgaView && provinces && provinces.length > 0) return 'PROVINCE';
-    return ctx?.unitLevel || 'CENTRAL';
+    return 'PROVINCE';
   });
-
-  const [selectedUnitId, setSelectedUnitId] = useState(() => {
+  const [jirgaUnitId, setJirgaUnitId] = useState(() => {
     if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    if (isJirgaView && provinces && provinces.length > 0) return provinces[0]._id;
-    return ctx?.unitId || '';
+    return provinces?.[0]?._id || '';
   });
 
   // Sync with provinces when they become available
   useEffect(() => {
-    if (isJirgaView && !selectedUnitId && provinces && provinces.length > 0) {
-      setSelectedLevel('PROVINCE');
-      setSelectedUnitId(provinces[0]._id);
+    if (isJirgaView && !jirgaUnitId && provinces && provinces.length > 0) {
+      setJirgaLevel('PROVINCE');
+      setJirgaUnitId(provinces[0]._id);
     }
-  }, [provinces, isJirgaView]);
+  }, [provinces, isJirgaView, jirgaUnitId]);
 
-  const activeLevel = selectedLevel;
+  const activeLevel = isJirgaView ? jirgaLevel : (params.unitLevel || ctx?.unitLevel || 'CENTRAL');
+  const rawUnitId = isJirgaView ? jirgaUnitId : (params.unitId || ctx?.unitId || '');
   const canRecord = canManageFinance(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
     && !(isSuperAdmin(user) && (activeLevel === 'CENTRAL' || isCongressView));
   const canApprove = canApproveExpense(user);
-  const [resolvedUnitId, setResolvedUnitId] = useState(selectedUnitId);
+  const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
 
   useEffect(() => {
-    let rawId = selectedUnitId;
-    if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
+    let currentRaw = rawUnitId;
+    if (activeLevel === 'CENTRAL' && (!currentRaw || currentRaw === 'CENTRAL')) {
       api.get('/org/central').then((r) => {
         if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
       }).catch(() => {});
     } else {
-      setResolvedUnitId(rawId);
+      setResolvedUnitId(currentRaw);
     }
-  }, [selectedUnitId, activeLevel]);
+  }, [rawUnitId, activeLevel]);
 
   const [tab, setTab] = useState('DONATIONS');
   const [donations, setDonations] = useState([]);
@@ -521,7 +521,7 @@ export default function FinanceScreen() {
     }
   }
 
-  const selectedProvince = (provinces || []).find((p) => String(p._id) === String(selectedUnitId));
+  const selectedProvince = isJirgaView ? (provinces || []).find((p) => String(p._id) === String(jirgaUnitId)) : null;
   const pageTitle = isCongressView
     ? 'National Congress Finance · PKNAP Central'
     : (isJirgaView
@@ -570,6 +570,17 @@ export default function FinanceScreen() {
 
           <View style={styles.headerActionsRow}>
             <TouchableOpacity
+              style={styles.btnExport}
+              onPress={() => router.push({
+                pathname: '/finance/transfers',
+                params: { body: targetBody, unitLevel: activeLevel, unitId: resolvedUnitId }
+              })}
+            >
+              <Ionicons name="swap-horizontal-outline" size={15} color={Colors.primary} />
+              <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>Transfers</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.btnExport, exporting === 'pdf' && { opacity: 0.6 }]}
               onPress={() => handleExport('pdf')}
               disabled={!!exporting}
@@ -603,14 +614,14 @@ export default function FinanceScreen() {
         <View style={styles.tierPillsWrapper}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
             {provinces.map((prov) => {
-              const isActive = selectedLevel === 'PROVINCE' && String(selectedUnitId) === String(prov._id);
+              const isActive = jirgaLevel === 'PROVINCE' && String(jirgaUnitId) === String(prov._id);
               return (
                 <TouchableOpacity
                   key={prov._id}
                   style={[styles.tierPill, isActive && styles.tierPillActive]}
                   onPress={() => {
-                    setSelectedLevel('PROVINCE');
-                    setSelectedUnitId(prov._id);
+                    setJirgaLevel('PROVINCE');
+                    setJirgaUnitId(prov._id);
                   }}
                 >
                   <Ionicons
@@ -626,19 +637,19 @@ export default function FinanceScreen() {
               );
             })}
             <TouchableOpacity
-              style={[styles.tierPill, selectedLevel === 'CENTRAL' && styles.tierPillActive]}
+              style={[styles.tierPill, jirgaLevel === 'CENTRAL' && styles.tierPillActive]}
               onPress={() => {
-                setSelectedLevel('CENTRAL');
-                setSelectedUnitId('CENTRAL');
+                setJirgaLevel('CENTRAL');
+                setJirgaUnitId('CENTRAL');
               }}
             >
               <Ionicons
                 name="shield-outline"
                 size={14}
-                color={selectedLevel === 'CENTRAL' ? '#fff' : Colors.textMuted}
+                color={jirgaLevel === 'CENTRAL' ? '#fff' : Colors.textMuted}
                 style={{ marginRight: 4 }}
               />
-              <Text style={[styles.tierPillText, selectedLevel === 'CENTRAL' && styles.tierPillTextActive]}>
+              <Text style={[styles.tierPillText, jirgaLevel === 'CENTRAL' && styles.tierPillTextActive]}>
                 Qomi Jirga (Central)
               </Text>
             </TouchableOpacity>
@@ -740,7 +751,16 @@ export default function FinanceScreen() {
                 <TouchableOpacity
                   key={t.value}
                   style={[styles.segmentBtn, active && styles.segmentBtnActive]}
-                  onPress={() => setTab(t.value)}
+                  onPress={() => {
+                    if (t.value === 'TRANSFERS') {
+                      router.push({
+                        pathname: '/finance/transfers',
+                        params: { body: targetBody, unitLevel: activeLevel, unitId: resolvedUnitId }
+                      });
+                    } else {
+                      setTab(t.value);
+                    }
+                  }}
                 >
                   <Ionicons
                     name={t.icon}
@@ -1190,34 +1210,12 @@ export default function FinanceScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Received Date <Text style={{ color: Colors.error }}>*</Text></Text>
-                  {Platform.OS === 'web' ? (
-                    <input
-                      type="date"
-                      value={donationForm.receivedAt}
-                      onChange={(e) => setDonationForm((f) => ({ ...f, receivedAt: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        height: 44,
-                        padding: '8px 12px',
-                        borderRadius: 10,
-                        border: '1.5px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
-                        color: '#0f172a',
-                        fontSize: '14px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  ) : (
-                    <TextInput
-                      style={styles.modernTextInput}
-                      value={donationForm.receivedAt}
-                      onChangeText={(v) => setDonationForm((f) => ({ ...f, receivedAt: v }))}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94a3b8"
-                    />
-                  )}
+                  <DatePicker
+                    label="Received Date *"
+                    value={donationForm.receivedAt}
+                    onChange={(v) => setDonationForm((f) => ({ ...f, receivedAt: v }))}
+                    placeholder="Select received date"
+                  />
                 </View>
 
                 {/* Receipt Attachment Box */}
@@ -1370,34 +1368,12 @@ export default function FinanceScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Incurred Date <Text style={{ color: Colors.error }}>*</Text></Text>
-                  {Platform.OS === 'web' ? (
-                    <input
-                      type="date"
-                      value={expenseForm.incurredAt}
-                      onChange={(e) => setExpenseForm((f) => ({ ...f, incurredAt: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        height: 44,
-                        padding: '8px 12px',
-                        borderRadius: 10,
-                        border: '1.5px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
-                        color: '#0f172a',
-                        fontSize: '14px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  ) : (
-                    <TextInput
-                      style={styles.modernTextInput}
-                      value={expenseForm.incurredAt}
-                      onChangeText={(v) => setExpenseForm((f) => ({ ...f, incurredAt: v }))}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94a3b8"
-                    />
-                  )}
+                  <DatePicker
+                    label="Incurred Date *"
+                    value={expenseForm.incurredAt}
+                    onChange={(v) => setExpenseForm((f) => ({ ...f, incurredAt: v }))}
+                    placeholder="Select incurred date"
+                  />
                 </View>
 
                 {/* Evidence Bill / Voucher Attachment */}

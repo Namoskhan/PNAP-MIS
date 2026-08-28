@@ -16,7 +16,7 @@ import { useUnit } from '../../../src/context/UnitContext';
 import { Colors, FontSize, Radius, Spacing, Shadow } from '../../../src/constants/colors';
 import {
   isSuperAdmin, isHigherAdmin, isAreaAdmin,
-  hasPermission, canDecideRole, canInitiateRole, canManageFinance,
+  hasPermission, canDecideRole, canInitiateRole, canManageFinance, canApproveExpense,
   hasRole, isOperatorPersona, isPresidentPersona, isFinanceOnly, isSecretaryOnly,
   isProvinceAdminOnly, isDistrictAdminOnly, isCentralAdminOnly,
 } from '../../../src/utils/permissions';
@@ -143,6 +143,7 @@ export default function AdminHubScreen() {
         { key: 'c-members', icon: '👥', title: 'Province Members', description: 'Browse and filter members across provinces.', route: '/members' },
         { key: 'c-cab', icon: '🏛️', title: 'Assign Province Cabinet Roles', description: 'Appoint provincial office-holders and review cabinet.', route: '/cabinet' },
         { key: 'c-resp', icon: '📋', title: 'Responsibilities', description: 'Central task allocations and monitoring.', route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'c-transfers', icon: '💸', title: 'Fund Transfers', description: 'Central fund transfers and inter-tier approvals', route: '/finance/transfers?unitLevel=CENTRAL&unitId=CENTRAL' }] : []),
         { key: 'c-breakdown', icon: '📊', title: 'Province Breakdown', description: 'Comparative provincial activity, membership & finance stats.', route: '/admin/breakdown' },
         { key: 'c-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for Central.', route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
       ],
@@ -160,6 +161,7 @@ export default function AdminHubScreen() {
         { key: 'p-members', icon: '👥', title: 'All Province Members', description: 'Browse, search, and manage all provincial members.', route: '/members' },
         { key: 'p-cab', icon: '🏛️', title: 'Assign District Cabinet Roles', description: 'Appoint district office-holders and review cabinet.', route: '/cabinet' },
         { key: 'p-resp', icon: '📋', title: 'Responsibilities', description: 'Provincial task allocations and tracking.', route: '/admin/responsibilities' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'p-transfers', icon: '💸', title: 'Fund Transfers', description: 'Provincial fund transfers and approvals', route: '/finance/transfers' }] : []),
         { key: 'p-breakdown', icon: '📊', title: 'District Breakdown', description: 'Comparative district activity, membership & finance stats.', route: '/admin/breakdown' },
         { key: 'p-reports', icon: '📈', title: 'Reports Center', description: 'Generate and download PDF and Excel summary packages.', route: '/admin/reports' },
       ],
@@ -177,6 +179,7 @@ export default function AdminHubScreen() {
         { key: 'd-members', icon: '👥', title: 'Members', description: 'Browse and filter members in the district.', route: '/members' },
         { key: 'd-cab', icon: '🏛️', title: 'Assign Area Cabinet Roles', description: 'Appoint area office-holders and review cabinet.', route: '/cabinet' },
         { key: 'd-resp', icon: '📋', title: 'Responsibilities', description: 'District task allocations and monitoring.', route: '/admin/responsibilities' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'd-transfers', icon: '💸', title: 'Fund Transfers', description: 'District fund transfers and approvals', route: '/finance/transfers' }] : []),
         { key: 'd-breakdown', icon: '📊', title: 'Area Breakdown', description: 'Comparative area activity, membership & finance stats.', route: '/admin/breakdown' },
         { key: 'd-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for the district.', route: '/admin/reports' },
       ],
@@ -216,6 +219,7 @@ export default function AdminHubScreen() {
         { key: 'gen-meetings', icon: '📅', title: 'Meetings', description: 'Unit meetings', route: '/meetings' },
         { key: 'gen-activities', icon: '🚩', title: 'Activities', description: 'Unit activities', route: '/activities' },
         { key: 'gen-finance', icon: '💰', title: 'Finance', description: 'Unit finance', route: '/finance' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'gen-transfers', icon: '💸', title: 'Fund Transfers', description: 'Unit fund transfers and approvals', route: '/finance/transfers' }] : []),
         { key: 'gen-reports', icon: '📈', title: 'Exports & Reports', description: 'Download PDF and Excel reports', route: '/admin/reports' },
       ],
     },

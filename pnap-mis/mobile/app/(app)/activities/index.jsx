@@ -27,7 +27,8 @@ import { api, errorMessage } from '../../../src/api/client';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Badge from '../../../src/components/Badge';
-import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
+import DateTimePicker from '../../../src/components/DateTimePicker';
+import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { ACTIVITY_TYPE_LABEL } from '../../../src/utils/formatters';
 import { downloadAndShare } from '../../../src/utils/export';
 import { formatUnitArrangedBy } from '../../../src/utils/unitFormat';
@@ -82,53 +83,53 @@ export default function ActivitiesScreen() {
   const isCommitteeView = queryBody === 'COMMITTEE';
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
-  const [selectedLevel, setSelectedLevel] = useState(() => {
+  const [jirgaLevel, setJirgaLevel] = useState(() => {
     if (params.unitLevel) return params.unitLevel;
-    if (isJirgaView && provinces && provinces.length > 0) return 'PROVINCE';
-    return ctx?.unitLevel || 'CENTRAL';
+    return 'PROVINCE';
   });
-
-  const [selectedUnitId, setSelectedUnitId] = useState(() => {
+  const [jirgaUnitId, setJirgaUnitId] = useState(() => {
     if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    if (isJirgaView && provinces && provinces.length > 0) return provinces[0]._id;
-    return ctx?.unitId || '';
+    return provinces?.[0]?._id || '';
   });
 
   // Sync with provinces when they become available
   useEffect(() => {
-    if (isJirgaView && !selectedUnitId && provinces && provinces.length > 0) {
-      setSelectedLevel('PROVINCE');
-      setSelectedUnitId(provinces[0]._id);
+    if (isJirgaView && !jirgaUnitId && provinces && provinces.length > 0) {
+      setJirgaLevel('PROVINCE');
+      setJirgaUnitId(provinces[0]._id);
     }
-  }, [provinces, isJirgaView]);
+  }, [provinces, isJirgaView, jirgaUnitId]);
 
-  const activeLevel = selectedLevel;
+  const activeLevel = isJirgaView ? jirgaLevel : (params.unitLevel || ctx?.unitLevel || 'CENTRAL');
+  const rawUnitId = isJirgaView ? jirgaUnitId : (params.unitId || ctx?.unitId || '');
   const canManage = canManageMeetings(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
     && !(isSuperAdmin(user) && (activeLevel === 'CENTRAL' || isCongressView));
-  const [resolvedUnitId, setResolvedUnitId] = useState(selectedUnitId);
+  const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
 
   useEffect(() => {
-    let rawId = selectedUnitId;
-    if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
+    let currentRaw = rawUnitId;
+    if (activeLevel === 'CENTRAL' && (!currentRaw || currentRaw === 'CENTRAL')) {
       api.get('/org/central').then((r) => {
         if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
       }).catch(() => {});
     } else {
-      setResolvedUnitId(rawId);
+      setResolvedUnitId(currentRaw);
     }
-  }, [selectedUnitId, activeLevel]);
+  }, [rawUnitId, activeLevel]);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(null);
 
   const [photosFor, setPhotosFor] = useState(null);
+  const [photoError, setPhotoError] = useState('');
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
@@ -231,16 +232,22 @@ export default function ActivitiesScreen() {
       startAt: startDefault,
       endAt: endDefault,
     });
+    setFormError('');
     setShowForm(true);
   }
 
   async function handleCreate() {
+    setFormError('');
     if (!form.title?.trim()) {
-      toast.error('Title is required.');
+      const msg = 'Title is required.';
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
     if (!form.startAt) {
-      toast.error('Start date & time is required.');
+      const msg = 'Start date & time is required.';
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -250,8 +257,8 @@ export default function ActivitiesScreen() {
         title: form.title.trim(),
         description: form.description?.trim() || undefined,
         venue: form.venue?.trim() || undefined,
-        startAt: new Date(form.startAt).toISOString(),
-        endAt: form.endAt ? new Date(form.endAt).toISOString() : undefined,
+        startAt: form.startAt,
+        endAt: form.endAt || undefined,
         typeCode: form.typeCode,
         type: form.typeCode,
         body: targetBody,
@@ -273,9 +280,12 @@ export default function ActivitiesScreen() {
       toast.success(`${streamLabel} activity "${form.title}" recorded.`);
       setShowForm(false);
       setForm(EMPTY_FORM);
+      setFormError('');
       load(true);
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -283,22 +293,36 @@ export default function ActivitiesScreen() {
 
   async function uploadPhotos(activityId, files) {
     if (!files || !files.length) return;
+    setPhotoError('');
     if (files.length > MAX_PHOTOS) {
       toast.error(`Only ${MAX_PHOTOS} photos can be uploaded at once. Sending first ${MAX_PHOTOS}.`);
     }
     const batch = files.slice(0, MAX_PHOTOS);
     const fd = new FormData();
 
-    if (Platform.OS === 'web') {
-      batch.forEach((f) => fd.append('photos', f));
-    } else {
-      batch.forEach((f) => {
+    for (let i = 0; i < batch.length; i++) {
+      const f = batch[i];
+      if (Platform.OS === 'web') {
+        if (f.file) {
+          fd.append('photos', f.file);
+        } else if (f.uri) {
+          try {
+            const res = await fetch(f.uri);
+            const blob = await res.blob();
+            fd.append('photos', blob, f.name || `photo_${Date.now()}_${i}.jpg`);
+          } catch {
+            fd.append('photos', f);
+          }
+        } else {
+          fd.append('photos', f);
+        }
+      } else {
         fd.append('photos', {
           uri: f.uri,
-          name: f.name,
-          type: f.type,
+          name: f.name || `photo_${Date.now()}_${i}.jpg`,
+          type: f.type || 'image/jpeg',
         });
-      });
+      }
     }
 
     setUploadingPhotos(true);
@@ -311,14 +335,18 @@ export default function ActivitiesScreen() {
         toast.success(`${data.accepted.length} photo(s) uploaded successfully.`);
       }
       if (data?.rejected?.length) {
-        toast.error(data.rejected.map((x) => `${x.filename}: ${x.reason}`).join(' | '));
+        const rejectMsg = data.rejected.map((x) => `${x.filename || 'Photo'}: ${x.reason}`).join('\n');
+        setPhotoError(rejectMsg);
+        toast.error(`Rejected: ${data.rejected[0]?.reason || 'GPS/EXIF check failed'}`);
       }
       load(true);
       if (photosFor && photosFor._id === activityId) {
         setPhotosFor(data?.activity || { ...photosFor, photos: data?.activity?.photos });
       }
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setPhotoError(msg);
+      toast.error(msg);
     } finally {
       setUploadingPhotos(false);
     }
@@ -531,7 +559,7 @@ export default function ActivitiesScreen() {
     </View>
   );
 
-  const selectedProvince = (provinces || []).find((p) => String(p._id) === String(selectedUnitId));
+  const selectedProvince = isJirgaView ? (provinces || []).find((p) => String(p._id) === String(jirgaUnitId)) : null;
   const pageTitle = isCongressView
     ? 'National Congress Activities · PKNAP Central'
     : (isJirgaView
@@ -547,39 +575,42 @@ export default function ActivitiesScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.pageTitle}>{pageTitle}</Text>
-        <View style={styles.actionsRow}>
-           <TouchableOpacity
-             style={[styles.btnSecondary, exporting === 'pdf' && { opacity: 0.6 }]}
-             onPress={() => handleExport('pdf')}
-             disabled={!!exporting}
-           >
-             {exporting === 'pdf' ? (
-               <ActivityIndicator size="small" color={Colors.textMuted} />
-             ) : (
-               <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
-             )}
-             <Text style={styles.btnSecondaryText}>Export PDF</Text>
-           </TouchableOpacity>
-           <TouchableOpacity
-             style={[styles.btnSecondary, exporting === 'xlsx' && { opacity: 0.6 }]}
-             onPress={() => handleExport('xlsx')}
-             disabled={!!exporting}
-           >
-             {exporting === 'xlsx' ? (
-               <ActivityIndicator size="small" color={Colors.textMuted} />
-             ) : (
-               <Ionicons name="stats-chart-outline" size={16} color={Colors.textMuted} />
-             )}
-             <Text style={styles.btnSecondaryText}>Export Excel</Text>
-           </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.pageTitle}>{pageTitle}</Text>
+          <Text style={styles.pageSubtitle}>
+            {ctx?.unitName ? `${ctx.unitName} · ` : ''}{activeLevel.replace('_', ' ')}
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => handleExport('pdf')}
+            disabled={!!exporting}
+          >
+            {exporting === 'pdf' ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => handleExport('xlsx')}
+            disabled={!!exporting}
+          >
+            {exporting === 'xlsx' ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="grid-outline" size={20} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
 
-           {canManage && (
-             <TouchableOpacity style={styles.btnPrimary} onPress={openCreate}>
-               <Ionicons name="calendar" size={16} color="#fff" />
-               <Text style={styles.btnPrimaryText}>{recordBtnLabel}</Text>
-             </TouchableOpacity>
-           )}
+          {canManage && (
+            <TouchableOpacity style={styles.primaryBtn} onPress={openCreate}>
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={styles.primaryBtnText}>Record</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -588,14 +619,14 @@ export default function ActivitiesScreen() {
         <View style={styles.tierPillsWrapper}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
             {provinces.map((prov) => {
-              const isActive = selectedLevel === 'PROVINCE' && String(selectedUnitId) === String(prov._id);
+              const isActive = jirgaLevel === 'PROVINCE' && String(jirgaUnitId) === String(prov._id);
               return (
                 <TouchableOpacity
                   key={prov._id}
                   style={[styles.tierPill, isActive && styles.tierPillActive]}
                   onPress={() => {
-                    setSelectedLevel('PROVINCE');
-                    setSelectedUnitId(prov._id);
+                    setJirgaLevel('PROVINCE');
+                    setJirgaUnitId(prov._id);
                   }}
                 >
                   <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
@@ -605,13 +636,13 @@ export default function ActivitiesScreen() {
               );
             })}
             <TouchableOpacity
-              style={[styles.tierPill, selectedLevel === 'CENTRAL' && styles.tierPillActive]}
+              style={[styles.tierPill, jirgaLevel === 'CENTRAL' && styles.tierPillActive]}
               onPress={() => {
-                setSelectedLevel('CENTRAL');
-                setSelectedUnitId('CENTRAL');
+                setJirgaLevel('CENTRAL');
+                setJirgaUnitId('CENTRAL');
               }}
             >
-              <Text style={[styles.tierPillText, selectedLevel === 'CENTRAL' && styles.tierPillTextActive]}>
+              <Text style={[styles.tierPillText, jirgaLevel === 'CENTRAL' && styles.tierPillTextActive]}>
                 Qomi Jirga (Central)
               </Text>
             </TouchableOpacity>
@@ -657,6 +688,13 @@ export default function ActivitiesScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
+              {formError ? (
+                <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 16 }}>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Could not record activity:</Text>
+                  <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{formError}</Text>
+                </View>
+              ) : null}
+
               {/* Type Dropdown */}
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Type *</Text>
@@ -674,15 +712,19 @@ export default function ActivitiesScreen() {
 
               <FormField label="Title *" value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Activity title" />
 
-              <DateTimeField
+              <DateTimePicker
                 label="Start Date & Time *"
                 value={form.startAt}
+                mode="datetime"
+                placeholder="Select start date & time"
                 onChange={(val) => setForm((f) => ({ ...f, startAt: val }))}
               />
 
-              <DateTimeField
+              <DateTimePicker
                 label="End Date & Time"
                 value={form.endAt}
+                mode="datetime"
+                placeholder="Select end date & time"
                 onChange={(val) => setForm((f) => ({ ...f, endAt: val }))}
               />
 
@@ -759,6 +801,13 @@ export default function ActivitiesScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.formContent}>
+              {photoError ? (
+                <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Photo Rejection Details:</Text>
+                  <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4, lineHeight: 17 }}>{photoError}</Text>
+                </View>
+              ) : null}
+
               {(!photosFor.photos || photosFor.photos.length === 0) ? (
                 <View style={{ padding: 24, alignItems: 'center' }}>
                   <Text style={{ color: Colors.textMuted }}>No photos attached to this activity yet.</Text>
@@ -872,47 +921,6 @@ export default function ActivitiesScreen() {
   );
 }
 
-function DateTimeField({ label, value, onChange }) {
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <input
-          type="datetime-local"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            width: '100%',
-            height: 44,
-            padding: '8px 12px',
-            borderRadius: 10,
-            border: `1.5px solid ${Colors.border}`,
-            backgroundColor: Colors.surfaceAlt,
-            color: Colors.text,
-            fontSize: '15px',
-            fontFamily: 'inherit',
-            outline: 'none',
-            boxSizing: 'border-box',
-          }}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={styles.fieldInput}
-        value={value}
-        onChangeText={onChange}
-        placeholder="YYYY-MM-DDTHH:mm"
-        placeholderTextColor={Colors.textLight}
-      />
-    </View>
-  );
-}
-
 function FormField({ label, value, onChangeText, placeholder, multiline, keyboardType }) {
   return (
     <View style={styles.field}>
@@ -932,8 +940,44 @@ function FormField({ label, value, onChangeText, placeholder, multiline, keyboar
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  header: { padding: Spacing.lg, paddingBottom: Spacing.sm, backgroundColor: Colors.surface },
-  pageTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.text, marginBottom: 12 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  pageTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  pageSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconBtn: {
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  primaryBtnText: { fontSize: FontSize.xs, fontWeight: '700', color: '#fff' },
   actionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   btnSecondary: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: Colors.surfaceAlt, borderRadius: 8, borderWidth: 1, borderColor: Colors.border },
   btnSecondaryText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted },

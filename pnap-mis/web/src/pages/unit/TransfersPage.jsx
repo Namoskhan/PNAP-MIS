@@ -164,6 +164,18 @@ export default function TransfersPage() {
     }
   }
 
+  async function cancelTransfer(id) {
+    const ok = await dialog.confirm('Cancel this pending transfer? Committed funds will be restored to your available balance.');
+    if (!ok) return;
+    try {
+      await api.post(`/transfers/${id}/cancel`, {});
+      reload();
+      toast.success('Pending transfer cancelled — funds restored.');
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not cancel transfer', duration: 7000 });
+    }
+  }
+
   // Download helper used by other units pages — object URL approach
   // so an authenticated fetch can surface in the browser's Downloads.
   function downloadAuthed(path, filename) {
@@ -513,6 +525,9 @@ export default function TransfersPage() {
                     <button className="btn" onClick={() => ack(t._id)}>Approve</button>{' '}
                     <button className="btn danger" onClick={() => reject(t._id)}>Reject</button>
                   </>
+                )}
+                {tab === 'outgoing' && t.state === 'PENDING_ACK' && canSend && (
+                  <button className="btn danger" onClick={() => cancelTransfer(t._id)}>Cancel</button>
                 )}
               </td>
             </tr>
