@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Switch, Platform, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Switch, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
+import { confirmAction } from '../../../../src/utils/dialog';
 import { useToast } from '../../../../src/components/Toast';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
 import { Picker } from '@react-native-picker/picker';
@@ -43,24 +44,18 @@ export default function ReportTemplatesScreen() {
   useEffect(() => { load(); }, []);
 
   async function deleteTemplate(t) {
-    if (t.isSystem) return;
-    Alert.alert(
+    if (t.isSystem || !canWrite) return;
+    confirmAction(
       'Confirm Delete',
       `Delete template "${t.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/admin/units/report-templates/${t._id}`);
-              toast.success('Template deleted.');
-              load();
-            } catch (e) { toast.error(errorMessage(e)); }
-          }
-        }
-      ]
+      async () => {
+        try {
+          await api.delete(`/admin/units/report-templates/${t._id}`);
+          toast.success('Template deleted.');
+          load();
+        } catch (e) { toast.error(errorMessage(e)); }
+      },
+      { confirmText: 'Delete', destructive: true }
     );
   }
 
@@ -116,7 +111,7 @@ export default function ReportTemplatesScreen() {
 
       {/* Templates */}
       {!busy && templates.length === 0 && (
-        <EmptyState icon="document-text" title="No report templates yet — tap 'New template' to compose one." />
+        <EmptyState icon="📄" title="No report templates yet — tap 'New template' to compose one." />
       )}
 
       {templates.map((t) => (
@@ -493,6 +488,8 @@ function RenderDialog({ template, onClose }) {
   const toast = useToast();
   const [unitLevel, setUnitLevel] = useState('AREA');
   const [unitId, setUnitId] = useState('');
+  const [units, setUnits] = useState([]);
+  const [loadingUnits, setLoadingUnits] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [format, setFormat] = useState(template.format === 'BOTH' ? 'PDF' : template.format);
@@ -500,9 +497,66 @@ function RenderDialog({ template, onClose }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  useEffect(() => {
+    let active = true;
+    async function loadUnits() {
+      setLoadingUnits(true);
+      try {
+        let endpoint = '/org/areas';
+        if (unitLevel === 'BASIC_UNIT') endpoint = '/org/basic-units';
+        else if (unitLevel === 'AREA') endpoint = '/org/areas';
+        else if (unitLevel === 'DISTRICT') endpoint = '/org/districts';
+        else if (unitLevel === 'PROVINCE') endpoint = '/org/provinces';
+        else if (unitLevel === 'CENTRAL') endpoint = '/org/central';
+
+        const res = await api.get(endpoint);
+        const data = res.data?.data;
+        const list = Array.isArray(data) ? data : data ? [data] : [];
+        if (active) {
+          setUnits(list);
+          if (list.length > 0) setUnitId(list[0]._id);
+          else setUnitId('');
+        }
+      } catch (e) {
+        if (active) setUnits([]);
+      } finally {
+        if (active) setLoadingUnits(false);
+      }
+    }
+    loadUnits();
+    return () => { active = false; };
+  }, [unitLevel]);
+
+  function setQuickRange(type) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${m}-${d}`;
+
+    if (type === 'thisMonth') {
+      setFrom(`${y}-${m}-01`);
+      setTo(todayStr);
+    } else if (type === 'last30') {
+      const past = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const py = past.getFullYear();
+      const pm = String(past.getMonth() + 1).padStart(2, '0');
+      const pd = String(past.getDate()).padStart(2, '0');
+      setFrom(`${py}-${pm}-${pd}`);
+      setTo(todayStr);
+    } else if (type === 'ytd') {
+      setFrom(`${y}-01-01`);
+      setTo(todayStr);
+    } else if (type === 'all') {
+      setFrom('');
+      setTo('');
+    }
+  }
+
   async function go() {
     setErr(''); setBusy(true);
     try {
+      if (!unitId) throw new Error('Please select a unit to render report for');
       const params = new URLSearchParams({ unitLevel, unitId, format });
       if (from) params.set('from', from);
       if (to) params.set('to', to);
@@ -511,20 +565,34 @@ function RenderDialog({ template, onClose }) {
       const token = await api.getToken?.();
       const baseUrl = api.defaults.baseURL;
       const url = `${baseUrl}/reports/templates/${template._id}/render?${params}`;
-      
-      // For mobile, we typically can't just fetch blob + createObjectURL to download.
-      // Easiest is to open the URL in the system browser so the OS handles the download.
-      const fullUrl = `${url}&token=${token || ''}`; // Or however token auth is supported via GET for downloads on this system.
-      // Using Linking is safer for mobile downloads.
-      
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.document) {
+        const res = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody?.error?.message || `Render failed (${res.status})`);
+        }
+        const blob = await res.blob();
+        const dlUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = dlUrl;
+        a.download = `${template.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.${format.toLowerCase()}`;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(dlUrl);
+        onClose();
+        return;
+      }
+
+      const fullUrl = `${url}&token=${encodeURIComponent(token || '')}`;
       const supported = await Linking.canOpenURL(fullUrl);
       if (supported) {
         await Linking.openURL(fullUrl);
         onClose();
       } else {
-        throw new Error("Don't know how to open this URL");
+        throw new Error("Cannot open report URL");
       }
-      
     } catch (e) {
       setErr(e.message || errorMessage(e));
     } finally {
@@ -551,16 +619,69 @@ function RenderDialog({ template, onClose }) {
             </View>
           </View>
           <View style={styles.field}>
-            <Text style={styles.label}>Unit ID</Text>
-            <TextInput style={styles.input} value={unitId} onChangeText={setUnitId} placeholder="ObjectId of the unit" />
+            <Text style={styles.label}>Select Unit</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={unitId}
+                onValueChange={setUnitId}
+                enabled={!loadingUnits && units.length > 0}
+              >
+                {loadingUnits ? (
+                  <Picker.Item label="Loading units…" value="" />
+                ) : units.length === 0 ? (
+                  <Picker.Item label="No units found at this level" value="" />
+                ) : (
+                  units.map(u => (
+                    <Picker.Item
+                      key={u._id}
+                      label={`${u.name || 'Unnamed Unit'} ${u.code ? `(${u.code})` : ''}`}
+                      value={u._id}
+                    />
+                  ))
+                )}
+              </Picker>
+            </View>
           </View>
           <View style={styles.field}>
-            <Text style={styles.label}>From (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={from} onChangeText={setFrom} placeholder="e.g. 2024-01-01" />
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.label}>To (YYYY-MM-DD)</Text>
-            <TextInput style={styles.input} value={to} onChangeText={setTo} placeholder="e.g. 2024-12-31" />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={styles.label}>Date Range</Text>
+              <View style={{ flexDirection: 'row', gap: 4 }}>
+                <TouchableOpacity style={styles.quickDateBtn} onPress={() => setQuickRange('thisMonth')}>
+                  <Text style={styles.quickDateBtnText}>Month</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickDateBtn} onPress={() => setQuickRange('last30')}>
+                  <Text style={styles.quickDateBtnText}>30D</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickDateBtn} onPress={() => setQuickRange('ytd')}>
+                  <Text style={styles.quickDateBtnText}>YTD</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.quickDateBtn} onPress={() => setQuickRange('all')}>
+                  <Text style={styles.quickDateBtnText}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subLabel}>From</Text>
+                <TextInput
+                  style={styles.input}
+                  value={from}
+                  onChangeText={setFrom}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.subLabel}>To</Text>
+                <TextInput
+                  style={styles.input}
+                  value={to}
+                  onChangeText={setTo}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+            </View>
           </View>
           <View style={styles.field}>
             <Text style={styles.label}>Format</Text>
@@ -648,10 +769,25 @@ const styles = StyleSheet.create({
   
   field: { marginBottom: Spacing.md },
   label: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text, marginBottom: 6 },
+  subLabel: { fontSize: 11, color: Colors.textMuted, marginBottom: 2 },
   input: { borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, padding: 10, fontSize: FontSize.sm, backgroundColor: '#fff', color: Colors.text },
   hintText: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 },
   pickerContainer: { borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, backgroundColor: '#fff', overflow: 'hidden' },
   
+  quickDateBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: '#f3f4f6',
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  quickDateBtnText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+
   tierPill: { borderWidth: 1, borderColor: Colors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#fff' },
   tierPillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   tierPillText: { fontSize: FontSize.sm, color: Colors.text },

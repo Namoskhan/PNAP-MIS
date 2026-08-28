@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
+import { confirmAction } from '../../../../src/utils/dialog';
 import { useToast } from '../../../../src/components/Toast';
 import Card from '../../../../src/components/Card';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
@@ -49,24 +49,20 @@ export default function UnitPoliciesScreen() {
   useEffect(() => { load(); }, []);
 
   async function deletePolicy(p) {
-    if (p.isSystem) return;
-    Alert.alert(
-      "Delete policy",
+    if (p.isSystem || !canWrite) return;
+    confirmAction(
+      'Delete Policy',
       `Delete this ${p.scope} policy? Records resolving to it will fall back to GLOBAL.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await api.delete(`/admin/units/policies/${p._id}`);
-              toast.success('Policy deleted.');
-              load();
-            } catch (e) { toast.error(errorMessage(e)); }
-          }
+      async () => {
+        try {
+          await api.delete(`/admin/units/policies/${p._id}`);
+          toast.success('Policy deleted.');
+          load();
+        } catch (e) {
+          toast.error(errorMessage(e));
         }
-      ]
+      },
+      { confirmText: 'Delete', destructive: true }
     );
   }
 

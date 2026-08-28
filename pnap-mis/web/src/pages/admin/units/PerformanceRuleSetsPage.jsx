@@ -23,7 +23,7 @@ const TIER_CODES = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 
 export default function PerformanceRuleSetsPage() {
   const { user } = useAuth();
-  const toast = useToast?.() || { success: () => {}, error: () => {} };
+  const toast = useToast?.() || { success: () => { }, error: () => { } };
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
 
   const [items, setItems] = useState([]);
@@ -176,7 +176,6 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
   const isEdit = mode === 'edit';
   const [name, setName] = useState(ruleset?.name || '');
   const [description, setDescription] = useState(ruleset?.description || '');
-  const [tierCode, setTierCode] = useState(ruleset?.tierCode || 'AREA');
   const [isActive, setIsActive] = useState(ruleset?.isActive !== false);
   const [components, setComponents] = useState(() => {
     if (ruleset?.components?.length) return ruleset.components.map((c) => ({ ...c, params: { ...(c.params || {}) } }));
@@ -195,6 +194,16 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
   const takenTiers = useMemo(() => new Set(
     (existing || []).filter((r) => r.scope === 'TIER' && (!ruleset || r._id !== ruleset._id)).map((r) => r.tierCode),
   ), [existing, ruleset]);
+
+  const availableTiers = useMemo(() => TIER_CODES.filter((t) => !takenTiers.has(t)), [takenTiers]);
+
+  const [tierCode, setTierCode] = useState(() => ruleset?.tierCode || availableTiers[0] || 'AREA');
+
+  useEffect(() => {
+    if (!isEdit && availableTiers.length > 0 && !availableTiers.includes(tierCode)) {
+      setTierCode(availableTiers[0]);
+    }
+  }, [availableTiers, isEdit, tierCode]);
 
   const weightTotal = components.reduce((s, c) => s + Number(c.weight || 0), 0);
   const weightOk = Math.abs(weightTotal - 1) < 0.01;
@@ -220,37 +229,57 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
   function updateComponent(idx, patch) {
     setComponents((arr) => arr.map((c, i) => i === idx ? { ...c, ...patch } : c));
   }
-  function setWeight(idx, value) {
-    const v = Math.max(0, Math.min(1, Number(value) || 0));
-    updateComponent(idx, { weight: Math.round(v * 1000) / 1000 });
+  function updateWeight(idx, rawValue) {
+    const clean = String(rawValue).replace(/[^0-9.]/g, '');
+    if (clean === '' || clean === '.') {
+      updateComponent(idx, { weight: 0, _rawWeight: clean });
+      return;
+    }
+    const num = parseFloat(clean);
+    if (!isNaN(num)) {
+      const clamped = Math.max(0, Math.min(1, num));
+      updateComponent(idx, { weight: Math.round(clamped * 1000) / 1000, _rawWeight: clean });
+    } else {
+      updateComponent(idx, { _rawWeight: clean });
+    }
+  }
+  function adjustWeightBy(idx, delta) {
+    const cur = Number(components[idx]?.weight || 0);
+    const next = Math.max(0, Math.min(1, Math.round((cur + delta) * 1000) / 1000));
+    updateComponent(idx, { weight: next, _rawWeight: String(next) });
+  }
+  function setWeightExact(idx, decimal) {
+    const clamped = Math.max(0, Math.min(1, Math.round(decimal * 1000) / 1000));
+    updateComponent(idx, { weight: clamped, _rawWeight: String(clamped) });
   }
   function normalize() {
     if (components.length === 0) return;
-    const sum = components.reduce((s, c) => s + Number(c.weight || 0), 0);
+    const sum = components.reduce((s, c) => s + (Number(c.weight) || 0), 0);
+    let scaled;
     if (sum <= 0) {
       // Equal-split fallback
       const w = Math.round((1 / components.length) * 1000) / 1000;
-      setComponents((arr) => arr.map((c, i) => ({
-        ...c,
-        weight: i === arr.length - 1 ? Math.round((1 - w * (arr.length - 1)) * 1000) / 1000 : w,
-      })));
-      return;
+      scaled = components.map((_, i) =>
+        i === components.length - 1 ? Math.round((1 - w * (components.length - 1)) * 1000) / 1000 : w
+      );
+    } else {
+      scaled = components.map((c) => Math.round(((Number(c.weight) || 0) / sum) * 1000) / 1000);
+      const residue = Math.round((1 - scaled.reduce((s, w) => s + w, 0)) * 1000) / 1000;
+      if (Math.abs(residue) > 0) {
+        let maxIdx = 0;
+        for (let i = 1; i < scaled.length; i++) if (scaled[i] > scaled[maxIdx]) maxIdx = i;
+        scaled[maxIdx] = Math.round((scaled[maxIdx] + residue) * 1000) / 1000;
+      }
     }
-    const scaled = components.map((c) => Math.round((Number(c.weight || 0) / sum) * 1000) / 1000);
-    // Force exact 1.0 by absorbing residue into the largest
-    const residue = Math.round((1 - scaled.reduce((s, w) => s + w, 0)) * 1000) / 1000;
-    if (Math.abs(residue) > 0) {
-      let maxIdx = 0;
-      for (let i = 1; i < scaled.length; i++) if (scaled[i] > scaled[maxIdx]) maxIdx = i;
-      scaled[maxIdx] = Math.round((scaled[maxIdx] + residue) * 1000) / 1000;
-    }
-    setComponents((arr) => arr.map((c, i) => ({ ...c, weight: scaled[i] })));
+    setComponents((arr) => arr.map((c, i) => ({ ...c, weight: scaled[i], _rawWeight: String(scaled[i]) })));
   }
 
   async function save() {
     setErr(''); setBusy(true);
     try {
       if (!name.trim() || name.trim().length < 2) throw new Error('Name must be at least 2 characters');
+      const targetTier = isEdit ? ruleset?.tierCode : (tierCode || availableTiers[0]);
+      if (!isEdit && !targetTier) throw new Error('Please select a valid tier for this ruleset');
       if (!weightOk) throw new Error(`Component weights must sum to 100% (currently ${(weightTotal * 100).toFixed(0)}%)`);
       if (dupMetric) throw new Error(`Duplicate metric "${METRIC_LABELS[dupMetric]}" — each may appear once`);
 
@@ -284,7 +313,7 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
           name: name.trim(),
           description: description.trim() || undefined,
           scope: 'TIER',
-          tierCode,
+          tierCode: targetTier,
           components: cleanComponents,
           isActive,
         });
@@ -293,8 +322,6 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
     } catch (e) { setErr(errorMessage(e)); }
     finally { setBusy(false); }
   }
-
-  const availableTiers = TIER_CODES.filter((t) => !takenTiers.has(t));
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -305,7 +332,7 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
           </h3>
           <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
-        {err && <div className="alert error">{err}</div>}
+        {err && <div className="alert error" style={{ marginBottom: 12 }}>{err}</div>}
 
         <div className="rm-card">
           <div className="rm-card-bar">
@@ -380,18 +407,62 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
                       {def?.description && <div className="hint">{def.description}</div>}
                     </div>
                     <div className="field">
-                      <label>Weight ({Math.round((c.weight || 0) * 100)}%)</label>
-                      <input
-                        type="range" min="0" max="1" step="0.01"
-                        value={c.weight ?? 0}
-                        onChange={(e) => setWeight(idx, e.target.value)}
-                      />
-                      <input
-                        type="number" min="0" max="1" step="0.01"
-                        value={c.weight ?? 0}
-                        onChange={(e) => setWeight(idx, e.target.value)}
-                        style={{ marginTop: 4 }}
-                      />
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <label style={{ margin: 0 }}>Weight</label>
+                        <span style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: 'var(--primary)',
+                          background: 'rgba(37, 99, 235, 0.1)',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                        }}>
+                          {(Number(c.weight || 0) * 100).toFixed(1).replace(/\.0$/, '')}%
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{ padding: '6px 10px', fontSize: 12 }}
+                          onClick={() => adjustWeightBy(idx, -0.05)}
+                        >
+                          -0.05
+                        </button>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={c._rawWeight !== undefined ? c._rawWeight : String(c.weight ?? 0)}
+                          onChange={(e) => updateWeight(idx, e.target.value)}
+                          placeholder="0.25"
+                          style={{ textAlign: 'center', fontWeight: 600 }}
+                        />
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{ padding: '6px 10px', fontSize: 12 }}
+                          onClick={() => adjustWeightBy(idx, 0.05)}
+                        >
+                          +0.05
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                        {[0.1, 0.2, 0.25, 0.333, 0.5, 1.0].map((preset) => {
+                          const isActive = Math.abs((c.weight || 0) - preset) < 0.01;
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              className={`btn ${isActive ? '' : 'secondary'}`}
+                              style={{ padding: '2px 6px', fontSize: 11, minHeight: 'auto' }}
+                              onClick={() => setWeightExact(idx, preset)}
+                            >
+                              {preset === 1 ? '1.0' : preset === 0.333 ? '0.33' : preset.toFixed(2)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="hint">Decimal between 0.0 and 1.0 (e.g. 0.25 = 25%)</div>
                     </div>
                     {paramKeys.map((k) => {
                       const fallback = def.defaultParams[k];
@@ -416,7 +487,7 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
               );
             })}
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
               <button type="button" className="btn secondary" onClick={addComponent} disabled={components.length >= ALL_METRICS.length}>
                 ＋ Add component
               </button>
@@ -443,7 +514,7 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button className="btn secondary" onClick={onClose}>Cancel</button>
+          <button className="btn secondary" onClick={onClose} disabled={busy}>Cancel</button>
           <button className="btn" disabled={busy || !weightOk || dupMetric || components.length === 0} onClick={save}>
             {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Create ruleset')}
           </button>

@@ -31,6 +31,49 @@ function useGlobalBranding() {
 
 export default function RootLayout() {
   const brandingReady = useGlobalBranding();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleExtensionError = (event) => {
+        if (
+          (event.filename && event.filename.includes('chrome-extension://')) ||
+          (event.message && event.message.includes('M_ID'))
+        ) {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+          return true;
+        }
+      };
+      window.addEventListener('error', handleExtensionError, true);
+
+      const styleId = 'pnap-mobile-web-reset';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          html, body, #root {
+            height: 100% !important;
+            height: 100dvh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
+          }
+          * {
+            box-sizing: border-box !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      return () => {
+        window.removeEventListener('error', handleExtensionError, true);
+      };
+    }
+  }, []);
+
   if (!brandingReady) return null;
 
   return (

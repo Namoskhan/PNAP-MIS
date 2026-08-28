@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
+import { confirmAction } from '../../../../src/utils/dialog';
 import { useToast } from '../../../../src/components/Toast';
 import Card from '../../../../src/components/Card';
 import Badge from '../../../../src/components/Badge';
@@ -61,25 +61,19 @@ export default function CabinetTemplatesScreen() {
   }
 
   async function deleteTemplate(t) {
-    if (t.isSystem) return;
-    Alert.alert(
-      "Delete slot",
+    if (t.isSystem || !canWrite) return;
+    confirmAction(
+      'Delete slot',
       `Delete custom slot "${t.roleCode}" at ${t.tierCode}? Vacant slots on units will also be removed.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const r = await api.delete(`/admin/units/cabinet-templates/${t._id}`);
-              const removed = r.data?.data?.vacantSlotsRemoved || 0;
-              toast.success(removed ? `Template deleted; ${removed} vacant slot(s) removed.` : 'Template deleted.');
-              load();
-            } catch (e) { toast.error(errorMessage(e)); }
-          }
-        }
-      ]
+      async () => {
+        try {
+          const r = await api.delete(`/admin/units/cabinet-templates/${t._id}`);
+          const removed = r.data?.data?.vacantSlotsRemoved || 0;
+          toast.success(removed ? `Template deleted; ${removed} vacant slot(s) removed.` : 'Template deleted.');
+          load();
+        } catch (e) { toast.error(errorMessage(e)); }
+      },
+      { confirmText: "Delete", destructive: true }
     );
   }
 

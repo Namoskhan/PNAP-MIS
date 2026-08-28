@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
+import { confirmAction } from '../../../../src/utils/dialog';
 import { useToast } from '../../../../src/components/Toast';
 import Card from '../../../../src/components/Card';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
@@ -62,28 +62,23 @@ export default function ResponsibilityTemplatesScreen() {
   useEffect(() => { load(); }, []);
 
   async function deleteTpl(t) {
-    Alert.alert(
-      "Delete template",
+    if (!canWrite) return;
+    confirmAction(
+      'Delete template',
       `Delete "${t.name}"? Responsibility documents already created from this template stay in place.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const r = await api.delete(`/admin/units/responsibility-templates/${t._id}`);
-              const inFlight = r.data?.data?.inFlightResponsibilities || 0;
-              if (inFlight > 0) {
-                toast.success(`Template deleted; ${inFlight} in-flight responsibility/ies remain in place.`);
-              } else {
-                toast.success('Template deleted.');
-              }
-              load();
-            } catch (e) { toast.error(errorMessage(e)); }
+      async () => {
+        try {
+          const r = await api.delete(`/admin/units/responsibility-templates/${t._id}`);
+          const inFlight = r.data?.data?.inFlightResponsibilities || 0;
+          if (inFlight > 0) {
+            toast.success(`Template deleted; ${inFlight} in-flight responsibility/ies remain in place.`);
+          } else {
+            toast.success('Template deleted.');
           }
-        }
-      ]
+          load();
+        } catch (e) { toast.error(errorMessage(e)); }
+      },
+      { confirmText: 'Delete', destructive: true }
     );
   }
 
@@ -176,7 +171,7 @@ export default function ResponsibilityTemplatesScreen() {
           ))}
 
           {!busy && items.length === 0 && (
-            <EmptyState icon="clipboard-outline" title="No templates configured. Auto-task creation is opt-in." />
+            <EmptyState icon="📋" title="No templates configured. Auto-task creation is opt-in." />
           )}
 
           <View style={{ height: 40 }} />
@@ -428,13 +423,33 @@ function ResponsibilityTemplateDialog({ mode, template, onClose, onSaved }) {
 
           <View style={[styles.formGroup, { marginBottom: 0 }]}>
             <Text style={styles.label}>Due in days (0 = no due date)</Text>
-            <TextInput 
-              style={styles.input}
-              type="number"
-              keyboardType="number-pad"
-              value={dueDateOffsetDays != null ? String(dueDateOffsetDays) : ''}
-              onChangeText={(v) => setDueDateOffsetDays(v === '' ? 0 : Number(v))}
-            />
+            <View style={styles.numberStepperRow}>
+              <TouchableOpacity
+                style={styles.stepperBtn}
+                onPress={() => setDueDateOffsetDays(Math.max(0, (dueDateOffsetDays || 0) - 1))}
+              >
+                <Ionicons name="remove" size={18} color={Colors.text} />
+              </TouchableOpacity>
+              <TextInput
+                style={styles.numberInput}
+                keyboardType="numeric"
+                inputMode="numeric"
+                value={dueDateOffsetDays != null ? String(dueDateOffsetDays) : '0'}
+                onChangeText={(v) => {
+                  const clean = v.replace(/[^0-9]/g, '');
+                  setDueDateOffsetDays(clean === '' ? 0 : parseInt(clean, 10));
+                }}
+                placeholder="0"
+                placeholderTextColor={Colors.textMuted}
+              />
+              <TouchableOpacity
+                style={styles.stepperBtn}
+                onPress={() => setDueDateOffsetDays((dueDateOffsetDays || 0) + 1)}
+              >
+                <Ionicons name="add" size={18} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.hintText}>Number of days from trigger event until due date.</Text>
           </View>
         </View>
 
@@ -550,6 +565,34 @@ const styles = StyleSheet.create({
   input: { 
     backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, 
     borderRadius: Radius.base, padding: 12, fontSize: FontSize.base, color: Colors.text 
+  },
+  numberStepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepperBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: Radius.base,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  numberInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.base,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
   },
   hintText: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
   

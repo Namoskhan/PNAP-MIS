@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
+import { confirmAction } from '../../../../src/utils/dialog';
 import { useToast } from '../../../../src/components/Toast';
 import Card from '../../../../src/components/Card';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
@@ -56,24 +56,18 @@ export default function WorkflowsScreen() {
   useEffect(() => { load(); }, []);
 
   async function deleteOne(w) {
-    if (w.isSystem) return;
-    Alert.alert(
-      "Delete workflow",
+    if (w.isSystem || !canWrite) return;
+    confirmAction(
+      'Delete workflow',
       `Delete the ${w.scope} workflow for ${w.domain}${w.tierCode ? ' · ' + w.tierCode : ''}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await api.delete(`/admin/units/workflows/${w._id}`);
-              toast.success('Workflow deleted.');
-              load();
-            } catch (e) { toast.error(errorMessage(e)); }
-          }
-        }
-      ]
+      async () => {
+        try {
+          await api.delete(`/admin/units/workflows/${w._id}`);
+          toast.success('Workflow deleted.');
+          load();
+        } catch (e) { toast.error(errorMessage(e)); }
+      },
+      { confirmText: 'Delete', destructive: true }
     );
   }
 

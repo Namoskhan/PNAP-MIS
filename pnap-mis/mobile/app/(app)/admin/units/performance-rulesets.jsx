@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   SafeAreaView,
   ScrollView,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
+import { confirmAction } from '../../../../src/utils/dialog';
 import { useToast } from '../../../../src/components/Toast';
 import Card from '../../../../src/components/Card';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
@@ -61,24 +61,18 @@ export default function PerformanceRuleSetsScreen() {
   useEffect(() => { load(); }, []);
 
   async function deleteOne(r) {
-    if (r.isSystem) return;
-    Alert.alert(
-      "Delete ruleset",
+    if (r.isSystem || !canWrite) return;
+    confirmAction(
+      'Delete ruleset',
       `Delete TIER ruleset for ${r.tierCode}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await api.delete(`/admin/units/performance-rulesets/${r._id}`);
-              toast.success('Ruleset deleted.');
-              load();
-            } catch (e) { toast.error(errorMessage(e)); }
-          }
-        }
-      ]
+      async () => {
+        try {
+          await api.delete(`/admin/units/performance-rulesets/${r._id}`);
+          toast.success('Ruleset deleted.');
+          load();
+        } catch (e) { toast.error(errorMessage(e)); }
+      },
+      { confirmText: 'Delete', destructive: true }
     );
   }
 
@@ -203,13 +197,13 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
   const isEdit = mode === 'edit';
   const [name, setName] = useState(ruleset?.name || '');
   const [description, setDescription] = useState(ruleset?.description || '');
-  const [tierCode, setTierCode] = useState(ruleset?.tierCode || 'AREA');
   const [isActive, setIsActive] = useState(ruleset?.isActive !== false);
   const [components, setComponents] = useState(() => {
     if (ruleset?.components?.length) return ruleset.components.map((c) => ({ ...c, params: { ...(c.params || {}) } }));
     return [{ metric: 'MEETING_ATTENDANCE', weight: 1, params: {} }];
   });
   const [busy, setBusy] = useState(false);
+  const [dialogErr, setDialogErr] = useState('');
   const toast = useToast();
 
   const metricsByCode = useMemo(() => {
@@ -222,7 +216,10 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
     (existing || []).filter((r) => r.scope === 'TIER' && (!ruleset || r._id !== ruleset._id)).map((r) => r.tierCode)
   ), [existing, ruleset]);
 
-  const availableTiers = TIER_CODES.filter((t) => !takenTiers.has(t));
+  const availableTiers = useMemo(() => TIER_CODES.filter((t) => !takenTiers.has(t)), [takenTiers]);
+
+  const [tierCode, setTierCode] = useState(() => ruleset?.tierCode || availableTiers[0] || 'AREA');
+
   useEffect(() => {
     if (!isEdit && availableTiers.length > 0 && !availableTiers.includes(tierCode)) {
       setTierCode(availableTiers[0]);
@@ -256,36 +253,69 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
     setComponents((arr) => arr.map((c, i) => i === idx ? { ...c, ...patch } : c));
   }
 
-  function setWeight(idx, value) {
-    const v = Math.max(0, Math.min(1, Number(value) || 0));
-    updateComponent(idx, { weight: Math.round(v * 1000) / 1000 });
+  function updateWeight(idx, rawValue) {
+    const clean = String(rawValue).replace(/[^0-9.]/g, '');
+    if (clean === '' || clean === '.') {
+      updateComponent(idx, { weight: 0, _rawWeight: clean });
+      return;
+    }
+    const num = parseFloat(clean);
+    if (!isNaN(num)) {
+      const clamped = Math.max(0, Math.min(1, num));
+      updateComponent(idx, { weight: Math.round(clamped * 1000) / 1000, _rawWeight: clean });
+    } else {
+      updateComponent(idx, { _rawWeight: clean });
+    }
+  }
+
+  function adjustWeightBy(idx, delta) {
+    const cur = Number(components[idx]?.weight || 0);
+    const next = Math.max(0, Math.min(1, Math.round((cur + delta) * 1000) / 1000));
+    updateComponent(idx, { weight: next, _rawWeight: String(next) });
+  }
+
+  function setWeightExact(idx, decimal) {
+    const clamped = Math.max(0, Math.min(1, Math.round(decimal * 1000) / 1000));
+    updateComponent(idx, { weight: clamped, _rawWeight: String(clamped) });
   }
 
   function normalize() {
     if (components.length === 0) return;
-    const sum = components.reduce((s, c) => s + Number(c.weight || 0), 0);
+    const sum = components.reduce((s, c) => s + (Number(c.weight) || 0), 0);
+    let scaled;
     if (sum <= 0) {
       const w = Math.round((1 / components.length) * 1000) / 1000;
-      setComponents((arr) => arr.map((c, i) => ({
+      scaled = components.map((_, i) =>
+        i === components.length - 1 ? Math.round((1 - w * (components.length - 1)) * 1000) / 1000 : w
+      );
+    } else {
+      scaled = components.map((c) => Math.round(((Number(c.weight) || 0) / sum) * 1000) / 1000);
+      const residue = Math.round((1 - scaled.reduce((s, w) => s + w, 0)) * 1000) / 1000;
+      if (Math.abs(residue) > 0) {
+        let maxIdx = 0;
+        for (let i = 1; i < scaled.length; i++) {
+          if (scaled[i] > scaled[maxIdx]) maxIdx = i;
+        }
+        scaled[maxIdx] = Math.round((scaled[maxIdx] + residue) * 1000) / 1000;
+      }
+    }
+    setComponents((arr) =>
+      arr.map((c, i) => ({
         ...c,
-        weight: i === arr.length - 1 ? Math.round((1 - w * (arr.length - 1)) * 1000) / 1000 : w,
-      })));
-      return;
-    }
-    const scaled = components.map((c) => Math.round((Number(c.weight || 0) / sum) * 1000) / 1000);
-    const residue = Math.round((1 - scaled.reduce((s, w) => s + w, 0)) * 1000) / 1000;
-    if (Math.abs(residue) > 0) {
-      let maxIdx = 0;
-      for (let i = 1; i < scaled.length; i++) if (scaled[i] > scaled[maxIdx]) maxIdx = i;
-      scaled[maxIdx] = Math.round((scaled[maxIdx] + residue) * 1000) / 1000;
-    }
-    setComponents((arr) => arr.map((c, i) => ({ ...c, weight: scaled[i] })));
+        weight: scaled[i],
+        _rawWeight: String(scaled[i]),
+      }))
+    );
+    toast.success('Normalized weights to 1.0 (100%)');
   }
 
   async function save() {
+    setDialogErr('');
     setBusy(true);
     try {
       if (!name.trim() || name.trim().length < 2) throw new Error('Name must be at least 2 characters');
+      const targetTier = isEdit ? ruleset?.tierCode : (tierCode || availableTiers[0]);
+      if (!isEdit && !targetTier) throw new Error('Please select a valid tier for this ruleset');
       if (!weightOk) throw new Error(`Component weights must sum to 100% (currently ${(weightTotal * 100).toFixed(0)}%)`);
       if (dupMetric) throw new Error(`Duplicate metric "${METRIC_LABELS[dupMetric]}" — each may appear once`);
 
@@ -319,14 +349,16 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
           name: name.trim(),
           description: description.trim() || undefined,
           scope: 'TIER',
-          tierCode,
+          tierCode: targetTier,
           components: cleanComponents,
           isActive,
         });
       }
       onSaved();
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setDialogErr(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -345,6 +377,12 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
       </View>
 
       <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent}>
+        {dialogErr ? (
+          <View style={styles.dialogErrorBanner}>
+            <Ionicons name="alert-circle" size={18} color={Colors.danger} />
+            <Text style={styles.dialogErrorText}>{dialogErr}</Text>
+          </View>
+        ) : null}
         
         <View style={styles.cardSection}>
           <View style={styles.cardSectionHeader}>
@@ -445,15 +483,56 @@ function RulesetDialog({ mode, ruleset, metrics, existing, onClose, onSaved }) {
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.label}>Weight ({(Number(c.weight || 0) * 100).toFixed(0)}%)</Text>
-                  <TextInput 
-                    style={styles.input}
-                    type="number"
-                    keyboardType="numeric"
-                    value={c.weight != null ? String(c.weight) : ''}
-                    onChangeText={(v) => setWeight(idx, v)}
-                  />
-                  <Text style={styles.hintText}>Enter value between 0 and 1 (e.g. 0.25)</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={styles.label}>Weight</Text>
+                    <View style={styles.weightPill}>
+                      <Text style={styles.weightPillText}>{(Number(c.weight || 0) * 100).toFixed(1).replace(/\.0$/, '')}%</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.numberStepperRow}>
+                    <TouchableOpacity
+                      style={styles.stepperBtn}
+                      onPress={() => adjustWeightBy(idx, -0.05)}
+                    >
+                      <Text style={styles.stepperBtnLabel}>-0.05</Text>
+                    </TouchableOpacity>
+
+                    <TextInput 
+                      style={styles.numberInput}
+                      keyboardType="numeric"
+                      inputMode="decimal"
+                      value={c._rawWeight !== undefined ? c._rawWeight : String(c.weight != null ? c.weight : '0')}
+                      onChangeText={(v) => updateWeight(idx, v)}
+                      placeholder="0.25"
+                      placeholderTextColor={Colors.textMuted}
+                    />
+
+                    <TouchableOpacity
+                      style={styles.stepperBtn}
+                      onPress={() => adjustWeightBy(idx, 0.05)}
+                    >
+                      <Text style={styles.stepperBtnLabel}>+0.05</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.quickPresetRow}>
+                    {[0.1, 0.2, 0.25, 0.333, 0.5, 1.0].map((preset) => {
+                      const isActivePreset = Math.abs((c.weight || 0) - preset) < 0.01;
+                      return (
+                        <TouchableOpacity
+                          key={preset}
+                          style={[styles.presetChip, isActivePreset && styles.presetChipActive]}
+                          onPress={() => setWeightExact(idx, preset)}
+                        >
+                          <Text style={[styles.presetChipText, isActivePreset && styles.presetChipTextActive]}>
+                            {preset === 1 ? '1.0' : preset === 0.333 ? '0.33' : preset.toFixed(2)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.hintText}>Decimal weight between 0.0 and 1.0 (e.g. 0.25 = 25%)</Text>
                 </View>
 
                 {paramKeys.map((k) => {
@@ -574,6 +653,24 @@ const styles = StyleSheet.create({
   modalScroll: { flex: 1 },
   modalContent: { padding: Spacing.lg },
   
+  dialogErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    padding: Spacing.md,
+    borderRadius: Radius.base,
+    marginBottom: Spacing.md,
+    gap: 8,
+  },
+  dialogErrorText: {
+    color: Colors.danger,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    flex: 1,
+  },
+  
   cardSection: {
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
     borderRadius: Radius.base, padding: Spacing.md, marginBottom: Spacing.md
@@ -622,4 +719,78 @@ const styles = StyleSheet.create({
   btnSecondaryText: { color: Colors.text, fontSize: FontSize.base, fontWeight: '600' },
   btnSecondarySmall: { backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.base },
   btnSecondarySmallText: { fontSize: 13, fontWeight: '600', color: Colors.text },
+
+  weightPill: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  weightPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  numberStepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stepperBtn: {
+    width: 48,
+    height: 42,
+    borderRadius: Radius.base,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepperBtnLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  numberInput: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.base,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  quickPresetRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  presetChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  presetChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  presetChipTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
 });
