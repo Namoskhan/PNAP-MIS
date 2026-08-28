@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -21,6 +21,7 @@ import Card from '../../../src/components/Card';
 import DatePicker from '../../../src/components/DatePicker';
 import Avatar from '../../../src/components/Avatar';
 import Badge from '../../../src/components/Badge';
+import UnitSwitcherModal from '../../../src/components/UnitSwitcherModal';
 import { PKR } from '../../../src/utils/formatters';
 import { downloadAndShare } from '../../../src/utils/export';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,7 +36,7 @@ const COMMITTEE_TIER_LABELS = {
 
 export default function ReportsScreen() {
   const { user } = useAuth();
-  const { ctx, provinces } = useUnit();
+  const { ctx, provinces, setCtx } = useUnit();
   const params = useLocalSearchParams();
 
   const queryBody = params.body || '';
@@ -43,39 +44,37 @@ export default function ReportsScreen() {
   const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
 
-  const [selectedLevel, setSelectedLevel] = useState(() => {
+  const [unitSwitcherVisible, setUnitSwitcherVisible] = useState(false);
+
+  // Derive active unit from route params OR context directly
+  const activeLevel = useMemo(() => {
     if (params.unitLevel) return params.unitLevel;
-    if (isJirgaView && provinces && provinces.length > 0) return 'PROVINCE';
+    if (isJirgaView && provinces && provinces.length > 0 && !ctx?.unitLevel) return 'PROVINCE';
     return ctx?.unitLevel || 'CENTRAL';
-  });
+  }, [params.unitLevel, isJirgaView, provinces, ctx?.unitLevel]);
 
-  const [selectedUnitId, setSelectedUnitId] = useState(() => {
+  const activeUnitId = useMemo(() => {
     if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    if (isJirgaView && provinces && provinces.length > 0) return provinces[0]._id;
+    if (isJirgaView && provinces && provinces.length > 0 && !ctx?.unitId) return provinces[0]._id;
     return ctx?.unitId || '';
-  });
+  }, [params.unitId, isJirgaView, provinces, ctx?.unitId]);
 
-  // Sync with provinces when they become available
-  useEffect(() => {
-    if (isJirgaView && !selectedUnitId && provinces && provinces.length > 0) {
-      setSelectedLevel('PROVINCE');
-      setSelectedUnitId(provinces[0]._id);
-    }
-  }, [provinces, isJirgaView]);
+  const activeUnitName = useMemo(() => {
+    if (activeLevel === 'CENTRAL') return 'PKNAP Central';
+    return ctx?.unitName || activeLevel;
+  }, [activeLevel, ctx?.unitName]);
 
-  const activeLevel = selectedLevel;
-  const [resolvedUnitId, setResolvedUnitId] = useState(selectedUnitId);
+  const [resolvedUnitId, setResolvedUnitId] = useState(activeUnitId);
 
   useEffect(() => {
-    let rawId = selectedUnitId;
-    if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
+    if (activeLevel === 'CENTRAL' && (!activeUnitId || activeUnitId === 'CENTRAL')) {
       api.get('/org/central').then((r) => {
         if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
       }).catch(() => {});
     } else {
-      setResolvedUnitId(rawId);
+      setResolvedUnitId(activeUnitId);
     }
-  }, [selectedUnitId, activeLevel]);
+  }, [activeUnitId, activeLevel]);
 
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -89,6 +88,33 @@ export default function ReportsScreen() {
   const [error, setError] = useState('');
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+
+  // Quick date presets
+  function applyDatePreset(preset) {
+    const now = new Date();
+    if (preset === 'THIS_MONTH') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(end.toISOString().split('T')[0]);
+    } else if (preset === 'LAST_MONTH') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(end.toISOString().split('T')[0]);
+    } else if (preset === '30_DAYS') {
+      const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(now.toISOString().split('T')[0]);
+    } else if (preset === 'YTD') {
+      const start = new Date(now.getFullYear(), 0, 1);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(now.toISOString().split('T')[0]);
+    } else if (preset === 'CLEAR') {
+      setFrom('');
+      setTo('');
+    }
+  }
 
   // Fetch eligible members
   useEffect(() => {
@@ -143,7 +169,7 @@ export default function ReportsScreen() {
   }
 
   function getUnitParams(kind) {
-    const p = { unitLevel: activeLevel, unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : (params.unitId || ctx?.unitId)) };
+    const p = { unitLevel: activeLevel, unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : activeUnitId) };
     if (from) p.from = from;
     if (to) p.to = to;
     if (activeLevel !== 'BASIC_UNIT' && !isCongressView && scope) p.scope = scope;
@@ -172,8 +198,7 @@ export default function ReportsScreen() {
       const qParams = getUnitParams(kind);
       const bodySuffix = isCongressView ? '-congress' : (isJirgaView ? '-jirga' : (isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : '')));
       const scopeSuffix = (activeLevel !== 'BASIC_UNIT' && !isCongressView && scope === 'subtree') ? '-aggregated' : '';
-      const unitName = activeLevel === 'CENTRAL' ? 'Central' : (ctx?.unitName || activeLevel);
-      const safeUnit = (unitName || 'unit').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeUnit = (activeUnitName || activeLevel).replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `${activeLevel}-${safeUnit}-${kind}${bodySuffix}${scopeSuffix}.${format}`;
 
       await downloadAndShare(`/exports/unit/${kind}/${format}`, filename, qParams);
@@ -193,7 +218,9 @@ export default function ReportsScreen() {
       const p = {};
       if (from) p.from = from;
       if (to) p.to = to;
-      const filename = `member-${memberId}-performance.${format}`;
+      const mem = members.find((m) => String(m._id) === String(memberId));
+      const safeMember = (mem?.fullName || memberId).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `member-${safeMember}-performance.${format}`;
       await downloadAndShare(`/exports/member/${memberId}/${format}`, filename, p);
     } catch (e) {
       setError('Export failed: ' + (e.message || 'unknown'));
@@ -204,7 +231,7 @@ export default function ReportsScreen() {
 
   const committeeTier = COMMITTEE_TIER_LABELS[activeLevel] || activeLevel;
   const jirgaTier = activeLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
-  const unitDisplayName = activeLevel === 'CENTRAL' ? 'PKNAP Central' : (ctx?.unitName || activeLevel);
+  const unitDisplayName = activeUnitName;
 
   const scopeDescription = isCongressView ? (
     'National Congress Assembly Records (Central)'
@@ -292,19 +319,41 @@ export default function ReportsScreen() {
           <Text style={styles.pageTitle}>{pageTitle}</Text>
         </View>
 
+        {/* Unit Context Card */}
+        {!isCongressView && (
+          <Card style={[styles.card, styles.unitContextCard]}>
+            <View style={styles.unitContextRow}>
+              <View style={styles.unitContextIconBox}>
+                <Ionicons name="business" size={20} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.unitContextLabel}>ACTIVE REPORTING UNIT</Text>
+                <Text style={styles.unitContextName}>{activeUnitName}</Text>
+                <Text style={styles.unitContextTier}>{activeLevel.replace('_', ' ')} TIER</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.switchUnitBtn}
+                onPress={() => setUnitSwitcherVisible(true)}
+              >
+                <Ionicons name="swap-horizontal" size={16} color={Colors.primary} style={{ marginRight: 4 }} />
+                <Text style={styles.switchUnitBtnText}>Switch</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+
         {/* Province Switcher Pills for Jirga */}
         {isJirgaView && provinces && provinces.length > 0 && (
           <View style={styles.tierPillsWrapper}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
               {provinces.map((prov) => {
-                const isActive = selectedLevel === 'PROVINCE' && String(selectedUnitId) === String(prov._id);
+                const isActive = activeLevel === 'PROVINCE' && String(resolvedUnitId) === String(prov._id);
                 return (
                   <TouchableOpacity
                     key={prov._id}
                     style={[styles.tierPill, isActive && styles.tierPillActive]}
                     onPress={() => {
-                      setSelectedLevel('PROVINCE');
-                      setSelectedUnitId(prov._id);
+                      setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name });
                     }}
                   >
                     <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
@@ -314,13 +363,12 @@ export default function ReportsScreen() {
                 );
               })}
               <TouchableOpacity
-                style={[styles.tierPill, selectedLevel === 'CENTRAL' && styles.tierPillActive]}
+                style={[styles.tierPill, activeLevel === 'CENTRAL' && styles.tierPillActive]}
                 onPress={() => {
-                  setSelectedLevel('CENTRAL');
-                  setSelectedUnitId('CENTRAL');
+                  setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                 }}
               >
-                <Text style={[styles.tierPillText, selectedLevel === 'CENTRAL' && styles.tierPillTextActive]}>
+                <Text style={[styles.tierPillText, activeLevel === 'CENTRAL' && styles.tierPillTextActive]}>
                   Qomi Jirga (Central)
                 </Text>
               </TouchableOpacity>
@@ -357,6 +405,28 @@ export default function ReportsScreen() {
               </View>
             </View>
           ) : null}
+
+          {/* Date Presets */}
+          <View style={{ marginBottom: Spacing.sm }}>
+            <Text style={styles.label}>Quick Date Range</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetScroll}>
+              <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('THIS_MONTH')}>
+                <Text style={styles.presetBtnText}>This Month</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('LAST_MONTH')}>
+                <Text style={styles.presetBtnText}>Last Month</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('30_DAYS')}>
+                <Text style={styles.presetBtnText}>Last 30 Days</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('YTD')}>
+                <Text style={styles.presetBtnText}>Year to Date</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.presetBtn, { backgroundColor: '#fee2e2' }]} onPress={() => applyDatePreset('CLEAR')}>
+                <Text style={[styles.presetBtnText, { color: Colors.error }]}>Clear</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
 
           <View style={styles.dateRow}>
             <View style={styles.dateField}>
@@ -408,6 +478,38 @@ export default function ReportsScreen() {
               disabled={!!busyKey}
             >
               {busyKey === 'meetings-xlsx' ? (
+                <ActivityIndicator size="small" color={Colors.text} />
+              ) : (
+                <Text style={styles.btnSecondaryText}>Download Excel</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </Card>
+
+        {/* Activities & Field Operations Report Card */}
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>Activities & Field Operations Report</Text>
+          <Text style={styles.cardDesc}>
+            Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.
+          </Text>
+          <View style={styles.btnRow}>
+            <TouchableOpacity
+              style={styles.btnPrimary}
+              onPress={() => handleDownloadUnit('activities', 'pdf')}
+              disabled={!!busyKey}
+            >
+              {busyKey === 'activities-pdf' ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.btnPrimaryText}>Download PDF</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.btnSecondary}
+              onPress={() => handleDownloadUnit('activities', 'xlsx')}
+              disabled={!!busyKey}
+            >
+              {busyKey === 'activities-xlsx' ? (
                 <ActivityIndicator size="small" color={Colors.text} />
               ) : (
                 <Text style={styles.btnSecondaryText}>Download Excel</Text>
@@ -636,6 +738,12 @@ export default function ReportsScreen() {
           />
         </SafeAreaView>
       </Modal>
+
+      {/* Unit Switcher Modal */}
+      <UnitSwitcherModal
+        visible={unitSwitcherVisible}
+        onClose={() => setUnitSwitcherVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -647,6 +755,56 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.text },
   denied: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
   deniedText: { fontSize: FontSize.base, color: Colors.textMuted, textAlign: 'center' },
+
+  unitContextCard: {
+    backgroundColor: '#fff',
+    borderColor: `${Colors.primary}30`,
+    borderWidth: 1.5,
+  },
+  unitContextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  unitContextIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    backgroundColor: `${Colors.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unitContextLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  unitContextName: {
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  unitContextTier: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  switchUnitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${Colors.primary}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: Radius.sm,
+  },
+  switchUnitBtnText: {
+    color: Colors.primary,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+  },
 
   tierPillsWrapper: { marginBottom: Spacing.md },
   tierPillsScroll: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
@@ -665,6 +823,21 @@ const styles = StyleSheet.create({
   scopeTabActive: { backgroundColor: Colors.surface, elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 },
   scopeTabText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, textAlign: 'center' },
   scopeTabTextActive: { color: Colors.text },
+
+  presetScroll: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  presetBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  presetBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 
   dateRow: { flexDirection: 'row', gap: Spacing.md, marginTop: Spacing.xs },
   dateField: { flex: 1 },

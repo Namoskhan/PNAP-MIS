@@ -34,6 +34,9 @@ export async function downloadAndShare(path, filename, params = {}) {
   const cleanPath = path.startsWith('/api') ? path : (path.startsWith('/') ? path : `/${path}`);
   const url = `${API_BASE}${cleanPath.replace(/^\/api/, '')}${qs}`;
 
+  // Sanitize filename
+  const safeFilename = (filename || 'report.pdf').replace(/[/\\?%*:|"<>]/g, '_');
+
   if (Platform.OS === 'web') {
     const res = await fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -52,7 +55,7 @@ export async function downloadAndShare(path, filename, params = {}) {
     const blobUrl = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = blobUrl;
-    a.download = filename;
+    a.download = safeFilename;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -61,7 +64,7 @@ export async function downloadAndShare(path, filename, params = {}) {
   }
 
   // Native (iOS/Android)
-  const localUri = `${FileSystem.cacheDirectory}${filename}`;
+  const localUri = `${FileSystem.cacheDirectory}${safeFilename}`;
   try {
     const result = await FileSystem.downloadAsync(url, localUri, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -71,10 +74,10 @@ export async function downloadAndShare(path, filename, params = {}) {
     }
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(result.uri, {
-        mimeType: filename.endsWith('.pdf')
+        mimeType: safeFilename.endsWith('.pdf')
           ? 'application/pdf'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        dialogTitle: `Open ${filename}`,
+        dialogTitle: `Export: ${safeFilename}`,
       });
     }
   } catch (e) {
