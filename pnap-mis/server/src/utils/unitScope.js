@@ -8,38 +8,63 @@ const Province = require('../models/Province');
 // owned record (meeting, activity, donation, expense). This is what
 // makes upward roll-ups (§11) cheap.
 async function resolveUnitChain(unitLevel, unitId) {
+  if (!unitLevel || !unitId) return null;
+  const sId = String(unitId);
+
   if (unitLevel === 'BASIC_UNIT') {
-    const u = await BasicUnit.findById(unitId).lean();
+    const u = await BasicUnit.findById(sId).lean();
     if (!u) return null;
+    let areaId = u.areaId;
+    let districtId = u.districtId;
+    let provinceId = u.provinceId;
+    if (!districtId || !provinceId) {
+      if (areaId) {
+        const a = await Area.findById(areaId).lean();
+        if (a) {
+          districtId = districtId || a.districtId;
+          provinceId = provinceId || a.provinceId;
+        }
+      }
+      if (!provinceId && districtId) {
+        const d = await District.findById(districtId).lean();
+        if (d) provinceId = d.provinceId;
+      }
+    }
     return {
       basicUnitId: u._id,
-      areaId: u.areaId,
-      districtId: u.districtId,
-      provinceId: u.provinceId,
+      areaId: areaId ? (areaId._id || areaId) : null,
+      districtId: districtId ? (districtId._id || districtId) : null,
+      provinceId: provinceId ? (provinceId._id || provinceId) : null,
     };
   }
   if (unitLevel === 'AREA') {
-    const a = await Area.findById(unitId).lean();
+    const a = await Area.findById(sId).lean();
     if (!a) return null;
+    let districtId = a.districtId;
+    let provinceId = a.provinceId;
+    if (!provinceId && districtId) {
+      const d = await District.findById(districtId).lean();
+      if (d) provinceId = d.provinceId;
+    }
     return {
       basicUnitId: null,
       areaId: a._id,
-      districtId: a.districtId,
-      provinceId: a.provinceId,
+      districtId: districtId ? (districtId._id || districtId) : null,
+      provinceId: provinceId ? (provinceId._id || provinceId) : null,
     };
   }
   if (unitLevel === 'DISTRICT') {
-    const d = await District.findById(unitId).lean();
+    const d = await District.findById(sId).lean();
     if (!d) return null;
     return {
       basicUnitId: null,
       areaId: null,
       districtId: d._id,
-      provinceId: d.provinceId,
+      provinceId: d.provinceId ? (d.provinceId._id || d.provinceId) : null,
     };
   }
   if (unitLevel === 'PROVINCE') {
-    const p = await Province.findById(unitId).lean();
+    const p = await Province.findById(sId).lean();
     if (!p) return null;
     return { basicUnitId: null, areaId: null, districtId: null, provinceId: p._id };
   }
@@ -121,6 +146,7 @@ function canPostAnnouncement(user)      { return userHasPermission(user, 'POST_A
 // Non-admin users (Senior Mawin, Secretary, Finance Sec.) have their
 // own per-controller checks and are passed through here.
 async function unitWithinAreaAdminScope(user, unitLevel, unitId) {
+  if (!user) return false;
   // Super and Central are the unbounded tiers — Central structures
   // every province, so it has no territorial boundary of its own.
   if (userHasRole(user, 'SUPER_ADMIN', 'CENTRAL_ADMIN')) return true;
@@ -128,6 +154,7 @@ async function unitWithinAreaAdminScope(user, unitLevel, unitId) {
   if (user.roles?.includes('PROVINCE_ADMIN')) {
     const provId = String(user.scope?.provinceId || '');
     if (!provId) return false;
+    if (unitLevel === 'PROVINCE') return String(unitId) === provId;
     const chain = await resolveUnitChain(unitLevel, unitId);
     return !!chain && String(chain.provinceId || '') === provId;
   }
@@ -135,6 +162,7 @@ async function unitWithinAreaAdminScope(user, unitLevel, unitId) {
   if (user.roles?.includes('DISTRICT_ADMIN')) {
     const distId = String(user.scope?.districtId || '');
     if (!distId) return false;
+    if (unitLevel === 'DISTRICT') return String(unitId) === distId;
     const chain = await resolveUnitChain(unitLevel, unitId);
     return !!chain && String(chain.districtId || '') === distId;
   }
@@ -143,11 +171,8 @@ async function unitWithinAreaAdminScope(user, unitLevel, unitId) {
     const areaId = String(user.scope?.areaId || '');
     if (!areaId) return false;
     if (unitLevel === 'AREA') return String(unitId) === areaId;
-    if (unitLevel === 'BASIC_UNIT') {
-      const u = await BasicUnit.findById(unitId).lean();
-      return !!u && String(u.areaId) === areaId;
-    }
-    return false;
+    const chain = await resolveUnitChain(unitLevel, unitId);
+    return !!chain && String(chain.areaId || '') === areaId;
   }
   return true;
 }

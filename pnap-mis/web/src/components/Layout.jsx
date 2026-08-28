@@ -338,6 +338,8 @@ export default function Layout() {
               >All Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Cabinet Roles</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+              <NavLink to="/unit/breakdown">Basic Unit Breakdown</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
           </>
         )}

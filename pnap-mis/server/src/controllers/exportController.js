@@ -481,9 +481,13 @@ async function _loadBrandingSafe() {
 // Member roster filter — uses the chain id (areaId / districtId /
 // etc.) because members are rostered at BU only; "members in this
 // area" is the union of its BU rosters.
-function memberFilter(unitLevel, chain) {
+async function memberFilter(unitLevel, chain) {
   if (unitLevel === 'BASIC_UNIT') return { basicUnitId: chain.basicUnitId };
-  if (unitLevel === 'AREA') return { areaId: chain.areaId };
+  if (unitLevel === 'AREA') {
+    const bus = await BasicUnit.find({ areaId: chain.areaId }).select('_id').lean();
+    const buIds = bus.map((b) => b._id);
+    return { $or: [{ areaId: chain.areaId }, { basicUnitId: { $in: buIds } }] };
+  }
   if (unitLevel === 'DISTRICT') return { districtId: chain.districtId };
   if (unitLevel === 'PROVINCE') return { provinceId: chain.provinceId };
   return {};
@@ -496,7 +500,15 @@ function memberFilter(unitLevel, chain) {
 // from BUs below.
 function ownFilter(unitLevel, unitId) {
   if (unitLevel === 'CENTRAL') return { unitLevel: 'CENTRAL' };
-  return { unitLevel, unitId };
+  const oid = (v) => {
+    try { return new mongoose.Types.ObjectId(String(v)); } catch { return v; }
+  };
+  return {
+    $or: [
+      { unitLevel, unitId: String(unitId) },
+      { unitLevel, unitId: oid(unitId) },
+    ],
+  };
 }
 
 // Records carry BOTH their owning unit (unitLevel + unitId) and the
@@ -507,12 +519,58 @@ function ownFilter(unitLevel, unitId) {
 //
 // Deliberately mirrors financeController.applyScopeFilter so the report
 // and the on-screen figures can never disagree about what a scope means.
-function scopeFilter(unitLevel, unitId, scope, chain) {
+async function scopeFilter(unitLevel, unitId, scope, chain) {
   if (scope !== 'subtree') return ownFilter(unitLevel, unitId);
-  if (unitLevel === 'BASIC_UNIT') return { basicUnitId: chain.basicUnitId };
-  if (unitLevel === 'AREA') return { areaId: chain.areaId };
-  if (unitLevel === 'DISTRICT') return { districtId: chain.districtId };
-  if (unitLevel === 'PROVINCE') return { provinceId: chain.provinceId };
+  const oid = (v) => {
+    try { return new mongoose.Types.ObjectId(String(v)); } catch { return v; }
+  };
+  if (unitLevel === 'BASIC_UNIT') {
+    return {
+      $or: [
+        { basicUnitId: chain.basicUnitId },
+        { unitLevel: 'BASIC_UNIT', unitId: String(unitId) },
+        { unitLevel: 'BASIC_UNIT', unitId: oid(unitId) },
+      ],
+    };
+  }
+  if (unitLevel === 'AREA') {
+    const bus = await BasicUnit.find({ areaId: chain.areaId }).select('_id').lean();
+    const buIds = bus.map((b) => b._id);
+    return {
+      $or: [
+        { areaId: chain.areaId },
+        { basicUnitId: { $in: buIds } },
+        { unitLevel: 'AREA', unitId: String(unitId) },
+        { unitLevel: 'AREA', unitId: oid(unitId) },
+      ],
+    };
+  }
+  if (unitLevel === 'DISTRICT') {
+    const [areas, bus] = await Promise.all([
+      Area.find({ districtId: chain.districtId }).select('_id').lean(),
+      BasicUnit.find({ districtId: chain.districtId }).select('_id').lean(),
+    ]);
+    const areaIds = areas.map((a) => a._id);
+    const buIds = bus.map((b) => b._id);
+    return {
+      $or: [
+        { districtId: chain.districtId },
+        { areaId: { $in: areaIds } },
+        { basicUnitId: { $in: buIds } },
+        { unitLevel: 'DISTRICT', unitId: String(unitId) },
+        { unitLevel: 'DISTRICT', unitId: oid(unitId) },
+      ],
+    };
+  }
+  if (unitLevel === 'PROVINCE') {
+    return {
+      $or: [
+        { provinceId: chain.provinceId },
+        { unitLevel: 'PROVINCE', unitId: String(unitId) },
+        { unitLevel: 'PROVINCE', unitId: oid(unitId) },
+      ],
+    };
+  }
   // CENTRAL heads the organization, so its subtree is everything.
   return {};
 }
@@ -604,10 +662,10 @@ function bodySuffix(body) {
 async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
   const chain = unitLevel === 'CENTRAL' ? {} : await resolveUnitChain(unitLevel, unitId);
   if (unitLevel !== 'CENTRAL' && !chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
-  const memberQ = memberFilter(unitLevel, chain);
+  const memberQ = await memberFilter(unitLevel, chain);
   // `ownQ` is the scoped record filter — named for history, but it now
   // widens to the whole subtree when the caller asks for it.
-  const ownQ = scopeFilter(unitLevel, unitId, scope, chain);
+  const ownQ = await scopeFilter(unitLevel, unitId, scope, chain);
   const dateFilter = {};
   if (from) dateFilter.$gte = new Date(from);
   if (to) dateFilter.$lte = new Date(to);

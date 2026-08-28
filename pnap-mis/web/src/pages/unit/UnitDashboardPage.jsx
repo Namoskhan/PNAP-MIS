@@ -244,8 +244,10 @@ export default function UnitDashboardPage() {
     if (!target) { dialog.alert('Pick a unit first.'); return; }
     const { from, to } = reportRange();
     const params = new URLSearchParams({ unitLevel: target.unitLevel, unitId: target.unitId, from, to });
+    if (target.unitLevel !== 'BASIC_UNIT') params.set('scope', 'subtree');
     const ext = format === 'pdf' ? 'pdf' : 'xlsx';
-    const filename = `${target.name}-${reportMonth}-${kind}.${ext}`;
+    const scopeSuffix = target.unitLevel !== 'BASIC_UNIT' ? '-aggregated' : '';
+    const filename = `${target.name}-${reportMonth}-${kind}${scopeSuffix}.${ext}`;
     const token = localStorage.getItem('pnap_token');
     fetch(`/api/exports/unit/${kind}/${format}?${params.toString()}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
