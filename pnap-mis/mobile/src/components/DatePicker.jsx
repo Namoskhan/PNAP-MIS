@@ -86,6 +86,18 @@ export default function DatePicker({
     setOpen(false);
   }
 
+  function handleSelectToday() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const selected = `${y}-${m}-${d}`;
+    onChange(selected);
+    setCurrentYear(y);
+    setCurrentMonth(now.getMonth());
+    setOpen(false);
+  }
+
   function handlePrevMonth() {
     if (currentMonth === 0) {
       setCurrentMonth(11);
@@ -111,7 +123,12 @@ export default function DatePicker({
 
   return (
     <View style={[styles.container, style]}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <View style={styles.labelRow}>
+        {label ? <Text style={styles.label}>{label}</Text> : <View />}
+        <TouchableOpacity onPress={handleSelectToday} style={styles.todayBtn}>
+          <Text style={styles.todayBtnText}>📅 Today</Text>
+        </TouchableOpacity>
+      </View>
       <TouchableOpacity
         style={styles.pickerButton}
         onPress={() => setOpen(true)}
@@ -168,10 +185,15 @@ export default function DatePicker({
               })}
             </View>
 
-            {/* Close Button */}
-            <TouchableOpacity style={styles.closeBtn} onPress={() => setOpen(false)}>
-              <Text style={styles.closeBtnText}>Cancel</Text>
-            </TouchableOpacity>
+            {/* Action Buttons */}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: Spacing.md }}>
+              <TouchableOpacity style={[styles.closeBtn, { flex: 1, backgroundColor: Colors.primary }]} onPress={handleSelectToday}>
+                <Text style={[styles.closeBtnText, { color: '#fff' }]}>Today</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.closeBtn, { flex: 1 }]} onPress={() => setOpen(false)}>
+                <Text style={styles.closeBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </SafeAreaView>
         </View>
       </Modal>
@@ -181,7 +203,10 @@ export default function DatePicker({
 
 const styles = StyleSheet.create({
   container: { marginBottom: Spacing.md },
-  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.text, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  label: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 },
+  todayBtn: { paddingVertical: 2, paddingHorizontal: 6, backgroundColor: Colors.surfaceAlt, borderRadius: 4 },
+  todayBtnText: { fontSize: 11, fontWeight: '600', color: Colors.primary },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
