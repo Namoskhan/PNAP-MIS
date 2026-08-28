@@ -935,7 +935,7 @@ export default function UnitDashboard() {
             )}
 
             {/* ─── Committee / Cabinet Overview ─── */}
-            {data.committee && (
+            {data.committee && ctx?.unitLevel !== 'BASIC_UNIT' && (
               <Card style={styles.fullCard}>
                 <View style={styles.cardHeader}>
                   <View>
@@ -965,17 +965,22 @@ export default function UnitDashboard() {
                   </View>
                 </View>
                 <View style={styles.commActions}>
-                  <Link href="/cabinet" asChild>
+                  <Link href="/unit/committee" asChild>
                     <TouchableOpacity style={styles.commBtn}>
-                      <Text style={styles.commBtnText}>Cabinet Roster →</Text>
+                      <Text style={styles.commBtnText}>Committee Roster →</Text>
                     </TouchableOpacity>
                   </Link>
-                  <Link href="/meetings" asChild>
+                  <Link href="/meetings?body=COMMITTEE" asChild>
                     <TouchableOpacity style={styles.commBtn}>
                       <Text style={styles.commBtnText}>Meetings →</Text>
                     </TouchableOpacity>
                   </Link>
-                  <Link href="/finance" asChild>
+                  <Link href="/activities?body=COMMITTEE" asChild>
+                    <TouchableOpacity style={styles.commBtn}>
+                      <Text style={styles.commBtnText}>Activities →</Text>
+                    </TouchableOpacity>
+                  </Link>
+                  <Link href="/finance?body=COMMITTEE" asChild>
                     <TouchableOpacity style={styles.commBtn}>
                       <Text style={styles.commBtnText}>Finance →</Text>
                     </TouchableOpacity>
@@ -995,6 +1000,14 @@ export default function UnitDashboard() {
                     <Text style={styles.hubText}>Members</Text>
                   </TouchableOpacity>
                 </Link>
+                {ctx?.unitLevel !== 'BASIC_UNIT' && (
+                  <Link href="/unit/committee" asChild>
+                    <TouchableOpacity style={styles.hubTile}>
+                      <Text style={styles.hubIcon}>🤝</Text>
+                      <Text style={styles.hubText}>Committee</Text>
+                    </TouchableOpacity>
+                  </Link>
+                )}
                 <Link href="/meetings" asChild>
                   <TouchableOpacity style={styles.hubTile}>
                     <Text style={styles.hubIcon}>📅</Text>

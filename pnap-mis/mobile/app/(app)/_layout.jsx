@@ -113,8 +113,10 @@ export default function AppLayout() {
       <Tabs.Screen name="announcements" options={{ href: null, headerTitle: 'Announcements', headerShown: false }} />
       <Tabs.Screen name="notifications" options={{ href: null, headerTitle: 'Notifications', headerShown: true }} />
       <Tabs.Screen name="unit/jirga" options={{ href: null, headerTitle: 'Sobayi Jirga', headerShown: true }} />
+      <Tabs.Screen name="unit/committee" options={{ href: null, headerTitle: 'Committee Roster', headerShown: true }} />
 
       {/* Admin Modules */}
+      <Tabs.Screen name="admin/committee" options={{ href: null, headerTitle: 'Committee Roster', headerShown: true }} />
       <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Logs', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Unit Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/congress" options={{ href: null, headerTitle: 'National Congress', headerShown: true }} />

@@ -224,7 +224,31 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 7. National Congress
+    // 7. Committee (Central / Sobayi / Zilla / Elaqayi Committee)
+    {
+      key: 'committee',
+      title: isSuper || isCentral || ctx?.unitLevel === 'CENTRAL'
+        ? 'Central Committee'
+        : ctx?.unitLevel === 'PROVINCE'
+          ? 'Sobayi Committee'
+          : ctx?.unitLevel === 'DISTRICT'
+            ? 'Zilla Committee'
+            : 'Elaqayi Committee',
+      icon: '👥',
+      show: () => ctx?.unitLevel !== 'BASIC_UNIT' && (isSuper || isCentral || isProvince || isDistrict || isArea || isSeniorMawin || isSecretary || isFinanceSec || isPresident),
+      items: [
+        { key: 'committee-comp', icon: '👥', title: 'Composition', description: 'Consultative committee roster, cabinet & selective members', route: '/admin/committee' },
+        { key: 'committee-meetings', icon: '📅', title: 'Committee Meetings', description: 'Consultative assembly meeting records', route: '/meetings?body=COMMITTEE' },
+        { key: 'committee-activities', icon: '🚩', title: 'Committee Activities', description: 'Committee events, gatherings & campaigns', route: '/activities?body=COMMITTEE' },
+        ...(canManageFinance(user) ? [
+          { key: 'committee-finance', icon: '💰', title: 'Committee Finance', description: 'Committee donations & expense ledger', route: '/finance?body=COMMITTEE' },
+          { key: 'committee-transfers', icon: '💸', title: 'Committee Transfers', description: 'Committee fund transfers & approvals', route: '/finance/transfers?body=COMMITTEE' },
+        ] : []),
+        { key: 'committee-reports', icon: '📊', title: 'Committee Reports', description: 'Committee reports & data exports', route: '/admin/reports?body=COMMITTEE' },
+      ],
+    },
+
+    // 8. National Congress
     {
       key: 'congress',
       title: 'National Congress',
@@ -239,7 +263,7 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 8. Jirga (Sobayi Jirga for Province Admin / Qomi Jirga for Central Admin & Super Admin)
+    // 9. Jirga (Sobayi Jirga for Province Admin / Qomi Jirga for Central Admin & Super Admin)
     {
       key: 'jirga',
       title: isSuper || isCentral ? 'Qomi Jirga' : 'Sobayi Jirga',
@@ -257,7 +281,7 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 9. Communication (Always available)
+    // 10. Communication (Always available)
     {
       key: 'communication',
       title: 'Communication & Broadcasts',
@@ -283,6 +307,7 @@ export default function AdminHubScreen() {
     my_district: true,
     my_area: true,
     admin_tools: true,
+    committee: true,
     congress: false,
     jirga: true,
     communication: true,

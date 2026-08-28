@@ -456,7 +456,10 @@ export default function MeetingsScreen() {
             <TouchableOpacity
               style={styles.primaryBtn}
               onPress={() => {
-                setForm(EMPTY_FORM);
+                setForm({
+                  ...EMPTY_FORM,
+                  typeCode: isCongressView ? 'CNG' : (isJirgaView ? 'JRG' : (isCommitteeView ? 'CMP' : DEFAULT_TYPE_CODE)),
+                });
                 setFormError('');
                 setShowForm(true);
               }}
