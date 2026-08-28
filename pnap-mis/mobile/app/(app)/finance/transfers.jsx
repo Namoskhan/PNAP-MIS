@@ -253,8 +253,7 @@ export default function TransfersScreen() {
       params: {
         sourceLevel: activeLevel,
         sourceUnitId: resolvedUnitId,
-        destinationLevel: picked.level,
-        destinationUnitId: picked.id,
+        destinationId: picked.id,
       },
     }).then((res) => {
       if (!cancelled) {
@@ -338,8 +337,7 @@ export default function TransfersScreen() {
       const fd = new FormData();
       fd.append('sourceLevel', activeLevel);
       fd.append('sourceUnitId', resolvedUnitId);
-      fd.append('destinationLevel', preview.destination.level);
-      fd.append('destinationUnitId', preview.destination.id);
+      fd.append('destinationId', preview.destination.id);
       fd.append('amount', form.amount);
       fd.append('mode', form.mode);
       if (form.reference) fd.append('reference', form.reference.trim());

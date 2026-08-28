@@ -158,16 +158,6 @@ export default function ReportsScreen() {
       .finally(() => setReportLoading(false));
   }, [memberId, from, to]);
 
-  if (!isHigherAdmin(user) && !isAreaAdmin(user) && !hasRole(user, 'SENIOR_MAWIN', 'SECRETARY', 'FINANCE_SECRETARY')) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.denied}>
-          <Text style={styles.deniedText}>🔒 You do not have access to export reports.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   function getUnitParams(kind) {
     const p = { unitLevel: activeLevel, unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : activeUnitId) };
     if (from) p.from = from;
@@ -519,34 +509,36 @@ export default function ReportsScreen() {
         </Card>
 
         {/* Finance Report Card */}
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>{financeReportTitle}</Text>
-          <Text style={styles.cardDesc}>{financeDesc}</Text>
-          <View style={styles.btnRow}>
-            <TouchableOpacity
-              style={styles.btnPrimary}
-              onPress={() => handleDownloadUnit('finance', 'pdf')}
-              disabled={!!busyKey}
-            >
-              {busyKey === 'finance-pdf' ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.btnPrimaryText}>Download PDF</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.btnSecondary}
-              onPress={() => handleDownloadUnit('finance', 'xlsx')}
-              disabled={!!busyKey}
-            >
-              {busyKey === 'finance-xlsx' ? (
-                <ActivityIndicator size="small" color={Colors.text} />
-              ) : (
-                <Text style={styles.btnSecondaryText}>Download Excel</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </Card>
+        {canManageFinance(user) && (
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>{financeReportTitle}</Text>
+            <Text style={styles.cardDesc}>{financeDesc}</Text>
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                style={styles.btnPrimary}
+                onPress={() => handleDownloadUnit('finance', 'pdf')}
+                disabled={!!busyKey}
+              >
+                {busyKey === 'finance-pdf' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.btnPrimaryText}>Download PDF</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.btnSecondary}
+                onPress={() => handleDownloadUnit('finance', 'xlsx')}
+                disabled={!!busyKey}
+              >
+                {busyKey === 'finance-xlsx' ? (
+                  <ActivityIndicator size="small" color={Colors.text} />
+                ) : (
+                  <Text style={styles.btnSecondaryText}>Download Excel</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
 
         {/* Member Performance Report Card */}
         <Card style={styles.card}>
