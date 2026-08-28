@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -6,7 +5,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePickerNative from '@react-native-community/datetimepicker';
+import DateTimePickerNative, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { Colors, FontSize, Radius, Spacing } from '../constants/colors';
 
 export default function DateTimePicker({
@@ -17,16 +16,44 @@ export default function DateTimePicker({
   placeholder,
   style,
 }) {
-  const [show, setShow] = useState(false);
+  const dateValue = value && !isNaN(new Date(value).getTime()) ? new Date(value) : new Date();
 
-  const dateValue = value ? new Date(value) : new Date();
+  function showAndroidPicker() {
+    if (Platform.OS !== 'android') return;
 
-  function handleChange(event, selectedDate) {
-    if (Platform.OS === 'android') {
-      setShow(false);
-    }
-    if (event.type === 'set' && selectedDate) {
-      onChange(selectedDate.toISOString());
+    if (mode === 'datetime') {
+      DateTimePickerAndroid.open({
+        value: dateValue,
+        mode: 'date',
+        onChange: (event, selectedDate) => {
+          if (event.type === 'set' && selectedDate) {
+            const pickedDate = selectedDate;
+            DateTimePickerAndroid.open({
+              value: pickedDate,
+              mode: 'time',
+              is24Hour: false,
+              onChange: (timeEvent, finalDate) => {
+                if (timeEvent.type === 'set' && finalDate) {
+                  const combined = new Date(pickedDate);
+                  combined.setHours(finalDate.getHours(), finalDate.getMinutes(), 0, 0);
+                  onChange(combined.toISOString());
+                }
+              },
+            });
+          }
+        },
+      });
+    } else {
+      DateTimePickerAndroid.open({
+        value: dateValue,
+        mode: mode === 'time' ? 'time' : 'date',
+        is24Hour: false,
+        onChange: (event, selectedDate) => {
+          if (event.type === 'set' && selectedDate) {
+            onChange(selectedDate.toISOString());
+          }
+        },
+      });
     }
   }
 
@@ -34,9 +61,11 @@ export default function DateTimePicker({
   let displayValue = placeholder || 'Select...';
   if (value) {
     const d = new Date(value);
-    if (mode === 'date') displayValue = d.toLocaleDateString();
-    else if (mode === 'time') displayValue = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    else displayValue = d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    if (!isNaN(d.getTime())) {
+      if (mode === 'date') displayValue = d.toLocaleDateString();
+      else if (mode === 'time') displayValue = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      else displayValue = d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    }
   }
 
   if (Platform.OS === 'web') {
@@ -85,31 +114,22 @@ export default function DateTimePicker({
             value={dateValue}
             mode={mode}
             display="default"
-            onChange={handleChange}
+            onChange={(event, selectedDate) => {
+              if (selectedDate) onChange(selectedDate.toISOString());
+            }}
             style={{ width: '100%', alignSelf: 'flex-start' }}
           />
         </View>
       ) : (
-        <>
-          <TouchableOpacity
-            style={styles.pickerButton}
-            onPress={() => setShow(true)}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.pickerText, !value && styles.placeholderText]}>
-              {displayValue}
-            </Text>
-          </TouchableOpacity>
-          {show && (
-            <DateTimePickerNative
-              value={dateValue}
-              mode={mode}
-              is24Hour={false}
-              display="default"
-              onChange={handleChange}
-            />
-          )}
-        </>
+        <TouchableOpacity
+          style={styles.pickerButton}
+          onPress={showAndroidPicker}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.pickerText, !value && styles.placeholderText]}>
+            {displayValue}
+          </Text>
+        </TouchableOpacity>
       )}
     </View>
   );
