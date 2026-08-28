@@ -4,7 +4,7 @@ import { AuthProvider } from '../src/context/AuthContext';
 import { UnitProvider } from '../src/context/UnitContext';
 import { ToastProvider } from '../src/components/Toast';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { useEffect, useState } from 'react';
 import { api } from '../src/api/client';
 import { Colors } from '../src/constants/colors';
@@ -33,7 +33,7 @@ export default function RootLayout() {
   const brandingReady = useGlobalBranding();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       const handleExtensionError = (event) => {
         if (
           (event.filename && event.filename.includes('chrome-extension://')) ||
@@ -47,7 +47,7 @@ export default function RootLayout() {
       window.addEventListener('error', handleExtensionError, true);
 
       const styleId = 'pnap-mobile-web-reset';
-      if (!document.getElementById(styleId)) {
+      if (typeof document !== 'undefined' && !document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
         style.textContent = `
@@ -65,11 +65,13 @@ export default function RootLayout() {
             box-sizing: border-box !important;
           }
         `;
-        document.head.appendChild(style);
+        document.head?.appendChild(style);
       }
 
       return () => {
-        window.removeEventListener('error', handleExtensionError, true);
+        if (typeof window.removeEventListener === 'function') {
+          window.removeEventListener('error', handleExtensionError, true);
+        }
       };
     }
   }, []);

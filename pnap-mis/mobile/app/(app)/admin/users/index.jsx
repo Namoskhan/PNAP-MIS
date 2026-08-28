@@ -80,6 +80,10 @@ export default function UsersScreen() {
   const [confirmToggleUser, setConfirmToggleUser] = useState(null);
   const [toggling, setToggling] = useState(false);
 
+  // Delete User State
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Edit User State
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -231,6 +235,32 @@ export default function UsersScreen() {
     }
   }
 
+  // ─── Delete User ───────────────────────────────────────────────────
+  function requestDeleteUser(u) {
+    if (!canWrite) return;
+    setConfirmDeleteUser(u);
+  }
+
+  async function handleConfirmDelete() {
+    if (!confirmDeleteUser || deleting) return;
+    const u = confirmDeleteUser;
+    setDeleting(true);
+    try {
+      await api.delete(`/admin/users/${u._id}`);
+      setItems((prev) => prev.filter((x) => x._id !== u._id));
+      setTotal((prev) => Math.max(0, prev - 1));
+      if (selectedUser?._id === u._id) {
+        setSelectedUser(null);
+      }
+      setConfirmDeleteUser(null);
+      toast.success(`User ${u.fullName} deleted successfully.`);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   // ─── Edit User ─────────────────────────────────────────────────────
   function openEditUser(u) {
     setEditingUser(u);
@@ -373,42 +403,72 @@ export default function UsersScreen() {
         {/* Action Buttons Toolbar */}
         {canWrite && (
           <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => openEditUser(u)}
-            >
-              <Ionicons name="pencil" size={13} color={Colors.primary} />
-              <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit</Text>
-            </TouchableOpacity>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnSecondary]}
+                onPress={() => openEditUser(u)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="pencil-outline" size={14} color={Colors.primary} />
+                <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={() => {
-                setTargetUser(u);
-                setResetPwdOpen(true);
-              }}
-            >
-              <Text style={styles.actionBtnIcon}>🔑</Text>
-              <Text style={styles.actionBtnText}>Reset Pwd</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnSecondary]}
+                onPress={() => {
+                  setTargetUser(u);
+                  setResetPwdOpen(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="key-outline" size={14} color="#b45309" />
+                <Text style={[styles.actionBtnText, { color: '#b45309' }]}>Reset Pwd</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: u.isActive ? '#fee2e2' : '#dcfce7' }]}
-              onPress={() => requestToggleActive(u)}
-            >
-              <Text style={styles.actionBtnIcon}>{u.isActive ? '⏻' : '✓'}</Text>
-              <Text style={[styles.actionBtnText, { color: u.isActive ? Colors.error : Colors.success }]}>
-                {u.isActive ? 'Deactivate' : 'Activate'}
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnPrimary]}
+                onPress={() => setSelectedUser(u)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="eye-outline" size={14} color={Colors.text} />
+                <Text style={styles.actionBtnText}>Details</Text>
+              </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnPrimary]}
-              onPress={() => setSelectedUser(u)}
-            >
-              <Ionicons name="eye-outline" size={13} color={Colors.text} />
-              <Text style={styles.actionBtnText}>Details</Text>
-            </TouchableOpacity>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[
+                  styles.actionBtn,
+                  {
+                    borderColor: u.isActive ? '#fecaca' : '#bbf7d0',
+                    backgroundColor: u.isActive ? '#fef2f2' : '#f0fdf4',
+                  },
+                ]}
+                onPress={() => requestToggleActive(u)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={u.isActive ? "power-outline" : "checkmark-circle-outline"}
+                  size={14}
+                  color={u.isActive ? Colors.error : Colors.success}
+                />
+                <Text style={[styles.actionBtnText, { color: u.isActive ? Colors.error : Colors.success, fontWeight: '700' }]}>
+                  {u.isActive ? 'Deactivate' : 'Activate'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.actionBtn,
+                  { borderColor: '#fecaca', backgroundColor: '#fef2f2' },
+                ]}
+                onPress={() => requestDeleteUser(u)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={14} color={Colors.error} />
+                <Text style={[styles.actionBtnText, { color: Colors.error, fontWeight: '700' }]}>Delete</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </Card>
@@ -853,6 +913,44 @@ export default function UsersScreen() {
         </View>
       </Modal>
 
+      {/* ─── Delete Confirmation Dialog ─── */}
+      <Modal visible={!!confirmDeleteUser} animationType="fade" transparent>
+        <View style={styles.overlayBackdrop}>
+          <View style={styles.dialogCard}>
+            <Text style={styles.dialogTitle}>Delete User Account</Text>
+            <Text style={styles.dialogSub}>
+              Are you sure you want to permanently delete{' '}
+              <Text style={{ fontWeight: '700', color: Colors.text }}>{confirmDeleteUser?.fullName}</Text>?
+              {' '}This action cannot be undone and will revoke all access.
+            </Text>
+
+            <View style={styles.dialogButtons}>
+              <TouchableOpacity
+                style={styles.dialogCancelBtn}
+                onPress={() => setConfirmDeleteUser(null)}
+                disabled={deleting}
+              >
+                <Text style={styles.dialogCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.dialogConfirmBtn,
+                  { backgroundColor: Colors.error },
+                ]}
+                onPress={handleConfirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.dialogConfirmText}>Delete User</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ─── Reset Password Modal ─── */}
       <Modal visible={resetPwdOpen} animationType="fade" transparent>
         <View style={styles.overlayBackdrop}>
@@ -984,6 +1082,17 @@ export default function UsersScreen() {
                   <Text style={styles.actionLargeBtnText}>
                     {selectedUser.isActive ? '⏻ Deactivate User Account' : '✓ Activate User Account'}
                   </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionLargeBtn, { backgroundColor: Colors.error }]}
+                  onPress={() => {
+                    const u = selectedUser;
+                    setSelectedUser(null);
+                    requestDeleteUser(u);
+                  }}
+                >
+                  <Text style={styles.actionLargeBtnText}>🗑 Delete User Account</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1157,30 +1266,39 @@ const styles = StyleSheet.create({
   roleTagText: { fontSize: FontSize.xs - 1, fontWeight: '600', color: Colors.primary },
 
   cardActions: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
     marginTop: Spacing.md,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
+    gap: 8,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 7,
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.surfaceAlt,
   },
+  actionBtnSecondary: {
+    backgroundColor: Colors.surfaceAlt,
+    borderColor: Colors.border,
+  },
   actionBtnPrimary: {
     backgroundColor: '#eff6ff',
     borderColor: '#bfdbfe',
   },
-  actionBtnIcon: { fontSize: 12 },
+  actionBtnIcon: { fontSize: 13 },
   actionBtnText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.text },
 
   // ─── Modal styles ───

@@ -59,6 +59,7 @@ router.patch('/users/:id', TIER_ADMIN, userCtrl.update);
 router.post('/users/:id/reset-password', TIER_ADMIN, userCtrl.resetPassword);
 router.post('/users/:id/deactivate', TIER_ADMIN, userCtrl.deactivate);
 router.post('/users/:id/activate', TIER_ADMIN, userCtrl.activate);
+router.delete('/users/:id', TIER_ADMIN, userCtrl.remove);
 
 // Member god-mode actions
 router.patch('/members/:id', SUPER_ONLY, memberCtrl.adminEdit);

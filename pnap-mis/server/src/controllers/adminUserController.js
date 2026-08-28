@@ -365,6 +365,69 @@ exports.activate = asyncHandler(async (req, res) => {
   ok(res, { ok: true });
 });
 
+// DELETE /api/admin/users/:id — delete a tier admin user.
+// Enforces the one-level rule via assertCanManage:
+// Super Admin can delete Central Admin, Province Admin, etc.
+// Central Admin can delete Province Admin, etc.
+// Refuses to delete the last Super Admin or one's own account.
+exports.remove = asyncHandler(async (req, res) => {
+  const u = await assertCanManage(req.user, req.params.id);
+
+  if (u.roles?.includes('SUPER_ADMIN') && await isLastSuperAdmin(u._id)) {
+    throw new ApiError(409, 'LAST_SUPER_ADMIN',
+      'Cannot delete the last remaining Super Admin. Promote another user first.');
+  }
+
+  const before = {
+    username: u.username,
+    email: u.email,
+    cnic: u.cnic,
+    fullName: u.fullName,
+    roles: [...(u.roles || [])],
+    scope: { ...(u.scope || {}) },
+    isActive: u.isActive,
+  };
+
+  // Cascade: end every active RoleAssignment held by this user
+  // and free matching cabinet slots.
+  let cascadedRoles = 0;
+  if (u.memberId) {
+    const RoleAssignment = require('../models/RoleAssignment');
+    const CabinetSlot = require('../models/CabinetSlot');
+    const active = await RoleAssignment.find({
+      memberId: u.memberId,
+      state: 'APPROVED',
+      endedAt: { $exists: false },
+    });
+    for (const ra of active) {
+      ra.state = 'ENDED';
+      ra.endedAt = new Date();
+      ra.endReason = 'ADMIN_DELETED';
+      ra.decisionNote = `User deleted by ${req.user.fullName || req.user.username || 'admin'}`;
+      await ra.save();
+      await CabinetSlot.updateOne(
+        { unitLevel: ra.unitLevel, unitId: ra.unitId, roleCode: ra.roleCode, filledByAssignmentId: ra._id },
+        { $unset: { filledByAssignmentId: '', filledMemberId: '' } }
+      );
+      cascadedRoles++;
+    }
+  }
+
+  await User.findByIdAndDelete(u._id);
+
+  await audit({
+    req,
+    action: 'USER_DELETE',
+    targetType: 'User',
+    targetId: u._id,
+    targetLabel: u.fullName,
+    before,
+    note: req.body?.reason || `User deleted by ${req.user?.fullName || req.user?.username || 'admin'}`,
+  });
+
+  ok(res, { ok: true, deletedId: u._id, cascadedRoles });
+});
+
 // GET /admin/search?q=ali
 //
 // Cross-cuts members + admin Users + active RoleAssignments so a single

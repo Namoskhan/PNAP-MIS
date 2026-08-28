@@ -5,8 +5,10 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { isSuperAdmin } from '../../../src/utils/permissions';
@@ -14,113 +16,284 @@ import Card from '../../../src/components/Card';
 import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 
-const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
+const formatPKR = (val) => {
+  const num = Number(val) || 0;
+  return `Rs ${num.toLocaleString('en-PK')}`;
+};
 
 export default function FinanceOverviewScreen() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState('');
 
+  const loadData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setErr('');
+    try {
+      const res = await api.get('/admin/finance-overview');
+      setData(res.data?.data || null);
+    } catch (e) {
+      setErr(errorMessage(e));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    api.get('/admin/finance-overview')
-      .then((r) => setData(r.data.data))
-      .catch((e) => setErr(errorMessage(e)))
-      .finally(() => setLoading(false));
+    loadData();
   }, []);
 
   if (!isSuperAdmin(user)) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Only Super Admins can access this screen.</Text>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <Ionicons name="lock-closed-outline" size={48} color={Colors.error} />
+          <Text style={styles.errorTitle}>Access Restricted</Text>
+          <Text style={styles.errorText}>Only Super Admins can access this screen.</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (err) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{err}</Text>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <Ionicons name="alert-circle-outline" size={48} color={Colors.error} />
+          <Text style={styles.errorTitle}>Failed to Load</Text>
+          <Text style={styles.errorText}>{err}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadData()}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  if (loading || !data) {
+  if (loading && !data) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading finance overview…</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  const t = data.totals;
+  const t = data?.totals || { donations: 0, donationCount: 0, expenses: 0, expenseCount: 0, transfers: 0, transferCount: 0, netBalance: 0 };
+  const isNetPositive = (t.netBalance || 0) >= 0;
 
-  const renderProvince = ({ item: p }) => (
-    <Card style={styles.provCard}>
-      <View style={styles.provHeader}>
-        <Text style={styles.provName}>{p.name} {p.code ? <Text style={styles.mutedText}>({p.code})</Text> : ''}</Text>
-      </View>
-      <View style={styles.row}>
-        <View style={styles.col}>
-          <Text style={styles.label}>Donations</Text>
-          <Text style={styles.val}>{PKR.format(p.donations)}</Text>
-          <Text style={styles.hint}>({p.donationCount})</Text>
+  const renderProvince = ({ item: p }) => {
+    const provNetPositive = (p.netBalance || 0) >= 0;
+    return (
+      <Card style={styles.provCard}>
+        <View style={styles.provHeader}>
+          <View style={styles.provTitleRow}>
+            <Ionicons name="location-outline" size={16} color={Colors.primary} />
+            <Text style={styles.provName}>{p.name}</Text>
+            {p.code ? (
+              <View style={styles.codeBadge}>
+                <Text style={styles.codeBadgeText}>{p.code}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={[styles.netPill, { backgroundColor: provNetPositive ? '#f0fdf4' : '#fef2f2' }]}>
+            <Text style={[styles.netPillText, { color: provNetPositive ? Colors.success : Colors.error }]}>
+              {formatPKR(p.netBalance)}
+            </Text>
+          </View>
         </View>
-        <View style={styles.col}>
-          <Text style={styles.label}>Expenses</Text>
-          <Text style={styles.val}>{PKR.format(p.expenses)}</Text>
-          <Text style={styles.hint}>({p.expenseCount})</Text>
+
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Donations</Text>
+            <Text style={[styles.statVal, { color: Colors.primaryDark }]}>{formatPKR(p.donations)}</Text>
+            <Text style={styles.statHint}>{p.donationCount || 0} {p.donationCount === 1 ? 'entry' : 'entries'}</Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Expenses</Text>
+            <Text style={[styles.statVal, { color: '#dc2626' }]}>{formatPKR(p.expenses)}</Text>
+            <Text style={styles.statHint}>{p.expenseCount || 0} {p.expenseCount === 1 ? 'entry' : 'entries'}</Text>
+          </View>
+
+          <View style={styles.statDivider} />
+
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Net Margin</Text>
+            <Text style={[styles.statVal, { color: provNetPositive ? Colors.success : Colors.error }]}>
+              {provNetPositive ? '+' : ''}{formatPKR(p.netBalance)}
+            </Text>
+            <Text style={styles.statHint}>{provNetPositive ? 'Surplus' : 'Deficit'}</Text>
+          </View>
         </View>
-        <View style={styles.col}>
-          <Text style={styles.label}>Net</Text>
-          <Text style={[styles.val, p.netBalance < 0 ? styles.textDanger : styles.textSuccess]}>
-            {PKR.format(p.netBalance)}
-          </Text>
-        </View>
-      </View>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       <FlatList
-        data={data.perProvince}
-        keyExtractor={(item) => item._id}
+        data={data?.perProvince || []}
+        keyExtractor={(item) => item._id || item.name}
         renderItem={renderProvince}
         contentContainerStyle={styles.listContent}
+        refreshing={refreshing}
+        onRefresh={() => loadData(true)}
         ListHeaderComponent={
           <>
-            <View style={styles.header}>
-              <Text style={styles.title}>Finance Overview</Text>
-              <Text style={styles.subtitle}>Aggregated finance across the entire party.</Text>
+            {/* Hero Header Banner */}
+            <View style={styles.hero}>
+              <View style={styles.heroTop}>
+                <View style={styles.heroIconBox}>
+                  <Text style={styles.heroIcon}>💰</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.heroTitle}>Finance Overview</Text>
+                  <Text style={styles.heroSub} numberOfLines={2}>
+                    Aggregated financial overview across the entire organization.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.heroActions}>
+                <TouchableOpacity
+                  style={styles.heroSecondaryBtn}
+                  onPress={() => loadData(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="refresh" size={14} color="#fff" style={{ marginRight: 4 }} />
+                  <Text style={styles.heroSecondaryBtnText}>Refresh Data</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <View style={styles.kpiGrid}>
-              <View style={styles.kpiBox}>
-                <Text style={styles.kpiLabel}>Total Donations</Text>
-                <Text style={styles.kpiValue}>{PKR.format(t.donations)}</Text>
-                <Text style={styles.kpiHint}>{t.donationCount} entries</Text>
+            {/* KPI Cards Grid */}
+            <View style={styles.kpiContainer}>
+              <View style={styles.kpiRow}>
+                {/* Total Donations */}
+                <View style={[styles.kpiCard, { borderTopColor: '#16a34a' }]}>
+                  <View style={styles.kpiTop}>
+                    <Text style={styles.kpiLabel}>Total Donations</Text>
+                    <View style={[styles.kpiIconWrap, { backgroundColor: '#f0fdf4' }]}>
+                      <Ionicons name="cash-outline" size={14} color="#16a34a" />
+                    </View>
+                  </View>
+                  <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit>
+                    {formatPKR(t.donations)}
+                  </Text>
+                  <Text style={styles.kpiHint}>{t.donationCount || 0} total entries</Text>
+                </View>
+
+                {/* Approved Expenses */}
+                <View style={[styles.kpiCard, { borderTopColor: '#dc2626' }]}>
+                  <View style={styles.kpiTop}>
+                    <Text style={styles.kpiLabel}>Approved Expenses</Text>
+                    <View style={[styles.kpiIconWrap, { backgroundColor: '#fef2f2' }]}>
+                      <Ionicons name="receipt-outline" size={14} color="#dc2626" />
+                    </View>
+                  </View>
+                  <Text style={[styles.kpiValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {formatPKR(t.expenses)}
+                  </Text>
+                  <Text style={styles.kpiHint}>{t.expenseCount || 0} total entries</Text>
+                </View>
               </View>
-              <View style={styles.kpiBox}>
-                <Text style={styles.kpiLabel}>Approved Expenses</Text>
-                <Text style={styles.kpiValue}>{PKR.format(t.expenses)}</Text>
-                <Text style={styles.kpiHint}>{t.expenseCount} entries</Text>
-              </View>
-              <View style={styles.kpiBox}>
-                <Text style={styles.kpiLabel}>Acknowledged Transfers</Text>
-                <Text style={styles.kpiValue}>{PKR.format(t.transfers)}</Text>
-                <Text style={styles.kpiHint}>{t.transferCount} entries</Text>
-              </View>
-              <View style={[styles.kpiBox, t.netBalance < 0 ? styles.kpiDanger : styles.kpiGood]}>
-                <Text style={[styles.kpiLabel, (t.netBalance < 0 || t.netBalance >= 0) && styles.kpiWhite]}>Net Balance</Text>
-                <Text style={[styles.kpiValue, (t.netBalance < 0 || t.netBalance >= 0) && styles.kpiWhite]}>{PKR.format(t.netBalance)}</Text>
+
+              <View style={styles.kpiRow}>
+                {/* Acknowledged Transfers */}
+                <View style={[styles.kpiCard, { borderTopColor: '#0284c7' }]}>
+                  <View style={styles.kpiTop}>
+                    <Text style={styles.kpiLabel}>Transfers</Text>
+                    <View style={[styles.kpiIconWrap, { backgroundColor: '#f0f9ff' }]}>
+                      <Ionicons name="swap-horizontal-outline" size={14} color="#0284c7" />
+                    </View>
+                  </View>
+                  <Text style={[styles.kpiValue, { color: '#0284c7' }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {formatPKR(t.transfers)}
+                  </Text>
+                  <Text style={styles.kpiHint}>{t.transferCount || 0} acknowledged</Text>
+                </View>
+
+                {/* Net Balance */}
+                <View
+                  style={[
+                    styles.kpiCard,
+                    {
+                      borderTopColor: isNetPositive ? '#16a34a' : '#dc2626',
+                      backgroundColor: isNetPositive ? '#f0fdf4' : '#fef2f2',
+                    },
+                  ]}
+                >
+                  <View style={styles.kpiTop}>
+                    <Text style={[styles.kpiLabel, { color: isNetPositive ? '#15803d' : '#b91c1c' }]}>
+                      Net Balance
+                    </Text>
+                    <View
+                      style={[
+                        styles.kpiIconWrap,
+                        { backgroundColor: isNetPositive ? '#dcfce7' : '#fee2e2' },
+                      ]}
+                    >
+                      <Ionicons
+                        name={isNetPositive ? "trending-up-outline" : "trending-down-outline"}
+                        size={14}
+                        color={isNetPositive ? '#15803d' : '#b91c1c'}
+                      />
+                    </View>
+                  </View>
+                  <Text
+                    style={[
+                      styles.kpiValue,
+                      { color: isNetPositive ? '#15803d' : '#b91c1c' },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {formatPKR(t.netBalance)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.kpiHint,
+                      { color: isNetPositive ? '#16a34a' : '#dc2626', fontWeight: '600' },
+                    ]}
+                  >
+                    {isNetPositive ? 'Overall Surplus' : 'Overall Deficit'}
+                  </Text>
+                </View>
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>By Province</Text>
+            {/* Provincial Breakdown Section Title */}
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBox}>
+                <Ionicons name="map-outline" size={16} color={Colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>By Province</Text>
+              <View style={styles.sectionBadge}>
+                <Text style={styles.sectionBadgeText}>
+                  {data?.perProvince?.length || 0} PROVINCES
+                </Text>
+              </View>
+            </View>
           </>
         }
-        ListEmptyComponent={<EmptyState icon="📊" title="No Data" message="No provincial data available." />}
+        ListEmptyComponent={
+          !loading && (
+            <EmptyState
+              icon="📊"
+              title="No Provincial Data"
+              message="No provincial financial records found in the database."
+            />
+          )
+        }
       />
     </SafeAreaView>
   );
@@ -129,40 +302,244 @@ export default function FinanceOverviewScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
-  errorText: { color: Colors.danger, fontSize: FontSize.base, textAlign: 'center' },
-  header: { padding: Spacing.lg, paddingBottom: Spacing.md },
-  title: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.text },
-  subtitle: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: 4 },
-  
-  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.lg },
-  kpiBox: { 
-    flex: 1, minWidth: '45%', backgroundColor: Colors.surface, 
-    padding: Spacing.md, borderRadius: Radius.base, 
-    borderWidth: 1, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center'
+  errorTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, marginTop: Spacing.md },
+  errorText: { color: Colors.textMuted, fontSize: FontSize.sm, textAlign: 'center', marginTop: 4 },
+  loadingText: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: Spacing.md },
+  retryBtn: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
   },
-  kpiDanger: { backgroundColor: Colors.danger, borderColor: Colors.danger },
-  kpiGood: { backgroundColor: Colors.success, borderColor: Colors.success },
-  kpiWhite: { color: '#fff' },
-  
-  kpiLabel: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
-  kpiValue: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
-  kpiHint: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 },
-  
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md },
-  listContent: { paddingBottom: 80 },
-  
-  provCard: { marginHorizontal: Spacing.lg, marginBottom: Spacing.md, padding: Spacing.md },
-  provHeader: { marginBottom: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: Spacing.sm },
-  provName: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text },
-  mutedText: { color: Colors.textMuted, fontWeight: '400' },
-  
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  col: { alignItems: 'flex-start' },
-  label: { fontSize: FontSize.xs, color: Colors.textMuted, fontWeight: '600', marginBottom: 2 },
-  val: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.text },
-  hint: { fontSize: 10, color: Colors.textMuted },
-  
-  textDanger: { color: Colors.danger },
-  textSuccess: { color: Colors.success },
+  retryBtnText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
+
+  // Hero Banner
+  hero: {
+    backgroundColor: Colors.primary,
+    padding: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderBottomLeftRadius: Radius.xl,
+    borderBottomRightRadius: Radius.xl,
+    marginBottom: Spacing.md,
+  },
+  heroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  heroIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: Radius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroIcon: { fontSize: 26 },
+  heroTitle: { fontSize: FontSize.xl, fontWeight: '800', color: '#fff' },
+  heroSub: { fontSize: FontSize.xs, color: 'rgba(255, 255, 255, 0.85)', marginTop: 2, lineHeight: 16 },
+  heroActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heroSecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  heroSecondaryBtnText: { color: '#fff', fontWeight: '600', fontSize: FontSize.xs },
+
+  // KPI Grid
+  kpiContainer: {
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: 10,
+  },
+  kpiRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    padding: 12,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderTopWidth: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  kpiTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  kpiLabel: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    flex: 1,
+  },
+  kpiIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kpiValue: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    marginVertical: 2,
+  },
+  kpiHint: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+    gap: 8,
+  },
+  sectionIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    fontSize: FontSize.base,
+    fontWeight: '800',
+    color: Colors.text,
+    flex: 1,
+  },
+  sectionBadge: {
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sectionBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+  },
+
+  listContent: {
+    paddingBottom: 40,
+  },
+
+  // Provincial Card
+  provCard: {
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  provHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+    marginBottom: Spacing.sm,
+  },
+  provTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  provName: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  codeBadge: {
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  codeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.primaryDark,
+  },
+  netPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+  },
+  netPillText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+  },
+
+  statsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: Colors.borderLight,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  statVal: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  statHint: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
 });

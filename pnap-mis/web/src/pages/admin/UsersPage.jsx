@@ -192,6 +192,22 @@ export default function UsersPage() {
     }
   }
 
+  async function deleteUser(u) {
+    if (!canWrite) return;
+    const ok = await dialog.confirm(
+      `Are you sure you want to permanently delete user "${u.fullName || u.username || 'this user'}"? This action cannot be undone.`
+    );
+    if (!ok) return;
+    try {
+      await api.delete(`/admin/users/${u._id}`);
+      setItems((prev) => prev.filter((x) => x._id !== u._id));
+      setTotal((prev) => Math.max(0, prev - 1));
+      toast.success?.(`User "${u.fullName}" deleted successfully.`);
+    } catch (e) {
+      toast.error?.(errorMessage(e));
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil((total || 0) / PAGE_SIZE));
   const activeFilterCount =
     (filters.role ? 1 : 0) +
@@ -405,7 +421,7 @@ export default function UsersPage() {
               {!busy && items.length === 0 && (
                 <tr><td colSpan={6} className="users-loading-cell muted">No users match your filters.</td></tr>
               )}
-              {!busy && items.map((u) => <UserRow key={u._id} u={u} canWrite={canWrite} onEdit={setEditing} onResetPwd={resetPwd} onToggle={toggleActive} />)}
+              {!busy && items.map((u) => <UserRow key={u._id} u={u} canWrite={canWrite} onEdit={setEditing} onResetPwd={resetPwd} onToggle={toggleActive} onDelete={deleteUser} />)}
             </tbody>
           </table>
         </div>
@@ -573,7 +589,7 @@ function CreateCentralAdminDialog({ onClose, onCreated }) {
 }
 
 // ─── Row ───────────────────────────────────────────────────────────
-function UserRow({ u, canWrite, onEdit, onResetPwd, onToggle }) {
+function UserRow({ u, canWrite, onEdit, onResetPwd, onToggle, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
   // Menu coordinates in viewport space — recalculated each time the
   // menu opens. Portaling the menu to document.body sidesteps any
@@ -702,6 +718,14 @@ function UserRow({ u, canWrite, onEdit, onResetPwd, onToggle }) {
                   onClick={() => { setMenuOpen(false); onToggle(u); }}
                 >
                   {u.isActive ? '⏻ Deactivate' : '✓ Activate'}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="danger"
+                  onClick={() => { setMenuOpen(false); onDelete(u); }}
+                >
+                  🗑 Delete user
                 </button>
               </>
             )}
