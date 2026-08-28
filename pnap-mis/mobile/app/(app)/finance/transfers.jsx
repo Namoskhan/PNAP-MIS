@@ -12,6 +12,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -56,6 +57,11 @@ export default function TransfersScreen() {
   const { ctx, provinces } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
+  const { width, height } = useWindowDimensions();
+
+  const isSmall = width < 480;
+  const isTablet = width >= 768;
+  const isDesktop = width >= 1024;
 
   const queryBody = params.body || '';
   const isJirgaView = queryBody === 'JIRGA';
@@ -227,136 +233,122 @@ export default function TransfersScreen() {
   }
 
   useEffect(() => {
-    reload();
-  }, [activeLevel, resolvedUnitId, tab, targetBody]);
+    if (resolvedUnitId && resolvedUnitId !== 'CENTRAL') {
+      reload();
+    }
+  }, [tab, activeLevel, resolvedUnitId, targetBody]);
 
-  // Destination preview validation
+  // Preview destination whenever selection changes
   useEffect(() => {
-    let cancelled = false;
-    if (!activeLevel || !resolvedUnitId || !picked) {
+    if (!picked || !activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') {
       setPreview(null);
       setPreviewErr('');
       return;
     }
+    let cancelled = false;
     setPreviewLoading(true);
     setPreviewErr('');
+    
     api.get('/transfers/destination-preview', {
-      params: { sourceLevel: activeLevel, sourceUnitId: resolvedUnitId, destinationId: picked.id },
-    })
-      .then((r) => {
-        if (!cancelled) {
-          setPreview(r.data.data);
-          setPreviewErr('');
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setPreview(null);
-          setPreviewErr(errorMessage(e));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setPreviewLoading(false);
-      });
+      params: {
+        sourceLevel: activeLevel,
+        sourceUnitId: resolvedUnitId,
+        destinationLevel: picked.level,
+        destinationUnitId: picked.id,
+      },
+    }).then((res) => {
+      if (!cancelled) {
+        setPreview(res.data.data);
+        setPreviewErr('');
+      }
+    }).catch((err) => {
+      if (!cancelled) {
+        setPreview(null);
+        setPreviewErr(errorMessage(err));
+      }
+    }).finally(() => {
+      if (!cancelled) setPreviewLoading(false);
+    });
+
     return () => { cancelled = true; };
-  }, [activeLevel, resolvedUnitId, picked]);
+  }, [picked, activeLevel, resolvedUnitId]);
 
   async function pickImage() {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+    if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = 'image/jpeg,image/png,image/webp';
+      input.accept = 'image/*';
       input.onchange = (e) => {
         const file = e.target.files?.[0];
         if (file) {
           setReceipt({
             uri: URL.createObjectURL(file),
+            name: file.name,
             type: file.type || 'image/jpeg',
-            name: file.name || 'receipt.jpg',
-            file,
+            file: file,
           });
-          setModalErr('');
         }
       };
       input.click();
-    } else {
-      try {
-        const res = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsMultipleSelection: false,
-          quality: 0.85,
-        });
-        if (!res.canceled && res.assets && res.assets.length > 0) {
-          const a = res.assets[0];
-          setReceipt({
-            uri: a.uri,
-            name: a.fileName || 'receipt.jpg',
-            type: a.mimeType || 'image/jpeg',
-            file: a.file,
-          });
-          setModalErr('');
-        }
-      } catch (e) {
-        toast.error(errorMessage(e));
-      }
+      return;
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Permission to access gallery is required to attach receipts.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      const a = result.assets[0];
+      setReceipt({
+        uri: a.uri,
+        name: a.fileName || 'receipt.jpg',
+        type: a.mimeType || 'image/jpeg',
+      });
     }
   }
 
   function handleProceedToConfirm() {
     setModalErr('');
-    if (!picked) {
-      const msg = 'Please select a destination unit from the organization tree.';
-      setModalErr(msg);
-      toast.error(msg);
+    if (!picked || !preview) {
+      setModalErr('Please select a valid destination unit from the tree.');
       return;
     }
-    if (previewLoading) {
-      const msg = 'Checking destination unit, please wait...';
-      setModalErr(msg);
-      return;
-    }
-    if (previewErr || !preview) {
-      const msg = previewErr || 'Invalid destination unit selected.';
-      setModalErr(msg);
-      toast.error(msg);
-      return;
-    }
-    if (!form.amount || parseFloat(form.amount) <= 0) {
-      const msg = 'Please enter a valid amount greater than 0.';
-      setModalErr(msg);
-      toast.error(msg);
+    const amt = parseFloat(form.amount);
+    if (!form.amount || isNaN(amt) || amt <= 0) {
+      setModalErr('Please enter a valid positive transfer amount.');
       return;
     }
     if (!receipt) {
-      const msg = 'Please attach a receipt / proof-of-payment image.';
-      setModalErr(msg);
-      toast.error(msg);
+      setModalErr('Proof of payment (receipt image) is required.');
       return;
     }
     setConfirmOpen(true);
   }
 
   async function initiate() {
-    if (!preview) { setModalErr('Select a valid destination.'); return; }
-    if (!form.amount || parseFloat(form.amount) <= 0) { setModalErr('Valid amount is required.'); return; }
-    if (!receipt) { setModalErr('Please attach a receipt image.'); return; }
-
+    if (submitting) return;
     setSubmitting(true);
     setModalErr('');
     try {
       const fd = new FormData();
       fd.append('sourceLevel', activeLevel);
       fd.append('sourceUnitId', resolvedUnitId);
-      fd.append('destinationId', preview.destination.id);
-      fd.append('body', targetBody);
+      fd.append('destinationLevel', preview.destination.level);
+      fd.append('destinationUnitId', preview.destination.id);
       fd.append('amount', form.amount);
       fd.append('mode', form.mode);
-      if (form.reference) fd.append('reference', form.reference);
-      if (form.note) fd.append('note', form.note);
-      
+      if (form.reference) fd.append('reference', form.reference.trim());
+      if (form.note) fd.append('note', form.note.trim());
+      fd.append('body', targetBody);
+
       if (Platform.OS === 'web' && receipt.file) {
-        fd.append('receipt', receipt.file);
-      } else if (Platform.OS === 'web' && receipt.uri && !receipt.file) {
+        fd.append('receipt', receipt.file, receipt.name || 'receipt.jpg');
+      } else if (Platform.OS === 'web' && receipt.uri.startsWith('blob:')) {
         const response = await fetch(receipt.uri);
         const blob = await response.blob();
         fd.append('receipt', blob, receipt.name || 'receipt.jpg');
@@ -388,16 +380,6 @@ export default function TransfersScreen() {
       setConfirmOpen(false);
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  async function ack(id) {
-    try {
-      await api.post(`/transfers/${id}/ack`, {});
-      reload();
-      toast.success('Transfer acknowledged — funds added to your balance.');
-    } catch (e) {
-      toast.error(errorMessage(e));
     }
   }
 
@@ -491,242 +473,245 @@ export default function TransfersScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.pageTitle}>{pageTitle}</Text>
-          <Text style={styles.pageSubtitle}>
-            {unitDisplayName} · {activeLevel.replace('_', ' ')}
-          </Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => handleExport('pdf')}
-            disabled={!!exporting}
-          >
-            {exporting === 'pdf' ? (
-              <ActivityIndicator size="small" color={Colors.primary} />
-            ) : (
-              <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={() => handleExport('xlsx')}
-            disabled={!!exporting}
-          >
-            {exporting === 'xlsx' ? (
-              <ActivityIndicator size="small" color={Colors.primary} />
-            ) : (
-              <Ionicons name="grid-outline" size={20} color={Colors.primary} />
-            )}
-          </TouchableOpacity>
-          {canSend && (
-            <TouchableOpacity style={styles.primaryBtn} onPress={openInitiate}>
-              <Ionicons name="send" size={15} color="#fff" />
-              <Text style={styles.primaryBtnText}>Transfer</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Province Switcher Pills for Jirga */}
-      {isJirgaView && provinces && provinces.length > 0 && (
-        <View style={styles.tierPillsWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
-            {provinces.map((prov) => {
-              const isActive = jirgaLevel === 'PROVINCE' && String(jirgaUnitId) === String(prov._id);
-              return (
-                <TouchableOpacity
-                  key={prov._id}
-                  style={[styles.tierPill, isActive && styles.tierPillActive]}
-                  onPress={() => {
-                    setJirgaLevel('PROVINCE');
-                    setJirgaUnitId(prov._id);
-                  }}
-                >
-                  <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
-                    {prov.name} Sobayi Jirga
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+      <View style={[styles.mainContainer, isTablet && styles.mainContainerTablet]}>
+        
+        {/* Header */}
+        <View style={[styles.header, isSmall && styles.headerSmall]}>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.pageTitle}>{pageTitle}</Text>
+            <Text style={styles.pageSubtitle}>
+              {unitDisplayName} · {activeLevel.replace('_', ' ')}
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
             <TouchableOpacity
-              style={[styles.tierPill, jirgaLevel === 'CENTRAL' && styles.tierPillActive]}
-              onPress={() => {
-                setJirgaLevel('CENTRAL');
-                setJirgaUnitId('CENTRAL');
-              }}
+              style={styles.iconBtn}
+              onPress={() => handleExport('pdf')}
+              disabled={!!exporting}
             >
-              <Text style={[styles.tierPillText, jirgaLevel === 'CENTRAL' && styles.tierPillTextActive]}>
-                Qomi Jirga (Central)
-              </Text>
+              {exporting === 'pdf' ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <>
+                  <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
+                  {isTablet && <Text style={styles.iconBtnText}>PDF</Text>}
+                </>
+              )}
             </TouchableOpacity>
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Scope banner */}
-      <View style={styles.banner}>
-        <Text style={styles.bannerText}>
-          <Text style={{ fontWeight: '700' }}>{unitDisplayName}</Text>{' '}
-          {activeLevel === 'CENTRAL'
-            ? 'may send funds to any unit in the organization.'
-            : activeLevel === 'PROVINCE'
-              ? 'may send funds to any unit in the organization, including other provinces.'
-              : 'may send funds to any unit within its own province, or to the Center.'}
-          {' '}The unit you choose receives the funds and is the only one that acknowledges them.
-        </Text>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabRow}>
-        <TouchableOpacity style={[styles.tab, tab === 'outgoing' && styles.tabActive]} onPress={() => setTab('outgoing')}>
-          <Text style={[styles.tabText, tab === 'outgoing' && styles.tabTextActive]}>Outgoing</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, tab === 'incoming' && styles.tabActive]} onPress={() => setTab('incoming')}>
-          <Text style={[styles.tabText, tab === 'incoming' && styles.tabTextActive]}>Incoming</Text>
-        </TouchableOpacity>
-      </View>
-
-      {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
-      ) : (
-        <ScrollView style={styles.tableScroll} horizontal showsHorizontalScrollIndicator={true}>
-          <View>
-            <View style={styles.thRow}>
-              <Text style={[styles.th, { width: 100 }]}>Date</Text>
-              <Text style={[styles.th, { width: 220 }]}>{tab === 'outgoing' ? 'To' : 'From'}</Text>
-              <Text style={[styles.th, { width: 120 }]}>Mode</Text>
-              <Text style={[styles.th, { width: 120 }]}>Reference</Text>
-              <Text style={[styles.th, { width: 120, textAlign: 'right' }]}>Amount</Text>
-              <Text style={[styles.th, { width: 90, textAlign: 'center' }]}>Receipt</Text>
-              <Text style={[styles.th, { width: 130 }]}>State</Text>
-              <Text style={[styles.th, { width: 180 }]}>Actions</Text>
-            </View>
-
-            {displayedItems.length === 0 ? (
-              <Text style={styles.emptyText}>No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} transfers in this view.</Text>
-            ) : (
-              displayedItems.map((t) => (
-                <View key={t._id} style={styles.tr}>
-                  <Text style={[styles.td, { width: 100 }]} numberOfLines={1}>{shortDate(t.createdAt)}</Text>
-                  
-                  <View style={[styles.td, { width: 220, flexDirection: 'row', alignItems: 'center' }]}>
-                    <View style={{
-                      backgroundColor: t.body === 'JIRGA' ? '#f3e8ff' : (t.body === 'COMMITTEE' ? '#e0f2fe' : '#f1f5f9'),
-                      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginRight: 6,
-                      borderWidth: t.body === 'JIRGA' ? 1 : 0, borderColor: '#d8b4fe'
-                    }}>
-                      <Text style={{
-                        color: t.body === 'JIRGA' ? '#6b21a8' : (t.body === 'COMMITTEE' ? '#0369a1' : '#475569'),
-                        fontSize: 10, fontWeight: '700'
-                      }}>
-                        {t.body === 'JIRGA' ? 'Jirga' : (t.body === 'COMMITTEE' ? 'Comm' : 'Exec')}
-                      </Text>
-                    </View>
-                    <Text numberOfLines={2} style={{ flex: 1, fontSize: FontSize.sm, color: Colors.text }}>{counterparty(t)}</Text>
-                  </View>
-
-                  <Text style={[styles.td, { width: 120 }]} numberOfLines={1}>{t.mode}</Text>
-                  <Text style={[styles.td, { width: 120 }]} numberOfLines={1}>{t.reference || '—'}</Text>
-                  <Text style={[styles.td, { width: 120, textAlign: 'right', fontWeight: '600' }]} numberOfLines={1}>{PKR(t.amount)}</Text>
-                  
-                  <View style={[styles.td, { width: 90, alignItems: 'center', justifyContent: 'center' }]}>
-                    {t.receiptImageUrl ? (
-                      <TouchableOpacity 
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#eff6ff', borderRadius: Radius.sm }}
-                        onPress={() => setPreviewUrl(resolveMediaUrl(t.receiptImageUrl))}
-                      >
-                        <Ionicons name="image" size={14} color={Colors.primary} />
-                        <Text style={{ color: Colors.primary, fontWeight: '600', fontSize: FontSize.xs }}>View</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={{ color: Colors.textMuted }}>—</Text>
-                    )}
-                  </View>
-
-                  <View style={[styles.td, { width: 130, justifyContent: 'center' }]}>
-                    <Badge variant={t.state === 'ACKNOWLEDGED' ? 'success' : t.state === 'REJECTED' ? 'error' : 'warning'} label={t.state} />
-                    {t.state === 'REJECTED' && t.decisionNote && (
-                      <Text style={{ fontSize: 10, color: Colors.error, marginTop: 2 }} numberOfLines={2}>
-                        Reason: {t.decisionNote}
-                      </Text>
-                    )}
-                  </View>
-
-                  <View style={[styles.td, { width: 180, flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
-                    {tab === 'incoming' && t.state === 'PENDING_ACK' ? (
-                      <>
-                        <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.primary }]} onPress={() => openApproveModal(t)}>
-                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Approve</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.error }]} onPress={() => openRejectModal(t._id)}>
-                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Reject</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : tab === 'outgoing' && t.state === 'PENDING_ACK' ? (
-                      <TouchableOpacity style={[styles.btnSmall, { backgroundColor: '#e11d48' }]} onPress={() => openCancelModal(t)}>
-                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Cancel</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={{ color: Colors.textMuted, fontSize: 11 }}>—</Text>
-                    )}
-                  </View>
-                </View>
-              ))
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => handleExport('xlsx')}
+              disabled={!!exporting}
+            >
+              {exporting === 'xlsx' ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <>
+                  <Ionicons name="grid-outline" size={18} color={Colors.primary} />
+                  {isTablet && <Text style={styles.iconBtnText}>Excel</Text>}
+                </>
+              )}
+            </TouchableOpacity>
+            {canSend && (
+              <TouchableOpacity style={styles.primaryBtn} onPress={openInitiate}>
+                <Ionicons name="send" size={15} color="#fff" />
+                <Text style={styles.primaryBtnText}>{isTablet ? '+ Initiate Transfer' : 'Transfer'}</Text>
+              </TouchableOpacity>
             )}
           </View>
-        </ScrollView>
-      )}
+        </View>
+
+        {/* Province Switcher Pills for Jirga */}
+        {isJirgaView && provinces && provinces.length > 0 && (
+          <View style={styles.tierPillsWrapper}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
+              {provinces.map((prov) => {
+                const isActive = jirgaLevel === 'PROVINCE' && String(jirgaUnitId) === String(prov._id);
+                return (
+                  <TouchableOpacity
+                    key={prov._id}
+                    style={[styles.tierPill, isActive && styles.tierPillActive]}
+                    onPress={() => {
+                      setJirgaLevel('PROVINCE');
+                      setJirgaUnitId(prov._id);
+                    }}
+                  >
+                    <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
+                      {prov.name} Sobayi Jirga
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity
+                style={[styles.tierPill, jirgaLevel === 'CENTRAL' && styles.tierPillActive]}
+                onPress={() => {
+                  setJirgaLevel('CENTRAL');
+                  setJirgaUnitId('CENTRAL');
+                }}
+              >
+                <Text style={[styles.tierPillText, jirgaLevel === 'CENTRAL' && styles.tierPillTextActive]}>
+                  Qomi Jirga (Central)
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Scope banner */}
+        <View style={styles.banner}>
+          <Ionicons name="information-circle-outline" size={18} color={Colors.primary} style={{ marginRight: 8, marginTop: 1 }} />
+          <Text style={styles.bannerText}>
+            <Text style={{ fontWeight: '700', color: Colors.text }}>{unitDisplayName}</Text>{' '}
+            {activeLevel === 'CENTRAL'
+              ? 'may send funds to any unit in the organization.'
+              : activeLevel === 'PROVINCE'
+                ? 'may send funds to any unit in the organization, including other provinces.'
+                : 'may send funds to any unit within its own province, or to the Center.'}
+            {' '}The destination unit receives and acknowledges the funds.
+          </Text>
+        </View>
+
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          <TouchableOpacity style={[styles.tab, tab === 'outgoing' && styles.tabActive]} onPress={() => setTab('outgoing')}>
+            <Ionicons name="arrow-up-circle-outline" size={16} color={tab === 'outgoing' ? Colors.primary : Colors.textMuted} style={{ marginRight: 6 }} />
+            <Text style={[styles.tabText, tab === 'outgoing' && styles.tabTextActive]}>Outgoing Transfers</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, tab === 'incoming' && styles.tabActive]} onPress={() => setTab('incoming')}>
+            <Ionicons name="arrow-down-circle-outline" size={16} color={tab === 'incoming' ? Colors.primary : Colors.textMuted} style={{ marginRight: 6 }} />
+            <Text style={[styles.tabText, tab === 'incoming' && styles.tabTextActive]}>Incoming Transfers</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Table / List View */}
+        {loading ? (
+          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
+        ) : (
+          <ScrollView 
+            style={styles.tableScroll} 
+            horizontal={!isTablet} 
+            showsHorizontalScrollIndicator={true}
+          >
+            <View style={{ minWidth: isTablet ? '100%' : 920, width: isTablet ? '100%' : undefined }}>
+              <View style={styles.thRow}>
+                <Text style={[styles.th, { width: isTablet ? '11%' : 95 }]}>Date</Text>
+                <Text style={[styles.th, { width: isTablet ? '23%' : 220 }]}>{tab === 'outgoing' ? 'To Destination' : 'From Sender'}</Text>
+                <Text style={[styles.th, { width: isTablet ? '13%' : 120 }]}>Mode</Text>
+                <Text style={[styles.th, { width: isTablet ? '13%' : 120 }]}>Reference</Text>
+                <Text style={[styles.th, { width: isTablet ? '12%' : 110, textAlign: 'right' }]}>Amount</Text>
+                <Text style={[styles.th, { width: isTablet ? '9%' : 80, textAlign: 'center' }]}>Receipt</Text>
+                <Text style={[styles.th, { width: isTablet ? '10%' : 115 }]}>State</Text>
+                <Text style={[styles.th, { width: isTablet ? '14%' : 160, textAlign: 'center' }]}>Actions</Text>
+              </View>
+
+              {displayedItems.length === 0 ? (
+                <Text style={styles.emptyText}>No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} transfers in this view.</Text>
+              ) : (
+                displayedItems.map((t) => (
+                  <View key={t._id} style={styles.tr}>
+                    <Text style={[styles.td, { width: isTablet ? '11%' : 95 }]} numberOfLines={1}>
+                      {shortDate(t.createdAt)}
+                    </Text>
+                    
+                    <View style={[styles.td, { width: isTablet ? '23%' : 220, flexDirection: 'row', alignItems: 'center' }]}>
+                      <View style={{
+                        backgroundColor: t.body === 'JIRGA' ? '#f3e8ff' : (t.body === 'COMMITTEE' ? '#e0f2fe' : '#f1f5f9'),
+                        paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, marginRight: 6,
+                        borderWidth: t.body === 'JIRGA' ? 1 : 0, borderColor: '#d8b4fe'
+                      }}>
+                        <Text style={{
+                          color: t.body === 'JIRGA' ? '#6b21a8' : (t.body === 'COMMITTEE' ? '#0369a1' : '#475569'),
+                          fontSize: 9, fontWeight: '700'
+                        }}>
+                          {t.body === 'JIRGA' ? 'Jirga' : (t.body === 'COMMITTEE' ? 'Comm' : 'Exec')}
+                        </Text>
+                      </View>
+                      <Text numberOfLines={2} style={{ flex: 1, fontSize: FontSize.sm, color: Colors.text, fontWeight: '600' }}>
+                        {counterparty(t)}
+                      </Text>
+                    </View>
+
+                    <Text style={[styles.td, { width: isTablet ? '13%' : 120 }]} numberOfLines={1}>{t.mode?.replace('_', ' ')}</Text>
+                    <Text style={[styles.td, { width: isTablet ? '13%' : 120, color: Colors.textMuted }]} numberOfLines={1}>{t.reference || '—'}</Text>
+                    <Text style={[styles.td, { width: isTablet ? '12%' : 110, textAlign: 'right', fontWeight: '700', color: Colors.text }]} numberOfLines={1}>
+                      {PKR(t.amount)}
+                    </Text>
+                    
+                    <View style={[styles.td, { width: isTablet ? '9%' : 80, alignItems: 'center', justifyContent: 'center' }]}>
+                      {t.receiptImageUrl ? (
+                        <TouchableOpacity 
+                          style={styles.receiptPill}
+                          onPress={() => setPreviewUrl(resolveMediaUrl(t.receiptImageUrl))}
+                        >
+                          <Ionicons name="image" size={13} color={Colors.primary} />
+                          <Text style={styles.receiptPillText}>View</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={{ color: Colors.textMuted }}>—</Text>
+                      )}
+                    </View>
+
+                    <View style={[styles.td, { width: isTablet ? '10%' : 115, justifyContent: 'center' }]}>
+                      <Badge variant={t.state === 'ACKNOWLEDGED' ? 'success' : t.state === 'REJECTED' ? 'error' : (t.state === 'CANCELLED' ? 'muted' : 'warning')} label={t.state} />
+                      {t.state === 'REJECTED' && t.decisionNote && (
+                        <Text style={{ fontSize: 10, color: Colors.error, marginTop: 2 }} numberOfLines={2}>
+                          {t.decisionNote}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={[styles.td, { width: isTablet ? '14%' : 160, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
+                      {tab === 'incoming' && t.state === 'PENDING_ACK' ? (
+                        <>
+                          <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.primary }]} onPress={() => openApproveModal(t)}>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Approve</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.error }]} onPress={() => openRejectModal(t._id)}>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Reject</Text>
+                          </TouchableOpacity>
+                        </>
+                      ) : tab === 'outgoing' && t.state === 'PENDING_ACK' ? (
+                        <TouchableOpacity style={[styles.btnSmall, { backgroundColor: '#e11d48' }]} onPress={() => openCancelModal(t)}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Cancel</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={{ color: Colors.textMuted, fontSize: 11 }}>—</Text>
+                      )}
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        )}
+
+      </View>
 
       {/* Initiate Transfer Modal */}
-      <Modal visible={transferModalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setTransferModalOpen(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <Modal visible={transferModalOpen} animationType="slide" presentationStyle={isTablet ? 'overFullScreen' : 'pageSheet'} transparent={isTablet} onRequestClose={() => setTransferModalOpen(false)}>
+        <SafeAreaView style={[styles.modalSafeWrapper, isTablet && styles.modalSafeWrapperTablet]}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalCard, isTablet && styles.modalCardTablet]}>
+            
+            {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Initiate Fund Transfer</Text>
-              <TouchableOpacity onPress={() => setTransferModalOpen(false)}>
+              <View>
+                <Text style={styles.modalTitle}>Initiate Fund Transfer</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
+                  Transfer funds securely to any destination within policy.
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setTransferModalOpen(false)} style={styles.closeBtn}>
                 <Ionicons name="close" size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
             
-            <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
+            {/* Modal Body: 2 Columns on Tablet/Desktop, 1 Column on Mobile */}
+            <View style={[styles.transferModalLayout, isTablet && styles.transferModalLayoutTablet]}>
               
-              {/* Inline Error Alert Banner */}
-              {modalErr ? (
-                <View style={styles.alertError}>
-                  <Ionicons name="alert-circle" size={20} color={Colors.error} style={{ marginRight: 8 }} />
-                  <Text style={styles.alertErrorText}>{modalErr}</Text>
-                </View>
-              ) : null}
-
-              {/* Transfer From */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Transfer From</Text>
-                <View style={styles.endpointCard}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={styles.endpointLevel}>{LEVEL_LABEL[activeLevel] || activeLevel}</Text>
-                    {sourceBalance !== null && (
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: sourceBalance > 0 ? '#15803d' : '#b91c1c' }}>
-                        Available: {PKR(sourceBalance)}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={styles.endpointName}>{unitDisplayName}</Text>
-                  {pendingOutAmount > 0 && (
-                    <Text style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
-                      ⚠️ {PKR(pendingOutAmount)} committed in unacknowledged Outgoing transfers
-                    </Text>
-                  )}
-                </View>
-              </View>
-
-              {/* Choose Destination */}
-              <View style={styles.field}>
+              {/* Left Column: Org Tree */}
+              <View style={[styles.treeCol, isTablet && styles.treeColTablet]}>
                 <Text style={styles.fieldLabel}>Choose Destination (from Tree) *</Text>
-                <View style={{ height: 320, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' }}>
+                <View style={[styles.treeContainer, isTablet && { height: Math.min(520, height * 0.55) }]}>
                   <OrgTree 
                     selectedId={picked?.id} 
                     disabledId={resolvedUnitId} 
@@ -736,145 +721,180 @@ export default function TransfersScreen() {
                 </View>
               </View>
 
-              {/* Selected Destination Card */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Selected Destination</Text>
-                {!picked ? (
-                  <View style={[styles.endpointCard, { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-                    <Text style={{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }}>
-                      Nothing selected yet — pick a unit from the organization tree above.
-                    </Text>
-                  </View>
-                ) : previewLoading ? (
-                  <View style={[styles.endpointCard, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
-                    <ActivityIndicator size="small" color={Colors.primary} />
-                    <Text style={{ color: Colors.textMuted }}>Checking destination validity...</Text>
-                  </View>
-                ) : previewErr ? (
-                  <View style={[styles.endpointCard, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
-                    <Text style={{ color: Colors.error, fontSize: FontSize.sm, fontWeight: '600' }}>{previewErr}</Text>
-                  </View>
-                ) : preview ? (
-                  <View style={[styles.endpointCard, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={[styles.endpointName, { color: '#166534' }]}>{preview.destination.name}</Text>
-                      {preview.direction && (
-                        <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#15803d' }}>
-                            {DIRECTION_LABEL[preview.direction] || preview.direction}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={{ fontSize: FontSize.xs, color: '#15803d', marginTop: 2, fontWeight: '600' }}>
-                      {LEVEL_LABEL[preview.destination.level] || preview.destination.level}
-                    </Text>
-                    {preview.path && preview.path.length > 0 && (
-                      <Text style={{ fontSize: 11, color: '#166534', marginTop: 6 }}>
-                        Hierarchy: {preview.path.map(p => p.name).join(' → ')}
-                      </Text>
-                    )}
-                    <Text style={{ fontSize: 11, color: '#15803d', marginTop: 6, fontStyle: 'italic' }}>
-                      The {preview.destination.levelLabel || preview.destination.level} Finance Secretary of {preview.destination.name} acknowledges this transfer.
-                    </Text>
+              {/* Right Column: Form Inputs */}
+              <ScrollView 
+                style={[styles.formCol, isTablet && styles.formColTablet]} 
+                contentContainerStyle={{ padding: isTablet ? Spacing.md : Spacing.lg, paddingBottom: 40 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Inline Error Alert Banner */}
+                {modalErr ? (
+                  <View style={styles.alertError}>
+                    <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 8 }} />
+                    <Text style={styles.alertErrorText}>{modalErr}</Text>
                   </View>
                 ) : null}
-              </View>
 
-              {/* Amount */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Amount (PKR) <Text style={{ color: Colors.error }}>*</Text></Text>
-                <TextInput 
-                  style={styles.fieldInput} 
-                  keyboardType="numeric"
-                  placeholder="e.g. 50000"
-                  value={form.amount}
-                  onChangeText={(val) => {
-                    setForm({ ...form, amount: val });
-                    if (modalErr) setModalErr('');
-                  }}
-                />
-                {sourceBalance !== null && (
-                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
-                    Maximum transferable: <Text style={{ fontWeight: '700', color: sourceBalance > 0 ? '#15803d' : '#b91c1c' }}>{PKR(sourceBalance)}</Text>
-                  </Text>
-                )}
-              </View>
-
-              {/* Mode */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Payment Mode</Text>
-                <View style={styles.pickerWrapper}>
-                  <Picker
-                    selectedValue={form.mode}
-                    onValueChange={(val) => setForm({ ...form, mode: val })}
-                  >
-                    {PAYMENT_MODES.map(m => (
-                      <Picker.Item key={m} label={m.replace('_', ' ')} value={m} />
-                    ))}
-                  </Picker>
-                </View>
-              </View>
-
-              {/* Reference */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Reference / Cheque No.</Text>
-                <TextInput 
-                  style={styles.fieldInput} 
-                  placeholder="Optional reference number"
-                  value={form.reference}
-                  onChangeText={(val) => setForm({ ...form, reference: val })}
-                />
-              </View>
-
-              {/* Notes */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Notes</Text>
-                <TextInput 
-                  style={[styles.fieldInput, { height: 60 }]} 
-                  placeholder="Optional transfer note"
-                  multiline
-                  value={form.note}
-                  onChangeText={(val) => setForm({ ...form, note: val })}
-                />
-              </View>
-
-              {/* Receipt upload */}
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Receipt / Proof of Payment <Text style={{ color: Colors.error }}>*</Text></Text>
-                <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
-                  <Ionicons name="cloud-upload-outline" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
-                  <Text style={styles.uploadBtnText}>{receipt ? 'Change Receipt Image' : 'Select Receipt Image (PNG / JPG)'}</Text>
-                </TouchableOpacity>
-                {receipt && (
-                  <View style={styles.receiptPreview}>
-                    <Image source={{ uri: receipt.uri }} style={styles.receiptThumb} />
-                    <Text style={styles.receiptName} numberOfLines={1}>{receipt.name || 'receipt.jpg'}</Text>
+                {/* Transfer From */}
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Transfer From (Source)</Text>
+                  <View style={styles.endpointCard}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.endpointLevel}>{LEVEL_LABEL[activeLevel] || activeLevel}</Text>
+                      {sourceBalance !== null && (
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: sourceBalance > 0 ? '#15803d' : '#b91c1c' }}>
+                          Available: {PKR(sourceBalance)}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.endpointName}>{unitDisplayName}</Text>
+                    {pendingOutAmount > 0 && (
+                      <Text style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
+                        ⚠️ {PKR(pendingOutAmount)} committed in unacknowledged Outgoing transfers
+                      </Text>
+                    )}
                   </View>
-                )}
-                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 4 }}>
-                  JPEG / PNG / WebP. The receiving Finance Secretary will verify this image before acknowledging.
-                </Text>
-              </View>
+                </View>
 
-              {/* Submit / Proceed */}
-              <View style={{ marginTop: 24, marginBottom: 40, flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity 
-                  style={[styles.btnSecondary, { flex: 1, paddingVertical: 14, alignItems: 'center' }]} 
-                  onPress={() => setTransferModalOpen(false)}
-                >
-                  <Text style={styles.btnSecondaryText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.primaryBtn, { flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }]} 
-                  onPress={handleProceedToConfirm}
-                >
-                  <Text style={styles.primaryBtnText}>Transfer</Text>
-                </TouchableOpacity>
-              </View>
+                {/* Selected Destination Card */}
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Selected Destination</Text>
+                  {!picked ? (
+                    <View style={[styles.endpointCard, { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
+                      <Text style={{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }}>
+                        👈 Pick a destination unit from the organization tree.
+                      </Text>
+                    </View>
+                  ) : previewLoading ? (
+                    <View style={[styles.endpointCard, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                      <Text style={{ color: Colors.textMuted }}>Validating transfer routing...</Text>
+                    </View>
+                  ) : previewErr ? (
+                    <View style={[styles.endpointCard, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
+                      <Text style={{ color: Colors.error, fontSize: FontSize.sm, fontWeight: '600' }}>{previewErr}</Text>
+                    </View>
+                  ) : preview ? (
+                    <View style={[styles.endpointCard, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.endpointName, { color: '#166534' }]}>{preview.destination.name}</Text>
+                        {preview.direction && (
+                          <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#15803d' }}>
+                              {DIRECTION_LABEL[preview.direction] || preview.direction}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={{ fontSize: FontSize.xs, color: '#15803d', marginTop: 2, fontWeight: '600' }}>
+                        {LEVEL_LABEL[preview.destination.level] || preview.destination.level}
+                      </Text>
+                      {preview.path && preview.path.length > 0 && (
+                        <Text style={{ fontSize: 11, color: '#166534', marginTop: 4 }}>
+                          Hierarchy: {preview.path.map(p => p.name).join(' → ')}
+                        </Text>
+                      )}
+                    </View>
+                  ) : null}
+                </View>
 
-            </ScrollView>
+                {/* Amount */}
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Amount (PKR) <Text style={{ color: Colors.error }}>*</Text></Text>
+                  <TextInput 
+                    style={styles.fieldInput} 
+                    keyboardType="numeric"
+                    placeholder="e.g. 50000"
+                    placeholderTextColor={Colors.textMuted}
+                    value={form.amount}
+                    onChangeText={(val) => {
+                      setForm({ ...form, amount: val });
+                      if (modalErr) setModalErr('');
+                    }}
+                  />
+                  {sourceBalance !== null && (
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
+                      Maximum transferable: <Text style={{ fontWeight: '700', color: sourceBalance > 0 ? '#15803d' : '#b91c1c' }}>{PKR(sourceBalance)}</Text>
+                    </Text>
+                  )}
+                </View>
+
+                {/* Mode & Reference in 2 columns on Tablet */}
+                <View style={[styles.rowFields, isTablet && styles.rowFieldsTablet]}>
+                  <View style={[styles.field, isTablet && { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>Payment Mode</Text>
+                    <View style={styles.pickerWrapper}>
+                      <Picker
+                        selectedValue={form.mode}
+                        onValueChange={(val) => setForm({ ...form, mode: val })}
+                      >
+                        {PAYMENT_MODES.map(m => (
+                          <Picker.Item key={m} label={m.replace('_', ' ')} value={m} />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View style={[styles.field, isTablet && { flex: 1 }]}>
+                    <Text style={styles.fieldLabel}>Reference / Cheque No.</Text>
+                    <TextInput 
+                      style={styles.fieldInput} 
+                      placeholder="e.g. TXN-998811"
+                      placeholderTextColor={Colors.textMuted}
+                      value={form.reference}
+                      onChangeText={(val) => setForm({ ...form, reference: val })}
+                    />
+                  </View>
+                </View>
+
+                {/* Notes */}
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Notes</Text>
+                  <TextInput 
+                    style={[styles.fieldInput, { height: 60 }]} 
+                    placeholder="Optional transfer note for receiver"
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    value={form.note}
+                    onChangeText={(val) => setForm({ ...form, note: val })}
+                  />
+                </View>
+
+                {/* Receipt upload */}
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Receipt / Payment Proof <Text style={{ color: Colors.error }}>*</Text></Text>
+                  <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
+                    <Ionicons name="cloud-upload-outline" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={styles.uploadBtnText}>{receipt ? 'Change Receipt Image' : 'Attach Receipt Image (PNG / JPG)'}</Text>
+                  </TouchableOpacity>
+                  {receipt && (
+                    <View style={styles.receiptPreview}>
+                      <Image source={{ uri: receipt.uri }} style={styles.receiptThumb} />
+                      <Text style={styles.receiptName} numberOfLines={1}>{receipt.name || 'receipt.jpg'}</Text>
+                      <Ionicons name="checkmark-circle" size={18} color="#15803d" />
+                    </View>
+                  )}
+                </View>
+
+                {/* Action buttons */}
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                  <TouchableOpacity 
+                    style={[styles.btnSecondary, { flex: 1, alignItems: 'center', paddingVertical: 12 }]} 
+                    onPress={() => setTransferModalOpen(false)}
+                  >
+                    <Text style={styles.btnSecondaryText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.primaryBtn, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} 
+                    onPress={handleProceedToConfirm}
+                  >
+                    <Text style={[styles.primaryBtnText, { fontSize: FontSize.sm }]}>Proceed to Confirm ➔</Text>
+                  </TouchableOpacity>
+                </View>
+
+              </ScrollView>
+            </View>
+
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
@@ -883,9 +903,9 @@ export default function TransfersScreen() {
       {confirmOpen && preview && (
         <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
           <View style={styles.modalBackdrop}>
-            <View style={styles.confirmModal}>
-              <Text style={styles.confirmTitle}>Transfer Summary</Text>
-              <Text style={styles.confirmSubtitle}>You are about to transfer funds.</Text>
+            <View style={[styles.confirmModal, { maxWidth: 540 }]}>
+              <Text style={styles.confirmTitle}>Confirm Transfer Summary</Text>
+              <Text style={styles.confirmSubtitle}>Please review transfer details before dispatching funds.</Text>
 
               <View style={styles.summaryTable}>
                 <View style={styles.summaryRow}>
@@ -908,7 +928,7 @@ export default function TransfersScreen() {
                 )}
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryKey}>Amount</Text>
-                  <Text style={[styles.summaryVal, { fontWeight: '700', color: Colors.primary }]}>
+                  <Text style={[styles.summaryVal, { fontWeight: '800', color: Colors.primary, fontSize: FontSize.base }]}>
                     {form.amount ? PKR(parseFloat(form.amount)) : '—'}
                   </Text>
                 </View>
@@ -934,7 +954,7 @@ export default function TransfersScreen() {
                   disabled={submitting} 
                   onPress={() => setConfirmOpen(false)}
                 >
-                  <Text style={styles.btnSecondaryText}>Cancel</Text>
+                  <Text style={styles.btnSecondaryText}>Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.primaryBtn, { paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }]} 
@@ -942,59 +962,7 @@ export default function TransfersScreen() {
                   onPress={initiate}
                 >
                   {submitting && <ActivityIndicator size="small" color="#fff" />}
-                  <Text style={styles.primaryBtnText}>{submitting ? 'Transferring…' : 'Confirm Transfer'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Rejection Modal */}
-      {rejectModalOpen && (
-        <Modal visible={rejectModalOpen} transparent animationType="fade" onRequestClose={() => setRejectModalOpen(false)}>
-          <View style={styles.modalBackdrop}>
-            <View style={styles.confirmModal}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <Text style={styles.confirmTitle}>Reject Transfer</Text>
-                <TouchableOpacity onPress={() => setRejectModalOpen(false)}>
-                  <Ionicons name="close" size={24} color={Colors.text} />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.confirmSubtitle}>Please specify the reason for rejecting this incoming transfer.</Text>
-
-              {rejectErr ? (
-                <View style={[styles.alertError, { marginBottom: 12 }]}>
-                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 6 }} />
-                  <Text style={styles.alertErrorText}>{rejectErr}</Text>
-                </View>
-              ) : null}
-
-              <TextInput
-                style={[styles.fieldInput, { height: 80, textAlignVertical: 'top' }]}
-                placeholder="Reason for rejection *"
-                multiline
-                value={rejectReason}
-                onChangeText={setRejectReason}
-              />
-
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 18, justifyContent: 'flex-end' }}>
-                <TouchableOpacity
-                  style={[styles.btnSecondary, { paddingHorizontal: 16, paddingVertical: 10 }]}
-                  disabled={rejecting}
-                  onPress={() => setRejectModalOpen(false)}
-                >
-                  <Text style={styles.btnSecondaryText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.btnSmall, { backgroundColor: Colors.error, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: Radius.md }]}
-                  disabled={rejecting}
-                  onPress={handleConfirmReject}
-                >
-                  {rejecting && <ActivityIndicator size="small" color="#fff" />}
-                  <Text style={{ color: '#fff', fontSize: FontSize.sm, fontWeight: '700' }}>
-                    {rejecting ? 'Rejecting…' : 'Reject Transfer'}
-                  </Text>
+                  <Text style={styles.primaryBtnText}>{submitting ? 'Transferring…' : 'Confirm & Send'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1006,9 +974,9 @@ export default function TransfersScreen() {
       {cancelModalOpen && cancelTarget && (
         <Modal visible={cancelModalOpen} transparent animationType="fade" onRequestClose={() => !cancelling && setCancelModalOpen(false)}>
           <View style={styles.modalBackdrop}>
-            <View style={styles.confirmModal}>
+            <View style={[styles.confirmModal, { maxWidth: 500 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={styles.confirmTitle}>Cancel Transfer</Text>
+                <Text style={styles.confirmTitle}>Cancel Pending Transfer</Text>
                 <TouchableOpacity onPress={() => !cancelling && setCancelModalOpen(false)}>
                   <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
@@ -1053,7 +1021,7 @@ export default function TransfersScreen() {
       {approveModalOpen && approveTarget && (
         <Modal visible={approveModalOpen} transparent animationType="slide" onRequestClose={() => !approving && setApproveModalOpen(false)}>
           <View style={styles.modalBackdrop}>
-            <View style={[styles.confirmModal, { maxHeight: '90%', width: '92%', maxWidth: 520 }]}>
+            <View style={[styles.confirmModal, { maxHeight: '90%', width: '92%', maxWidth: 540 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <View style={{ flex: 1, marginRight: 8 }}>
                   <Text style={styles.confirmTitle}>Review & Acknowledge</Text>
@@ -1104,7 +1072,7 @@ export default function TransfersScreen() {
                   <View style={{ borderRadius: Radius.md, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, backgroundColor: '#0f172a' }}>
                     <Image 
                       source={{ uri: resolveMediaUrl(approveTarget.receiptImageUrl) }} 
-                      style={{ width: '100%', height: 220 }} 
+                      style={{ width: '100%', height: Math.min(260, height * 0.35) }} 
                       resizeMode="contain" 
                     />
                     <TouchableOpacity 
@@ -1131,6 +1099,7 @@ export default function TransfersScreen() {
                 <TextInput
                   style={[styles.fieldInput, { height: 44 }]}
                   placeholder="e.g. Verified via Bank Alfalah ref #12345"
+                  placeholderTextColor={Colors.textMuted}
                   value={approveNote}
                   onChangeText={setApproveNote}
                 />
@@ -1175,14 +1144,18 @@ export default function TransfersScreen() {
       {previewUrl && (
         <Modal visible={!!previewUrl} transparent animationType="fade" onRequestClose={() => setPreviewUrl(null)}>
           <View style={styles.modalBackdrop}>
-            <View style={[styles.confirmModal, { maxWidth: 500, width: '92%' }]}>
+            <View style={[styles.confirmModal, { maxWidth: 640, width: '94%' }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={styles.confirmTitle}>Receipt / Proof of Payment</Text>
                 <TouchableOpacity onPress={() => setPreviewUrl(null)}>
                   <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
               </View>
-              <Image source={{ uri: resolveMediaUrl(previewUrl) }} style={{ width: '100%', height: 380, borderRadius: 8, backgroundColor: '#0f172a' }} resizeMode="contain" />
+              <Image 
+                source={{ uri: resolveMediaUrl(previewUrl) }} 
+                style={{ width: '100%', height: Math.min(420, height * 0.5), borderRadius: 8, backgroundColor: '#0f172a' }} 
+                resizeMode="contain" 
+              />
               <View style={{ marginTop: 16, alignItems: 'flex-end' }}>
                 <TouchableOpacity style={styles.btnSecondary} onPress={() => setPreviewUrl(null)}>
                   <Text style={styles.btnSecondaryText}>Close</Text>
@@ -1199,6 +1172,9 @@ export default function TransfersScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
+  mainContainer: { flex: 1, width: '100%' },
+  mainContainerTablet: { maxWidth: 1200, alignSelf: 'center' },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1208,19 +1184,33 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    flexWrap: 'wrap',
+    gap: 12,
   },
+  headerSmall: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+  },
+  headerTitleWrap: { flex: 1, minWidth: 180 },
   pageTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   pageSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  
   iconBtn: {
     backgroundColor: Colors.surfaceAlt,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+  },
+  iconBtnText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.text,
   },
   primaryBtn: {
     backgroundColor: Colors.primary,
@@ -1229,7 +1219,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
@@ -1246,7 +1236,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
   },
   btnSecondaryText: { color: Colors.text, fontSize: FontSize.sm, fontWeight: '600' },
-  btnSmall: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 4 },
+  btnSmall: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm },
   
   tierPillsWrapper: { paddingHorizontal: Spacing.lg, paddingVertical: 10, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
   tierPillsScroll: { flexDirection: 'row', gap: 8 },
@@ -1255,45 +1245,108 @@ const styles = StyleSheet.create({
   tierPillText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.text },
   tierPillTextActive: { color: '#fff', fontWeight: '700' },
 
-  banner: { marginHorizontal: Spacing.lg, marginVertical: 8, padding: 12, backgroundColor: '#f8fafc', borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
-  bannerText: { fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18 },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: Spacing.lg,
+    marginVertical: 10,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  bannerText: { flex: 1, fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18 },
 
-  tabRow: { flexDirection: 'row', paddingHorizontal: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.surface, marginTop: 4 },
-  tab: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
   tabActive: { borderBottomColor: Colors.primary },
   tabText: { fontSize: FontSize.sm, fontWeight: '500', color: Colors.textMuted },
   tabTextActive: { color: Colors.primary, fontWeight: '700' },
 
   tableScroll: { flex: 1, backgroundColor: Colors.surface },
-  thRow: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingVertical: 10, paddingHorizontal: Spacing.md },
+  thRow: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingVertical: 10, paddingHorizontal: Spacing.md, alignItems: 'center' },
   th: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase' },
-  tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingVertical: 10, paddingHorizontal: Spacing.md, alignItems: 'center' },
+  tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, paddingVertical: 12, paddingHorizontal: Spacing.md, alignItems: 'center' },
   td: { fontSize: FontSize.sm, color: Colors.text },
   emptyText: { textAlign: 'center', padding: Spacing.xl, color: Colors.textMuted, fontStyle: 'italic' },
+  receiptPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#eff6ff', borderRadius: Radius.sm, borderWidth: 1, borderColor: '#dbeafe' },
+  receiptPillText: { color: Colors.primary, fontWeight: '600', fontSize: FontSize.xs },
 
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.surface },
-  modalTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
-  formContent: { padding: Spacing.lg },
-  field: { marginBottom: 16 },
-  fieldLabel: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text, marginBottom: 6 },
-  fieldInput: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: FontSize.base, backgroundColor: Colors.surfaceAlt, color: Colors.text },
+  // Initiate Modal Styles
+  modalSafeWrapper: { flex: 1, backgroundColor: Colors.background },
+  modalSafeWrapperTablet: { backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: Spacing.lg },
+  modalCard: { flex: 1, backgroundColor: Colors.background },
+  modalCardTablet: {
+    width: '100%',
+    maxWidth: 960,
+    maxHeight: '92%',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    backgroundColor: '#f8fafc',
+  },
+  modalTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  closeBtn: { padding: 4 },
+
+  transferModalLayout: { flex: 1, flexDirection: 'column' },
+  transferModalLayoutTablet: { flexDirection: 'row' },
+  treeCol: { padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  treeColTablet: { flex: 1, borderBottomWidth: 0, borderRightWidth: 1, borderRightColor: Colors.border, padding: Spacing.lg },
+  treeContainer: { height: 280, backgroundColor: Colors.surface, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+
+  formCol: { flex: 1 },
+  formColTablet: { flex: 1.25 },
+  field: { marginBottom: 14 },
+  rowFields: { flexDirection: 'column' },
+  rowFieldsTablet: { flexDirection: 'row', gap: 12 },
+  fieldLabel: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.text, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.3 },
+  fieldInput: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: Radius.md, paddingHorizontal: 12, paddingVertical: 9, fontSize: FontSize.sm, backgroundColor: Colors.surfaceAlt, color: Colors.text },
   pickerWrapper: { borderWidth: 1.5, borderColor: Colors.border, borderRadius: Radius.md, backgroundColor: Colors.surfaceAlt, overflow: 'hidden' },
 
   endpointCard: { padding: 12, borderRadius: Radius.md, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.surfaceAlt },
   endpointLevel: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase' },
   endpointName: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text, marginTop: 2 },
 
-  uploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.primary, borderStyle: 'dashed', borderRadius: Radius.md, padding: 14, backgroundColor: '#f0f9ff' },
+  uploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.primary, borderStyle: 'dashed', borderRadius: Radius.md, padding: 12, backgroundColor: '#f0f9ff' },
   uploadBtnText: { color: Colors.primary, fontWeight: '700', fontSize: FontSize.sm },
   receiptPreview: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, padding: 8, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md },
-  receiptThumb: { width: 44, height: 44, borderRadius: 4 },
+  receiptThumb: { width: 40, height: 40, borderRadius: 4 },
   receiptName: { fontSize: FontSize.xs, color: Colors.text, flex: 1 },
 
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  confirmModal: { width: '100%', maxWidth: 520, backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
-  confirmTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
-  confirmSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2, marginBottom: 16 },
-  alertError: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, padding: 12, marginBottom: 16 },
+  // Generic Dialog Modal Styles
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  confirmModal: { width: '100%', maxWidth: 520, backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6 },
+  confirmTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  confirmSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2, marginBottom: 14 },
+  alertError: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, padding: 10, marginBottom: 14 },
   alertErrorText: { color: Colors.error, fontSize: FontSize.sm, fontWeight: '600', flex: 1 },
   summaryTable: { backgroundColor: '#f8fafc', borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, padding: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
