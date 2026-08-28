@@ -73,6 +73,7 @@ export default function MeetingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(null);
 
@@ -314,8 +315,11 @@ export default function MeetingsScreen() {
   }
 
   async function handleCreate() {
+    setFormError('');
     if (!form.title.trim() || !form.startAt) {
-      toast.error('Title and start date are required.');
+      const msg = 'Title and start date are required.';
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
     setSaving(true);
@@ -345,9 +349,12 @@ export default function MeetingsScreen() {
       toast.success('Meeting scheduled successfully.');
       setShowForm(false);
       setForm(EMPTY_FORM);
+      setFormError('');
       load();
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -366,8 +373,8 @@ export default function MeetingsScreen() {
     const isGbm = !isCng && !isJrg && (item.body === 'GENERAL_BODY' || item.typeCode === 'GBM');
 
     const streamLabel = isCng ? 'National Congress'
-      : (isJrg ? 'Jirga'
-      : (isCm ? 'Committee'
+      : (isJirgaView ? 'Jirga'
+      : (isCommitteeView ? 'Committee'
       : (isGbm ? 'General Body' : 'Executive')));
 
     return (
@@ -380,27 +387,26 @@ export default function MeetingsScreen() {
                 {streamLabel} · {shortDate(item.startAt)} {item.venue ? `· ${item.venue}` : ''}
               </Text>
             </View>
-            <Badge label={item.state || 'SCHEDULED'} color={statusColor} bg={statusBg} />
+            <Badge label={item.state} color={statusColor} bg={statusBg} />
           </View>
 
-          {item.chairpersonId?.fullName && (
-            <Text style={styles.chairpersonText}>
-              Chairperson: {item.chairpersonId.fullName}
-            </Text>
-          )}
+          {item.description ? (
+            <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+          ) : null}
 
           <View style={styles.cardFooter}>
-            <Text style={styles.footerInfo}>
-              👥 {item.attendance?.length || 0} attendees
-              {(item.photos || []).length > 0 ? ` · 📷 ${item.photos.length} photo(s)` : ''}
-              {(item.documents || []).length > 0 ? ` · 📎 ${item.documents.length} doc(s)` : ''}
-            </Text>
-            {isPureMember(user) && (
-              <Badge
-                label={isPresent ? 'Attended' : 'Absent'}
-                color={isPresent ? Colors.success : Colors.error}
-                bg={isPresent ? Colors.successBg : Colors.errorBg}
-              />
+            <View style={styles.metaRow}>
+              <Ionicons name="people-outline" size={14} color={Colors.textMuted} />
+              <Text style={styles.metaText}>{item.attendance?.length || 0} attendees</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Ionicons name="images-outline" size={14} color={Colors.textMuted} />
+              <Text style={styles.metaText}>{item.photos?.length || 0} photos</Text>
+            </View>
+            {item.state === 'SCHEDULED' && isPresent && (
+              <View style={styles.myStatusBadge}>
+                <Text style={styles.myStatusText}>Marked Present</Text>
+              </View>
             )}
           </View>
         </Card>
@@ -408,37 +414,63 @@ export default function MeetingsScreen() {
     );
   }
 
+  const pageTitle = isCongressView ? 'National Congress Meetings'
+    : (isJirgaView ? 'Jirga Meetings'
+    : (isCommitteeView ? 'Committee Meetings'
+    : 'Meetings'));
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Action Header */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>
-            {isCongressView ? 'National Congress' : (isJirgaView ? 'Jirga Meetings' : (isCommitteeView ? 'Committee Meetings' : 'Meetings'))}
-          </Text>
-          <Text style={styles.headerSub}>
-            {ctx?.unitName || 'Unit Meetings & Deliberations'}
+          <Text style={styles.headerTitle}>{pageTitle}</Text>
+          <Text style={styles.headerSubtitle}>
+            {ctx?.unitName ? `${ctx.unitName} · ` : ''}{activeLevel.replace('_', ' ')}
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.exportBtn} onPress={() => handleExport('pdf')} disabled={!!exporting}>
-            <Text style={styles.exportBtnText}>{exporting === 'pdf' ? '...' : 'PDF'}</Text>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => handleExport('pdf')}
+            disabled={!!exporting}
+          >
+            {exporting === 'pdf' ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.exportBtn} onPress={() => handleExport('xlsx')} disabled={!!exporting}>
-            <Text style={styles.exportBtnText}>{exporting === 'xlsx' ? '...' : 'Excel'}</Text>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => handleExport('xlsx')}
+            disabled={!!exporting}
+          >
+            {exporting === 'xlsx' ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="grid-outline" size={20} color={Colors.primary} />
+            )}
           </TouchableOpacity>
           {canManage && (
-            <TouchableOpacity style={styles.createBtn} onPress={() => setShowForm(true)}>
-              <Ionicons name="add" size={16} color="#fff" style={{ marginRight: 2 }} />
-              <Text style={styles.createBtnText}>Schedule</Text>
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={() => {
+                setForm(EMPTY_FORM);
+                setFormError('');
+                setShowForm(true);
+              }}
+            >
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={styles.primaryBtnText}>Schedule</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Stream Tabs */}
+      {/* Body tabs if multiple streams */}
       {tabs.length > 0 && (
-        <View style={styles.tabsRow}>
+        <View style={styles.tabBar}>
           {tabs.map((t) => (
             <TouchableOpacity
               key={t.value}
@@ -453,26 +485,28 @@ export default function MeetingsScreen() {
         </View>
       )}
 
-      {/* Meeting List */}
+      {/* List */}
       <FlatList
         data={displayedItems}
-        renderItem={renderMeetingItem}
         keyExtractor={(item) => item._id}
+        renderItem={renderMeetingItem}
         contentContainerStyle={styles.list}
         refreshing={refreshing}
         onRefresh={onRefresh}
         ListEmptyComponent={
-          !loading && (
+          loading ? (
+            <ActivityIndicator style={{ marginTop: 40 }} color={Colors.primary} />
+          ) : (
             <EmptyState
-              icon="📅"
+              icon="calendar-outline"
               title="No meetings found"
-              subtitle={canManage ? 'Tap "+ Schedule" above to organize a meeting.' : 'No meetings have been logged for this scope.'}
+              subtitle={canManage ? 'Tap "Schedule" above to organize a new meeting.' : 'No meetings recorded for this unit.'}
             />
           )
         }
       />
 
-      {/* Schedule Meeting Modal */}
+      {/* Create / Schedule Modal */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -487,6 +521,13 @@ export default function MeetingsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
+              {formError ? (
+                <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 16 }}>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Could not schedule meeting:</Text>
+                  <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{formError}</Text>
+                </View>
+              ) : null}
+
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Meeting Type</Text>
                 <View style={styles.pickerWrap}>
@@ -637,8 +678,34 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
   },
   headerTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
-  headerSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  headerSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconBtn: {
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  primaryBtnText: { fontSize: FontSize.xs, fontWeight: '700', color: '#fff' },
   exportBtn: {
     backgroundColor: Colors.surfaceAlt,
     paddingVertical: 7,
@@ -659,6 +726,15 @@ const styles = StyleSheet.create({
   createBtnText: { fontSize: FontSize.xs, fontWeight: '700', color: '#fff' },
 
   // Tabs
+  tabBar: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 8,
+  },
   tabsRow: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
@@ -684,16 +760,21 @@ const styles = StyleSheet.create({
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
   cardTitle: { fontSize: FontSize.base, fontWeight: '700', color: Colors.text, marginBottom: 2 },
   cardSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted },
+  cardDesc: { fontSize: FontSize.xs, color: Colors.text, marginTop: 6, lineHeight: 16 },
   chairpersonText: { fontSize: FontSize.xs, color: Colors.text, marginTop: 6, fontWeight: '500' },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
     marginTop: Spacing.sm,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
     borderTopColor: Colors.borderLight,
   },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: FontSize.xs, color: Colors.textMuted },
+  myStatusBadge: { backgroundColor: Colors.successBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 'auto' },
+  myStatusText: { fontSize: 10, fontWeight: '700', color: Colors.success },
   footerInfo: { fontSize: FontSize.xs, color: Colors.textMuted },
 
   // Modal

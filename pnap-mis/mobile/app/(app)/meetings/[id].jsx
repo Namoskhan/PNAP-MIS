@@ -67,6 +67,12 @@ export default function MeetingDetailScreen() {
   const [showCancel, setShowCancel] = useState(false);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
+  // In-modal error messages
+  const [photoError, setPhotoError] = useState('');
+  const [finalizeError, setFinalizeError] = useState('');
+  const [docError, setDocError] = useState('');
+  const [cancelError, setCancelError] = useState('');
+
   // Cancel state
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
@@ -165,8 +171,11 @@ export default function MeetingDetailScreen() {
   }
 
   async function submitFinalize() {
+    setFinalizeError('');
     if (!previouswork.trim()) {
-      toast.error('Previous work / Decisions are required.');
+      const msg = 'Previous work / Decisions are required.';
+      setFinalizeError(msg);
+      toast.error(msg);
       return;
     }
     setFinalizingBusy(true);
@@ -182,17 +191,23 @@ export default function MeetingDetailScreen() {
       await api.post(`/meetings/${meeting._id}/finalize`, payload);
       toast.success('Meeting finalized successfully.');
       setShowFinalize(false);
+      setFinalizeError('');
       load();
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setFinalizeError(msg);
+      toast.error(msg);
     } finally {
       setFinalizingBusy(false);
     }
   }
 
   async function handleCancelSubmit() {
+    setCancelError('');
     if (!cancelReason.trim()) {
-      toast.error('Please enter a cancellation reason.');
+      const msg = 'Please enter a cancellation reason.';
+      setCancelError(msg);
+      toast.error(msg);
       return;
     }
     setCancelling(true);
@@ -201,20 +216,25 @@ export default function MeetingDetailScreen() {
       toast.success('Meeting cancelled.');
       setShowCancel(false);
       setCancelReason('');
+      setCancelError('');
       load();
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setCancelError(msg);
+      toast.error(msg);
     } finally {
       setCancelling(false);
     }
   }
 
   async function handleUploadPhoto() {
+    setPhotoError('');
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
-        quality: 0.8,
+        quality: 0.85,
+        exif: true,
       });
       if (result.canceled || !result.assets?.length) return;
 
@@ -222,9 +242,20 @@ export default function MeetingDetailScreen() {
       toast.show('Uploading photos...', 'info');
 
       const fd = new FormData();
-      result.assets.slice(0, 10).forEach((asset, i) => {
+      for (let i = 0; i < result.assets.slice(0, 10).length; i++) {
+        const asset = result.assets[i];
         if (Platform.OS === 'web') {
-          fd.append('photos', asset.file || asset.uri);
+          if (asset.file) {
+            fd.append('photos', asset.file);
+          } else if (asset.uri) {
+            try {
+              const res = await fetch(asset.uri);
+              const blob = await res.blob();
+              fd.append('photos', blob, asset.fileName || `photo_${Date.now()}_${i}.jpg`);
+            } catch {
+              fd.append('photos', asset.uri);
+            }
+          }
         } else {
           fd.append('photos', {
             uri: asset.uri,
@@ -232,7 +263,7 @@ export default function MeetingDetailScreen() {
             type: asset.mimeType || 'image/jpeg',
           });
         }
-      });
+      }
 
       const r = await api.post(`/meetings/${meeting._id}/photos`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -242,11 +273,15 @@ export default function MeetingDetailScreen() {
         toast.success(`${data.accepted.length} photo(s) added.`);
       }
       if (data.rejected?.length) {
-        toast.error(`Some photos were rejected (GPS/EXIF check).`);
+        const rejectMsg = data.rejected.map((rj) => `${rj.filename || 'Photo'}: ${rj.reason}`).join('\n');
+        setPhotoError(rejectMsg);
+        toast.error(`Rejected: ${data.rejected[0]?.reason || 'GPS/EXIF check failed'}`);
       }
       load();
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setPhotoError(msg);
+      toast.error(msg);
     } finally {
       setUploadingPhoto(false);
     }
@@ -531,6 +566,13 @@ export default function MeetingDetailScreen() {
             ) : <View style={{ width: 40 }} />}
           </View>
           <ScrollView contentContainerStyle={styles.formContent}>
+            {photoError ? (
+              <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
+                <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Photo Rejection Details:</Text>
+                <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4, lineHeight: 17 }}>{photoError}</Text>
+              </View>
+            ) : null}
+
             {photos.length === 0 ? (
               <EmptyState icon="📷" title="No photos uploaded" subtitle="Take or upload meeting photos for geo-fencing and record sealing." />
             ) : (
@@ -586,6 +628,13 @@ export default function MeetingDetailScreen() {
             <View style={{ width: 40 }} />
           </View>
           <ScrollView contentContainerStyle={styles.formContent}>
+            {docError ? (
+              <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
+                <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Document Error:</Text>
+                <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{docError}</Text>
+              </View>
+            ) : null}
+
             {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
               <Card style={{ marginBottom: Spacing.lg }}>
                 <Text style={styles.fieldLabel}>Upload New Document</Text>
@@ -637,6 +686,11 @@ export default function MeetingDetailScreen() {
           <View style={styles.dialogCard}>
             <Text style={styles.dialogTitle}>Cancel Meeting</Text>
             <Text style={styles.dialogSubtitle}>Please provide a reason for cancelling this meeting:</Text>
+            {cancelError ? (
+              <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginVertical: 6 }}>
+                <Text style={{ color: '#b91c1c', fontSize: 12, fontWeight: '600' }}>⚠️ {cancelError}</Text>
+              </View>
+            ) : null}
             <TextInput
               style={[styles.fieldInput, { minHeight: 80, textAlignVertical: 'top', marginTop: 10 }]}
               placeholder="Cancellation reason..."
@@ -673,6 +727,13 @@ export default function MeetingDetailScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
+              {finalizeError ? (
+                <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Finalization Error:</Text>
+                  <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{finalizeError}</Text>
+                </View>
+              ) : null}
+
               {/* Previous work / Decisions */}
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Previous Work / Decisions *</Text>
