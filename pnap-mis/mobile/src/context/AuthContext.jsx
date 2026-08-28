@@ -101,11 +101,14 @@ export function AuthProvider({ children }) {
       return { ...user, allRoles: all };
     }
     const perms = user.rolePermissions?.[activeRole] || user.permissions || [];
+    const EXECUTIVE_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'CHAIRMAN', 'CO_CHAIRMAN', 'SR_VICE_CHAIRMAN', 'VICE_CHAIRMAN', 'FIRST_SECRETARY'];
+    const canViewExec = EXECUTIVE_ROLES.includes(activeRole) || (activeRole === 'GENERAL_SECRETARY' && !user.scope?.provinceId);
     return {
       ...user,
       roles: [activeRole],
       allRoles: all,
       permissions: perms,
+      canViewExecutiveDashboard: canViewExec,
     };
   }, [user, activeRole]);
 

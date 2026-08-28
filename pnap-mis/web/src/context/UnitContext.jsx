@@ -258,7 +258,10 @@ export function UnitProvider({ children }) {
     const myChairmanRole = isCentralChairmanOnly
       ? centralChairmanRoles.find((r) => user.roles?.includes(r))
       : null;
-    const pinRoleCode = isSeniorMawin ? 'SENIOR_MAWIN'
+    const activeSingleRole = (user.roles?.length === 1 && user.roles[0] !== 'MEMBER') ? user.roles[0] : null;
+
+    const pinRoleCode = activeSingleRole || (
+      isSeniorMawin ? 'SENIOR_MAWIN'
       : isSrVicePresident ? 'SR_VICE_PRESIDENT'
       : isFirstSecretary ? 'FIRST_SECRETARY'
       : isUnitSecretary ? 'SECRETARY'
@@ -268,20 +271,21 @@ export function UnitProvider({ children }) {
       : isGeneralSecretaryOnly ? 'GENERAL_SECRETARY'
       : myChairmanRole
       ? myChairmanRole
-      : null;
-    // Custom catalogue roles (CUSTOM_*) aren't in the persona chain
+      : null
+    );
+    // Custom catalogue roles (CUSTOM_*) or other cabinet roles aren't in the persona chain
     // above, but their holders still operate at the unit where the
-    // role is assigned — pin ctx from their first active assignment
+    // role is assigned — pin ctx from their active assignment
     // so unit pages (meetings, finance, cabinet) target the right
     // unit instead of nagging "select a unit context".
-    const needsGenericPin = !pinRoleCode && !isHigherAdmin
+    const needsGenericPin = !isHigherAdmin
       && !user.roles?.includes('AREA_ADMIN') && !isPureMember && !!user.memberId;
     if ((pinRoleCode || needsGenericPin) && user.memberId) {
       api.get('/roles', { params: { memberId: user.memberId, state: 'APPROVED' } })
         .then(async (r) => {
           const list = r.data.data || [];
           const sm = pinRoleCode
-            ? list.find((a) => a.roleCode === pinRoleCode && !a.endedAt)
+            ? (list.find((a) => a.roleCode === pinRoleCode && !a.endedAt) || list.find((a) => !a.endedAt))
             : list.find((a) => !a.endedAt);
           if (!sm) return;
           // Already pinned to this unit — skip the redundant setCtx
@@ -292,22 +296,22 @@ export function UnitProvider({ children }) {
           // Look up a friendly name for the unit so the page header
           // reads "Cabinet · Block 1" instead of an ObjectId.
           try {
-            if (sm.unitLevel === 'BASIC_UNIT' && user.scope?.areaId) {
-              const lst = await api.get('/org/basic-units', { params: { areaId: user.scope.areaId } });
-              const u = lst.data.data.find((b) => String(b._id) === String(sm.unitId));
-              unitName = u?.name || '';
-            } else if (sm.unitLevel === 'AREA' && user.scope?.districtId) {
-              const lst = await api.get('/org/areas', { params: { districtId: user.scope.districtId } });
-              const u = lst.data.data.find((a) => String(a._id) === String(sm.unitId));
-              unitName = u?.name || '';
-            } else if (sm.unitLevel === 'DISTRICT' && user.scope?.provinceId) {
-              const lst = await api.get('/org/districts', { params: { provinceId: user.scope.provinceId } });
-              const u = lst.data.data.find((d) => String(d._id) === String(sm.unitId));
-              unitName = u?.name || '';
+            if (sm.unitLevel === 'BASIC_UNIT') {
+              const lst = await api.get('/org/basic-units', { params: user.scope?.areaId ? { areaId: user.scope.areaId } : undefined });
+              const u = (lst.data.data || []).find((b) => String(b._id) === String(sm.unitId));
+              unitName = u?.name || user.scope?.basicUnitName || '';
+            } else if (sm.unitLevel === 'AREA') {
+              const lst = await api.get('/org/areas', { params: user.scope?.districtId ? { districtId: user.scope.districtId } : undefined });
+              const u = (lst.data.data || []).find((a) => String(a._id) === String(sm.unitId));
+              unitName = u?.name || user.scope?.areaName || '';
+            } else if (sm.unitLevel === 'DISTRICT') {
+              const lst = await api.get('/org/districts', { params: user.scope?.provinceId ? { provinceId: user.scope.provinceId } : undefined });
+              const u = (lst.data.data || []).find((d) => String(d._id) === String(sm.unitId));
+              unitName = u?.name || user.scope?.districtName || '';
             } else if (sm.unitLevel === 'PROVINCE') {
               const lst = await api.get('/org/provinces');
-              const u = lst.data.data.find((p) => String(p._id) === String(sm.unitId));
-              unitName = u?.name || '';
+              const u = (lst.data.data || []).find((p) => String(p._id) === String(sm.unitId));
+              unitName = u?.name || user.scope?.provinceName || '';
             } else if (sm.unitLevel === 'CENTRAL') {
               try {
                 const c = await api.get('/org/central');
