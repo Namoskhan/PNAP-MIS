@@ -1,9 +1,13 @@
+const mongoose = require('mongoose');
 const AuditLog = require('../models/AuditLog');
 
 // Fire-and-forget audit logger. Never blocks the request — failures
 // are logged to console but don't propagate, so a momentarily
 // unavailable AuditLog collection can't break the underlying action.
 async function audit({ req, action, targetType, targetId, targetLabel, before, after, note }) {
+  const validTargetId = mongoose.Types.ObjectId.isValid(targetId) ? targetId : undefined;
+  const label = targetLabel || (targetId && !validTargetId ? String(targetId) : undefined);
+
   try {
     await AuditLog.create({
       actorUserId: req.user?._id,
@@ -11,8 +15,8 @@ async function audit({ req, action, targetType, targetId, targetLabel, before, a
       actorIdentifier: req.user?.username || req.user?.email || req.user?.cnic || '',
       action,
       targetType,
-      targetId,
-      targetLabel,
+      targetId: validTargetId,
+      targetLabel: label,
       note,
       before,
       after,
@@ -43,8 +47,8 @@ async function audit({ req, action, targetType, targetId, targetLabel, before, a
       req,
       chain,
       targetType,
-      targetId,
-      targetLabel: targetLabel || action,
+      targetId: validTargetId,
+      targetLabel: label || action,
     });
   } catch (err) {
     console.warn(`[audit] activity mirror failed for ${action}: ${err.message}`);

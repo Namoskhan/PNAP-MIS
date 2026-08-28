@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,6 +7,7 @@ import { api, errorMessage, SERVER_BASE } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
+import { confirmAction } from '../../../../src/utils/dialog';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
 
 const SLOTS = [
@@ -113,12 +114,10 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
         quality: 1,
       });
 
-      if (result.canceled) return;
+      if (result.canceled || !result.assets?.[0]) return;
       
       const asset = result.assets[0];
       
-      // We don't have file size readily available from image picker in all cases,
-      // but we'll try to fetch it if fileSize exists or let the server reject it.
       if (asset.fileSize && asset.fileSize > MAX_BYTES) {
         toast.error(`File is over the 5 MB limit.`);
         return;
@@ -128,27 +127,26 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
       setBusy(true);
 
       const fd = new FormData();
-      fd.append('logo', {
-        uri: asset.uri,
-        name: asset.fileName || `${slot}.jpg`,
-        type: asset.mimeType || 'image/jpeg'
-      });
-
-      // We need to use fetch directly or ensure api.post handles FormData correctly in RN
-      const token = await api.getToken?.() || null;
-      const headers = { 'Content-Type': 'multipart/form-data' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      
-      const baseUrl = api.defaults.baseURL;
-      const res = await fetch(`${baseUrl}/settings/logos/${slot}`, {
-        method: 'POST',
-        headers,
-        body: fd
-      });
-
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody?.error?.message || `Upload failed (${res.status})`);
+      if (Platform.OS === 'web') {
+        let fileObj = asset.file;
+        if (!fileObj && asset.uri) {
+          const r = await fetch(asset.uri);
+          const blob = await r.blob();
+          fileObj = new File([blob], asset.fileName || `${slot}.jpg`, {
+            type: asset.mimeType || blob.type || 'image/jpeg',
+          });
+        }
+        fd.append('logo', fileObj);
+        await api.post(`/settings/logos/${slot}`, fd);
+      } else {
+        fd.append('logo', {
+          uri: asset.uri,
+          name: asset.fileName || `${slot}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+        });
+        await api.post(`/settings/logos/${slot}`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
       }
       
       toast.success(`${label} uploaded.`);
@@ -162,28 +160,22 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
   }
 
   function resetImage() {
-    Alert.alert(
+    confirmAction(
       'Confirm Reset',
       `Reset ${label}? The current image will be removed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Reset', 
-          style: 'destructive',
-          onPress: async () => {
-            setBusy(true);
-            try {
-              await api.post(`/settings/logos/${slot}/reset`);
-              toast.success(`${label} reset to default.`);
-              onChanged();
-            } catch (e) {
-              toast.error(errorMessage(e));
-            } finally {
-              setBusy(false);
-            }
-          }
+      async () => {
+        setBusy(true);
+        try {
+          await api.post(`/settings/logos/${slot}/reset`);
+          toast.success(`${label} reset to default.`);
+          onChanged();
+        } catch (e) {
+          toast.error(errorMessage(e));
+        } finally {
+          setBusy(false);
         }
-      ]
+      },
+      { destructive: true, confirmText: 'Reset' }
     );
   }
 
