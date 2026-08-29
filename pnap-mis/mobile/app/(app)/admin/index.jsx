@@ -43,6 +43,7 @@ export default function AdminHubScreen() {
   const isFinanceSec = isFinanceOnly(user);
   const isPresident = isPresidentPersona(user);
   const isSecretary = isSecretaryOnly(user) || (hasRole(user, 'SECRETARY') && !isHigherAdmin(user) && !isArea);
+  const isMember = isPureMember(user);
   const isCabinet = (Array.isArray(CABINET_ROLES) && CABINET_ROLES.some((r) => hasRole(user, r))) || !isPureMember(user);
 
   const tierTitle = isSuper
@@ -55,11 +56,15 @@ export default function AdminHubScreen() {
           ? 'District Admin'
           : isArea
             ? 'Area Admin'
-            : (roleLabel(user, user?.roles?.[0]) || 'Admin');
+            : isMember
+              ? 'Member'
+              : (roleLabel(user, user?.roles?.[0]) || 'Cabinet');
 
   const unitDisplayName = isCentral || isSuper
     ? 'PKNAP Central'
-    : (ctx?.unitName || 'Administrative Control Center');
+    : isMember
+      ? (ctx?.unitName ? `Basic Unit · ${ctx.unitName}` : 'My Unit Operations')
+      : (ctx?.unitName || 'Administrative Control Center');
 
   const sections = [
     // 1. Super Admin God Mode
@@ -226,7 +231,22 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 7. Committee (Central / Sobayi / Zilla / Elaqayi Committee)
+    // 7. Member Operations
+    {
+      key: 'member_ops',
+      title: 'My Unit Operations',
+      icon: '⚡',
+      show: () => isMember,
+      items: [
+        { key: 'm-dash', icon: '🏠', title: 'Dashboard', description: 'My Member Overview & Stats', route: '/' },
+        { key: 'm-meetings', icon: '📅', title: 'Meetings', description: 'Unit meetings schedule & minutes', route: '/meetings' },
+        { key: 'm-activities', icon: '🎯', title: 'Activities', description: 'Unit activities, events & campaigns', route: '/activities' },
+        { key: 'm-responsibilities', icon: '📋', title: 'My Responsibilities', description: 'Assigned tasks, duties & due dates', route: '/admin/responsibilities' },
+        { key: 'm-profile', icon: '🪪', title: 'My Profile', description: 'Digital ID card, credentials & unit details', route: '/profile' },
+      ],
+    },
+
+    // 8. Committee (Central / Sobayi / Zilla / Elaqayi Committee)
     {
       key: 'committee',
       title: isSuper || isCentral || ctx?.unitLevel === 'CENTRAL'
@@ -250,7 +270,7 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 8. National Congress (Exclusively Central Level)
+    // 9. National Congress (Exclusively Central Level)
     {
       key: 'congress',
       title: 'National Congress',
@@ -265,7 +285,7 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 9. Jirga (Sobayi Jirga for Province / Qomi Jirga for Central)
+    // 10. Jirga (Sobayi Jirga for Province / Qomi Jirga for Central)
     {
       key: 'jirga',
       title: (ctx?.unitLevel === 'CENTRAL' || (!ctx?.unitLevel && (isSuper || isCentral))) ? 'Qomi Jirga' : 'Sobayi Jirga',
@@ -287,7 +307,7 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 10. Communication (Always available)
+    // 11. Communication (Always available)
     {
       key: 'communication',
       title: 'Communication & Broadcasts',
@@ -313,6 +333,7 @@ export default function AdminHubScreen() {
     my_district: true,
     my_area: true,
     admin_tools: true,
+    member_ops: true,
     committee: true,
     congress: false,
     jirga: true,

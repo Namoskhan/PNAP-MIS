@@ -3,7 +3,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { ActivityIndicator, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
-import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
+import { canManageFinance, isHigherAdmin, isAreaAdmin, isSuperAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
 
 function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size ? Math.min(size, 22) : 22} color={color} />;
@@ -22,8 +22,11 @@ export default function AppLayout() {
 
   if (!user) return <Redirect href="/login" />;
 
-  const showFinance = canManageFinance(user);
-  const showAdmin = !isPureMember(user) || isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_SYSTEM_BRANDING');
+  const isMember = isPureMember(user);
+  const isAdminRole = isSuperAdmin(user) || isHigherAdmin(user) || isAreaAdmin(user);
+  const tabTitle = isAdminRole ? 'Admin' : (isMember ? 'Portal' : 'Cabinet');
+  const headerTitle = isAdminRole ? 'Admin Panel' : (isMember ? 'Member Portal' : 'Cabinet Hub');
+  const iconName = isAdminRole ? 'shield-checkmark' : (isMember ? 'apps' : 'briefcase');
 
   return (
     <Tabs
@@ -84,19 +87,17 @@ export default function AppLayout() {
         }}
       />
 
-      {/* ─── 3. Admin Tab ─── */}
-      {showAdmin ? (
-        <Tabs.Screen
-          name="admin/index"
-          options={{
-            title: 'Admin',
-            tabBarIcon: ({ color, size }) => <TabIcon name="shield-checkmark" color={color} size={size} />,
-            headerTitle: 'Admin Panel',
-          }}
-        />
-      ) : (
-        <Tabs.Screen name="admin/index" options={{ href: null }} />
-      )}
+      {/* ─── 3. Admin / Cabinet / Member Portal Tab ─── */}
+      <Tabs.Screen
+        name="admin/index"
+        options={{
+          title: tabTitle,
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name={iconName} color={color} size={size} />
+          ),
+          headerTitle: headerTitle,
+        }}
+      />
 
       {/* ─── All Sub-Screens Hidden from Tab Bar (href: null) ─── */}
       {/* Activities & Meetings */}
