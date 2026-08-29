@@ -114,6 +114,19 @@ export default function FinanceScreen() {
   }, [rawUnitId, activeLevel]);
 
   const [tab, setTab] = useState('DONATIONS');
+
+  const financeTabs = useMemo(() => {
+    if (isCongressView) {
+      return FINANCE_TABS.filter((t) => t.value !== 'TRANSFERS');
+    }
+    return FINANCE_TABS;
+  }, [isCongressView]);
+
+  useEffect(() => {
+    if (isCongressView && tab === 'TRANSFERS') {
+      setTab('DONATIONS');
+    }
+  }, [isCongressView, tab]);
   const [donations, setDonations] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [monthly, setMonthly] = useState([]);
@@ -657,16 +670,18 @@ export default function FinanceScreen() {
             </View>
 
             <View style={styles.headerActionsRow}>
-              <TouchableOpacity
-                style={styles.btnExport}
-                onPress={() => router.push({
-                  pathname: '/finance/transfers',
-                  params: { body: targetBody, unitLevel: activeLevel, unitId: resolvedUnitId }
-                })}
-              >
-                <Ionicons name="swap-horizontal-outline" size={15} color={Colors.primary} />
-                <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>Transfers</Text>
-              </TouchableOpacity>
+              {!isCongressView && (
+                <TouchableOpacity
+                  style={styles.btnExport}
+                  onPress={() => router.push({
+                    pathname: '/finance/transfers',
+                    params: { body: targetBody, unitLevel: activeLevel, unitId: resolvedUnitId }
+                  })}
+                >
+                  <Ionicons name="swap-horizontal-outline" size={15} color={Colors.primary} />
+                  <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>Transfers</Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={[styles.btnExport, exporting === 'pdf' && { opacity: 0.6 }]}
@@ -731,7 +746,7 @@ export default function FinanceScreen() {
                 </View>
 
                 {/* Transfers In KPI */}
-                {summary.transfersIn ? (
+                {!isCongressView && summary.transfersIn ? (
                   <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#0284c7' }]}>
                     <View style={styles.kpiHeaderRow}>
                       <Text style={styles.kpiLabel}>Transfers In</Text>
@@ -745,7 +760,7 @@ export default function FinanceScreen() {
                 ) : null}
 
                 {/* Transfers Out KPI */}
-                {summary.transfersOut ? (
+                {!isCongressView && summary.transfersOut ? (
                   <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#d97706' }]}>
                     <View style={styles.kpiHeaderRow}>
                       <Text style={styles.kpiLabel}>Transfers Out</Text>
@@ -774,7 +789,7 @@ export default function FinanceScreen() {
                     {PKR(summary.availableBalance ?? summary.balance ?? 0)}
                   </Text>
                   <View style={{ marginTop: 4 }}>
-                    {summary.pendingTransfersOut?.total > 0 ? (
+                    {!isCongressView && summary.pendingTransfersOut?.total > 0 ? (
                       <Text style={{ fontSize: 10, color: '#d97706', fontWeight: '600' }}>
                         ⚠️ {PKR(summary.pendingTransfersOut.total)} in pending out
                       </Text>
@@ -792,7 +807,7 @@ export default function FinanceScreen() {
           {/* Tab & Action Toolbar */}
           <View style={[styles.toolbarSection, isSmall && styles.toolbarSectionSmall]}>
             <View style={styles.segmentedControl}>
-              {FINANCE_TABS.map((t) => {
+              {financeTabs.map((t) => {
                 const active = tab === t.value;
                 return (
                   <TouchableOpacity
