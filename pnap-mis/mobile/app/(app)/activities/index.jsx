@@ -24,7 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage } from '../../../src/api/client';
-import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin } from '../../../src/utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, isHigherAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Badge from '../../../src/components/Badge';
 import DateTimePicker from '../../../src/components/DateTimePicker';
@@ -34,7 +34,7 @@ import { downloadAndShare } from '../../../src/utils/export';
 import { formatUnitArrangedBy } from '../../../src/utils/unitFormat';
 import useEventTypes from '../../../src/hooks/useEventTypes';
 
-const DEFAULT_TYPE_CODE = 'CAMPAIGN';
+const DEFAULT_TYPE_CODE = 'COR';
 const MAX_PHOTOS = 10;
 
 const EMPTY_FORM = {
@@ -52,11 +52,9 @@ const EMPTY_FORM = {
   campaign_volunteerHours: '',
 };
 
-function ageLabel(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+function timeAgo(date) {
+  if (!date) return '—';
+  const diffDays = Math.floor((Date.now() - new Date(date)) / (1000 * 60 * 60 * 24));
   if (diffDays === 0) return 'today';
   if (diffDays === 1) return 'yesterday';
   return `${diffDays} days ago`;
@@ -73,7 +71,7 @@ function gmapsLink(lat, lng) {
 
 export default function ActivitiesScreen() {
   const { user } = useAuth();
-  const { ctx, provinces } = useUnit();
+  const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
 
@@ -83,25 +81,8 @@ export default function ActivitiesScreen() {
   const isCommitteeView = queryBody === 'COMMITTEE';
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
-  const [jirgaLevel, setJirgaLevel] = useState(() => {
-    if (params.unitLevel) return params.unitLevel;
-    return 'PROVINCE';
-  });
-  const [jirgaUnitId, setJirgaUnitId] = useState(() => {
-    if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    return provinces?.[0]?._id || '';
-  });
-
-  // Sync with provinces when they become available
-  useEffect(() => {
-    if (isJirgaView && !jirgaUnitId && provinces && provinces.length > 0) {
-      setJirgaLevel('PROVINCE');
-      setJirgaUnitId(provinces[0]._id);
-    }
-  }, [provinces, isJirgaView, jirgaUnitId]);
-
-  const activeLevel = isJirgaView ? jirgaLevel : (params.unitLevel || ctx?.unitLevel || 'CENTRAL');
-  const rawUnitId = isJirgaView ? jirgaUnitId : (params.unitId || ctx?.unitId || '');
+  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
+  const rawUnitId = params.unitId || ctx?.unitId || '';
   const canManage = canManageMeetings(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
@@ -560,18 +541,79 @@ export default function ActivitiesScreen() {
     </View>
   );
 
-  const selectedProvince = isJirgaView ? (provinces || []).find((p) => String(p._id) === String(jirgaUnitId)) : null;
   const pageTitle = isCongressView
-    ? 'National Congress Activities · PKNAP Central'
+    ? 'National Congress Activities'
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Activities · PKNAP Central' : `Sobayi Jirga Activities · ${selectedProvince?.name || 'Province'}`)
-      : (isCommitteeView ? `Committee Activities · ${ctx?.unitName || 'PKNAP Central'}` : `Executive Activities · ${ctx?.unitName || 'PKNAP Central'}`));
+      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Activities' : 'Sobayi Jirga Activities')
+      : (isCommitteeView ? 'Committee Activities' : 'Activities'));
 
   const recordBtnLabel = isCongressView
     ? '+ Record Congress Activity'
     : (isJirgaView
       ? '+ Record Jirga Activity'
       : (isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity'));
+
+  // If user opened Jirga stream but is below Province tier, show guidance card
+  if (isJirgaView && activeLevel !== 'CENTRAL' && activeLevel !== 'PROVINCE') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
+            <Text style={styles.guidanceText}>
+              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              {isHigherAdmin(user) && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnPrimary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                  }}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                </TouchableOpacity>
+              )}
+
+              {user?.scope?.provinceId && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnSecondary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                </TouchableOpacity>
+              )}
+
+              {isHigherAdmin(user) && provinces && provinces.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <View style={styles.provGrid}>
+                    {provinces.map((prov) => (
+                      <TouchableOpacity
+                        key={prov._id}
+                        style={styles.provPillBtn}
+                        onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
+                      >
+                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -614,42 +656,6 @@ export default function ActivitiesScreen() {
           )}
         </View>
       </View>
-
-      {/* Province Switcher Pills for Jirga */}
-      {isJirgaView && provinces && provinces.length > 0 && (
-        <View style={styles.tierPillsWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
-            {provinces.map((prov) => {
-              const isActive = jirgaLevel === 'PROVINCE' && String(jirgaUnitId) === String(prov._id);
-              return (
-                <TouchableOpacity
-                  key={prov._id}
-                  style={[styles.tierPill, isActive && styles.tierPillActive]}
-                  onPress={() => {
-                    setJirgaLevel('PROVINCE');
-                    setJirgaUnitId(prov._id);
-                  }}
-                >
-                  <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
-                    {prov.name} Sobayi Jirga
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-            <TouchableOpacity
-              style={[styles.tierPill, jirgaLevel === 'CENTRAL' && styles.tierPillActive]}
-              onPress={() => {
-                setJirgaLevel('CENTRAL');
-                setJirgaUnitId('CENTRAL');
-              }}
-            >
-              <Text style={[styles.tierPillText, jirgaLevel === 'CENTRAL' && styles.tierPillTextActive]}>
-                Qomi Jirga (Central)
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      )}
 
       <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
         <View style={{ flex: 1 }}>
@@ -1055,4 +1061,98 @@ const styles = StyleSheet.create({
   },
   thumbBtnActive: { borderColor: Colors.primary, borderWidth: 2 },
   thumbImg: { width: '100%', height: '100%' },
+
+  // Guidance Card (when on lower tier context)
+  guidanceCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: Spacing.lg,
+  },
+  guidanceIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  guidanceTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  guidanceText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  guidanceBtnCol: {
+    width: '100%',
+    gap: 10,
+  },
+  guidanceBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnPrimaryText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnSecondaryText: {
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceSubHead: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  provGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  provPillBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  provPillBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

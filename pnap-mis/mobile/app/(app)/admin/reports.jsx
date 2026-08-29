@@ -47,17 +47,8 @@ export default function ReportsScreen() {
   const [unitSwitcherVisible, setUnitSwitcherVisible] = useState(false);
 
   // Derive active unit from route params OR context directly
-  const activeLevel = useMemo(() => {
-    if (params.unitLevel) return params.unitLevel;
-    if (isJirgaView && provinces && provinces.length > 0 && !ctx?.unitLevel) return 'PROVINCE';
-    return ctx?.unitLevel || 'CENTRAL';
-  }, [params.unitLevel, isJirgaView, provinces, ctx?.unitLevel]);
-
-  const activeUnitId = useMemo(() => {
-    if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    if (isJirgaView && provinces && provinces.length > 0 && !ctx?.unitId) return provinces[0]._id;
-    return ctx?.unitId || '';
-  }, [params.unitId, isJirgaView, provinces, ctx?.unitId]);
+  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
+  const activeUnitId = params.unitId || ctx?.unitId || '';
 
   const activeUnitName = useMemo(() => {
     if (activeLevel === 'CENTRAL') return 'PKNAP Central';
@@ -308,6 +299,68 @@ export default function ReportsScreen() {
     );
   });
 
+  // If user opened Jirga stream but is below Province tier, show guidance card
+  if (isJirgaView && activeLevel !== 'CENTRAL' && activeLevel !== 'PROVINCE') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
+            <Text style={styles.guidanceText}>
+              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              {isHigherAdmin(user) && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnPrimary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                  }}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                </TouchableOpacity>
+              )}
+
+              {user?.scope?.provinceId && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnSecondary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                </TouchableOpacity>
+              )}
+
+              {isHigherAdmin(user) && provinces && provinces.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <View style={styles.provGrid}>
+                    {provinces.map((prov) => (
+                      <TouchableOpacity
+                        key={prov._id}
+                        style={styles.provPillBtn}
+                        onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
+                      >
+                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -337,40 +390,6 @@ export default function ReportsScreen() {
               </TouchableOpacity>
             </View>
           </Card>
-        )}
-
-        {/* Province Switcher Pills for Jirga */}
-        {isJirgaView && provinces && provinces.length > 0 && (
-          <View style={styles.tierPillsWrapper}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
-              {provinces.map((prov) => {
-                const isActive = activeLevel === 'PROVINCE' && String(resolvedUnitId) === String(prov._id);
-                return (
-                  <TouchableOpacity
-                    key={prov._id}
-                    style={[styles.tierPill, isActive && styles.tierPillActive]}
-                    onPress={() => {
-                      setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name });
-                    }}
-                  >
-                    <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
-                      {prov.name} Sobayi Jirga
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity
-                style={[styles.tierPill, activeLevel === 'CENTRAL' && styles.tierPillActive]}
-                onPress={() => {
-                  setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
-                }}
-              >
-                <Text style={[styles.tierPillText, activeLevel === 'CENTRAL' && styles.tierPillTextActive]}>
-                  Qomi Jirga (Central)
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
         )}
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -948,4 +967,98 @@ const styles = StyleSheet.create({
   memberName: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.text },
   memberSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   emptyMembers: { textAlign: 'center', padding: 32, color: Colors.textMuted, fontStyle: 'italic' },
+
+  // Guidance Card (when on lower tier context)
+  guidanceCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: Spacing.lg,
+  },
+  guidanceIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  guidanceTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  guidanceText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  guidanceBtnCol: {
+    width: '100%',
+    gap: 10,
+  },
+  guidanceBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnPrimaryText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnSecondaryText: {
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceSubHead: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  provGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  provPillBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  provPillBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

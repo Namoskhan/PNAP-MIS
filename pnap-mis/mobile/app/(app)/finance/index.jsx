@@ -29,6 +29,7 @@ import {
   isCentralAdminOversight,
   isSuperAdminOversight,
   isSuperAdmin,
+  isHigherAdmin,
 } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Badge from '../../../src/components/Badge';
@@ -76,7 +77,7 @@ const NON_MEMBER_CNIC_THRESHOLD = 50000;
 
 export default function FinanceScreen() {
   const { user } = useAuth();
-  const { ctx, provinces } = useUnit();
+  const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
   const { width, height } = useWindowDimensions();
@@ -91,31 +92,15 @@ export default function FinanceScreen() {
   const isCommitteeView = queryBody === 'COMMITTEE';
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
-  const [jirgaLevel, setJirgaLevel] = useState(() => {
-    if (params.unitLevel) return params.unitLevel;
-    return 'PROVINCE';
-  });
-  const [jirgaUnitId, setJirgaUnitId] = useState(() => {
-    if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    return provinces?.[0]?._id || '';
-  });
+  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
+  const rawUnitId = params.unitId || ctx?.unitId || '';
+  const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
 
-  // Sync with provinces when they become available
-  useEffect(() => {
-    if (isJirgaView && !jirgaUnitId && provinces && provinces.length > 0) {
-      setJirgaLevel('PROVINCE');
-      setJirgaUnitId(provinces[0]._id);
-    }
-  }, [provinces, isJirgaView, jirgaUnitId]);
-
-  const activeLevel = isJirgaView ? jirgaLevel : (params.unitLevel || ctx?.unitLevel || 'CENTRAL');
-  const rawUnitId = isJirgaView ? jirgaUnitId : (params.unitId || ctx?.unitId || '');
   const canRecord = canManageFinance(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
     && !(isSuperAdmin(user) && (activeLevel === 'CENTRAL' || isCongressView));
   const canApprove = canApproveExpense(user);
-  const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
 
   useEffect(() => {
     let currentRaw = rawUnitId;
@@ -530,11 +515,72 @@ export default function FinanceScreen() {
     }
   }
 
-  const selectedProvince = isJirgaView ? (provinces || []).find((p) => String(p._id) === String(jirgaUnitId)) : null;
+  // If user opened Jirga stream but is below Province tier, show guidance card
+  if (isJirgaView && activeLevel !== 'CENTRAL' && activeLevel !== 'PROVINCE') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
+            <Text style={styles.guidanceText}>
+              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              {isHigherAdmin(user) && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnPrimary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                  }}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                </TouchableOpacity>
+              )}
+
+              {user?.scope?.provinceId && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnSecondary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                </TouchableOpacity>
+              )}
+
+              {isHigherAdmin(user) && provinces && provinces.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <View style={styles.provGrid}>
+                    {provinces.map((prov) => (
+                      <TouchableOpacity
+                        key={prov._id}
+                        style={styles.provPillBtn}
+                        onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
+                      >
+                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   const pageTitle = isCongressView
-    ? 'National Congress Finance · PKNAP Central'
+    ? 'National Congress Finance'
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Finance · PKNAP Central' : `Sobayi Jirga Finance · ${selectedProvince?.name || 'Province'}`)
+      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Finance' : 'Sobayi Jirga Finance')
       : (isCommitteeView
         ? `Committee Finance · ${ctx?.unitName || 'PKNAP Central'}`
         : `Finance · ${ctx?.unitName || 'PKNAP Central'}`));
@@ -542,7 +588,7 @@ export default function FinanceScreen() {
   const pageSubtitle = isCongressView
     ? 'PKNAP Central · National Congress fund ledger & transactions'
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'PKNAP Central · Qomi Jirga transactions' : `${selectedProvince?.name || 'Province'} · Sobayi Jirga fund ledger`)
+      ? (activeLevel === 'CENTRAL' ? 'PKNAP Central · Qomi Jirga transactions' : `${ctx?.unitName || 'Province'} · Sobayi Jirga fund ledger`)
       : `${ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : 'My Unit')} · Inflow, Outflow & Monthly Statements`);
 
   const recordDonationBtnLabel = isCongressView
@@ -619,54 +665,6 @@ export default function FinanceScreen() {
             </View>
           </View>
         </View>
-
-        {/* Province Switcher Pills for Jirga */}
-        {isJirgaView && provinces && provinces.length > 0 && (
-          <View style={styles.tierPillsWrapper}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
-              {provinces.map((prov) => {
-                const isActive = jirgaLevel === 'PROVINCE' && String(jirgaUnitId) === String(prov._id);
-                return (
-                  <TouchableOpacity
-                    key={prov._id}
-                    style={[styles.tierPill, isActive && styles.tierPillActive]}
-                    onPress={() => {
-                      setJirgaLevel('PROVINCE');
-                      setJirgaUnitId(prov._id);
-                    }}
-                  >
-                    <Ionicons
-                      name="location-outline"
-                      size={14}
-                      color={isActive ? '#fff' : Colors.textMuted}
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
-                      {prov.name} Sobayi Jirga
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              <TouchableOpacity
-                style={[styles.tierPill, jirgaLevel === 'CENTRAL' && styles.tierPillActive]}
-                onPress={() => {
-                  setJirgaLevel('CENTRAL');
-                  setJirgaUnitId('CENTRAL');
-                }}
-              >
-                <Ionicons
-                  name="shield-outline"
-                  size={14}
-                  color={jirgaLevel === 'CENTRAL' ? '#fff' : Colors.textMuted}
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={[styles.tierPillText, jirgaLevel === 'CENTRAL' && styles.tierPillTextActive]}>
-                  Qomi Jirga (Central)
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
 
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           {/* KPI Dashboard Cards */}
@@ -2063,4 +2061,98 @@ const styles = StyleSheet.create({
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 16 },
   confirmModal: { width: '100%', maxWidth: 520, backgroundColor: '#ffffff', borderRadius: Radius.xl, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6 },
   confirmTitle: { fontSize: FontSize.lg, fontWeight: '800', color: '#0f172a' },
+
+  // Guidance Card (when on lower tier context)
+  guidanceCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: Spacing.lg,
+  },
+  guidanceIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  guidanceTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  guidanceText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  guidanceBtnCol: {
+    width: '100%',
+    gap: 10,
+  },
+  guidanceBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnPrimaryText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnSecondaryText: {
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceSubHead: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  provGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  provPillBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  provPillBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

@@ -23,7 +23,7 @@ import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage } from '../../../src/api/client';
-import { canManageMeetings, isPureMember } from '../../../src/utils/permissions';
+import { canManageMeetings, isPureMember, isHigherAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import { Storage } from '../../../src/utils/storage';
 import Badge from '../../../src/components/Badge';
@@ -40,18 +40,21 @@ const EMPTY_FORM = {
   typeCode: DEFAULT_TYPE_CODE,
   title: '',
   description: '',
-  venue: '',
+  agenda: '',
   startAt: '',
   endAt: '',
+  venue: '',
   chairpersonId: '',
-  agenda: '',
-  gpsLat: '',
-  gpsLng: '',
+  supervisorAttended: false,
+  activityNotes: '',
+  upcomingStrategy: '',
+  gpsLat: null,
+  gpsLng: null,
 };
 
 export default function MeetingsScreen() {
   const { user } = useAuth();
-  const { ctx, provinces } = useUnit();
+  const { ctx, provinces, setCtx } = useUnit();
   const router = useRouter();
   const toast = useToast();
   const params = useLocalSearchParams();
@@ -63,7 +66,19 @@ export default function MeetingsScreen() {
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : (params.body || 'NON_COMMITTEE')));
 
   const activeLevel = params.unitLevel || ctx?.unitLevel || 'BASIC_UNIT';
-  const activeUnitId = params.unitId || ctx?.unitId || '';
+  const rawUnitId = params.unitId || ctx?.unitId || '';
+  const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
+
+  useEffect(() => {
+    let currentRaw = rawUnitId;
+    if (activeLevel === 'CENTRAL' && (!currentRaw || currentRaw === 'CENTRAL')) {
+      api.get('/org/central').then((r) => {
+        if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
+      }).catch(() => {});
+    } else {
+      setResolvedUnitId(currentRaw);
+    }
+  }, [rawUnitId, activeLevel]);
 
   const canManage = canManageMeetings(user);
 
@@ -104,7 +119,7 @@ export default function MeetingsScreen() {
   }, [eventTypes, isCommitteeView, isJirgaView, isCongressView]);
 
   useEffect(() => {
-    if (!showForm || !ctx) return;
+    if (!showForm || (!ctx && !isJirgaView)) return;
     let active = true;
     setLoadingChairpersons(true);
     const bodyForAttendees = isCongressView ? 'CONGRESS'
@@ -115,7 +130,7 @@ export default function MeetingsScreen() {
     api.get('/meetings/eligible-attendees', {
       params: {
         unitLevel: activeLevel,
-        unitId: activeUnitId,
+        unitId: resolvedUnitId,
         body: bodyForAttendees,
         typeCode: form.typeCode,
       },
@@ -124,14 +139,14 @@ export default function MeetingsScreen() {
       .catch(() => {})
       .finally(() => { if (active) setLoadingChairpersons(false); });
     return () => { active = false; };
-  }, [showForm, activeLevel, activeUnitId, form.typeCode, isCongressView, isJirgaView, isCommitteeView]);
+  }, [showForm, activeLevel, resolvedUnitId, form.typeCode, isCongressView, isJirgaView, isCommitteeView]);
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
     try {
       const qParams = {
         unitLevel: activeLevel,
-        unitId: activeUnitId,
+        unitId: resolvedUnitId,
       };
       if (isCongressView) {
         qParams.body = 'CONGRESS';
@@ -158,7 +173,7 @@ export default function MeetingsScreen() {
 
   useEffect(() => {
     load();
-  }, [activeLevel, activeUnitId, isCongressView, isJirgaView, isCommitteeView]);
+  }, [activeLevel, resolvedUnitId, isCongressView, isJirgaView, isCommitteeView]);
 
   function onRefresh() {
     setRefreshing(true);
@@ -246,7 +261,7 @@ export default function MeetingsScreen() {
       toast.show('Generating export...', 'info');
       const qParams = new URLSearchParams({
         unitLevel: activeLevel,
-        unitId: activeUnitId,
+        unitId: resolvedUnitId,
         scope: 'own',
       });
       if (isCongressView) {
@@ -332,7 +347,7 @@ export default function MeetingsScreen() {
 
       const bodyPayload = {
         unitLevel: activeLevel,
-        unitId: activeUnitId,
+        unitId: resolvedUnitId,
         typeCode: form.typeCode,
         title: form.title.trim(),
         description: form.description.trim() || undefined,
@@ -415,10 +430,79 @@ export default function MeetingsScreen() {
     );
   }
 
+  // If user opened Jirga stream but is below Province tier, show guidance card
+  if (isJirgaView && activeLevel !== 'CENTRAL' && activeLevel !== 'PROVINCE') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
+            <Text style={styles.guidanceText}>
+              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              {isHigherAdmin(user) && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnPrimary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                  }}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                </TouchableOpacity>
+              )}
+
+              {user?.scope?.provinceId && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnSecondary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                </TouchableOpacity>
+              )}
+
+              {isHigherAdmin(user) && provinces && provinces.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <View style={styles.provGrid}>
+                    {provinces.map((prov) => (
+                      <TouchableOpacity
+                        key={prov._id}
+                        style={styles.provPillBtn}
+                        onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
+                      >
+                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   const pageTitle = isCongressView ? 'National Congress Meetings'
-    : (isJirgaView ? 'Jirga Meetings'
-    : (isCommitteeView ? 'Committee Meetings'
-    : 'Meetings'));
+    : (isJirgaView
+      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Meetings' : 'Sobayi Jirga Meetings')
+      : (isCommitteeView ? 'Committee Meetings'
+      : 'Meetings'));
+
+  const pageSubtitle = isCongressView
+    ? 'PKNAP Central · National Congress Assembly'
+    : (isJirgaView
+      ? (activeLevel === 'CENTRAL' ? 'PKNAP Central · Qomi Jirga Assembly' : `${ctx?.unitName || 'Province'} · Sobayi Jirga Assembly`)
+      : `${ctx?.unitName ? `${ctx.unitName} · ` : ''}${activeLevel.replace('_', ' ')}`);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -426,9 +510,7 @@ export default function MeetingsScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{pageTitle}</Text>
-          <Text style={styles.headerSubtitle}>
-            {ctx?.unitName ? `${ctx.unitName} · ` : ''}{activeLevel.replace('_', ' ')}
-          </Text>
+          <Text style={styles.headerSubtitle}>{pageSubtitle}</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -821,4 +903,132 @@ const styles = StyleSheet.create({
   picker: { width: '100%', height: 48 },
   captureGpsBtn: { paddingVertical: 2, paddingHorizontal: 6 },
   captureGpsText: { fontSize: FontSize.xs, color: Colors.primary, fontWeight: '700' },
+
+  // Tier Pills
+  tierPillsWrapper: {
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingVertical: 8,
+    paddingHorizontal: Spacing.md,
+  },
+  tierPillsScroll: {
+    gap: 8,
+  },
+  tierPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  tierPillActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  tierPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  tierPillTextActive: {
+    color: '#fff',
+  },
+
+  // Guidance Card (when on lower tier context)
+  guidanceCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: Spacing.lg,
+  },
+  guidanceIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  guidanceTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  guidanceText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  guidanceBtnCol: {
+    width: '100%',
+    gap: 10,
+  },
+  guidanceBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnPrimaryText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnSecondaryText: {
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceSubHead: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  provGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  provPillBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  provPillBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

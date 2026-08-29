@@ -266,18 +266,18 @@ export default function AdminHubScreen() {
     // 9. Jirga (Sobayi Jirga for Province Admin / Qomi Jirga for Central Admin & Super Admin)
     {
       key: 'jirga',
-      title: isSuper || isCentral ? 'Qomi Jirga' : 'Sobayi Jirga',
+      title: ctx?.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : (ctx?.unitLevel === 'PROVINCE' ? 'Sobayi Jirga' : (isSuper || isCentral ? 'Qomi Jirga' : 'Sobayi Jirga')),
       icon: '⚖️',
-      show: () => isSuper || isCentral || isProvince || isSeniorMawin || isSecretary || isFinanceSec || isPresident,
+      show: () => isSuper || isCentral || isProvince || ctx?.unitLevel === 'CENTRAL' || ctx?.unitLevel === 'PROVINCE' || isSeniorMawin || isSecretary || isFinanceSec || isPresident,
       items: [
-        { key: 'jirga-comp', icon: '⚖️', title: 'Composition', description: isSuper || isCentral ? 'Central Jirga members & elders assembly' : 'Sobayi Jirga members & elders assembly', route: isSuper || isCentral ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/jirga' },
-        { key: 'jirga-meetings', icon: '📅', title: 'Jirga Meetings', description: 'Jirga assembly meeting records', route: isSuper || isCentral ? '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/meetings?body=JIRGA' },
-        { key: 'jirga-activities', icon: '🚩', title: 'Jirga Activities', description: 'Jirga activities, gatherings & events', route: isSuper || isCentral ? '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/activities?body=JIRGA' },
+        { key: 'jirga-comp', icon: '⚖️', title: 'Composition', description: (ctx?.unitLevel === 'CENTRAL' || isSuper || isCentral) ? 'Central Jirga members & elders assembly' : 'Sobayi Jirga members & elders assembly', route: ctx?.unitLevel === 'CENTRAL' ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/admin/jirga?unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/jirga')) },
+        { key: 'jirga-meetings', icon: '📅', title: 'Jirga Meetings', description: 'Jirga assembly meeting records', route: ctx?.unitLevel === 'CENTRAL' ? '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/meetings?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/meetings?body=JIRGA')) },
+        { key: 'jirga-activities', icon: '🚩', title: 'Jirga Activities', description: 'Jirga activities, gatherings & events', route: ctx?.unitLevel === 'CENTRAL' ? '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/activities?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/activities?body=JIRGA')) },
         ...(canManageFinance(user) ? [
-          { key: 'jirga-finance', icon: '💰', title: 'Jirga Finance', description: 'Jirga donations & expenses ledger', route: isSuper || isCentral ? '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance?body=JIRGA' },
-          { key: 'jirga-transfers', icon: '💸', title: 'Jirga Transfers', description: 'Jirga fund transfers', route: isSuper || isCentral ? '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance/transfers?body=JIRGA' },
+          { key: 'jirga-finance', icon: '💰', title: 'Jirga Finance', description: 'Jirga donations & expenses ledger', route: ctx?.unitLevel === 'CENTRAL' ? '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/finance?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance?body=JIRGA')) },
+          { key: 'jirga-transfers', icon: '💸', title: 'Jirga Transfers', description: 'Jirga fund transfers', route: ctx?.unitLevel === 'CENTRAL' ? '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/finance/transfers?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance/transfers?body=JIRGA')) },
         ] : []),
-        { key: 'jirga-reports', icon: '📊', title: 'Jirga Reports', description: 'Jirga reports & exports', route: isSuper || isCentral ? '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/reports?body=JIRGA' },
+        { key: 'jirga-reports', icon: '📊', title: 'Jirga Reports', description: 'Jirga reports & exports', route: ctx?.unitLevel === 'CENTRAL' ? '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/admin/reports?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/reports?body=JIRGA')) },
       ],
     },
 

@@ -13,11 +13,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
 import { api, errorMessage } from '../../../src/api/client';
 import { useToast } from '../../../src/components/Toast';
+import { canManageFinance, isHigherAdmin } from '../../../src/utils/permissions';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import Avatar from '../../../src/components/Avatar';
@@ -51,14 +52,12 @@ const UNIT_LEVEL_OPTIONS = [
 ];
 
 export default function JirgaScreen() {
-  const params = useLocalSearchParams();
   const { ctx, setCtx, provinces } = useUnit();
   const { user } = useAuth();
+  const router = useRouter();
   const toast = useToast();
 
-  // Active Jirga Unit Context resolution
-  const resolvedLevel = params.unitLevel || (ctx?.unitLevel === 'PROVINCE' || ctx?.unitLevel === 'CENTRAL' ? ctx.unitLevel : (user?.scope?.provinceId ? 'PROVINCE' : 'CENTRAL'));
-  const resolvedUnitId = params.unitId || (ctx?.unitLevel === resolvedLevel ? ctx.unitId : (resolvedLevel === 'PROVINCE' ? (user?.scope?.provinceId || (provinces?.[0]?._id)) : 'CENTRAL'));
+  const isCentralOrProvince = ctx && (ctx.unitLevel === 'CENTRAL' || ctx.unitLevel === 'PROVINCE');
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -84,9 +83,17 @@ export default function JirgaScreen() {
 
   const fetchIdRef = useRef(0);
 
+  // Filter candidate tier options: remove Central tier when on Provincial Jirga (matching web)
+  const candidateTierOptions = useMemo(() => {
+    if (ctx?.unitLevel === 'PROVINCE') {
+      return UNIT_LEVEL_OPTIONS.filter((opt) => opt.value !== 'CENTRAL');
+    }
+    return UNIT_LEVEL_OPTIONS;
+  }, [ctx?.unitLevel]);
+
   // Load Jirga Composition
   async function reload(silent = false) {
-    if (!resolvedLevel || !resolvedUnitId) {
+    if (!ctx || !isCentralOrProvince) {
       setLoading(false);
       setRefreshing(false);
       return;
@@ -96,14 +103,14 @@ export default function JirgaScreen() {
     setRefreshing(true);
     setErr('');
     try {
-      let targetId = resolvedUnitId;
-      if (resolvedLevel === 'CENTRAL' && (!targetId || targetId === 'CENTRAL')) {
+      let targetId = ctx.unitId;
+      if (ctx.unitLevel === 'CENTRAL' && (!targetId || targetId === 'CENTRAL')) {
         const cRes = await api.get('/org/central');
         targetId = cRes.data?.data?._id || 'CENTRAL';
       }
 
       const res = await api.get('/jirga/composition', {
-        params: { unitLevel: resolvedLevel, unitId: targetId },
+        params: { unitLevel: ctx.unitLevel, unitId: targetId },
       });
       if (myId === fetchIdRef.current) {
         setData(res.data.data);
@@ -111,7 +118,6 @@ export default function JirgaScreen() {
     } catch (e) {
       if (myId === fetchIdRef.current) {
         setErr(errorMessage(e));
-        toast.error(errorMessage(e));
       }
     } finally {
       if (myId === fetchIdRef.current) {
@@ -122,39 +128,28 @@ export default function JirgaScreen() {
   }
 
   useEffect(() => {
-    reload(false);
-  }, [resolvedLevel, resolvedUnitId]);
+    reload();
+  }, [ctx?.unitLevel, ctx?.unitId]);
 
-  // Load districts for nomination filter
+  // Load candidates when modal opens
   useEffect(() => {
-    const provId = resolvedLevel === 'PROVINCE' ? resolvedUnitId : (user?.scope?.provinceId || (provinces?.[0]?._id));
-    if (!provId) {
-      setDistrictsList([]);
-      return;
-    }
-    api.get('/org/districts', { params: { provinceId: provId } })
-      .then((res) => setDistrictsList(res.data.data || []))
-      .catch(() => setDistrictsList([]));
-  }, [resolvedLevel, resolvedUnitId, user?.scope?.provinceId, provinces]);
-
-  // Load eligible candidates
-  useEffect(() => {
-    if (!assignOpen) return;
+    if (!assignOpen || !ctx || !isCentralOrProvince) return;
     let active = true;
     setCandidatesLoading(true);
 
-    const paramsQuery = {
-      unitLevel: resolvedLevel,
-      unitId: resolvedUnitId,
+    let targetId = ctx.unitId;
+    const params = {
+      unitLevel: ctx.unitLevel,
+      unitId: targetId,
       search: candidateSearch.trim() || undefined,
       roleCode: candidateRole !== 'ALL' ? candidateRole : undefined,
       filterUnitLevel: candidateUnitLevel !== 'ALL' ? candidateUnitLevel : undefined,
-      provinceId: resolvedLevel === 'PROVINCE' ? resolvedUnitId : undefined,
+      provinceId: ctx.unitLevel === 'PROVINCE' ? ctx.unitId : undefined,
       districtId: candidateDistId || undefined,
       limit: 100,
     };
 
-    api.get('/jirga/eligible-members', { params: paramsQuery })
+    api.get('/jirga/eligible-members', { params })
       .then((res) => {
         if (active) {
           setCandidates(res.data.data?.candidates || []);
@@ -174,13 +169,27 @@ export default function JirgaScreen() {
     };
   }, [
     assignOpen,
-    resolvedLevel,
-    resolvedUnitId,
+    ctx?.unitLevel,
+    ctx?.unitId,
     candidateSearch,
     candidateRole,
     candidateUnitLevel,
     candidateDistId,
   ]);
+
+  // Load districts when province is active
+  useEffect(() => {
+    if (!ctx) return;
+    const provId = ctx.unitLevel === 'PROVINCE' ? ctx.unitId : '';
+    if (!provId) {
+      setDistrictsList([]);
+      setCandidateDistId('');
+      return;
+    }
+    api.get('/org/districts', { params: { provinceId: provId } })
+      .then((res) => setDistrictsList(res.data.data || []))
+      .catch(() => setDistrictsList([]));
+  }, [ctx?.unitLevel, ctx?.unitId]);
 
   // Assign Member to Jirga
   async function handleAssign() {
@@ -191,8 +200,8 @@ export default function JirgaScreen() {
     setAssigning(true);
     try {
       await api.post('/jirga/members', {
-        unitLevel: resolvedLevel,
-        unitId: resolvedUnitId,
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
         memberId: selectedMember._id,
         nominationNote: nominationNote.trim() || undefined,
       });
@@ -211,26 +220,34 @@ export default function JirgaScreen() {
 
   // Remove Member from Jirga
   function confirmRemove(jirgaRecordId, memberName) {
-    Alert.alert(
-      'Remove Jirga Member',
-      `Are you sure you want to remove ${memberName || 'this member'} from the Jirga?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.post(`/jirga/members/${jirgaRecordId}/remove`);
-              toast.success(`${memberName || 'Member'} removed from Jirga.`);
-              reload(true);
-            } catch (e) {
-              toast.error(errorMessage(e));
-            }
-          },
-        },
-      ]
-    );
+    if (!jirgaRecordId) {
+      toast.error('Cannot remove member: missing record ID');
+      return;
+    }
+    const doRemove = async () => {
+      try {
+        await api.post(`/jirga/members/${jirgaRecordId}/remove`);
+        toast.success(`${memberName || 'Member'} removed from Jirga.`);
+        reload(true);
+      } catch (e) {
+        toast.error(errorMessage(e));
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(`Are you sure you want to remove ${memberName || 'this member'} from the Jirga?`)) {
+        doRemove();
+      }
+    } else {
+      Alert.alert(
+        'Remove Jirga Member',
+        `Are you sure you want to remove ${memberName || 'this member'} from the Jirga?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Remove', style: 'destructive', onPress: doRemove },
+        ]
+      );
+    }
   }
 
   // Filtered Roster
@@ -279,11 +296,75 @@ export default function JirgaScreen() {
     return { total, officeHolders, workers, districts: distSet.size };
   }, [data?.members]);
 
-  const jirgaTitle = data?.unit?.jirgaTitle || (resolvedLevel === 'CENTRAL' ? 'National / Qomi Jirga' : 'Sobayi Jirga · صوبايي جرګه');
-  const unitSubtitle = resolvedLevel === 'CENTRAL'
-    ? 'Central Supreme Consultative & Legislative Body'
-    : `Provincial Legislative & Consultative Assembly · ${data?.unit?.unitName || ctx?.unitName || 'Khyber Pakhtunkhwa'}`;
+  const canFinance = canManageFinance(user);
   const canManage = Boolean(data?.canManage);
+
+  // If user is at District, Area, or Basic Unit context, show informational guidance screen (matching web React)
+  if (!isCentralOrProvince) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
+            <Text style={styles.guidanceText}>
+              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              {isHigherAdmin(user) && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnPrimary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                  }}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                </TouchableOpacity>
+              )}
+
+              {user?.scope?.provinceId && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnSecondary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                </TouchableOpacity>
+              )}
+
+              {isHigherAdmin(user) && provinces && provinces.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <View style={styles.provGrid}>
+                    {provinces.map((prov) => (
+                      <TouchableOpacity
+                        key={prov._id}
+                        style={styles.provPillBtn}
+                        onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
+                      >
+                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  const jirgaTitle = data?.unit?.jirgaTitle || (ctx.unitLevel === 'CENTRAL' ? 'National / Qomi Jirga' : 'Sobayi Jirga · صوبايي جرګه');
+  const unitSubtitle = ctx.unitLevel === 'CENTRAL'
+    ? 'Central Supreme Consultative & Legislative Body'
+    : `Provincial Legislative & Consultative Assembly · ${data?.unit?.unitName || ctx.unitName || 'Province'}`;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -298,8 +379,9 @@ export default function JirgaScreen() {
           <View style={styles.heroTop}>
             <View style={{ flex: 1 }}>
               <View style={styles.eyebrowBadge}>
+                <Ionicons name="shield-checkmark" size={12} color="#fff" style={{ marginRight: 4 }} />
                 <Text style={styles.eyebrowText}>
-                  {resolvedLevel === 'CENTRAL' ? 'NATIONAL ASSEMBLY' : 'PROVINCIAL ASSEMBLY'}
+                  {ctx.unitLevel === 'CENTRAL' ? 'NATIONAL ASSEMBLY' : 'PROVINCIAL ASSEMBLY'}
                 </Text>
               </View>
               <Text style={styles.heroTitle}>{jirgaTitle}</Text>
@@ -321,6 +403,76 @@ export default function JirgaScreen() {
             )}
           </View>
         </View>
+
+        {/* ─── Jirga Services & Sub-Navigation Card ─── */}
+        <Card style={styles.quickNavCard}>
+          <Text style={styles.quickNavTitle}>Jirga Services & Assembly Modules</Text>
+          <View style={styles.quickNavGrid}>
+            <TouchableOpacity
+              style={[styles.quickNavBtn, styles.quickNavBtnActive]}
+              activeOpacity={0.9}
+            >
+              <View style={[styles.quickNavIconBox, { backgroundColor: '#eff6ff' }]}>
+                <Ionicons name="people" size={20} color={Colors.primary} />
+              </View>
+              <Text style={[styles.quickNavBtnText, { color: Colors.primary, fontWeight: '700' }]}>Roster</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickNavBtn}
+              onPress={() => router.push({ pathname: '/meetings', params: { body: 'JIRGA' } })}
+            >
+              <View style={[styles.quickNavIconBox, { backgroundColor: '#f5f3ff' }]}>
+                <Ionicons name="calendar-outline" size={20} color="#7c3aed" />
+              </View>
+              <Text style={styles.quickNavBtnText}>Meetings</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickNavBtn}
+              onPress={() => router.push({ pathname: '/activities', params: { body: 'JIRGA' } })}
+            >
+              <View style={[styles.quickNavIconBox, { backgroundColor: '#f0fdf4' }]}>
+                <Ionicons name="flag-outline" size={20} color="#15803d" />
+              </View>
+              <Text style={styles.quickNavBtnText}>Activities</Text>
+            </TouchableOpacity>
+
+            {canFinance && (
+              <>
+                <TouchableOpacity
+                  style={styles.quickNavBtn}
+                  onPress={() => router.push({ pathname: '/finance', params: { body: 'JIRGA' } })}
+                >
+                  <View style={[styles.quickNavIconBox, { backgroundColor: '#fefce8' }]}>
+                    <Ionicons name="cash-outline" size={20} color="#ca8a04" />
+                  </View>
+                  <Text style={styles.quickNavBtnText}>Finance</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.quickNavBtn}
+                  onPress={() => router.push({ pathname: '/finance/transfers', params: { body: 'JIRGA' } })}
+                >
+                  <View style={[styles.quickNavIconBox, { backgroundColor: '#fdf4ff' }]}>
+                    <Ionicons name="swap-horizontal-outline" size={20} color="#c026d3" />
+                  </View>
+                  <Text style={styles.quickNavBtnText}>Transfers</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <TouchableOpacity
+              style={styles.quickNavBtn}
+              onPress={() => router.push({ pathname: '/admin/reports', params: { body: 'JIRGA' } })}
+            >
+              <View style={[styles.quickNavIconBox, { backgroundColor: '#f8fafc' }]}>
+                <Ionicons name="bar-chart-outline" size={20} color={Colors.textMuted} />
+              </View>
+              <Text style={styles.quickNavBtnText}>Reports</Text>
+            </TouchableOpacity>
+          </View>
+        </Card>
 
         {err ? (
           <View style={styles.errBox}>
@@ -449,10 +601,11 @@ export default function JirgaScreen() {
                         ) : null}
                       </View>
 
-                      {/* Notes / Remarks */}
+                      {/* Nomination Notes */}
                       {m.nominationNote ? (
-                        <View style={styles.noteBox}>
-                          <Text style={styles.noteText}>📝 {m.nominationNote}</Text>
+                        <View style={styles.notesBox}>
+                          <Text style={styles.notesLabel}>Notes:</Text>
+                          <Text style={styles.notesText}>{m.nominationNote}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -461,10 +614,9 @@ export default function JirgaScreen() {
                     {canManage && (
                       <TouchableOpacity
                         style={styles.removeBtn}
-                        onPress={() => confirmRemove(m.jirgaRecordId || m._id, m.fullName)}
-                        activeOpacity={0.7}
+                        onPress={() => confirmRemove(m.jirgaRecordId, m.fullName)}
                       >
-                        <Ionicons name="trash-outline" size={18} color={Colors.error} />
+                        <Ionicons name="trash-outline" size={16} color={Colors.danger} />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -475,27 +627,31 @@ export default function JirgaScreen() {
         </Card>
       </ScrollView>
 
-      {/* ─── Nominate / Assign Modal ─── */}
-      <Modal visible={assignOpen} animationType="slide" transparent onRequestClose={() => setAssignOpen(false)}>
-        <SafeAreaView style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>Nominate Jirga Member</Text>
-                <Text style={styles.modalSub}>Select eligible worker or cabinet member</Text>
-              </View>
-              <TouchableOpacity onPress={() => setAssignOpen(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={22} color={Colors.text} />
-              </TouchableOpacity>
+      {/* ─── Nomination Modal ─── */}
+      <Modal
+        visible={assignOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setAssignOpen(false)}
+      >
+        <SafeAreaView style={styles.modalSafe}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>Nominate Jirga Member</Text>
+              <Text style={styles.modalSubtitle}>Assign party member to {jirgaTitle}</Text>
             </View>
+            <TouchableOpacity onPress={() => setAssignOpen(false)} style={styles.closeBtn}>
+              <Ionicons name="close" size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
 
-            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
-              {/* Candidate Search */}
+          <View style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Search Bar */}
               <View style={styles.modalSearchWrap}>
                 <Ionicons name="search" size={16} color={Colors.textMuted} style={styles.searchIcon} />
                 <TextInput
-                  style={styles.searchInput}
+                  style={styles.modalSearchInput}
                   placeholder="Search candidate by name, CNIC, phone…"
                   placeholderTextColor={Colors.textMuted}
                   value={candidateSearch}
@@ -506,7 +662,7 @@ export default function JirgaScreen() {
               {/* Tier Filters */}
               <Text style={styles.modalFilterLabel}>FILTER BY TIER</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizFilterScroll}>
-                {UNIT_LEVEL_OPTIONS.map((opt) => (
+                {candidateTierOptions.map((opt) => (
                   <TouchableOpacity
                     key={opt.value}
                     style={[styles.filterChip, candidateUnitLevel === opt.value && styles.filterChipActive]}
@@ -559,39 +715,45 @@ export default function JirgaScreen() {
                   <Text style={styles.emptyCandidateText}>No eligible candidates found matching filters.</Text>
                 </View>
               ) : (
-                <View style={styles.candidateList}>
-                  {candidates.map((c) => {
-                    const isSelected = selectedMember?._id === c._id;
-                    return (
-                      <TouchableOpacity
-                        key={c._id}
-                        style={[styles.candidateRow, isSelected && styles.candidateRowSelected]}
-                        onPress={() => setSelectedMember(c)}
-                        activeOpacity={0.7}
-                      >
-                        <Avatar name={c.fullName} url={c.photoUrl} size={36} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.candidateName}>{c.fullName}</Text>
-                          <Text style={styles.candidateMeta}>
-                            {c.memberId || 'ID —'} · {c.cnic || 'CNIC —'}
-                          </Text>
-                          {c.primaryRole ? (
-                            <Text style={styles.candidateRole}>
-                              {c.primaryRole.roleCode?.replace(/_/g, ' ')} ({c.primaryRole.unitName})
+                <ScrollView
+                  style={styles.candidateScrollBox}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={true}
+                >
+                  <View style={styles.candidateList}>
+                    {candidates.map((c) => {
+                      const isSelected = selectedMember?._id === c._id;
+                      return (
+                        <TouchableOpacity
+                          key={c._id}
+                          style={[styles.candidateRow, isSelected && styles.candidateRowSelected]}
+                          onPress={() => setSelectedMember(c)}
+                          activeOpacity={0.7}
+                        >
+                          <Avatar name={c.fullName} url={c.photoUrl} size={36} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.candidateName}>{c.fullName}</Text>
+                            <Text style={styles.candidateMeta}>
+                              {c.memberId || 'ID —'} · {c.cnic || 'CNIC —'}
                             </Text>
-                          ) : (
-                            <Text style={styles.candidateWorker}>General Member · {c.districtName || 'District'}</Text>
-                          )}
-                        </View>
-                        <Ionicons
-                          name={isSelected ? 'radio-button-on' : 'radio-button-off'}
-                          size={22}
-                          color={isSelected ? Colors.primary : Colors.textMuted}
-                        />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                            {c.primaryRole ? (
+                              <Text style={styles.candidateRole}>
+                                {c.primaryRole.roleCode?.replace(/_/g, ' ')} ({c.primaryRole.unitName})
+                              </Text>
+                            ) : (
+                              <Text style={styles.candidateWorker}>General Member · {c.districtName || 'District'}</Text>
+                            )}
+                          </View>
+                          <Ionicons
+                            name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                            size={22}
+                            color={isSelected ? Colors.primary : Colors.textMuted}
+                          />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
               )}
 
               {/* Nomination Notes */}
@@ -638,6 +800,101 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: Spacing.md, paddingBottom: 40 },
 
+  // Guidance Card (when on lower tier context)
+  guidanceCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: Spacing.lg,
+    ...Shadow.md,
+  },
+  guidanceIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  guidanceTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  guidanceText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  guidanceBtnCol: {
+    width: '100%',
+    gap: 10,
+  },
+  guidanceBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnPrimaryText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnSecondaryText: {
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceSubHead: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  provGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  provPillBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  provPillBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+
   // Hero Banner matching web
   heroBanner: {
     backgroundColor: '#1e3a8a',
@@ -654,63 +911,145 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 12,
   },
   eyebrowBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: Radius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
     marginBottom: 6,
   },
   eyebrowText: {
-    fontSize: 9,
-    fontWeight: '800',
     color: '#fff',
-    letterSpacing: 1.2,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   heroTitle: {
-    fontSize: 20,
+    fontSize: FontSize.xl,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.3,
+    marginBottom: 4,
   },
   heroSubtitle: {
-    fontSize: FontSize.xs,
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontWeight: '600',
-    marginTop: 2,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 18,
   },
   assignBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    paddingVertical: 8,
+    backgroundColor: '#2563eb',
     paddingHorizontal: 12,
-    borderRadius: Radius.pill,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   assignBtnText: {
-    fontSize: FontSize.xs,
+    color: '#fff',
+    fontSize: 12,
     fontWeight: '700',
+  },
+
+  // Tier Switcher Pills
+  tierPillsWrapper: {
+    marginBottom: Spacing.md,
+  },
+  tierPillsScroll: {
+    gap: 8,
+    paddingRight: Spacing.md,
+  },
+  tierPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  tierPillActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  tierPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  tierPillTextActive: {
     color: '#fff',
   },
 
-  errBox: {
-    backgroundColor: Colors.errorBg,
-    padding: 10,
-    borderRadius: Radius.md,
+  // Quick Navigation Card & Grid
+  quickNavCard: {
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    backgroundColor: '#fff',
+  },
+  quickNavTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginBottom: Spacing.sm,
+  },
+  quickNavGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickNavBtn: {
+    flex: 1,
+    minWidth: '28%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    backgroundColor: '#f8fafc',
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: Colors.error,
+    borderColor: '#e2e8f0',
+  },
+  quickNavBtnActive: {
+    backgroundColor: '#eff6ff',
+    borderColor: Colors.primary,
+  },
+  quickNavIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  quickNavBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+
+  // Error Box
+  errBox: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.md,
   },
   errText: {
-    color: Colors.error,
-    fontSize: FontSize.xs,
-    fontWeight: '600',
+    color: Colors.danger,
+    fontSize: 13,
   },
 
   // KPI Grid
@@ -722,53 +1061,49 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: Colors.surface,
+    minWidth: '47%',
+    backgroundColor: '#fff',
     padding: Spacing.md,
     borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
+    borderColor: '#e2e8f0',
     ...Shadow.sm,
   },
   kpiVal: {
-    fontSize: 20,
+    fontSize: FontSize.xl,
     fontWeight: '800',
     color: Colors.text,
-    fontVariant: ['tabular-nums'],
+    marginBottom: 2,
   },
   kpiLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: Colors.textMuted,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    marginTop: 2,
-    textAlign: 'center',
+    fontWeight: '500',
   },
 
   // Roster Card
   rosterCard: {
     padding: Spacing.md,
-    borderRadius: Radius.lg,
+    backgroundColor: '#fff',
   },
   rosterHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
   },
   cardTitle: {
-    fontSize: FontSize.base,
-    fontWeight: '800',
+    fontSize: FontSize.md,
+    fontWeight: '700',
     color: Colors.text,
   },
   cardSub: {
     fontSize: 11,
     color: Colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
   },
 
-  // Search and Filters
+  // Search & Filter
   searchFilterRow: {
     marginBottom: Spacing.md,
     gap: 8,
@@ -776,19 +1111,19 @@ const styles = StyleSheet.create({
   searchInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceAlt,
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#e2e8f0',
     borderRadius: Radius.md,
     paddingHorizontal: 10,
-    height: 38,
+    height: 40,
   },
   searchIcon: {
     marginRight: 6,
   },
   searchInput: {
     flex: 1,
-    fontSize: FontSize.xs,
+    fontSize: 13,
     color: Colors.text,
     paddingVertical: 0,
   },
@@ -797,281 +1132,290 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   roleChip: {
-    paddingVertical: 5,
     paddingHorizontal: 10,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.surfaceAlt,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+    backgroundColor: '#f1f5f9',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#e2e8f0',
   },
   roleChipActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#eff6ff',
     borderColor: Colors.primary,
   },
   roleChipText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: Colors.text,
+    fontWeight: '500',
+    color: Colors.textMuted,
   },
   roleChipTextActive: {
-    color: '#fff',
+    color: Colors.primary,
+    fontWeight: '700',
   },
 
-  // Members List
+  // Member Rows
   membersList: {
-    gap: 8,
+    gap: 12,
   },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: Colors.surfaceAlt,
-    padding: 10,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 12,
   },
   memberInfo: {
     flex: 1,
   },
   memberName: {
-    fontSize: FontSize.sm,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: Colors.text,
   },
   memberMeta: {
-    fontSize: 10,
+    fontSize: 11,
     color: Colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
   },
   roleBadgesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
-    marginTop: 4,
+    marginTop: 6,
   },
   roleBadge: {
-    backgroundColor: 'rgba(30, 64, 175, 0.1)',
-    paddingVertical: 2,
+    backgroundColor: '#eff6ff',
     paddingHorizontal: 6,
-    borderRadius: Radius.sm,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
   },
   roleBadgeText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     color: Colors.primary,
   },
   generalWorkerBadge: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: Radius.sm,
     alignSelf: 'flex-start',
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
     marginTop: 4,
   },
   generalWorkerText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: Colors.textMuted,
-  },
-  homeLocationRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  homeLocationText: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    fontWeight: '500',
-  },
-  appointedText: {
-    fontSize: 9,
-    color: Colors.textMuted,
-  },
-  noteBox: {
-    backgroundColor: '#fff',
-    padding: 4,
-    borderRadius: Radius.sm,
-    marginTop: 4,
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.primary,
-  },
-  noteText: {
-    fontSize: 10,
     color: Colors.textMuted,
     fontStyle: 'italic',
   },
-  removeBtn: {
-    padding: 6,
-  },
-
-  loaderWrap: {
-    padding: Spacing.lg,
+  homeLocationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginTop: 6,
   },
-  loaderText: {
-    fontSize: FontSize.xs,
+  homeLocationText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '500',
+  },
+  appointedText: {
+    fontSize: 10,
     color: Colors.textMuted,
+  },
+  notesBox: {
+    marginTop: 6,
+    backgroundColor: '#f8fafc',
+    padding: 6,
+    borderRadius: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: Colors.primary,
+  },
+  notesLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  notesText: {
+    fontSize: 11,
+    color: Colors.text,
+  },
+  removeBtn: {
+    padding: 8,
+    borderRadius: Radius.sm,
+    backgroundColor: '#fef2f2',
   },
 
   // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    maxHeight: '90%',
-    padding: Spacing.md,
-  },
+  modalSafe: { flex: 1, backgroundColor: Colors.background },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    paddingBottom: Spacing.sm,
-    marginBottom: Spacing.sm,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#fff',
   },
   modalTitle: {
-    fontSize: FontSize.base,
+    fontSize: FontSize.lg,
     fontWeight: '800',
     color: Colors.text,
   },
-  modalSub: {
+  modalSubtitle: {
     fontSize: 11,
     color: Colors.textMuted,
   },
-  modalCloseBtn: {
+  closeBtn: {
     padding: 4,
   },
-  modalScroll: {
-    flexGrow: 0,
-  },
-  modalScrollContent: {
-    paddingBottom: 20,
+  modalContent: {
+    padding: Spacing.md,
+    paddingBottom: 40,
+    gap: 12,
   },
   modalSearchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceAlt,
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#cbd5e1',
     borderRadius: Radius.md,
     paddingHorizontal: 10,
-    height: 38,
-    marginBottom: 10,
+    height: 42,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.text,
   },
   modalFilterLabel: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 11,
+    fontWeight: '700',
     color: Colors.textMuted,
-    marginBottom: 6,
+    letterSpacing: 0.5,
     marginTop: 4,
-    letterSpacing: 0.6,
   },
   horizFilterScroll: {
     gap: 6,
-    marginBottom: 10,
+    paddingVertical: 4,
   },
   filterChip: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#e2e8f0',
   },
   filterChipActive: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
   filterChipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: Colors.text,
   },
   filterChipTextActive: {
     color: '#fff',
   },
-  candidateList: {
-    maxHeight: 220,
+  candidateScrollBox: {
+    maxHeight: 280,
+    backgroundColor: '#fff',
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
+    borderColor: '#e2e8f0',
     overflow: 'hidden',
-    marginBottom: 10,
+  },
+  candidateList: {
+    backgroundColor: '#fff',
   },
   candidateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
-    backgroundColor: Colors.surface,
+    padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 8,
+    borderBottomColor: '#f1f5f9',
+    gap: 10,
   },
   candidateRowSelected: {
     backgroundColor: '#eff6ff',
   },
   candidateName: {
-    fontSize: FontSize.xs,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.text,
   },
   candidateMeta: {
-    fontSize: 9,
+    fontSize: 11,
     color: Colors.textMuted,
   },
   candidateRole: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 10,
     color: Colors.primary,
-    marginTop: 1,
+    fontWeight: '600',
+    marginTop: 2,
   },
   candidateWorker: {
-    fontSize: 9,
+    fontSize: 10,
     color: Colors.textMuted,
-    marginTop: 1,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   emptyCandidate: {
-    padding: 16,
+    padding: 24,
     alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: Radius.md,
   },
   emptyCandidateText: {
-    fontSize: FontSize.xs,
+    fontSize: 12,
     color: Colors.textMuted,
   },
   nominationForm: {
-    marginTop: 6,
+    backgroundColor: '#fff',
+    padding: Spacing.md,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    gap: 8,
+    marginTop: 8,
   },
   textArea: {
-    backgroundColor: Colors.surfaceAlt,
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#e2e8f0',
     borderRadius: Radius.md,
-    padding: 8,
-    fontSize: FontSize.xs,
+    padding: 10,
+    fontSize: 13,
     color: Colors.text,
-    textAlignVertical: 'top',
     minHeight: 60,
-    marginBottom: 12,
+    textAlignVertical: 'top',
   },
   submitAssignBtn: {
     backgroundColor: Colors.primary,
     paddingVertical: 12,
     borderRadius: Radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
   },
   submitAssignBtnText: {
     color: '#fff',
-    fontSize: FontSize.sm,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  loaderWrap: {
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loaderText: {
+    fontSize: 12,
+    color: Colors.textMuted,
   },
 });
