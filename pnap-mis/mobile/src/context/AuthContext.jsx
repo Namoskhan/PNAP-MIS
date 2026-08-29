@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import { Storage } from '../utils/storage';
 import { api } from '../api/client';
 
@@ -11,7 +12,7 @@ const USER_KEY = 'pnap_user';
 const ACTIVE_ROLE_KEY = 'pnap_active_role';
 
 const ROLE_PRIORITY = [
-  'SUPER_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
+  'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
   'CHAIRMAN', 'CO_CHAIRMAN', 'PRESIDENT',
   'SECRETARY',
   'SR_VICE_PRESIDENT', 'FIRST_SECRETARY', 'SENIOR_MAWIN',
@@ -23,7 +24,10 @@ const ROLE_PRIORITY = [
 ];
 
 function pickDefault(user) {
-  const roles = user?.roles || [];
+  const isSuper = (user?.roles || []).includes('SUPER_ADMIN') || user?.isBootstrap;
+  const roles = isSuper
+    ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN']
+    : (user?.roles || []);
   if (roles.length === 0) return null;
   for (const r of ROLE_PRIORITY) {
     if (r === 'MEMBER') continue;
@@ -36,28 +40,77 @@ function pickDefault(user) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [activeRole, setActiveRoleRaw] = useState(null);
-  const [loading, setLoading] = useState(true); // true until Storage hydrates
+  // Synchronously seed from localStorage on Web if available to prevent flash/race
+  const [user, setUser] = useState(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = window.localStorage.getItem(USER_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
 
-  // Hydrate from Storage on first mount (async).
+  const [activeRole, setActiveRoleRaw] = useState(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        return window.localStorage.getItem(ACTIVE_ROLE_KEY) || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  const [loading, setLoading] = useState(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      return false;
+    }
+    return true;
+  });
+
+  // Hydrate from Storage on first mount (async for native SecureStore).
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
-        const rawUser = await Storage.getItem(USER_KEY);
-        const rawRole = await Storage.getItem(ACTIVE_ROLE_KEY);
-        if (rawUser) setUser(JSON.parse(rawUser));
-        if (rawRole) setActiveRoleRaw(rawRole);
-      } catch { /* ignore */ } finally {
-        setLoading(false);
+        const [rawUser, rawRole] = await Promise.all([
+          Storage.getItem(USER_KEY),
+          Storage.getItem(ACTIVE_ROLE_KEY),
+        ]);
+        if (cancelled) return;
+        if (rawUser) {
+          try {
+            setUser(JSON.parse(rawUser));
+          } catch (e) {
+            console.warn('[AuthContext] Parse user error:', e);
+          }
+        }
+        if (rawRole) {
+          setActiveRoleRaw(rawRole);
+        }
+      } catch (e) {
+        console.warn('[AuthContext] Hydration error:', e);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function setActiveRole(role) {
-    if (role) await Storage.setItem(ACTIVE_ROLE_KEY, role);
-    else await Storage.removeItem(ACTIVE_ROLE_KEY);
     setActiveRoleRaw(role);
+    if (role) {
+      await Storage.setItem(ACTIVE_ROLE_KEY, role);
+    } else {
+      await Storage.removeItem(ACTIVE_ROLE_KEY);
+    }
   }
 
   async function refreshMe() {
@@ -81,26 +134,44 @@ export function AuthProvider({ children }) {
     return () => clearInterval(poll);
   }, [loading]);
 
-  // Auto-pick active role for multi-role users.
+  // Auto-pick active role for multi-role users when none is selected or selected is invalid.
   useEffect(() => {
-    if (!user) { setActiveRole(null); return; }
-    const all = user.roles || [];
-    if (all.length <= 1) { if (activeRole) setActiveRole(null); return; }
+    if (loading) return; // CRITICAL: Never run auto-pick or wipe activeRole while Storage is still hydrating!
+    if (!user) {
+      if (activeRole) {
+        setActiveRoleRaw(null);
+        Storage.removeItem(ACTIVE_ROLE_KEY).catch(() => {});
+      }
+      return;
+    }
+    const isSuper = (user.roles || []).includes('SUPER_ADMIN') || user.isBootstrap;
+    const all = isSuper
+      ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', ...(user.roles || []).filter((r) => !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r))]
+      : (user.roles || []);
+    if (all.length <= 1) {
+      if (activeRole) setActiveRole(null);
+      return;
+    }
     const deadCustom = activeRole
       && !ROLE_PRIORITY.includes(activeRole)
       && ((user.rolePermissions?.[activeRole]?.length ?? 0) === 0);
     if (!activeRole || !all.includes(activeRole) || deadCustom) {
       setActiveRole(pickDefault(user));
     }
-  }, [user]);
+  }, [user, activeRole, loading]);
 
   const effectiveUser = useMemo(() => {
     if (!user) return null;
-    const all = user.roles || [];
+    const isSuper = (user.roles || []).includes('SUPER_ADMIN') || user.isBootstrap;
+    const all = isSuper
+      ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', ...(user.roles || []).filter((r) => !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r))]
+      : (user.roles || []);
     if (!activeRole || all.length <= 1) {
       return { ...user, allRoles: all };
     }
-    const perms = user.rolePermissions?.[activeRole] || user.permissions || [];
+    const perms = isSuper && activeRole === 'SUPER_ADMIN'
+      ? (user.permissions || [])
+      : (user.rolePermissions?.[activeRole] || user.permissions || []);
     const EXECUTIVE_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'CHAIRMAN', 'CO_CHAIRMAN', 'SR_VICE_CHAIRMAN', 'VICE_CHAIRMAN', 'FIRST_SECRETARY'];
     const canViewExec = EXECUTIVE_ROLES.includes(activeRole) || (activeRole === 'GENERAL_SECRETARY' && !user.scope?.provinceId);
     return {

@@ -176,7 +176,7 @@ export default function ProfileScreen() {
                   return (
                     <TouchableOpacity
                       key={r}
-                      onPress={() => setActiveRole(activeRole === r ? null : r)}
+                      onPress={() => setActiveRole(r)}
                       style={[styles.rolePillBtn, isCurrentActive && styles.rolePillBtnActive]}
                       activeOpacity={0.7}
                     >
