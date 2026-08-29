@@ -224,6 +224,7 @@ export default function ActivitiesPage() {
       unitLevel: ctx.unitLevel,
       unitId: ctx.unitId,
       body: targetBody,
+      scope: 'own',
     });
     return params;
   }

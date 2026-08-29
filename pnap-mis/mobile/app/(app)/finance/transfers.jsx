@@ -439,6 +439,7 @@ export default function TransfersScreen() {
       const qParams = {
         unitLevel: activeLevel,
         unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : ctx?.unitId),
+        scope: 'own',
       };
       if (isJirgaView) qParams.body = 'JIRGA';
       else if (isCommitteeView) qParams.body = 'COMMITTEE';

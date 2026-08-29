@@ -516,7 +516,7 @@ export default function MeetingsPage() {
   // Body travels with the download alongside scope, so the exported
   // report covers exactly the stream the user is looking at.
   function exportParams() {
-    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, scope: 'own' });
     if (isCongressView) {
       params.set('body', 'CONGRESS');
     } else if (isJirgaView) {

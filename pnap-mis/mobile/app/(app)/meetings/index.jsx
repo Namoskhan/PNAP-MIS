@@ -247,6 +247,7 @@ export default function MeetingsScreen() {
       const qParams = new URLSearchParams({
         unitLevel: activeLevel,
         unitId: activeUnitId,
+        scope: 'own',
       });
       if (isCongressView) {
         qParams.set('body', 'CONGRESS');

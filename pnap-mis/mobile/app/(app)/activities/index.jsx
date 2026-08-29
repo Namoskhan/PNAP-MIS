@@ -165,6 +165,7 @@ export default function ActivitiesScreen() {
       unitLevel: activeLevel,
       unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : (params.unitId || ctx?.unitId)),
       body: targetBody,
+      scope: 'own',
     };
   }
 

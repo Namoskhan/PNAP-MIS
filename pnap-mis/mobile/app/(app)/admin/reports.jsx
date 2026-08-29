@@ -162,7 +162,11 @@ export default function ReportsScreen() {
     const p = { unitLevel: activeLevel, unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : activeUnitId) };
     if (from) p.from = from;
     if (to) p.to = to;
-    if (activeLevel !== 'BASIC_UNIT' && !isCongressView && scope) p.scope = scope;
+    if (activeLevel === 'BASIC_UNIT') {
+      p.scope = 'own';
+    } else if (!isCongressView && scope) {
+      p.scope = scope;
+    }
     if (isCongressView) {
       p.body = 'CONGRESS';
       p.scope = 'own';
@@ -220,6 +224,9 @@ export default function ReportsScreen() {
   }
 
   const committeeTier = COMMITTEE_TIER_LABELS[activeLevel] || activeLevel;
+  const committeeTierFormatted = committeeTier
+    ? (committeeTier.toLowerCase().endsWith('committee') ? committeeTier : `${committeeTier} Committee`)
+    : 'Committee';
   const jirgaTier = activeLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
   const unitDisplayName = activeUnitName;
 
@@ -246,7 +253,7 @@ export default function ReportsScreen() {
     : (isJirgaView
       ? `${jirgaTier} Reports · ${unitDisplayName}`
       : (isCommitteeView
-        ? `${committeeTier ? `${committeeTier} Committee` : 'Committee'} Reports · ${unitDisplayName}`
+        ? `${committeeTierFormatted} Reports · ${unitDisplayName}`
         : `Reports · ${unitDisplayName}`));
 
   const meetingsReportTitle = isCongressView
@@ -254,7 +261,7 @@ export default function ReportsScreen() {
     : (isJirgaView
       ? `${jirgaTier} Meetings & Activities Report`
       : (isCommitteeView
-        ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Meetings & Activities Report`
+        ? `${committeeTierFormatted} Meetings & Activities Report`
         : 'Meetings & Activities Report'));
 
   const meetingsDesc = isCongressView
@@ -268,7 +275,7 @@ export default function ReportsScreen() {
     : (isJirgaView
       ? `${jirgaTier} Finance Report`
       : (isCommitteeView
-        ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Finance Report`
+        ? `${committeeTierFormatted} Finance Report`
         : 'Finance Report'));
 
   const financeDesc = isCongressView

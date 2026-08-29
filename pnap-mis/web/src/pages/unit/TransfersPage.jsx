@@ -194,7 +194,7 @@ export default function TransfersPage() {
   }
 
   function exportParams() {
-    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab, body: targetBody });
+    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, direction: tab, body: targetBody, scope: 'own' });
     return params;
   }
   function exportName(ext) {

@@ -108,7 +108,11 @@ export default function ReportsPage() {
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
-    if (ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && scope) p.set('scope', scope);
+    if (ctx.unitLevel === 'BASIC_UNIT') {
+      p.set('scope', 'own');
+    } else if (!isCongressView && scope) {
+      p.set('scope', scope);
+    }
     if (isCongressView) {
       p.set('body', 'CONGRESS');
       p.set('scope', 'own');
@@ -181,6 +185,9 @@ export default function ReportsPage() {
   }
 
   const committeeTier = getCommitteeTierLabel(ctx.unitLevel);
+  const committeeTierFormatted = committeeTier
+    ? (committeeTier.toLowerCase().endsWith('committee') ? committeeTier : `${committeeTier} Committee`)
+    : 'Committee';
   const jirgaTier = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
   const hasSubordinates = ctx.unitLevel !== 'BASIC_UNIT';
 
@@ -207,7 +214,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Reports · ${ctx.unitName}`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee` : 'Committee'} Reports · ${ctx.unitName}`
+      ? `${committeeTierFormatted} Reports · ${ctx.unitName}`
       : `Reports · ${ctx.unitName}`));
 
   const meetingsReportTitle = isCongressView
@@ -215,7 +222,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Meetings & Activities Report`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Meetings & Activities Report`
+      ? `${committeeTierFormatted} Meetings & Activities Report`
       : 'Meetings & Activities Report'));
 
   const financeReportTitle = isCongressView
@@ -223,7 +230,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Finance Report`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Finance Report`
+      ? `${committeeTierFormatted} Finance Report`
       : 'Finance Report'));
 
   return (

@@ -496,6 +496,7 @@ export default function FinanceScreen() {
       unitLevel: activeLevel,
       unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : (params.unitId || ctx?.unitId)),
       body: targetBody,
+      scope: 'own',
       from: monthFrom || undefined,
       to: monthTo || undefined,
     };

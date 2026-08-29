@@ -399,6 +399,7 @@ export default function FinancePage() {
       unitLevel: ctx.unitLevel,
       unitId: ctx.unitId,
       body: targetBody,
+      scope: 'own',
     });
     const ext = format === 'pdf' ? 'pdf' : 'xlsx';
     const filename = `${ctx.unitName || 'unit'}-${targetBody.toLowerCase()}-finance.${ext}`;
