@@ -430,6 +430,37 @@ export default function MeetingsScreen() {
     );
   }
 
+  // If user opened Congress stream but is below Central tier, show guidance card
+  if (isCongressView && activeLevel !== 'CENTRAL') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>National Congress operates exclusively at the Central Level</Text>
+            <Text style={styles.guidanceText}>
+              Under the PKNAP constitution, the <Text style={{ fontWeight: '700' }}>National Congress (قومي کانګرس)</Text> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <Text style={{ fontWeight: '700' }}>Sobayi Jirga</Text> (Province) and <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text> (District & Area).
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              <TouchableOpacity
+                style={styles.guidanceBtnPrimary}
+                onPress={() => {
+                  setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                }}
+              >
+                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.guidanceBtnPrimaryText}>Switch to Central Unit Context →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   // If user opened Jirga stream but is below Province tier, show guidance card
   if (isJirgaView && activeLevel !== 'CENTRAL' && activeLevel !== 'PROVINCE') {
     return (

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import dialog from '../../components/dialog';
-import { XIcon } from '../../components/icons';
+import { XIcon, CongressIcon, BuildingIcon, UsersIcon } from '../../components/icons';
 import { SkeletonRows } from '../../components/Skeleton';
 
 const ROLE_OPTIONS = [
@@ -34,9 +35,23 @@ const UNIT_LEVEL_OPTIONS = [
 ];
 
 export default function CongressPage() {
-  const { ctx, provinces } = useUnit();
-  const { user } = useAuth();
+  const { ctx, provinces, setCtx } = useUnit();
+  const { user, setActiveRole, allRoles } = useAuth();
   const toast = useToast();
+
+  function handleSwitchToCentral() {
+    const rolesList = allRoles || user?.allRoles || user?.roles || [];
+    const isSuper = rolesList.includes('SUPER_ADMIN') || user?.isBootstrap;
+    const isCentral = rolesList.includes('CENTRAL_ADMIN');
+    if (isSuper && setActiveRole) {
+      setActiveRole('SUPER_ADMIN');
+    } else if (isCentral && setActiveRole) {
+      setActiveRole('CENTRAL_ADMIN');
+    }
+    api.get('/org/central')
+      .then((r) => setCtx({ unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' }))
+      .catch(() => setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' }));
+  }
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -252,6 +267,38 @@ export default function CongressPage() {
   }, [data?.members]);
 
   const canManage = Boolean(data?.canManage);
+  const isCentral = ctx && ctx.unitLevel === 'CENTRAL';
+
+  if (!ctx) return <p>Select a unit context first.</p>;
+
+  // If user is at Province, District, Area, or Basic Unit context, explain and offer jump
+  if (!isCentral) {
+    return (
+      <div>
+        <div className="page-header">
+          <h2>National Congress · قومي کانګرس</h2>
+        </div>
+        <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
+          <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
+            <CongressIcon size={36} />
+          </div>
+          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <p className="muted" style={{ lineHeight: 1.6 }}>
+            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleSwitchToCentral}
+            >
+              Switch to Central Unit Context →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -262,20 +309,49 @@ export default function CongressPage() {
             Central Supreme Consultative &amp; Representative Assembly of PKNAP
           </div>
         </div>
-        {canManage && (
-          <button
-            type="button"
-            className="btn"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            onClick={() => {
-              setSelectedMember(null);
-              setNominationNote('');
-              setAssignOpen(true);
-            }}
-          >
-            + Assign Members to Congress
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link className="btn secondary small" to="/national" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <BuildingIcon size={13} /> Country Structure
+          </Link>
+          {canManage && (
+            <button
+              type="button"
+              className="btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              onClick={() => {
+                setSelectedMember(null);
+                setNominationNote('');
+                setAssignOpen(true);
+              }}
+            >
+              + Assign Members to Congress
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Navigation Hub */}
+      <div className="card" style={{ marginBottom: 16, padding: '12px 16px', background: 'var(--surface-alt)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CongressIcon size={16} />
+            <strong style={{ fontSize: 13 }}>Congress Assembly Hub:</strong>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link className="btn secondary small" to="/unit/meetings?body=CONGRESS">
+              Congress Meetings →
+            </Link>
+            <Link className="btn secondary small" to="/unit/activities?body=CONGRESS">
+              Congress Activities →
+            </Link>
+            <Link className="btn secondary small" to="/unit/finance?body=CONGRESS">
+              Congress Finance →
+            </Link>
+            <Link className="btn secondary small" to="/unit/reports?body=CONGRESS">
+              Congress Reports →
+            </Link>
+          </div>
+        </div>
       </div>
 
       {err && <div className="alert error" style={{ marginBottom: 16 }}>{err}</div>}

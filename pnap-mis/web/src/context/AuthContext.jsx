@@ -8,7 +8,7 @@ const ACTIVE_ROLE_KEY = 'pnap_active_role';
 // users who hold multiple. Higher in the list wins. Mirrors the
 // hierarchy of dashboards a person would naturally land on.
 const ROLE_PRIORITY = [
-  'SUPER_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
+  'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
   'CHAIRMAN', 'CO_CHAIRMAN', 'PRESIDENT',
   'SECRETARY',
   'SR_VICE_PRESIDENT', 'FIRST_SECRETARY', 'SENIOR_MAWIN',
@@ -20,7 +20,10 @@ const ROLE_PRIORITY = [
 ];
 
 function pickDefault(user) {
-  const roles = user?.roles || [];
+  const isSuper = (user?.roles || []).includes('SUPER_ADMIN') || user?.isBootstrap;
+  const roles = isSuper
+    ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN']
+    : (user?.roles || []);
   if (roles.length === 0) return null;
   // Built-in roles by priority — but never auto-prefer the base
   // MEMBER portal while a real role exists.
@@ -108,7 +111,10 @@ export function AuthProvider({ children }) {
   // (no need for a selector if there's nothing to switch between).
   useEffect(() => {
     if (!user) { setActiveRole(null); return; }
-    const all = user.roles || [];
+    const isSuper = (user.roles || []).includes('SUPER_ADMIN') || user.isBootstrap;
+    const all = isSuper
+      ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', ...(user.roles || []).filter((r) => !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r))]
+      : (user.roles || []);
     if (all.length <= 1) { if (activeRole) setActiveRole(null); return; }
     // Re-pick when nothing is chosen, the choice no longer exists, or
     // the chosen custom role has lost every permission (its persona
@@ -134,14 +140,19 @@ export function AuthProvider({ children }) {
   // selector itself.
   const effectiveUser = useMemo(() => {
     if (!user) return null;
-    const all = user.roles || [];
+    const isSuper = (user.roles || []).includes('SUPER_ADMIN') || user.isBootstrap;
+    const all = isSuper
+      ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', ...(user.roles || []).filter((r) => !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r))]
+      : (user.roles || []);
     if (!activeRole || all.length <= 1) {
       return { ...user, allRoles: all };
     }
     // Narrow permissions to just what the active role grants.
     // Falls back to the full union if rolePermissions wasn't shipped
     // (legacy token / older server build).
-    const perms = user.rolePermissions?.[activeRole] || user.permissions || [];
+    const perms = isSuper && activeRole === 'SUPER_ADMIN'
+      ? (user.permissions || [])
+      : (user.rolePermissions?.[activeRole] || user.permissions || []);
     const EXECUTIVE_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'CHAIRMAN', 'CO_CHAIRMAN', 'SR_VICE_CHAIRMAN', 'VICE_CHAIRMAN', 'FIRST_SECRETARY'];
     const canViewExec = EXECUTIVE_ROLES.includes(activeRole) || (activeRole === 'GENERAL_SECRETARY' && !user.scope?.provinceId);
     return {

@@ -125,8 +125,9 @@ export function UnitProvider({ children }) {
     // is why Assign Cabinet Roles opened on the previous unit until you
     // picked a new one by hand. They now default to their own tier and
     // reject anything above it, exactly like the Area Admin branch.
-    const isSuperOrCentral = user.roles?.includes('SUPER_ADMIN')
-      || user.roles?.includes('CENTRAL_ADMIN');
+    const isSuperOrCentral = (user.allRoles || user.roles || []).includes('SUPER_ADMIN')
+      || (user.allRoles || user.roles || []).includes('CENTRAL_ADMIN')
+      || user.isBootstrap;
 
     if (!isSuperOrCentral && user.roles?.includes('PROVINCE_ADMIN') && user.scope?.provinceId) {
       const inScope = ctx && (

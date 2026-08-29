@@ -248,12 +248,12 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 8. National Congress
+    // 8. National Congress (Exclusively Central Level)
     {
       key: 'congress',
       title: 'National Congress',
       icon: '🤝',
-      show: () => isSuper || isCentral || isSeniorMawin || isSecretary || isFinanceSec || isPresident,
+      show: () => (ctx?.unitLevel === 'CENTRAL' || isSuper || isCentral),
       items: [
         { key: 'congress-roster', icon: '👥', title: 'Congress Roster', description: 'National Congress composition & member assignments', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'congress-meetings', icon: '📅', title: 'Congress Meetings', description: 'Schedule and manage National Congress assemblies', route: '/meetings?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
