@@ -6,7 +6,7 @@ import { Colors } from '../../src/constants/colors';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
 
 function TabIcon({ name, color, size }) {
-  return <Ionicons name={name} size={size} color={color} />;
+  return <Ionicons name={name} size={size ? Math.min(size, 22) : 22} color={color} />;
 }
 
 export default function AppLayout() {
@@ -37,7 +37,7 @@ export default function AppLayout() {
           borderTopColor: Colors.border,
           borderTopWidth: 1,
           backgroundColor: Colors.surface,
-          paddingTop: 6,
+          paddingTop: 4,
           paddingBottom: Platform.OS === 'ios' ? 24 : 6,
           height: Platform.OS === 'ios' ? 84 : 64,
           elevation: 8,
@@ -49,15 +49,18 @@ export default function AppLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
-          marginBottom: 4,
+          lineHeight: 14,
+          marginTop: 1,
+          marginBottom: 0,
         },
         tabBarIconStyle: {
-          marginTop: 2,
+          marginTop: 0,
+          marginBottom: 0,
         },
         tabBarItemStyle: {
+          paddingVertical: 2,
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100%',
         },
       }}
     >
