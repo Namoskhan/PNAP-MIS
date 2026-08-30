@@ -23,7 +23,7 @@ import * as Sharing from 'expo-sharing';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage } from '../../../src/api/client';
-import { canManageMeetings, isPureMember, isHigherAdmin } from '../../../src/utils/permissions';
+import { canManageMeetings, isPureMember, isHigherAdmin, isSuperAdmin, isSuperAdminOversight, isCentralAdminOversight } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import { Storage } from '../../../src/utils/storage';
 import Badge from '../../../src/components/Badge';
@@ -80,7 +80,10 @@ export default function MeetingsScreen() {
     }
   }, [rawUnitId, activeLevel]);
 
-  const canManage = canManageMeetings(user);
+  const canManage = canManageMeetings(user)
+    && !isCentralAdminOversight(user)
+    && !isSuperAdminOversight(user)
+    && !(isSuperAdmin(user) && (activeLevel === 'CENTRAL' || isCongressView));
 
   const [bodyTab, setBodyTab] = useState('ALL');
   const [items, setItems] = useState([]);

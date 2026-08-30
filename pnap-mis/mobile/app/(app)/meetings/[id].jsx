@@ -22,7 +22,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
-import { canManageMeetings } from '../../../src/utils/permissions';
+import { canManageMeetings, isSuperAdmin, isSuperAdminOversight, isCentralAdminOversight } from '../../../src/utils/permissions';
 import { Storage } from '../../../src/utils/storage';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
@@ -54,8 +54,12 @@ export default function MeetingDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
-  const toast = useToast();
-  const canManage = canManageMeetings(user);
+  const isSuper = isSuperAdmin(user);
+  const isCentralOrCongress = meeting?.unitLevel === 'CENTRAL' || meeting?.body === 'CONGRESS';
+  const canManage = canManageMeetings(user)
+    && !isCentralAdminOversight(user)
+    && !isSuperAdminOversight(user)
+    && !(isSuper && isCentralOrCongress);
 
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
