@@ -137,6 +137,23 @@ export default function AdminHubScreen() {
         { key: 'settings-history', icon: '🕒', title: 'Settings History', description: 'Changelog of settings', route: '/admin/settings/history' },
       ],
     },
+    {
+      key: 'central_tier',
+      title: 'Central Tier',
+      icon: '🌐',
+      show: () => isSuper,
+      items: [
+        { key: 'ct-dash', icon: '🏠', title: 'Central Dashboard', description: 'Central Command & Analytics Overview', route: '/' },
+        { key: 'ct-cab', icon: '🏛️', title: 'Central Cabinet', description: 'Cabinet appointments and office-holders', route: '/cabinet' },
+        { key: 'ct-congress', icon: '🤝', title: 'National Congress', description: 'National Congress roster and assemblies', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'ct-meetings', icon: '📅', title: 'Central Meetings', description: 'Central executive assemblies & meeting records', route: '/meetings?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'ct-activities', icon: '🚩', title: 'Central Activities', description: 'Central events, campaigns and gatherings', route: '/activities?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'ct-resp', icon: '📋', title: 'Central Responsibilities', description: 'Central task allocations and monitoring', route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'ct-finance', icon: '💰', title: 'Central Finance', description: 'Central funds, donations and expenses ledger', route: '/finance?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'ct-transfers', icon: '💸', title: 'Central Fund Transfers', description: 'Central fund transfers and approvals', route: '/finance/transfers?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'ct-reports', icon: '📈', title: 'Central Reports', description: 'Generate and download Central PDF and Excel reports', route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
+      ],
+    },
 
     // 2. Central Admin: My Organization
     {
@@ -328,6 +345,7 @@ export default function AdminHubScreen() {
     unit_mgmt: true,
     event_manager: true,
     settings: true,
+    central_tier: true,
     my_org: true,
     my_province: true,
     my_district: true,

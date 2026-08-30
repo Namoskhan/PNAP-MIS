@@ -22,7 +22,7 @@ import { useBranding } from '../context/BrandingContext';
 import {
   UsersIcon, FolderIcon, BuildingIcon, GearIcon,
   UserIcon, PowerIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon,
-  CommitteeIcon, JirgaIcon, CongressIcon,
+  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon,
 } from './icons';
 
 const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
@@ -301,8 +301,7 @@ export default function Layout() {
               <NavLink to="/admin/settings/login">Login Customization</NavLink>
               <NavLink to="/admin/settings/history">Settings History</NavLink>
             </NavGroup>
-            <div className="nav-group">Central Tier</div>
-            <nav>
+            <NavGroup label="Central Tier" icon={<GlobeIcon size={14} />} storageKey="pnap_nav_central_tier" defaultOpen={false}>
               <NavLink to="/unit" end>Central Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Central Cabinet</NavLink>
               <NavLink to="/unit/congress">National Congress</NavLink>
@@ -312,7 +311,7 @@ export default function Layout() {
               <UnitNavLink to="/unit/finance">Central Finance</UnitNavLink>
               <UnitNavLink to="/unit/transfers">Central Fund Transfers</UnitNavLink>
               <UnitNavLink to="/unit/reports">Central Reports</UnitNavLink>
-            </nav>
+            </NavGroup>
             <CongressNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
             <JirgaNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
             {/* Super Admin removed from Committee group per request. */}

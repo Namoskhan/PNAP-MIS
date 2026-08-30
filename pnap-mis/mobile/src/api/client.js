@@ -4,12 +4,14 @@ import { Platform } from 'react-native';
 import { Storage } from '../utils/storage';
 
 export function resolveApiBaseUrl() {
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location?.hostname) {
+      return `http://${window.location.hostname}:5000/api`;
+    }
   }
 
   // When running in Expo Go or dev on a physical device or emulator:
-  // hostUri provides the development machine's IP (e.g. "192.168.18.129:8081")
+  // hostUri provides the development machine's IP (e.g. "192.168.1.7:8081")
   const hostUri =
     Constants.expoConfig?.hostUri ||
     Constants.manifest2?.extra?.expoClient?.hostUri ||
@@ -17,9 +19,13 @@ export function resolveApiBaseUrl() {
 
   if (hostUri) {
     const ip = hostUri.split(':')[0];
-    if (ip) {
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
       return `http://${ip}:5000/api`;
     }
+  }
+
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
 
   if (Platform.OS === 'android') {
