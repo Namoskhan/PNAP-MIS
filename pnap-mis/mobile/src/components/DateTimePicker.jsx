@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -5,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePickerNative, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import DateTimePickerNative from '@react-native-community/datetimepicker';
 import { Colors, FontSize, Radius, Spacing } from '../constants/colors';
 
 function getLocalNowString(mode) {
@@ -88,46 +89,6 @@ export default function DateTimePicker({
   placeholder,
   style,
 }) {
-<<<<<<< HEAD
-  const dateValue = value && !isNaN(new Date(value).getTime()) ? new Date(value) : new Date();
-
-  function showAndroidPicker() {
-    if (Platform.OS !== 'android') return;
-
-    if (mode === 'datetime') {
-      DateTimePickerAndroid.open({
-        value: dateValue,
-        mode: 'date',
-        onChange: (event, selectedDate) => {
-          if (event.type === 'set' && selectedDate) {
-            const pickedDate = selectedDate;
-            DateTimePickerAndroid.open({
-              value: pickedDate,
-              mode: 'time',
-              is24Hour: false,
-              onChange: (timeEvent, finalDate) => {
-                if (timeEvent.type === 'set' && finalDate) {
-                  const combined = new Date(pickedDate);
-                  combined.setHours(finalDate.getHours(), finalDate.getMinutes(), 0, 0);
-                  onChange(combined.toISOString());
-                }
-              },
-            });
-          }
-        },
-      });
-    } else {
-      DateTimePickerAndroid.open({
-        value: dateValue,
-        mode: mode === 'time' ? 'time' : 'date',
-        is24Hour: false,
-        onChange: (event, selectedDate) => {
-          if (event.type === 'set' && selectedDate) {
-            onChange(selectedDate.toISOString());
-          }
-        },
-      });
-=======
   const [show, setShow] = useState(false);
   const [androidMode, setAndroidMode] = useState('date');
   const [tempDate, setTempDate] = useState(null);
@@ -191,20 +152,12 @@ export default function DateTimePicker({
       } else {
         onChange(`${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}T${pad(selectedDate.getHours())}:${pad(selectedDate.getMinutes())}`);
       }
->>>>>>> origin/Shumail
     }
   }
 
   // Display formatting (formatted in user's device local timezone with 12-hour AM/PM)
   let displayValue = placeholder || 'Select...';
   if (value) {
-<<<<<<< HEAD
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) {
-      if (mode === 'date') displayValue = d.toLocaleDateString();
-      else if (mode === 'time') displayValue = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      else displayValue = d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-=======
     const d = (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) && !value.endsWith('Z'))
       ? parseLocalInput(value)
       : new Date(value);
@@ -224,7 +177,6 @@ export default function DateTimePicker({
           hour12: true,
         });
       }
->>>>>>> origin/Shumail
     }
   }
 
@@ -298,24 +250,11 @@ export default function DateTimePicker({
             value={dateValue}
             mode={mode}
             display="default"
-            onChange={(event, selectedDate) => {
-              if (selectedDate) onChange(selectedDate.toISOString());
-            }}
+            onChange={handleChange}
             style={{ width: '100%', alignSelf: 'flex-start' }}
           />
         </View>
       ) : (
-<<<<<<< HEAD
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={showAndroidPicker}
-          activeOpacity={0.75}
-        >
-          <Text style={[styles.pickerText, !value && styles.placeholderText]}>
-            {displayValue}
-          </Text>
-        </TouchableOpacity>
-=======
         <>
           <TouchableOpacity
             style={styles.pickerButton}
@@ -336,7 +275,6 @@ export default function DateTimePicker({
             />
           )}
         </>
->>>>>>> origin/Shumail
       )}
     </View>
   );
