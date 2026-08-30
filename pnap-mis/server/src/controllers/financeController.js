@@ -355,40 +355,54 @@ exports.summary = asyncHandler(async (req, res) => {
     sourceUnitId: toOid(unitId),
     state: 'ACKNOWLEDGED',
   };
+  const pendingOutFilter = {
+    sourceLevel: unitLevel,
+    sourceUnitId: toOid(unitId),
+    state: 'PENDING_ACK',
+  };
   const inFilter = {
     destinationLevel: unitLevel,
     destinationUnitId: toOid(unitId),
     state: 'ACKNOWLEDGED',
   };
 
-  // Optional body split — every one of the four ledgers narrows
+  // Optional body split — every one of the ledgers narrows
   // together so the KPI tiles and the Net Balance stay internally
-  // consistent. Omitted `body` leaves all four untouched (pooled).
+  // consistent. Omitted `body` leaves all untouched (pooled).
   const bc = bodyClause(body);
   if (bc) {
     Object.assign(dFilter, bc);
     Object.assign(eFilter, bc);
     Object.assign(outFilter, bc);
+    Object.assign(pendingOutFilter, bc);
     Object.assign(inFilter, bc);
   }
 
-  const [donAgg, expAgg, outAgg, inAgg] = await Promise.all([
+  const [donAgg, expAgg, outAgg, pendingOutAgg, inAgg] = await Promise.all([
     Donation.aggregate([{ $match: dFilter }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     Expense.aggregate([{ $match: eFilter }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     FundTransfer.aggregate([{ $match: outFilter }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
+    FundTransfer.aggregate([{ $match: pendingOutFilter }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     FundTransfer.aggregate([{ $match: inFilter }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
   ]);
 
   const donations = donAgg[0] || { total: 0, count: 0 };
   const expenses = expAgg[0] || { total: 0, count: 0 };
   const transfersOut = outAgg[0] || { total: 0, count: 0 };
+  const pendingTransfersOut = pendingOutAgg[0] || { total: 0, count: 0 };
   const transfersIn = inAgg[0] || { total: 0, count: 0 };
+  const ledgerBalance = donations.total + transfersIn.total - expenses.total - transfersOut.total;
+  const availableBalance = Math.max(0, ledgerBalance - pendingTransfersOut.total);
+
   ok(res, {
     donations,
     expenses,
     transfersOut,
+    pendingTransfersOut,
     transfersIn,
-    balance: donations.total + transfersIn.total - expenses.total - transfersOut.total,
+    ledgerBalance,
+    availableBalance,
+    balance: availableBalance,
   });
 });
 

@@ -56,6 +56,65 @@ async function shapeUser(user) {
   const { labels, userPerms } = await buildRoleMaps(obj.roles);
   obj.roleLabels = labels;
   obj.rolePermissions = userPerms;
+
+  // Resolve scope unit names if scope IDs exist
+  if (obj.scope) {
+    const Province = require('../models/Province');
+    const District = require('../models/District');
+    const Area = require('../models/Area');
+    const BasicUnit = require('../models/BasicUnit');
+
+    try {
+      const [p, d, a, u] = await Promise.all([
+        obj.scope.provinceId ? Province.findById(obj.scope.provinceId).select('name').lean() : null,
+        obj.scope.districtId ? District.findById(obj.scope.districtId).select('name').lean() : null,
+        obj.scope.areaId ? Area.findById(obj.scope.areaId).select('name').lean() : null,
+        obj.scope.basicUnitId ? BasicUnit.findById(obj.scope.basicUnitId).select('name').lean() : null,
+      ]);
+
+      obj.scope.provinceName = p?.name || obj.scope.provinceName;
+      obj.scope.districtName = d?.name || obj.scope.districtName;
+      obj.scope.areaName = a?.name || obj.scope.areaName;
+      obj.scope.basicUnitName = u?.name || obj.scope.basicUnitName;
+    } catch {}
+  }
+
+  // Attach member details if linked
+  if (obj.memberId) {
+    try {
+      const Member = require('../models/Member');
+      const mem = await Member.findById(obj.memberId)
+        .select('memberId cnic phone email status dateOfBirth gender address bloodGroup education occupation dateJoined photoUrl fatherOrHusbandName')
+        .populate('provinceId districtId areaId basicUnitId', 'name')
+        .lean();
+      if (mem) {
+        obj.memberProfile = mem;
+        if (!obj.phone && mem.phone) obj.phone = mem.phone;
+        if (!obj.photoUrl && mem.photoUrl) obj.photoUrl = mem.photoUrl;
+        if (!obj.memberNo && mem.memberId) obj.memberNo = mem.memberId;
+
+        // If user scope names were not populated, grab from member unit refs
+        if (obj.scope) {
+          if (!obj.scope.provinceName && mem.provinceId?.name) obj.scope.provinceName = mem.provinceId.name;
+          if (!obj.scope.districtName && mem.districtId?.name) obj.scope.districtName = mem.districtId.name;
+          if (!obj.scope.areaName && mem.areaId?.name) obj.scope.areaName = mem.areaId.name;
+          if (!obj.scope.basicUnitName && mem.basicUnitId?.name) obj.scope.basicUnitName = mem.basicUnitId.name;
+        } else {
+          obj.scope = {
+            provinceId: mem.provinceId?._id || mem.provinceId,
+            provinceName: mem.provinceId?.name,
+            districtId: mem.districtId?._id || mem.districtId,
+            districtName: mem.districtId?.name,
+            areaId: mem.areaId?._id || mem.areaId,
+            areaName: mem.areaId?.name,
+            basicUnitId: mem.basicUnitId?._id || mem.basicUnitId,
+            basicUnitName: mem.basicUnitId?.name,
+          };
+        }
+      }
+    } catch {}
+  }
+
   return obj;
 }
 

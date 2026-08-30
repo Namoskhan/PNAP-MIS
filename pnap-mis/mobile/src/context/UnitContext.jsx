@@ -12,24 +12,76 @@ async function readStored(userId) {
     const raw = JSON.parse(await Storage.getItem(STORAGE_KEY) || 'null');
     if (!raw || !raw.unitLevel || !raw.unitId) return null;
     if (!raw.userId || String(raw.userId) !== String(userId || '')) return null;
-    return { unitLevel: raw.unitLevel, unitId: raw.unitId, unitName: raw.unitName };
+    return { unitLevel: raw.unitLevel, unitId: raw.unitId, unitName: raw.unitName, roleCode: raw.roleCode };
   } catch {
     return null;
   }
 }
 
-async function writeStored(ctx, userId) {
+async function writeStored(ctx, userId, roleCode) {
   try {
     if (ctx && userId) {
-      await Storage.setItem(STORAGE_KEY, JSON.stringify({ ...ctx, userId }));
+      await Storage.setItem(STORAGE_KEY, JSON.stringify({ ...ctx, userId, roleCode }));
     } else {
       await Storage.removeItem(STORAGE_KEY);
     }
   } catch { /* ignore */ }
 }
 
+async function resolveUnitName(unitLevel, unitId, userScope) {
+  if (!unitLevel || !unitId) return 'My Unit';
+  if (unitLevel === 'CENTRAL') {
+    try {
+      const c = await api.get('/org/central');
+      return c.data?.data?.name || 'PKNAP Central';
+    } catch {
+      return 'PKNAP Central';
+    }
+  }
+  if (unitLevel === 'PROVINCE') {
+    try {
+      const r = await api.get('/org/provinces');
+      const p = (r.data.data || []).find((x) => String(x._id) === String(unitId));
+      return p?.name || userScope?.provinceName || 'My Province';
+    } catch {
+      return userScope?.provinceName || 'My Province';
+    }
+  }
+  if (unitLevel === 'DISTRICT') {
+    try {
+      const pId = userScope?.provinceId;
+      const r = await api.get('/org/districts', { params: pId ? { provinceId: pId } : undefined });
+      const d = (r.data.data || []).find((x) => String(x._id) === String(unitId));
+      return d?.name || userScope?.districtName || 'My District';
+    } catch {
+      return userScope?.districtName || 'My District';
+    }
+  }
+  if (unitLevel === 'AREA') {
+    try {
+      const dId = userScope?.districtId;
+      const r = await api.get('/org/areas', { params: dId ? { districtId: dId } : undefined });
+      const a = (r.data.data || []).find((x) => String(x._id) === String(unitId));
+      return a?.name || userScope?.areaName || 'My Area';
+    } catch {
+      return userScope?.areaName || 'My Area';
+    }
+  }
+  if (unitLevel === 'BASIC_UNIT') {
+    try {
+      const aId = userScope?.areaId;
+      const r = await api.get('/org/basic-units', { params: aId ? { areaId: aId } : undefined });
+      const u = (r.data.data || []).find((x) => String(x._id) === String(unitId));
+      return u?.name || userScope?.basicUnitName || 'My Basic Unit';
+    } catch {
+      return userScope?.basicUnitName || 'My Basic Unit';
+    }
+  }
+  return 'My Unit';
+}
+
 export function UnitProvider({ children }) {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -43,7 +95,7 @@ export function UnitProvider({ children }) {
     api.get('/org/provinces').then((r) => setProvinces(r.data.data || [])).catch(() => {});
   }, [user]);
 
-  // Main context resolution & auto-pinning
+  // Main context resolution & auto-pinning to active role / persona
   useEffect(() => {
     if (!user?._id) {
       setCtxRaw(null);
@@ -53,160 +105,115 @@ export function UnitProvider({ children }) {
 
     let isCancelled = false;
 
-    async function initializeCtx() {
-      const stored = await readStored(user._id);
+    async function syncUnitContext() {
+      const targetRole = activeRole || (user.roles?.length === 1 ? user.roles[0] : null);
 
-      const isHigherAdmin = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN']
-        .some((r) => user.roles?.includes(r));
-      const isSuperOrCentral = user.roles?.includes('SUPER_ADMIN') || user.roles?.includes('CENTRAL_ADMIN');
-
-      // 1. Central Admin
-      if (user.roles?.includes('CENTRAL_ADMIN') && !user.roles?.includes('SUPER_ADMIN')) {
-        const inScope = stored && (stored.unitLevel === 'CENTRAL' || stored.unitLevel === 'PROVINCE');
-        if (inScope) {
-          if (!isCancelled) { setCtxRaw(stored); setReady(true); }
-          return;
-        }
-        try {
-          const r = await api.get('/org/central');
-          if (!isCancelled && r.data?.data?._id) {
-            const next = { unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' };
+      // 1. If user switched to or is explicitly focused on a specific activeRole:
+      if (targetRole) {
+        // A. Central Admin / Super Admin
+        if (targetRole === 'SUPER_ADMIN' || targetRole === 'CENTRAL_ADMIN') {
+          const unitName = await resolveUnitName('CENTRAL', 'CENTRAL', user.scope);
+          const next = { unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName };
+          if (!isCancelled) {
             setCtxRaw(next);
-            await writeStored(next, user._id);
+            await writeStored(next, user._id, targetRole);
             setReady(true);
-            return;
           }
-        } catch {}
-      }
-
-      // 2. Province Admin (e.g. KPK Admin)
-      if (!isSuperOrCentral && user.roles?.includes('PROVINCE_ADMIN') && user.scope?.provinceId) {
-        const inScope = stored && (
-          ['DISTRICT', 'AREA', 'BASIC_UNIT'].includes(stored.unitLevel) ||
-          (stored.unitLevel === 'PROVINCE' && String(stored.unitId) === String(user.scope.provinceId))
-        );
-        if (inScope) {
-          if (!isCancelled) { setCtxRaw(stored); setReady(true); }
           return;
         }
-        try {
-          const r = await api.get('/org/provinces');
-          const p = (r.data.data || []).find((x) => String(x._id) === String(user.scope.provinceId));
-          const unitName = p?.name || 'Khyber Pakhtunkhwa';
+
+        // B. Province Admin
+        if (targetRole === 'PROVINCE_ADMIN' && user.scope?.provinceId) {
+          const unitName = await resolveUnitName('PROVINCE', user.scope.provinceId, user.scope);
           const next = { unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName };
           if (!isCancelled) {
             setCtxRaw(next);
-            await writeStored(next, user._id);
+            await writeStored(next, user._id, targetRole);
             setReady(true);
           }
           return;
-        } catch {
-          const next = { unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: 'My Province' };
-          if (!isCancelled) { setCtxRaw(next); setReady(true); }
-          return;
         }
-      }
 
-      // 3. District Admin
-      if (!isSuperOrCentral && user.roles?.includes('DISTRICT_ADMIN') && !user.roles?.includes('PROVINCE_ADMIN') && user.scope?.districtId) {
-        const inScope = stored && (
-          ['AREA', 'BASIC_UNIT'].includes(stored.unitLevel) ||
-          (stored.unitLevel === 'DISTRICT' && String(stored.unitId) === String(user.scope.districtId))
-        );
-        if (inScope) {
-          if (!isCancelled) { setCtxRaw(stored); setReady(true); }
-          return;
-        }
-        try {
-          const r = await api.get('/org/districts', { params: { provinceId: user.scope.provinceId } });
-          const d = (r.data.data || []).find((x) => String(x._id) === String(user.scope.districtId));
-          const unitName = d?.name || 'My District';
+        // C. District Admin
+        if (targetRole === 'DISTRICT_ADMIN' && user.scope?.districtId) {
+          const unitName = await resolveUnitName('DISTRICT', user.scope.districtId, user.scope);
           const next = { unitLevel: 'DISTRICT', unitId: user.scope.districtId, unitName };
           if (!isCancelled) {
             setCtxRaw(next);
-            await writeStored(next, user._id);
+            await writeStored(next, user._id, targetRole);
             setReady(true);
           }
           return;
-        } catch {
-          const next = { unitLevel: 'DISTRICT', unitId: user.scope.districtId, unitName: 'My District' };
-          if (!isCancelled) { setCtxRaw(next); setReady(true); }
-          return;
         }
-      }
 
-      // 4. Area Admin
-      if (user.roles?.includes('AREA_ADMIN') && !isHigherAdmin && user.scope?.areaId) {
-        const inScope = stored && (
-          stored.unitLevel === 'BASIC_UNIT' ||
-          (stored.unitLevel === 'AREA' && String(stored.unitId) === String(user.scope.areaId))
-        );
-        if (inScope) {
-          if (!isCancelled) { setCtxRaw(stored); setReady(true); }
-          return;
-        }
-        try {
-          const r = await api.get('/org/areas', { params: { districtId: user.scope.districtId } });
-          const a = (r.data.data || []).find((x) => String(x._id) === String(user.scope.areaId));
-          const unitName = a?.name || 'My Area';
+        // D. Area Admin
+        if (targetRole === 'AREA_ADMIN' && user.scope?.areaId) {
+          const unitName = await resolveUnitName('AREA', user.scope.areaId, user.scope);
           const next = { unitLevel: 'AREA', unitId: user.scope.areaId, unitName };
           if (!isCancelled) {
             setCtxRaw(next);
-            await writeStored(next, user._id);
+            await writeStored(next, user._id, targetRole);
             setReady(true);
           }
           return;
-        } catch {
-          const next = { unitLevel: 'AREA', unitId: user.scope.areaId, unitName: 'My Area' };
-          if (!isCancelled) { setCtxRaw(next); setReady(true); }
+        }
+
+        // E. Pure Member
+        if (targetRole === 'MEMBER' && user.scope?.basicUnitId) {
+          const unitName = await resolveUnitName('BASIC_UNIT', user.scope.basicUnitId, user.scope);
+          const next = { unitLevel: 'BASIC_UNIT', unitId: user.scope.basicUnitId, unitName };
+          if (!isCancelled) {
+            setCtxRaw(next);
+            await writeStored(next, user._id, targetRole);
+            setReady(true);
+          }
           return;
+        }
+
+        // F. Cabinet / Office-Holder Role (SENIOR_MAWIN, GENERAL_SECRETARY, PRESS_SECRETARY, etc.)
+        if (user.memberId) {
+          try {
+            const r = await api.get('/roles', { params: { memberId: user.memberId, state: 'APPROVED' } });
+            const list = r.data.data || [];
+            // Match the specific target active role assignment!
+            const matchedAssignment = list.find((a) => a.roleCode === targetRole && !a.endedAt);
+            if (matchedAssignment) {
+              const unitName = await resolveUnitName(matchedAssignment.unitLevel, matchedAssignment.unitId, user.scope);
+              const next = {
+                unitLevel: matchedAssignment.unitLevel,
+                unitId: matchedAssignment.unitId,
+                unitName,
+              };
+              if (!isCancelled) {
+                setCtxRaw(next);
+                await writeStored(next, user._id, targetRole);
+                setReady(true);
+              }
+              return;
+            }
+          } catch {}
         }
       }
 
-      // 5. Cabinet roles (Senior Mawin, Secretary, Finance Secretary, President, etc.)
-      const CABINET_ROLE_CODES = [
-        'SECRETARY', 'SENIOR_MAWIN', 'FINANCE_SECRETARY',
-        'PRESS_SECRETARY', 'CULTURE_SECRETARY', 'SPORTS_SECRETARY',
-        'PRESIDENT', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT', 'GENERAL_SECRETARY',
-        'CHAIRMAN', 'CO_CHAIRMAN', 'SR_VICE_CHAIRMAN', 'VICE_CHAIRMAN', 'FIRST_SECRETARY',
-        'OTHER',
-      ];
-      const hasCabinetRole = CABINET_ROLE_CODES.some((r) => user.roles?.includes(r));
-      if (hasCabinetRole && user.memberId) {
+      // 2. Default multi-role view (no specific activeRole selected):
+      const stored = await readStored(user._id);
+      if (stored && !stored.roleCode) {
+        if (!isCancelled) { setCtxRaw(stored); setReady(true); }
+        return;
+      }
+
+      // Fallback: check if user has approved cabinet roles or scope
+      if (user.memberId) {
         try {
           const r = await api.get('/roles', { params: { memberId: user.memberId, state: 'APPROVED' } });
           const list = r.data.data || [];
-          const activeRole = list.find((a) => !a.endedAt);
-          if (activeRole) {
-            let unitName = '';
-            try {
-              if (activeRole.unitLevel === 'BASIC_UNIT' && user.scope?.areaId) {
-                const lst = await api.get('/org/basic-units', { params: { areaId: user.scope.areaId } });
-                const u = lst.data.data.find((b) => String(b._id) === String(activeRole.unitId));
-                unitName = u?.name || '';
-              } else if (activeRole.unitLevel === 'AREA' && user.scope?.districtId) {
-                const lst = await api.get('/org/areas', { params: { districtId: user.scope.districtId } });
-                const u = lst.data.data.find((a) => String(a._id) === String(activeRole.unitId));
-                unitName = u?.name || '';
-              } else if (activeRole.unitLevel === 'DISTRICT' && user.scope?.provinceId) {
-                const lst = await api.get('/org/districts', { params: { provinceId: user.scope.provinceId } });
-                const u = lst.data.data.find((d) => String(d._id) === String(activeRole.unitId));
-                unitName = u?.name || '';
-              } else if (activeRole.unitLevel === 'PROVINCE') {
-                const lst = await api.get('/org/provinces');
-                const u = lst.data.data.find((p) => String(p._id) === String(activeRole.unitId));
-                unitName = u?.name || '';
-              } else if (activeRole.unitLevel === 'CENTRAL') {
-                try {
-                  const c = await api.get('/org/central');
-                  unitName = c.data.data?.name || 'PKNAP Central';
-                } catch { unitName = 'PKNAP Central'; }
-              }
-            } catch {}
+          const firstActive = list.find((a) => !a.endedAt);
+          if (firstActive) {
+            const unitName = await resolveUnitName(firstActive.unitLevel, firstActive.unitId, user.scope);
             const next = {
-              unitLevel: activeRole.unitLevel,
-              unitId: activeRole.unitId,
-              unitName: unitName || 'My Unit',
+              unitLevel: firstActive.unitLevel,
+              unitId: firstActive.unitId,
+              unitName,
             };
             if (!isCancelled) {
               setCtxRaw(next);
@@ -218,56 +225,25 @@ export function UnitProvider({ children }) {
         } catch {}
       }
 
-      // 6. Pure Member
-      const isPureMember = user.roles?.includes('MEMBER') && !isHigherAdmin && !user.roles?.includes('AREA_ADMIN') && !hasCabinetRole;
-      if (isPureMember && user.scope?.basicUnitId) {
-        const next = {
-          unitLevel: 'BASIC_UNIT',
-          unitId: user.scope.basicUnitId,
-          unitName: 'My Basic Unit',
-        };
-        if (!isCancelled) {
-          setCtxRaw(next);
-          await writeStored(next, user._id);
-          setReady(true);
-        }
-        return;
-      }
-
-      // 7. Fallback to stored or home tier
-      if (stored) {
-        if (!isCancelled) { setCtxRaw(stored); setReady(true); }
-      } else {
-        const home = homeTierOf(user);
-        const s = user?.scope || {};
-        const unitId = homeUnitIdOf(user);
-        let unitName = s.basicUnitName || s.areaName || s.districtName || s.provinceName || 'My Unit';
-        if (home.level === 'CENTRAL') {
-          unitName = 'PKNAP Central';
-          try {
-            const r = await api.get('/org/central');
-            if (!isCancelled && r.data?.data?._id) {
-              const next = { unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' };
-              setCtxRaw(next);
-              await writeStored(next, user._id);
-              setReady(true);
-              return;
-            }
-          } catch {}
-        }
-        const next = { unitLevel: home.level, unitId, unitName };
-        if (!isCancelled) {
-          setCtxRaw(next);
-          await writeStored(next, user._id);
-          setReady(true);
-        }
+      // Fallback to home tier
+      const home = homeTierOf(user);
+      const s = user?.scope || {};
+      const unitId = homeUnitIdOf(user);
+      const unitName = await resolveUnitName(home.level, unitId, s);
+      const next = { unitLevel: home.level, unitId, unitName };
+      if (!isCancelled) {
+        setCtxRaw(next);
+        await writeStored(next, user._id);
+        setReady(true);
       }
     }
 
-    initializeCtx();
+    syncUnitContext();
 
-    return () => { isCancelled = true; };
-  }, [user?._id, user?.roles?.join(','), user?.memberId]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?._id, activeRole, user?.roles?.join(','), user?.memberId]);
 
   async function setCtx(newCtx) {
     if (typeof newCtx === 'function') {

@@ -512,9 +512,11 @@ export default function Layout() {
 
         {!isSuperAdmin && !isCentralAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
           <>
-            {user?.canViewExecutiveDashboard ? (
+            {user?.canViewExecutiveDashboard && ctx?.unitLevel === 'CENTRAL' ? (
               <>
-                <div className="nav-group">CENTRAL · PKNAP CENTRAL</div>
+                <div className="nav-group">
+                  {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'CENTRAL · PKNAP Central'}
+                </div>
                 <nav>
                   <NavLink to="/" end>Central Dashboard</NavLink>
                   <NavLink to="/members">Members</NavLink>

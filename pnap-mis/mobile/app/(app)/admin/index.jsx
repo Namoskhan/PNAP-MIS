@@ -16,9 +16,10 @@ import { useUnit } from '../../../src/context/UnitContext';
 import { Colors, FontSize, Radius, Spacing, Shadow } from '../../../src/constants/colors';
 import {
   isSuperAdmin, isHigherAdmin, isAreaAdmin,
-  hasPermission, canDecideRole, canInitiateRole, canManageFinance,
+  hasPermission, canDecideRole, canInitiateRole, canManageFinance, canApproveExpense,
   hasRole, isOperatorPersona, isPresidentPersona, isFinanceOnly, isSecretaryOnly,
   isProvinceAdminOnly, isDistrictAdminOnly, isCentralAdminOnly,
+  CABINET_ROLES, isPureMember, roleLabel,
 } from '../../../src/utils/permissions';
 import Badge from '../../../src/components/Badge';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +43,8 @@ export default function AdminHubScreen() {
   const isFinanceSec = isFinanceOnly(user);
   const isPresident = isPresidentPersona(user);
   const isSecretary = isSecretaryOnly(user) || (hasRole(user, 'SECRETARY') && !isHigherAdmin(user) && !isArea);
+  const isMember = isPureMember(user);
+  const isCabinet = (Array.isArray(CABINET_ROLES) && CABINET_ROLES.some((r) => hasRole(user, r))) || !isPureMember(user);
 
   const tierTitle = isSuper
     ? 'Super Admin'
@@ -53,11 +56,15 @@ export default function AdminHubScreen() {
           ? 'District Admin'
           : isArea
             ? 'Area Admin'
-            : (user?.roles?.[0]?.replace(/_/g, ' ') || 'Admin');
+            : isMember
+              ? 'Member'
+              : (roleLabel(user, user?.roles?.[0]) || 'Cabinet');
 
   const unitDisplayName = isCentral || isSuper
     ? 'PKNAP Central'
-    : (ctx?.unitName || 'Administrative Control Center');
+    : isMember
+      ? (ctx?.unitName ? `Basic Unit · ${ctx.unitName}` : 'My Unit Operations')
+      : (ctx?.unitName || 'Administrative Control Center');
 
   const sections = [
     // 1. Super Admin God Mode
@@ -143,6 +150,7 @@ export default function AdminHubScreen() {
         { key: 'c-members', icon: '👥', title: 'Province Members', description: 'Browse and filter members across provinces.', route: '/members' },
         { key: 'c-cab', icon: '🏛️', title: 'Assign Province Cabinet Roles', description: 'Appoint provincial office-holders and review cabinet.', route: '/cabinet' },
         { key: 'c-resp', icon: '📋', title: 'Responsibilities', description: 'Central task allocations and monitoring.', route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'c-transfers', icon: '💸', title: 'Fund Transfers', description: 'Central fund transfers and inter-tier approvals', route: '/finance/transfers?unitLevel=CENTRAL&unitId=CENTRAL' }] : []),
         { key: 'c-breakdown', icon: '📊', title: 'Province Breakdown', description: 'Comparative provincial activity, membership & finance stats.', route: '/admin/breakdown' },
         { key: 'c-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for Central.', route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
       ],
@@ -160,6 +168,7 @@ export default function AdminHubScreen() {
         { key: 'p-members', icon: '👥', title: 'All Province Members', description: 'Browse, search, and manage all provincial members.', route: '/members' },
         { key: 'p-cab', icon: '🏛️', title: 'Assign District Cabinet Roles', description: 'Appoint district office-holders and review cabinet.', route: '/cabinet' },
         { key: 'p-resp', icon: '📋', title: 'Responsibilities', description: 'Provincial task allocations and tracking.', route: '/admin/responsibilities' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'p-transfers', icon: '💸', title: 'Fund Transfers', description: 'Provincial fund transfers and approvals', route: '/finance/transfers' }] : []),
         { key: 'p-breakdown', icon: '📊', title: 'District Breakdown', description: 'Comparative district activity, membership & finance stats.', route: '/admin/breakdown' },
         { key: 'p-reports', icon: '📈', title: 'Reports Center', description: 'Generate and download PDF and Excel summary packages.', route: '/admin/reports' },
       ],
@@ -177,6 +186,7 @@ export default function AdminHubScreen() {
         { key: 'd-members', icon: '👥', title: 'Members', description: 'Browse and filter members in the district.', route: '/members' },
         { key: 'd-cab', icon: '🏛️', title: 'Assign Area Cabinet Roles', description: 'Appoint area office-holders and review cabinet.', route: '/cabinet' },
         { key: 'd-resp', icon: '📋', title: 'Responsibilities', description: 'District task allocations and monitoring.', route: '/admin/responsibilities' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'd-transfers', icon: '💸', title: 'Fund Transfers', description: 'District fund transfers and approvals', route: '/finance/transfers' }] : []),
         { key: 'd-breakdown', icon: '📊', title: 'Area Breakdown', description: 'Comparative area activity, membership & finance stats.', route: '/admin/breakdown' },
         { key: 'd-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for the district.', route: '/admin/reports' },
       ],
@@ -202,9 +212,9 @@ export default function AdminHubScreen() {
     // 6. Generic Administrative Tools
     {
       key: 'admin_tools',
-      title: 'Administrative Tools',
+      title: ctx?.unitName ? `${ctx.unitName} · Administrative Tools` : 'Administrative Tools',
       icon: '🛠️',
-      show: () => !isSuper && !isCentral && !isProvince && !isDistrict && !isArea && (isHigherAdmin(user) || canInitiateRole(user) || canDecideRole(user) || isSeniorMawin || isSecretary || isFinanceSec || isPresident || hasPermission(user, 'APPROVE_MEMBER')),
+      show: () => !isSuper && !isCentral && !isProvince && !isDistrict && !isArea && (isCabinet || isHigherAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'APPROVE_MEMBER')),
       items: [
         { key: 'gen-dash', icon: '🏠', title: 'Dashboard', description: 'Unit Dashboard', route: '/' },
         { key: 'gen-cab', icon: '🏛️', title: 'Cabinet & Roles', description: 'Cabinet assignments & proposals', route: '/cabinet' },
@@ -216,16 +226,56 @@ export default function AdminHubScreen() {
         { key: 'gen-meetings', icon: '📅', title: 'Meetings', description: 'Unit meetings', route: '/meetings' },
         { key: 'gen-activities', icon: '🚩', title: 'Activities', description: 'Unit activities', route: '/activities' },
         { key: 'gen-finance', icon: '💰', title: 'Finance', description: 'Unit finance', route: '/finance' },
+        ...(canManageFinance(user) || canApproveExpense(user) ? [{ key: 'gen-transfers', icon: '💸', title: 'Fund Transfers', description: 'Unit fund transfers and approvals', route: '/finance/transfers' }] : []),
         { key: 'gen-reports', icon: '📈', title: 'Exports & Reports', description: 'Download PDF and Excel reports', route: '/admin/reports' },
       ],
     },
 
-    // 7. National Congress
+    // 7. Member Operations
+    {
+      key: 'member_ops',
+      title: 'My Unit Operations',
+      icon: '⚡',
+      show: () => isMember,
+      items: [
+        { key: 'm-dash', icon: '🏠', title: 'Dashboard', description: 'My Member Overview & Stats', route: '/' },
+        { key: 'm-meetings', icon: '📅', title: 'Meetings', description: 'Unit meetings schedule & minutes', route: '/meetings' },
+        { key: 'm-activities', icon: '🎯', title: 'Activities', description: 'Unit activities, events & campaigns', route: '/activities' },
+        { key: 'm-responsibilities', icon: '📋', title: 'My Responsibilities', description: 'Assigned tasks, duties & due dates', route: '/admin/responsibilities' },
+        { key: 'm-profile', icon: '🪪', title: 'My Profile', description: 'Digital ID card, credentials & unit details', route: '/profile' },
+      ],
+    },
+
+    // 8. Committee (Central / Sobayi / Zilla / Elaqayi Committee)
+    {
+      key: 'committee',
+      title: isSuper || isCentral || ctx?.unitLevel === 'CENTRAL'
+        ? 'Central Committee'
+        : ctx?.unitLevel === 'PROVINCE'
+          ? 'Sobayi Committee'
+          : ctx?.unitLevel === 'DISTRICT'
+            ? 'Zilla Committee'
+            : 'Elaqayi Committee',
+      icon: '👥',
+      show: () => ctx?.unitLevel !== 'BASIC_UNIT' && (isSuper || isCentral || isProvince || isDistrict || isArea || isCabinet),
+      items: [
+        { key: 'committee-comp', icon: '👥', title: 'Composition', description: 'Consultative committee roster, cabinet & selective members', route: '/admin/committee' },
+        { key: 'committee-meetings', icon: '📅', title: 'Committee Meetings', description: 'Consultative assembly meeting records', route: '/meetings?body=COMMITTEE' },
+        { key: 'committee-activities', icon: '🚩', title: 'Committee Activities', description: 'Committee events, gatherings & campaigns', route: '/activities?body=COMMITTEE' },
+        ...(canManageFinance(user) ? [
+          { key: 'committee-finance', icon: '💰', title: 'Committee Finance', description: 'Committee donations & expense ledger', route: '/finance?body=COMMITTEE' },
+          { key: 'committee-transfers', icon: '💸', title: 'Committee Transfers', description: 'Committee fund transfers & approvals', route: '/finance/transfers?body=COMMITTEE' },
+        ] : []),
+        { key: 'committee-reports', icon: '📊', title: 'Committee Reports', description: 'Committee reports & data exports', route: '/admin/reports?body=COMMITTEE' },
+      ],
+    },
+
+    // 9. National Congress (Exclusively Central Level)
     {
       key: 'congress',
       title: 'National Congress',
       icon: '🤝',
-      show: () => isSuper || isCentral || isSeniorMawin || isSecretary || isFinanceSec || isPresident,
+      show: () => (ctx?.unitLevel === 'CENTRAL' || (!ctx?.unitLevel && (isSuper || isCentral))) && (isSuper || isCentral || isCabinet),
       items: [
         { key: 'congress-roster', icon: '👥', title: 'Congress Roster', description: 'National Congress composition & member assignments', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'congress-meetings', icon: '📅', title: 'Congress Meetings', description: 'Schedule and manage National Congress assemblies', route: '/meetings?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL' },
@@ -235,25 +285,29 @@ export default function AdminHubScreen() {
       ],
     },
 
-    // 8. Jirga (Sobayi Jirga for Province Admin / Qomi Jirga for Central Admin & Super Admin)
+    // 10. Jirga (Sobayi Jirga for Province / Qomi Jirga for Central)
     {
       key: 'jirga',
-      title: isSuper || isCentral ? 'Qomi Jirga' : 'Sobayi Jirga',
+      title: (ctx?.unitLevel === 'CENTRAL' || (!ctx?.unitLevel && (isSuper || isCentral))) ? 'Qomi Jirga' : 'Sobayi Jirga',
       icon: '⚖️',
-      show: () => isSuper || isCentral || isProvince || isSeniorMawin || isSecretary || isFinanceSec || isPresident,
+      show: () => {
+        const level = ctx?.unitLevel || (isSuper || isCentral ? 'CENTRAL' : (isProvince ? 'PROVINCE' : null));
+        if (level !== 'CENTRAL' && level !== 'PROVINCE') return false;
+        return isSuper || isCentral || isProvince || isCabinet;
+      },
       items: [
-        { key: 'jirga-comp', icon: '⚖️', title: 'Composition', description: isSuper || isCentral ? 'Central Jirga members & elders assembly' : 'Sobayi Jirga members & elders assembly', route: isSuper || isCentral ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/jirga' },
-        { key: 'jirga-meetings', icon: '📅', title: 'Jirga Meetings', description: 'Jirga assembly meeting records', route: isSuper || isCentral ? '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/meetings?body=JIRGA' },
-        { key: 'jirga-activities', icon: '🚩', title: 'Jirga Activities', description: 'Jirga activities, gatherings & events', route: isSuper || isCentral ? '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/activities?body=JIRGA' },
+        { key: 'jirga-comp', icon: '⚖️', title: 'Composition', description: (ctx?.unitLevel === 'CENTRAL' || isSuper || isCentral) ? 'Central Jirga members & elders assembly' : 'Sobayi Jirga members & elders assembly', route: ctx?.unitLevel === 'CENTRAL' ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/admin/jirga?unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/jirga')) },
+        { key: 'jirga-meetings', icon: '📅', title: 'Jirga Meetings', description: 'Jirga assembly meeting records', route: ctx?.unitLevel === 'CENTRAL' ? '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/meetings?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/meetings?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/meetings?body=JIRGA')) },
+        { key: 'jirga-activities', icon: '🚩', title: 'Jirga Activities', description: 'Jirga activities, gatherings & events', route: ctx?.unitLevel === 'CENTRAL' ? '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/activities?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/activities?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/activities?body=JIRGA')) },
         ...(canManageFinance(user) ? [
-          { key: 'jirga-finance', icon: '💰', title: 'Jirga Finance', description: 'Jirga donations & expenses ledger', route: isSuper || isCentral ? '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance?body=JIRGA' },
-          { key: 'jirga-transfers', icon: '💸', title: 'Jirga Transfers', description: 'Jirga fund transfers', route: isSuper || isCentral ? '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance/transfers?body=JIRGA' },
+          { key: 'jirga-finance', icon: '💰', title: 'Jirga Finance', description: 'Jirga donations & expenses ledger', route: ctx?.unitLevel === 'CENTRAL' ? '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/finance?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/finance?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance?body=JIRGA')) },
+          { key: 'jirga-transfers', icon: '💸', title: 'Jirga Transfers', description: 'Jirga fund transfers', route: ctx?.unitLevel === 'CENTRAL' ? '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/finance/transfers?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/finance/transfers?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/finance/transfers?body=JIRGA')) },
         ] : []),
-        { key: 'jirga-reports', icon: '📊', title: 'Jirga Reports', description: 'Jirga reports & exports', route: isSuper || isCentral ? '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/reports?body=JIRGA' },
+        { key: 'jirga-reports', icon: '📊', title: 'Jirga Reports', description: 'Jirga reports & exports', route: ctx?.unitLevel === 'CENTRAL' ? '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/admin/reports?body=JIRGA&unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/admin/reports?body=JIRGA&unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/reports?body=JIRGA')) },
       ],
     },
 
-    // 9. Communication (Always available)
+    // 11. Communication (Always available)
     {
       key: 'communication',
       title: 'Communication & Broadcasts',
@@ -279,6 +333,8 @@ export default function AdminHubScreen() {
     my_district: true,
     my_area: true,
     admin_tools: true,
+    member_ops: true,
+    committee: true,
     congress: false,
     jirga: true,
     communication: true,

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -11,25 +12,28 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, resolveMediaUrl } from '../../../src/api/client';
 import {
   canManageFinance,
   canApproveExpense,
   isCentralAdminOversight,
   isSuperAdminOversight,
   isSuperAdmin,
+  isHigherAdmin,
 } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Badge from '../../../src/components/Badge';
+import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import { shortDate, PKR, formatCnic, isCompleteCnic } from '../../../src/utils/formatters';
 import { downloadAndShare } from '../../../src/utils/export';
@@ -38,7 +42,8 @@ import { formatUnitArrangedBy } from '../../../src/utils/unitFormat';
 const FINANCE_TABS = [
   { label: 'Donations', value: 'DONATIONS', icon: 'cash-outline' },
   { label: 'Expenses', value: 'EXPENSES', icon: 'receipt-outline' },
-  { label: 'Monthly Statements', value: 'MONTHLY', icon: 'bar-chart-outline' },
+  { label: 'Transfers', value: 'TRANSFERS', icon: 'swap-horizontal-outline' },
+  { label: 'Monthly', value: 'MONTHLY', icon: 'bar-chart-outline' },
 ];
 
 const EXPENSE_CATEGORIES = [
@@ -72,9 +77,14 @@ const NON_MEMBER_CNIC_THRESHOLD = 50000;
 
 export default function FinanceScreen() {
   const { user } = useAuth();
-  const { ctx, provinces } = useUnit();
+  const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
+  const { width, height } = useWindowDimensions();
+
+  const isSmall = width < 480;
+  const isTablet = width >= 768;
+  const isDesktop = width >= 1024;
 
   const queryBody = params.body || '';
   const isCongressView = queryBody === 'CONGRESS';
@@ -82,46 +92,41 @@ export default function FinanceScreen() {
   const isCommitteeView = queryBody === 'COMMITTEE';
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
-  const [selectedLevel, setSelectedLevel] = useState(() => {
-    if (params.unitLevel) return params.unitLevel;
-    if (isJirgaView && provinces && provinces.length > 0) return 'PROVINCE';
-    return ctx?.unitLevel || 'CENTRAL';
-  });
+  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
+  const rawUnitId = params.unitId || ctx?.unitId || '';
+  const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
 
-  const [selectedUnitId, setSelectedUnitId] = useState(() => {
-    if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    if (isJirgaView && provinces && provinces.length > 0) return provinces[0]._id;
-    return ctx?.unitId || '';
-  });
-
-  // Sync with provinces when they become available
-  useEffect(() => {
-    if (isJirgaView && !selectedUnitId && provinces && provinces.length > 0) {
-      setSelectedLevel('PROVINCE');
-      setSelectedUnitId(provinces[0]._id);
-    }
-  }, [provinces, isJirgaView]);
-
-  const activeLevel = selectedLevel;
   const canRecord = canManageFinance(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
     && !(isSuperAdmin(user) && (activeLevel === 'CENTRAL' || isCongressView));
   const canApprove = canApproveExpense(user);
-  const [resolvedUnitId, setResolvedUnitId] = useState(selectedUnitId);
 
   useEffect(() => {
-    let rawId = selectedUnitId;
-    if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
+    let currentRaw = rawUnitId;
+    if (activeLevel === 'CENTRAL' && (!currentRaw || currentRaw === 'CENTRAL')) {
       api.get('/org/central').then((r) => {
         if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
       }).catch(() => {});
     } else {
-      setResolvedUnitId(rawId);
+      setResolvedUnitId(currentRaw);
     }
-  }, [selectedUnitId, activeLevel]);
+  }, [rawUnitId, activeLevel]);
 
   const [tab, setTab] = useState('DONATIONS');
+
+  const financeTabs = useMemo(() => {
+    if (isCongressView) {
+      return FINANCE_TABS.filter((t) => t.value !== 'TRANSFERS');
+    }
+    return FINANCE_TABS;
+  }, [isCongressView]);
+
+  useEffect(() => {
+    if (isCongressView && tab === 'TRANSFERS') {
+      setTab('DONATIONS');
+    }
+  }, [isCongressView, tab]);
   const [donations, setDonations] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [monthly, setMonthly] = useState([]);
@@ -136,6 +141,7 @@ export default function FinanceScreen() {
   
   const [showDonation, setShowDonation] = useState(false);
   const [showExpense, setShowExpense] = useState(false);
+  const [previewDocUrl, setPreviewDocUrl] = useState(null);
   
   const [donationForm, setDonationForm] = useState({
     amount: '',
@@ -488,6 +494,7 @@ export default function FinanceScreen() {
       unitLevel: activeLevel,
       unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : (params.unitId || ctx?.unitId)),
       body: targetBody,
+      scope: 'own',
       from: monthFrom || undefined,
       to: monthTo || undefined,
     };
@@ -521,11 +528,103 @@ export default function FinanceScreen() {
     }
   }
 
-  const selectedProvince = (provinces || []).find((p) => String(p._id) === String(selectedUnitId));
+  // If user opened Congress stream but is below Central tier, show guidance card
+  if (isCongressView && activeLevel !== 'CENTRAL') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>National Congress operates exclusively at the Central Level</Text>
+            <Text style={styles.guidanceText}>
+              Under the PKNAP constitution, the <Text style={{ fontWeight: '700' }}>National Congress (قومي کانګرس)</Text> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <Text style={{ fontWeight: '700' }}>Sobayi Jirga</Text> (Province) and <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text> (District & Area).
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              <TouchableOpacity
+                style={styles.guidanceBtnPrimary}
+                onPress={() => {
+                  setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                }}
+              >
+                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.guidanceBtnPrimaryText}>Switch to Central Unit Context →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // If user opened Jirga stream but is below Province tier, show guidance card
+  if (isJirgaView && activeLevel !== 'CENTRAL' && activeLevel !== 'PROVINCE') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
+            <Text style={styles.guidanceText}>
+              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              {isHigherAdmin(user) && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnPrimary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                  }}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                </TouchableOpacity>
+              )}
+
+              {user?.scope?.provinceId && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnSecondary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                </TouchableOpacity>
+              )}
+
+              {isHigherAdmin(user) && provinces && provinces.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <View style={styles.provGrid}>
+                    {provinces.map((prov) => (
+                      <TouchableOpacity
+                        key={prov._id}
+                        style={styles.provPillBtn}
+                        onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
+                      >
+                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   const pageTitle = isCongressView
-    ? 'National Congress Finance · PKNAP Central'
+    ? 'National Congress Finance'
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Finance · PKNAP Central' : `Sobayi Jirga Finance · ${selectedProvince?.name || 'Province'}`)
+      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Finance' : 'Sobayi Jirga Finance')
       : (isCommitteeView
         ? `Committee Finance · ${ctx?.unitName || 'PKNAP Central'}`
         : `Finance · ${ctx?.unitName || 'PKNAP Central'}`));
@@ -533,7 +632,7 @@ export default function FinanceScreen() {
   const pageSubtitle = isCongressView
     ? 'PKNAP Central · National Congress fund ledger & transactions'
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'PKNAP Central · Qomi Jirga transactions' : `${selectedProvince?.name || 'Province'} · Sobayi Jirga fund ledger`)
+      ? (activeLevel === 'CENTRAL' ? 'PKNAP Central · Qomi Jirga transactions' : `${ctx?.unitName || 'Province'} · Sobayi Jirga fund ledger`)
       : `${ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : 'My Unit')} · Inflow, Outflow & Monthly Statements`);
 
   const recordDonationBtnLabel = isCongressView
@@ -550,479 +649,504 @@ export default function FinanceScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Top Header Card */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.badgeRow}>
-              <View style={styles.unitLevelBadge}>
-                <Text style={styles.unitLevelBadgeText}>{activeLevel.replace('_', ' ')}</Text>
-              </View>
-              {isJirgaView && (
-                <View style={styles.streamBadgeJirga}>
-                  <Text style={styles.streamBadgeTextJirga}>Jirga Ledger</Text>
+      <View style={[styles.mainWrapper, isTablet && styles.mainWrapperTablet]}>
+        
+        {/* Top Header Card */}
+        <View style={[styles.header, isSmall && styles.headerSmall]}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerTitleWrap}>
+              <View style={styles.badgeRow}>
+                <View style={styles.unitLevelBadge}>
+                  <Text style={styles.unitLevelBadgeText}>{activeLevel.replace('_', ' ')}</Text>
                 </View>
-              )}
-            </View>
-            <Text style={styles.pageTitle}>{pageTitle}</Text>
-            <Text style={styles.pageSubtitle}>{pageSubtitle}</Text>
-          </View>
-
-          <View style={styles.headerActionsRow}>
-            <TouchableOpacity
-              style={[styles.btnExport, exporting === 'pdf' && { opacity: 0.6 }]}
-              onPress={() => handleExport('pdf')}
-              disabled={!!exporting}
-            >
-              {exporting === 'pdf' ? (
-                <ActivityIndicator size="small" color={Colors.textMuted} />
-              ) : (
-                <Ionicons name="document-text-outline" size={15} color={Colors.text} />
-              )}
-              <Text style={styles.btnExportText}>PDF</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.btnExport, exporting === 'xlsx' && { opacity: 0.6 }]}
-              onPress={() => handleExport('xlsx')}
-              disabled={!!exporting}
-            >
-              {exporting === 'xlsx' ? (
-                <ActivityIndicator size="small" color={Colors.textMuted} />
-              ) : (
-                <Ionicons name="stats-chart-outline" size={15} color={Colors.text} />
-              )}
-              <Text style={styles.btnExportText}>Excel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
-      {/* Province Switcher Pills for Jirga */}
-      {isJirgaView && provinces && provinces.length > 0 && (
-        <View style={styles.tierPillsWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
-            {provinces.map((prov) => {
-              const isActive = selectedLevel === 'PROVINCE' && String(selectedUnitId) === String(prov._id);
-              return (
-                <TouchableOpacity
-                  key={prov._id}
-                  style={[styles.tierPill, isActive && styles.tierPillActive]}
-                  onPress={() => {
-                    setSelectedLevel('PROVINCE');
-                    setSelectedUnitId(prov._id);
-                  }}
-                >
-                  <Ionicons
-                    name="location-outline"
-                    size={14}
-                    color={isActive ? '#fff' : Colors.textMuted}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
-                    {prov.name} Sobayi Jirga
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-            <TouchableOpacity
-              style={[styles.tierPill, selectedLevel === 'CENTRAL' && styles.tierPillActive]}
-              onPress={() => {
-                setSelectedLevel('CENTRAL');
-                setSelectedUnitId('CENTRAL');
-              }}
-            >
-              <Ionicons
-                name="shield-outline"
-                size={14}
-                color={selectedLevel === 'CENTRAL' ? '#fff' : Colors.textMuted}
-                style={{ marginRight: 4 }}
-              />
-              <Text style={[styles.tierPillText, selectedLevel === 'CENTRAL' && styles.tierPillTextActive]}>
-                Qomi Jirga (Central)
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      )}
-
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        {/* KPI Dashboard Cards */}
-        {summary && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.kpiScroll}
-            contentContainerStyle={styles.kpiContainer}
-          >
-            {/* Donations KPI */}
-            <View style={[styles.kpiCard, { borderTopColor: '#16a34a' }]}>
-              <View style={styles.kpiHeaderRow}>
-                <Text style={styles.kpiLabel}>Donations</Text>
-                <View style={[styles.kpiIconBox, { backgroundColor: '#dcfce7' }]}>
-                  <Ionicons name="arrow-down-outline" size={14} color="#16a34a" />
-                </View>
-              </View>
-              <Text style={[styles.kpiValue, { color: '#16a34a' }]}>{PKR(summary.donations?.total || 0)}</Text>
-              <Text style={styles.kpiHint}>{summary.donations?.count || 0} entries</Text>
-            </View>
-
-            {/* Approved Expenses KPI */}
-            <View style={[styles.kpiCard, { borderTopColor: '#dc2626' }]}>
-              <View style={styles.kpiHeaderRow}>
-                <Text style={styles.kpiLabel}>Approved Expenses</Text>
-                <View style={[styles.kpiIconBox, { backgroundColor: '#fee2e2' }]}>
-                  <Ionicons name="arrow-up-outline" size={14} color="#dc2626" />
-                </View>
-              </View>
-              <Text style={[styles.kpiValue, { color: '#dc2626' }]}>{PKR(summary.expenses?.total || 0)}</Text>
-              <Text style={styles.kpiHint}>{summary.expenses?.count || 0} entries</Text>
-            </View>
-
-            {/* Transfers In KPI */}
-            {summary.transfersIn ? (
-              <View style={[styles.kpiCard, { borderTopColor: '#0284c7' }]}>
-                <View style={styles.kpiHeaderRow}>
-                  <Text style={styles.kpiLabel}>Transfers In</Text>
-                  <View style={[styles.kpiIconBox, { backgroundColor: '#e0f2fe' }]}>
-                    <Ionicons name="enter-outline" size={14} color="#0284c7" />
-                  </View>
-                </View>
-                <Text style={[styles.kpiValue, { color: '#0284c7' }]}>{PKR(summary.transfersIn.total)}</Text>
-                <Text style={styles.kpiHint}>{summary.transfersIn.count} acknowledged</Text>
-              </View>
-            ) : null}
-
-            {/* Transfers Out KPI */}
-            {summary.transfersOut ? (
-              <View style={[styles.kpiCard, { borderTopColor: '#d97706' }]}>
-                <View style={styles.kpiHeaderRow}>
-                  <Text style={styles.kpiLabel}>Transfers Out</Text>
-                  <View style={[styles.kpiIconBox, { backgroundColor: '#fef3c7' }]}>
-                    <Ionicons name="exit-outline" size={14} color="#d97706" />
-                  </View>
-                </View>
-                <Text style={[styles.kpiValue, { color: '#d97706' }]}>{PKR(summary.transfersOut.total)}</Text>
-                <Text style={styles.kpiHint}>{summary.transfersOut.count} acknowledged</Text>
-              </View>
-            ) : null}
-
-            {/* Net Balance KPI */}
-            <View style={[styles.kpiCard, { borderTopColor: (summary.balance || 0) < 0 ? '#dc2626' : '#16a34a' }]}>
-              <View style={styles.kpiHeaderRow}>
-                <Text style={styles.kpiLabel}>Net Balance</Text>
-                <View style={[styles.kpiIconBox, { backgroundColor: (summary.balance || 0) < 0 ? '#fee2e2' : '#dcfce7' }]}>
-                  <Ionicons
-                    name="wallet-outline"
-                    size={14}
-                    color={(summary.balance || 0) < 0 ? '#dc2626' : '#16a34a'}
-                  />
-                </View>
-              </View>
-              <Text style={[styles.kpiValue, { color: (summary.balance || 0) < 0 ? '#dc2626' : '#16a34a' }]}>
-                {PKR(summary.balance || 0)}
-              </Text>
-              <View style={{ marginTop: 4 }}>
-                <Text style={[styles.kpiHint, { fontWeight: '600', color: (summary.balance || 0) < 0 ? '#dc2626' : '#16a34a' }]}>
-                  {(summary.balance || 0) < 0 ? 'Deficit' : 'Surplus'}
-                </Text>
-              </View>
-            </View>
-          </ScrollView>
-        )}
-
-        {/* Tab & Action Toolbar */}
-        <View style={styles.toolbarSection}>
-          <View style={styles.segmentedControl}>
-            {FINANCE_TABS.map((t) => {
-              const active = tab === t.value;
-              return (
-                <TouchableOpacity
-                  key={t.value}
-                  style={[styles.segmentBtn, active && styles.segmentBtnActive]}
-                  onPress={() => setTab(t.value)}
-                >
-                  <Ionicons
-                    name={t.icon}
-                    size={15}
-                    color={active ? Colors.primary : Colors.textMuted}
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{t.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {canRecord && (
-            <View style={styles.recordActionBox}>
-              {tab === 'DONATIONS' && (
-                <TouchableOpacity style={styles.btnRecord} onPress={openDonationModal}>
-                  <Ionicons name="add-circle" size={18} color="#fff" />
-                  <Text style={styles.btnRecordText}>{recordDonationBtnLabel}</Text>
-                </TouchableOpacity>
-              )}
-              {tab === 'EXPENSES' && (
-                <TouchableOpacity style={[styles.btnRecord, { backgroundColor: '#0f766e' }]} onPress={openExpenseModal}>
-                  <Ionicons name="add-circle" size={18} color="#fff" />
-                  <Text style={styles.btnRecordText}>{recordExpenseBtnLabel}</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Monthly Filter Bar */}
-        {tab === 'MONTHLY' && (
-          <View style={styles.rangeCard}>
-            <View style={styles.rangeHeader}>
-              <Ionicons name="filter-outline" size={16} color={Colors.text} />
-              <Text style={styles.rangeHeaderTitle}>Date Filter & Presets</Text>
-            </View>
-            <View style={styles.rangeInputs}>
-              <View style={styles.rangeInputCol}>
-                <Text style={styles.rangeLabel}>From</Text>
-                <TextInput
-                  style={styles.rangeInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={Colors.textLight}
-                  value={monthFrom}
-                  onChangeText={setMonthFrom}
-                />
-              </View>
-              <View style={styles.rangeInputCol}>
-                <Text style={styles.rangeLabel}>To</Text>
-                <TextInput
-                  style={styles.rangeInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={Colors.textLight}
-                  value={monthTo}
-                  onChangeText={setMonthTo}
-                />
-              </View>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRangeScroll}>
-              <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('this')}>
-                <Text style={styles.rangePillText}>This month</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('last')}>
-                <Text style={styles.rangePillText}>Last month</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('3')}>
-                <Text style={styles.rangePillText}>Last 3 months</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('ytd')}>
-                <Text style={styles.rangePillText}>Year-to-date</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.rangePill, { backgroundColor: '#f1f5f9' }]} onPress={() => applyQuickRange('all')}>
-                <Text style={[styles.rangePillText, { color: Colors.textMuted }]}>All time</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Data Table */}
-        <View style={styles.tableContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 24 }}>
-            {tab === 'DONATIONS' && (
-              <View style={{ minWidth: 680 }}>
-                <View style={styles.thRow}>
-                  <Text style={[styles.th, { width: 150 }]}>Receipt</Text>
-                  <Text style={[styles.th, { width: 110 }]}>Date</Text>
-                  <Text style={[styles.th, { width: 160 }]}>Donor</Text>
-                  <Text style={[styles.th, { width: 110 }]}>Mode</Text>
-                  <Text style={[styles.th, { width: 130, textAlign: 'right' }]}>Amount (PKR)</Text>
-                </View>
-
-                {donations.length === 0 && !loading && (
-                  <View style={styles.emptyWrap}>
-                    <Ionicons name="wallet-outline" size={32} color={Colors.textLight} />
-                    <Text style={styles.emptyText}>
-                      No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} donations recorded yet.
-                    </Text>
+                {isJirgaView && (
+                  <View style={styles.streamBadgeJirga}>
+                    <Text style={styles.streamBadgeTextJirga}>Jirga Ledger</Text>
                   </View>
                 )}
+              </View>
+              <Text style={styles.pageTitle}>{pageTitle}</Text>
+              <Text style={styles.pageSubtitle}>{pageSubtitle}</Text>
+            </View>
 
-                {donations.map((d) => {
-                  const memberObj = (d.donorMemberId && typeof d.donorMemberId === 'object') ? d.donorMemberId : null;
-                  const memberFromList = (!memberObj && d.donorMemberId)
-                    ? members.find((m) => String(m._id) === String(d.donorMemberId))
-                    : null;
-                  const effectiveDonorName = d.donorType === 'ANONYMOUS'
-                    ? 'Anonymous'
-                    : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
+            <View style={styles.headerActionsRow}>
+              {!isCongressView && (
+                <TouchableOpacity
+                  style={styles.btnExport}
+                  onPress={() => router.push({
+                    pathname: '/finance/transfers',
+                    params: { body: targetBody, unitLevel: activeLevel, unitId: resolvedUnitId }
+                  })}
+                >
+                  <Ionicons name="swap-horizontal-outline" size={15} color={Colors.primary} />
+                  <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>Transfers</Text>
+                </TouchableOpacity>
+              )}
 
-                  const isCng = d.body === 'CONGRESS';
-                  const isJrg = d.body === 'JIRGA';
-                  const isCm = d.body === 'COMMITTEE';
+              <TouchableOpacity
+                style={[styles.btnExport, exporting === 'pdf' && { opacity: 0.6 }]}
+                onPress={() => handleExport('pdf')}
+                disabled={!!exporting}
+              >
+                {exporting === 'pdf' ? (
+                  <ActivityIndicator size="small" color={Colors.textMuted} />
+                ) : (
+                  <Ionicons name="document-text-outline" size={15} color={Colors.text} />
+                )}
+                <Text style={styles.btnExportText}>{isTablet ? 'Export PDF' : 'PDF'}</Text>
+              </TouchableOpacity>
 
-                  return (
-                    <View key={d._id} style={styles.tr}>
-                      <View style={[styles.td, { width: 150 }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <TouchableOpacity
+                style={[styles.btnExport, exporting === 'xlsx' && { opacity: 0.6 }]}
+                onPress={() => handleExport('xlsx')}
+                disabled={!!exporting}
+              >
+                {exporting === 'xlsx' ? (
+                  <ActivityIndicator size="small" color={Colors.textMuted} />
+                ) : (
+                  <Ionicons name="stats-chart-outline" size={15} color={Colors.text} />
+                )}
+                <Text style={styles.btnExportText}>{isTablet ? 'Export Excel' : 'Excel'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          {/* KPI Dashboard Cards */}
+          {summary && (
+            <View style={styles.kpiWrapper}>
+              <ScrollView
+                horizontal={!isTablet}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.kpiContainer, isTablet && styles.kpiContainerTablet]}
+              >
+                {/* Donations KPI */}
+                <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#16a34a' }]}>
+                  <View style={styles.kpiHeaderRow}>
+                    <Text style={styles.kpiLabel}>Donations</Text>
+                    <View style={[styles.kpiIconBox, { backgroundColor: '#dcfce7' }]}>
+                      <Ionicons name="arrow-down-outline" size={14} color="#16a34a" />
+                    </View>
+                  </View>
+                  <Text style={[styles.kpiValue, { color: '#16a34a' }]}>{PKR(summary.donations?.total || 0)}</Text>
+                  <Text style={styles.kpiHint}>{summary.donations?.count || 0} entries</Text>
+                </View>
+
+                {/* Approved Expenses KPI */}
+                <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#dc2626' }]}>
+                  <View style={styles.kpiHeaderRow}>
+                    <Text style={styles.kpiLabel}>Approved Expenses</Text>
+                    <View style={[styles.kpiIconBox, { backgroundColor: '#fee2e2' }]}>
+                      <Ionicons name="arrow-up-outline" size={14} color="#dc2626" />
+                    </View>
+                  </View>
+                  <Text style={[styles.kpiValue, { color: '#dc2626' }]}>{PKR(summary.expenses?.total || 0)}</Text>
+                  <Text style={styles.kpiHint}>{summary.expenses?.count || 0} entries</Text>
+                </View>
+
+                {/* Transfers In KPI */}
+                {!isCongressView && summary.transfersIn ? (
+                  <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#0284c7' }]}>
+                    <View style={styles.kpiHeaderRow}>
+                      <Text style={styles.kpiLabel}>Transfers In</Text>
+                      <View style={[styles.kpiIconBox, { backgroundColor: '#e0f2fe' }]}>
+                        <Ionicons name="enter-outline" size={14} color="#0284c7" />
+                      </View>
+                    </View>
+                    <Text style={[styles.kpiValue, { color: '#0284c7' }]}>{PKR(summary.transfersIn.total)}</Text>
+                    <Text style={styles.kpiHint}>{summary.transfersIn.count} acknowledged</Text>
+                  </View>
+                ) : null}
+
+                {/* Transfers Out KPI */}
+                {!isCongressView && summary.transfersOut ? (
+                  <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#d97706' }]}>
+                    <View style={styles.kpiHeaderRow}>
+                      <Text style={styles.kpiLabel}>Transfers Out</Text>
+                      <View style={[styles.kpiIconBox, { backgroundColor: '#fef3c7' }]}>
+                        <Ionicons name="exit-outline" size={14} color="#d97706" />
+                      </View>
+                    </View>
+                    <Text style={[styles.kpiValue, { color: '#d97706' }]}>{PKR(summary.transfersOut.total)}</Text>
+                    <Text style={styles.kpiHint}>{summary.transfersOut.count} acknowledged</Text>
+                  </View>
+                ) : null}
+
+                {/* Available / Net Balance KPI */}
+                <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: (summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#dc2626' : '#16a34a' }]}>
+                  <View style={styles.kpiHeaderRow}>
+                    <Text style={styles.kpiLabel}>Available Balance</Text>
+                    <View style={[styles.kpiIconBox, { backgroundColor: (summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#fee2e2' : '#dcfce7' }]}>
+                      <Ionicons
+                        name="wallet-outline"
+                        size={14}
+                        color={(summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#dc2626' : '#16a34a'}
+                      />
+                    </View>
+                  </View>
+                  <Text style={[styles.kpiValue, { color: (summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#dc2626' : '#16a34a' }]}>
+                    {PKR(summary.availableBalance ?? summary.balance ?? 0)}
+                  </Text>
+                  <View style={{ marginTop: 4 }}>
+                    {!isCongressView && summary.pendingTransfersOut?.total > 0 ? (
+                      <Text style={{ fontSize: 10, color: '#d97706', fontWeight: '600' }}>
+                        ⚠️ {PKR(summary.pendingTransfersOut.total)} in pending out
+                      </Text>
+                    ) : (
+                      <Text style={[styles.kpiHint, { fontWeight: '600', color: (summary.balance || 0) < 0 ? '#dc2626' : '#16a34a' }]}>
+                        {(summary.balance || 0) < 0 ? 'Deficit' : 'Ready to use'}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Tab & Action Toolbar */}
+          <View style={[styles.toolbarSection, isSmall && styles.toolbarSectionSmall]}>
+            <View style={styles.segmentedControl}>
+              {financeTabs.map((t) => {
+                const active = tab === t.value;
+                return (
+                  <TouchableOpacity
+                    key={t.value}
+                    style={[styles.segmentBtn, active && styles.segmentBtnActive]}
+                    onPress={() => {
+                      if (t.value === 'TRANSFERS') {
+                        router.push({
+                          pathname: '/finance/transfers',
+                          params: { body: targetBody, unitLevel: activeLevel, unitId: resolvedUnitId }
+                        });
+                      } else {
+                        setTab(t.value);
+                      }
+                    }}
+                  >
+                    <Ionicons
+                      name={t.icon}
+                      size={15}
+                      color={active ? Colors.primary : Colors.textMuted}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{t.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {canRecord && (
+              <View style={styles.recordActionBox}>
+                {tab === 'DONATIONS' && (
+                  <TouchableOpacity style={styles.btnRecord} onPress={openDonationModal}>
+                    <Ionicons name="add-circle" size={18} color="#fff" />
+                    <Text style={styles.btnRecordText}>{recordDonationBtnLabel}</Text>
+                  </TouchableOpacity>
+                )}
+                {tab === 'EXPENSES' && (
+                  <TouchableOpacity style={[styles.btnRecord, { backgroundColor: '#0f766e' }]} onPress={openExpenseModal}>
+                    <Ionicons name="add-circle" size={18} color="#fff" />
+                    <Text style={styles.btnRecordText}>{recordExpenseBtnLabel}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Monthly Filter Bar */}
+          {tab === 'MONTHLY' && (
+            <View style={styles.rangeCard}>
+              <View style={styles.rangeHeader}>
+                <Ionicons name="filter-outline" size={16} color={Colors.text} />
+                <Text style={styles.rangeHeaderTitle}>Date Filter & Presets</Text>
+              </View>
+              <View style={styles.rangeInputs}>
+                <View style={styles.rangeInputCol}>
+                  <Text style={styles.rangeLabel}>From</Text>
+                  <TextInput
+                    style={styles.rangeInput}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={Colors.textLight}
+                    value={monthFrom}
+                    onChangeText={setMonthFrom}
+                  />
+                </View>
+                <View style={styles.rangeInputCol}>
+                  <Text style={styles.rangeLabel}>To</Text>
+                  <TextInput
+                    style={styles.rangeInput}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={Colors.textLight}
+                    value={monthTo}
+                    onChangeText={setMonthTo}
+                  />
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRangeScroll}>
+                <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('this')}>
+                  <Text style={styles.rangePillText}>This month</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('last')}>
+                  <Text style={styles.rangePillText}>Last month</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('3')}>
+                  <Text style={styles.rangePillText}>Last 3 months</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('ytd')}>
+                  <Text style={styles.rangePillText}>Year-to-date</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.rangePill, { backgroundColor: '#f1f5f9' }]} onPress={() => applyQuickRange('all')}>
+                  <Text style={[styles.rangePillText, { color: Colors.textMuted }]}>All time</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Data Table Container */}
+          <View style={styles.tableContainer}>
+            <ScrollView 
+              horizontal={!isTablet} 
+              showsHorizontalScrollIndicator={true} 
+              contentContainerStyle={{ paddingBottom: 24, minWidth: isTablet ? '100%' : undefined }}
+            >
+              {/* DONATIONS TABLE */}
+              {tab === 'DONATIONS' && (
+                <View style={{ minWidth: isTablet ? '100%' : 750, width: isTablet ? '100%' : undefined }}>
+                  <View style={styles.thRow}>
+                    <Text style={[styles.th, { width: isTablet ? '22%' : 150 }]}>Receipt</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }]}>Date</Text>
+                    <Text style={[styles.th, { width: isTablet ? '24%' : 160 }]}>Donor</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }]}>Mode</Text>
+                    <Text style={[styles.th, { width: isTablet ? '10%' : 80, textAlign: 'center' }]}>Proof</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 130, textAlign: 'right' }]}>Amount (PKR)</Text>
+                  </View>
+
+                  {donations.length === 0 && !loading && (
+                    <View style={styles.emptyWrap}>
+                      <Ionicons name="wallet-outline" size={32} color={Colors.textLight} />
+                      <Text style={styles.emptyText}>
+                        No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} donations recorded yet.
+                      </Text>
+                    </View>
+                  )}
+
+                  {donations.map((d) => {
+                    const memberObj = (d.donorMemberId && typeof d.donorMemberId === 'object') ? d.donorMemberId : null;
+                    const memberFromList = (!memberObj && d.donorMemberId)
+                      ? members.find((m) => String(m._id) === String(d.donorMemberId))
+                      : null;
+                    const effectiveDonorName = d.donorType === 'ANONYMOUS'
+                      ? 'Anonymous'
+                      : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
+
+                    const isCng = d.body === 'CONGRESS';
+                    const isJrg = d.body === 'JIRGA';
+                    const isCm = d.body === 'COMMITTEE';
+
+                    return (
+                      <View key={d._id} style={styles.tr}>
+                        <View style={[styles.td, { width: isTablet ? '22%' : 150 }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Badge
+                              label={isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
+                              color={isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'))}
+                              bg={isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'))}
+                            />
+                            <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '700' }}>{d.receiptNo}</Text>
+                          </View>
+                          {d.unitLevel && (
+                            <Text style={styles.unitArrangedSubText}>
+                              {formatUnitArrangedBy(d, { isCommitteeView, isJirgaView, isCongressView })}
+                            </Text>
+                          )}
+                        </View>
+
+                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }]}>{shortDate(d.receivedAt || d.createdAt)}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '24%' : 160 }]} numberOfLines={1}>{effectiveDonorName}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }]}>{d.paymentMode?.replace('_', ' ')}</Text>
+                        
+                        <View style={[styles.td, { width: isTablet ? '10%' : 80, alignItems: 'center', justifyContent: 'center' }]}>
+                          {d.receiptUrl || d.receiptImageUrl ? (
+                            <TouchableOpacity 
+                              style={styles.pillDocBtn}
+                              onPress={() => setPreviewDocUrl(resolveMediaUrl(d.receiptUrl || d.receiptImageUrl))}
+                            >
+                              <Ionicons name="image-outline" size={13} color={Colors.primary} />
+                              <Text style={styles.pillDocBtnText}>Slip</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <Text style={{ color: Colors.textMuted }}>—</Text>
+                          )}
+                        </View>
+
+                        <Text style={[styles.td, { width: isTablet ? '16%' : 130, textAlign: 'right', fontWeight: '800', color: '#15803d' }]}>
+                          {PKR(d.amount)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* EXPENSES TABLE */}
+              {tab === 'EXPENSES' && (
+                <View style={{ minWidth: isTablet ? '100%' : 850, width: isTablet ? '100%' : undefined }}>
+                  <View style={styles.thRow}>
+                    <Text style={[styles.th, { width: isTablet ? '12%' : 100 }]}>Date</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 130 }]}>Category</Text>
+                    <Text style={[styles.th, { width: isTablet ? '20%' : 180 }]}>Description</Text>
+                    <Text style={[styles.th, { width: isTablet ? '13%' : 110 }]}>Vendor</Text>
+                    <Text style={[styles.th, { width: isTablet ? '8%' : 70, textAlign: 'center' }]}>Proof</Text>
+                    <Text style={[styles.th, { width: isTablet ? '12%' : 110, textAlign: 'right' }]}>Amount</Text>
+                    <Text style={[styles.th, { width: isTablet ? '9%' : 90 }]}>State</Text>
+                    <Text style={[styles.th, { width: isTablet ? '10%' : 150, textAlign: 'center' }]}>Actions</Text>
+                  </View>
+
+                  {expenses.length === 0 && !loading && (
+                    <View style={styles.emptyWrap}>
+                      <Ionicons name="receipt-outline" size={32} color={Colors.textLight} />
+                      <Text style={styles.emptyText}>
+                        No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} expenses recorded yet.
+                      </Text>
+                    </View>
+                  )}
+
+                  {expenses.map((e) => {
+                    const isCng = e.body === 'CONGRESS';
+                    const isJrg = e.body === 'JIRGA';
+                    const isCm = e.body === 'COMMITTEE';
+
+                    return (
+                      <View key={e._id} style={styles.tr}>
+                        <Text style={[styles.td, { width: isTablet ? '12%' : 100 }]}>{shortDate(e.incurredAt || e.createdAt)}</Text>
+                        <View style={[styles.td, { width: isTablet ? '16%' : 130 }]}>
                           <Badge
                             label={isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
                             color={isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'))}
                             bg={isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'))}
                           />
-                          <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '700' }}>{d.receiptNo}</Text>
+                          <Text style={{ fontSize: 11, color: Colors.text, marginTop: 2, fontWeight: '600' }}>{e.category}</Text>
                         </View>
-                        {d.unitLevel && (
-                          <Text style={styles.unitArrangedSubText}>
-                            {formatUnitArrangedBy(d, { isCommitteeView, isJirgaView, isCongressView })}
-                          </Text>
-                        )}
-                      </View>
+                        <View style={[styles.td, { width: isTablet ? '20%' : 180 }]}>
+                          <Text style={{ fontSize: 12, color: Colors.text }} numberOfLines={2}>{e.description}</Text>
+                          {e.unitLevel && (
+                            <Text style={styles.unitArrangedSubText}>
+                              {formatUnitArrangedBy(e, { isCommitteeView, isJirgaView, isCongressView })}
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={[styles.td, { width: isTablet ? '13%' : 110 }]} numberOfLines={1}>{e.vendor || '—'}</Text>
+                        
+                        <View style={[styles.td, { width: isTablet ? '8%' : 70, alignItems: 'center', justifyContent: 'center' }]}>
+                          {e.evidenceUrl || e.receiptImageUrl ? (
+                            <TouchableOpacity 
+                              style={styles.pillDocBtn}
+                              onPress={() => setPreviewDocUrl(resolveMediaUrl(e.evidenceUrl || e.receiptImageUrl))}
+                            >
+                              <Ionicons name="document-text-outline" size={13} color={Colors.primary} />
+                              <Text style={styles.pillDocBtnText}>Bill</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <Text style={{ color: Colors.textMuted }}>—</Text>
+                          )}
+                        </View>
 
-                      <Text style={[styles.td, { width: 110 }]}>{shortDate(d.receivedAt || d.createdAt)}</Text>
-                      <Text style={[styles.td, { width: 160 }]} numberOfLines={1}>{effectiveDonorName}</Text>
-                      <Text style={[styles.td, { width: 110 }]}>{d.paymentMode}</Text>
-                      <Text style={[styles.td, { width: 130, textAlign: 'right', fontWeight: '800', color: '#15803d' }]}>
-                        {PKR(d.amount)}
+                        <Text style={[styles.td, { width: isTablet ? '12%' : 110, textAlign: 'right', fontWeight: '800', color: '#b91c1c' }]}>
+                          {PKR(e.amount)}
+                        </Text>
+                        <View style={[styles.td, { width: isTablet ? '9%' : 90 }]}>
+                          <Badge
+                            label={e.state || 'PENDING'}
+                            color={e.state === 'APPROVED' ? '#15803d' : (e.state === 'REJECTED' ? '#b91c1c' : '#b45309')}
+                            bg={e.state === 'APPROVED' ? '#dcfce7' : (e.state === 'REJECTED' ? '#fee2e2' : '#fef3c7')}
+                          />
+                        </View>
+                        <View style={[styles.td, { width: isTablet ? '10%' : 150, flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>
+                          {e.state === 'PENDING' && canApprove ? (
+                            <>
+                              <TouchableOpacity style={styles.btnApprove} onPress={() => decideExpense(e._id, 'APPROVED')}>
+                                <Ionicons name="checkmark" size={13} color="#15803d" />
+                                <Text style={styles.btnApproveText}>Approve</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity style={styles.btnDanger} onPress={() => decideExpense(e._id, 'REJECTED')}>
+                                <Ionicons name="close" size={13} color="#b91c1c" />
+                                <Text style={styles.btnDangerText}>Reject</Text>
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <Text style={{ color: Colors.textMuted, fontSize: 11 }}>—</Text>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* MONTHLY STATEMENTS TABLE */}
+              {tab === 'MONTHLY' && (
+                <View style={{ minWidth: isTablet ? '100%' : 700, width: isTablet ? '100%' : undefined }}>
+                  <View style={styles.thRow}>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 110 }]}>Month</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Donations</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Transfers In</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Expenses</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Transfers Out</Text>
+                    <Text style={[styles.th, { width: isTablet ? '20%' : 120, textAlign: 'right' }]}>Net Balance</Text>
+                  </View>
+
+                  {monthly.length === 0 && !loading && (
+                    <View style={styles.emptyWrap}>
+                      <Ionicons name="calendar-outline" size={32} color={Colors.textLight} />
+                      <Text style={styles.emptyText}>No monthly statements found for this period.</Text>
+                    </View>
+                  )}
+
+                  {monthly.map((m) => (
+                    <View key={m.month} style={styles.tr}>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 110, fontWeight: '600' }]}>{m.month}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#16a34a', fontWeight: '600' }]}>{PKR(m.donations)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#0284c7' }]}>{PKR(m.transfersIn)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#dc2626', fontWeight: '600' }]}>{PKR(m.expenses)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#d97706' }]}>{PKR(m.transfersOut)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '20%' : 120, textAlign: 'right', fontWeight: '800', color: m.netBalance < 0 ? '#dc2626' : '#16a34a' }]}>
+                        {PKR(m.netBalance)}
                       </Text>
                     </View>
-                  );
-                })}
-              </View>
-            )}
+                  ))}
 
-            {tab === 'EXPENSES' && (
-              <View style={{ minWidth: 800 }}>
-                <View style={styles.thRow}>
-                  <Text style={[styles.th, { width: 100 }]}>Date</Text>
-                  <Text style={[styles.th, { width: 130 }]}>Category</Text>
-                  <Text style={[styles.th, { width: 180 }]}>Description</Text>
-                  <Text style={[styles.th, { width: 110 }]}>Vendor</Text>
-                  <Text style={[styles.th, { width: 110, textAlign: 'right' }]}>Amount</Text>
-                  <Text style={[styles.th, { width: 90 }]}>State</Text>
-                  <Text style={[styles.th, { width: 150 }]}>Actions</Text>
-                </View>
-
-                {expenses.length === 0 && !loading && (
-                  <View style={styles.emptyWrap}>
-                    <Ionicons name="receipt-outline" size={32} color={Colors.textLight} />
-                    <Text style={styles.emptyText}>
-                      No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} expenses recorded yet.
-                    </Text>
-                  </View>
-                )}
-
-                {expenses.map((e) => {
-                  const isCng = e.body === 'CONGRESS';
-                  const isJrg = e.body === 'JIRGA';
-                  const isCm = e.body === 'COMMITTEE';
-
-                  return (
-                    <View key={e._id} style={styles.tr}>
-                      <Text style={[styles.td, { width: 100 }]}>{shortDate(e.incurredAt || e.createdAt)}</Text>
-                      <View style={[styles.td, { width: 130 }]}>
-                        <Badge
-                          label={isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
-                          color={isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'))}
-                          bg={isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'))}
-                        />
-                        <Text style={{ fontSize: 11, color: Colors.text, marginTop: 2, fontWeight: '600' }}>{e.category}</Text>
-                      </View>
-                      <View style={[styles.td, { width: 180 }]}>
-                        <Text style={{ fontSize: 12, color: Colors.text }} numberOfLines={2}>{e.description}</Text>
-                        {e.unitLevel && (
-                          <Text style={styles.unitArrangedSubText}>
-                            {formatUnitArrangedBy(e, { isCommitteeView, isJirgaView, isCongressView })}
-                          </Text>
-                        )}
-                      </View>
-                      <Text style={[styles.td, { width: 110 }]} numberOfLines={1}>{e.vendor || '—'}</Text>
-                      <Text style={[styles.td, { width: 110, textAlign: 'right', fontWeight: '800', color: '#b91c1c' }]}>
-                        {PKR(e.amount)}
+                  {monthly.length > 0 && (
+                    <View style={[styles.tr, { backgroundColor: '#f8fafc', borderTopWidth: 2, borderTopColor: Colors.border }]}>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 110, fontWeight: '800' }]}>Totals</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#16a34a' }]}>
+                        {PKR(monthly.reduce((a, m) => a + m.donations, 0))}
                       </Text>
-                      <View style={[styles.td, { width: 90 }]}>
-                        <Badge
-                          label={e.state || 'PENDING'}
-                          color={e.state === 'APPROVED' ? '#15803d' : (e.state === 'REJECTED' ? '#b91c1c' : '#b45309')}
-                          bg={e.state === 'APPROVED' ? '#dcfce7' : (e.state === 'REJECTED' ? '#fee2e2' : '#fef3c7')}
-                        />
-                      </View>
-                      <View style={[styles.td, { width: 150, flexDirection: 'row', gap: 6 }]}>
-                        {e.state === 'PENDING' && canApprove ? (
-                          <>
-                            <TouchableOpacity style={styles.btnApprove} onPress={() => decideExpense(e._id, 'APPROVED')}>
-                              <Ionicons name="checkmark" size={13} color="#15803d" />
-                              <Text style={styles.btnApproveText}>Approve</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.btnDanger} onPress={() => decideExpense(e._id, 'REJECTED')}>
-                              <Ionicons name="close" size={13} color="#b91c1c" />
-                              <Text style={styles.btnDangerText}>Reject</Text>
-                            </TouchableOpacity>
-                          </>
-                        ) : null}
-                      </View>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#0284c7' }]}>
+                        {PKR(monthly.reduce((a, m) => a + m.transfersIn, 0))}
+                      </Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#dc2626' }]}>
+                        {PKR(monthly.reduce((a, m) => a + m.expenses, 0))}
+                      </Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#d97706' }]}>
+                        {PKR(monthly.reduce((a, m) => a + m.transfersOut, 0))}
+                      </Text>
+                      <Text style={[styles.td, { width: isTablet ? '20%' : 120, textAlign: 'right', fontWeight: '900', color: '#0f172a' }]}>
+                        {PKR(monthly.reduce((a, m) => a + m.netBalance, 0))}
+                      </Text>
                     </View>
-                  );
-                })}
-              </View>
-            )}
-
-            {tab === 'MONTHLY' && (
-              <View style={{ minWidth: 680 }}>
-                <View style={styles.thRow}>
-                  <Text style={[styles.th, { width: 110 }]}>Month</Text>
-                  <Text style={[styles.th, { width: 120, textAlign: 'right' }]}>Donations</Text>
-                  <Text style={[styles.th, { width: 120, textAlign: 'right' }]}>Transfers In</Text>
-                  <Text style={[styles.th, { width: 120, textAlign: 'right' }]}>Expenses</Text>
-                  <Text style={[styles.th, { width: 120, textAlign: 'right' }]}>Transfers Out</Text>
-                  <Text style={[styles.th, { width: 120, textAlign: 'right' }]}>Net Balance</Text>
+                  )}
                 </View>
-
-                {monthly.length === 0 && !loading && (
-                  <View style={styles.emptyWrap}>
-                    <Ionicons name="calendar-outline" size={32} color={Colors.textLight} />
-                    <Text style={styles.emptyText}>No monthly statements found for this period.</Text>
-                  </View>
-                )}
-
-                {monthly.map((m) => (
-                  <View key={m.month} style={styles.tr}>
-                    <Text style={[styles.td, { width: 110, fontWeight: '600' }]}>{m.month}</Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', color: '#16a34a', fontWeight: '600' }]}>{PKR(m.donations)}</Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', color: '#0284c7' }]}>{PKR(m.transfersIn)}</Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', color: '#dc2626', fontWeight: '600' }]}>{PKR(m.expenses)}</Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', color: '#d97706' }]}>{PKR(m.transfersOut)}</Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', fontWeight: '800', color: m.netBalance < 0 ? '#dc2626' : '#16a34a' }]}>
-                      {PKR(m.netBalance)}
-                    </Text>
-                  </View>
-                ))}
-
-                {monthly.length > 0 && (
-                  <View style={[styles.tr, { backgroundColor: '#f8fafc', borderTopWidth: 2, borderTopColor: Colors.border }]}>
-                    <Text style={[styles.td, { width: 110, fontWeight: '800' }]}>Totals</Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', fontWeight: '800', color: '#16a34a' }]}>
-                      {PKR(monthly.reduce((a, m) => a + m.donations, 0))}
-                    </Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', fontWeight: '800', color: '#0284c7' }]}>
-                      {PKR(monthly.reduce((a, m) => a + m.transfersIn, 0))}
-                    </Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', fontWeight: '800', color: '#dc2626' }]}>
-                      {PKR(monthly.reduce((a, m) => a + m.expenses, 0))}
-                    </Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', fontWeight: '800', color: '#d97706' }]}>
-                      {PKR(monthly.reduce((a, m) => a + m.transfersOut, 0))}
-                    </Text>
-                    <Text style={[styles.td, { width: 120, textAlign: 'right', fontWeight: '900', color: '#0f172a' }]}>
-                      {PKR(monthly.reduce((a, m) => a + m.netBalance, 0))}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </ScrollView>
+              )}
+            </ScrollView>
+          </View>
+        </ScrollView>
+      </View>
 
       {/* Record Donation Modal */}
-      <Modal visible={showDonation} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowDonation(false)}>
-        <SafeAreaView style={styles.modalSafe}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <Modal visible={showDonation} animationType="slide" presentationStyle={isTablet ? 'overFullScreen' : 'pageSheet'} transparent={isTablet} onRequestClose={() => setShowDonation(false)}>
+        <SafeAreaView style={[styles.modalSafeWrapper, isTablet && styles.modalSafeWrapperTablet]}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalCard, isTablet && styles.modalCardTablet]}>
             <View style={styles.modalHeaderCard}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalHeaderCardTitle}>{recordDonationBtnLabel.replace('+ ', '')}</Text>
@@ -1137,8 +1261,8 @@ export default function FinanceScreen() {
 
                 {/* Non-member / Corporate fields */}
                 {(donationForm.donorType === 'NON_MEMBER' || donationForm.donorType === 'CORPORATE') && (
-                  <>
-                    <View style={styles.inputGroup}>
+                  <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                    <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
                       <Text style={styles.inputGroupLabel}>Donor Name</Text>
                       <TextInput
                         style={styles.modernTextInput}
@@ -1149,7 +1273,7 @@ export default function FinanceScreen() {
                       />
                     </View>
 
-                    <View style={styles.inputGroup}>
+                    <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
                       <Text style={styles.inputGroupLabel}>
                         Donor CNIC {donCnicRequired ? <Text style={{ color: Colors.error }}>*</Text> : '(Optional)'}
                       </Text>
@@ -1163,11 +1287,11 @@ export default function FinanceScreen() {
                       />
                       <Text style={styles.fieldHint}>
                         {donationForm.donorType === 'NON_MEMBER'
-                          ? `Required for non-member donations exceeding ${PKR(NON_MEMBER_CNIC_THRESHOLD)}.`
+                          ? `Required for donations > ${PKR(NON_MEMBER_CNIC_THRESHOLD)}.`
                           : 'Optional for audit documentation.'}
                       </Text>
                     </View>
-                  </>
+                  </View>
                 )}
               </View>
 
@@ -1177,47 +1301,27 @@ export default function FinanceScreen() {
                   Payment & Transaction Details <Text style={{ color: Colors.error }}>*</Text>
                 </Text>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Payment Mode <Text style={{ color: Colors.error }}>*</Text></Text>
-                  <View style={styles.modernPickerWrap}>
-                    <Picker
-                      selectedValue={donationForm.paymentMode}
-                      onValueChange={(itemValue) => setDonationForm((f) => ({ ...f, paymentMode: itemValue }))}
-                    >
-                      {PAYMENT_MODES.map((t) => <Picker.Item key={t.code} label={t.label} value={t.code} />)}
-                    </Picker>
+                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                  <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
+                    <Text style={styles.inputGroupLabel}>Payment Mode <Text style={{ color: Colors.error }}>*</Text></Text>
+                    <View style={styles.modernPickerWrap}>
+                      <Picker
+                        selectedValue={donationForm.paymentMode}
+                        onValueChange={(itemValue) => setDonationForm((f) => ({ ...f, paymentMode: itemValue }))}
+                      >
+                        {PAYMENT_MODES.map((t) => <Picker.Item key={t.code} label={t.label} value={t.code} />)}
+                      </Picker>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Received Date <Text style={{ color: Colors.error }}>*</Text></Text>
-                  {Platform.OS === 'web' ? (
-                    <input
-                      type="date"
+                  <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
+                    <DatePicker
+                      label="Received Date *"
                       value={donationForm.receivedAt}
-                      onChange={(e) => setDonationForm((f) => ({ ...f, receivedAt: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        height: 44,
-                        padding: '8px 12px',
-                        borderRadius: 10,
-                        border: '1.5px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
-                        color: '#0f172a',
-                        fontSize: '14px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
+                      onChange={(v) => setDonationForm((f) => ({ ...f, receivedAt: v }))}
+                      placeholder="Select received date"
                     />
-                  ) : (
-                    <TextInput
-                      style={styles.modernTextInput}
-                      value={donationForm.receivedAt}
-                      onChangeText={(v) => setDonationForm((f) => ({ ...f, receivedAt: v }))}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94a3b8"
-                    />
-                  )}
+                  </View>
                 </View>
 
                 {/* Receipt Attachment Box */}
@@ -1265,9 +1369,9 @@ export default function FinanceScreen() {
       </Modal>
 
       {/* Record Expense Modal */}
-      <Modal visible={showExpense} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowExpense(false)}>
-        <SafeAreaView style={styles.modalSafe}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <Modal visible={showExpense} animationType="slide" presentationStyle={isTablet ? 'overFullScreen' : 'pageSheet'} transparent={isTablet} onRequestClose={() => setShowExpense(false)}>
+        <SafeAreaView style={[styles.modalSafeWrapper, isTablet && styles.modalSafeWrapperTablet]}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalCard, isTablet && styles.modalCardTablet]}>
             <View style={styles.modalHeaderCard}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalHeaderCardTitle}>{recordExpenseBtnLabel.replace('+ ', '')}</Text>
@@ -1314,40 +1418,41 @@ export default function FinanceScreen() {
                   Expense Details <Text style={{ color: Colors.error }}>*</Text>
                 </Text>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Category <Text style={{ color: Colors.error }}>*</Text></Text>
-                  <View style={styles.modernPickerWrap}>
-                    <Picker
-                      selectedValue={expenseForm.category}
-                      onValueChange={(itemValue) => setExpenseForm((f) => ({ ...f, category: itemValue }))}
-                    >
-                      {EXPENSE_CATEGORIES.map((c) => <Picker.Item key={c.code} label={c.label} value={c.code} />)}
-                    </Picker>
+                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                  <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
+                    <Text style={styles.inputGroupLabel}>Category <Text style={{ color: Colors.error }}>*</Text></Text>
+                    <View style={styles.modernPickerWrap}>
+                      <Picker
+                        selectedValue={expenseForm.category}
+                        onValueChange={(itemValue) => setExpenseForm((f) => ({ ...f, category: itemValue }))}
+                      >
+                        {EXPENSE_CATEGORIES.map((c) => <Picker.Item key={c.code} label={c.label} value={c.code} />)}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
+                    <Text style={styles.inputGroupLabel}>Vendor / Payee</Text>
+                    <TextInput
+                      style={styles.modernTextInput}
+                      value={expenseForm.vendor}
+                      onChangeText={(v) => setExpenseForm((f) => ({ ...f, vendor: v }))}
+                      placeholder="Supplier or merchant name"
+                      placeholderTextColor="#94a3b8"
+                    />
                   </View>
                 </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputGroupLabel}>Description <Text style={{ color: Colors.error }}>*</Text></Text>
                   <TextInput
-                    style={[styles.modernTextInput, { height: 90, textAlignVertical: 'top', paddingTop: 10 }]}
+                    style={[styles.modernTextInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
                     value={expenseForm.description}
                     onChangeText={(v) => setExpenseForm((f) => ({ ...f, description: v }))}
                     placeholder="Explain purpose of expenditure (minimum 3 characters)"
                     placeholderTextColor="#94a3b8"
                     multiline
                   />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Vendor / Payee</Text>
-                  <TextInput
-                    style={styles.modernTextInput}
-                    value={expenseForm.vendor}
-                    onChangeText={(v) => setExpenseForm((f) => ({ ...f, vendor: v }))}
-                    placeholder="Supplier or service provider name"
-                    placeholderTextColor="#94a3b8"
-                  />
-                  <Text style={styles.fieldHint}>Optional: Store the merchant or vendor invoice name.</Text>
                 </View>
               </View>
 
@@ -1357,47 +1462,27 @@ export default function FinanceScreen() {
                   Payment & Documentation <Text style={{ color: Colors.error }}>*</Text>
                 </Text>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Payment Mode <Text style={{ color: Colors.error }}>*</Text></Text>
-                  <View style={styles.modernPickerWrap}>
-                    <Picker
-                      selectedValue={expenseForm.paymentMode}
-                      onValueChange={(itemValue) => setExpenseForm((f) => ({ ...f, paymentMode: itemValue }))}
-                    >
-                      {PAYMENT_MODES.map((t) => <Picker.Item key={t.code} label={t.label} value={t.code} />)}
-                    </Picker>
+                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                  <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
+                    <Text style={styles.inputGroupLabel}>Payment Mode <Text style={{ color: Colors.error }}>*</Text></Text>
+                    <View style={styles.modernPickerWrap}>
+                      <Picker
+                        selectedValue={expenseForm.paymentMode}
+                        onValueChange={(itemValue) => setExpenseForm((f) => ({ ...f, paymentMode: itemValue }))}
+                      >
+                        {PAYMENT_MODES.map((t) => <Picker.Item key={t.code} label={t.label} value={t.code} />)}
+                      </Picker>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Incurred Date <Text style={{ color: Colors.error }}>*</Text></Text>
-                  {Platform.OS === 'web' ? (
-                    <input
-                      type="date"
+                  <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
+                    <DatePicker
+                      label="Incurred Date *"
                       value={expenseForm.incurredAt}
-                      onChange={(e) => setExpenseForm((f) => ({ ...f, incurredAt: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        height: 44,
-                        padding: '8px 12px',
-                        borderRadius: 10,
-                        border: '1.5px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
-                        color: '#0f172a',
-                        fontSize: '14px',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
+                      onChange={(v) => setExpenseForm((f) => ({ ...f, incurredAt: v }))}
+                      placeholder="Select incurred date"
                     />
-                  ) : (
-                    <TextInput
-                      style={styles.modernTextInput}
-                      value={expenseForm.incurredAt}
-                      onChangeText={(v) => setExpenseForm((f) => ({ ...f, incurredAt: v }))}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94a3b8"
-                    />
-                  )}
+                  </View>
                 </View>
 
                 {/* Evidence Bill / Voucher Attachment */}
@@ -1443,12 +1528,42 @@ export default function FinanceScreen() {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
+
+      {/* Document / Receipt Preview Modal */}
+      {previewDocUrl && (
+        <Modal visible={!!previewDocUrl} transparent animationType="fade" onRequestClose={() => setPreviewDocUrl(null)}>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.confirmModal, { maxWidth: 640, width: '94%' }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={styles.confirmTitle}>Receipt / Document Proof</Text>
+                <TouchableOpacity onPress={() => setPreviewDocUrl(null)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              <Image 
+                source={{ uri: resolveMediaUrl(previewDocUrl) }} 
+                style={{ width: '100%', height: Math.min(420, height * 0.5), borderRadius: 8, backgroundColor: '#0f172a' }} 
+                resizeMode="contain" 
+              />
+              <View style={{ marginTop: 16, alignItems: 'flex-end' }}>
+                <TouchableOpacity style={styles.btnModalCancel} onPress={() => setPreviewDocUrl(null)}>
+                  <Text style={styles.btnModalCancelText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#f8fafc' },
+  mainWrapper: { flex: 1, width: '100%' },
+  mainWrapperTablet: { maxWidth: 1200, alignSelf: 'center' },
+
   header: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
@@ -1457,12 +1572,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  headerSmall: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+  },
   headerTop: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: Spacing.md,
   },
+  headerTitleWrap: { flex: 1, minWidth: 200 },
   badgeRow: { flexDirection: 'row', gap: 6, marginBottom: 4, alignItems: 'center' },
   unitLevelBadge: {
     paddingHorizontal: 8,
@@ -1483,20 +1604,20 @@ const styles = StyleSheet.create({
   },
   streamBadgeTextJirga: { fontSize: 10, fontWeight: '700', color: '#6b21a8' },
 
-  pageTitle: { fontSize: 20, fontWeight: '800', color: '#0f172a', letterSpacing: -0.3 },
+  pageTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a', letterSpacing: -0.3 },
   pageSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
   
   headerActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   btnExport: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     backgroundColor: '#f8fafc',
     borderRadius: 8,
     borderWidth: 1,
@@ -1526,13 +1647,19 @@ const styles = StyleSheet.create({
   tierPillText: { fontSize: 11, fontWeight: '600', color: '#475569' },
   tierPillTextActive: { color: '#ffffff', fontWeight: '700' },
 
-  kpiScroll: { flexGrow: 0, backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: Colors.border },
-  kpiContainer: { padding: 12, gap: 10 },
+  kpiWrapper: {
+    backgroundColor: '#f1f5f9',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    padding: 12,
+  },
+  kpiContainer: { gap: 10, flexDirection: 'row' },
+  kpiContainerTablet: { flexWrap: 'wrap' },
   kpiCard: {
     padding: 14,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    minWidth: 150,
+    minWidth: 160,
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderTopWidth: 4,
@@ -1541,6 +1668,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  kpiCardTablet: {
+    flex: 1,
+    minWidth: 180,
   },
   kpiHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   kpiIconBox: { width: 22, height: 22, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
@@ -1559,6 +1690,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  toolbarSectionSmall: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
   },
   segmentedControl: {
     flexDirection: 'row',
@@ -1590,6 +1725,7 @@ const styles = StyleSheet.create({
   btnRecord: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     backgroundColor: Colors.primary,
     paddingHorizontal: 14,
@@ -1651,6 +1787,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
     paddingVertical: 10,
+    alignItems: 'center',
   },
   th: {
     fontSize: 11,
@@ -1688,6 +1825,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  pillDocBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  pillDocBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+
   btnApprove: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1714,7 +1868,27 @@ const styles = StyleSheet.create({
   btnDangerText: { color: '#b91c1c', fontSize: 11, fontWeight: '700' },
 
   // ================= MODERN MODAL STYLES =================
-  modalSafe: { flex: 1, backgroundColor: '#f1f5f9' },
+  modalSafeWrapper: { flex: 1, backgroundColor: '#f1f5f9' },
+  modalSafeWrapperTablet: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  modalCard: { flex: 1, backgroundColor: '#f1f5f9' },
+  modalCardTablet: {
+    width: '100%',
+    maxWidth: 640,
+    maxHeight: '92%',
+    backgroundColor: '#f1f5f9',
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
   modalHeaderCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1771,6 +1945,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     letterSpacing: -0.2,
   },
+
+  formRowWrap: { flexDirection: 'column' },
+  formRowWrapTablet: { flexDirection: 'row', gap: 12 },
 
   amountInputRow: {
     flexDirection: 'row',
@@ -1925,4 +2102,103 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   btnModalSubmitText: { fontSize: 14, fontWeight: '700', color: '#ffffff' },
+
+  // Generic Dialog Modal Styles
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  confirmModal: { width: '100%', maxWidth: 520, backgroundColor: '#ffffff', borderRadius: Radius.xl, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6 },
+  confirmTitle: { fontSize: FontSize.lg, fontWeight: '800', color: '#0f172a' },
+
+  // Guidance Card (when on lower tier context)
+  guidanceCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: Spacing.lg,
+  },
+  guidanceIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  guidanceTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  guidanceText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  guidanceBtnCol: {
+    width: '100%',
+    gap: 10,
+  },
+  guidanceBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnPrimaryText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnSecondaryText: {
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceSubHead: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  provGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  provPillBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  provPillBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

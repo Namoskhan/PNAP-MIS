@@ -9,7 +9,7 @@ import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
 
 import dialog from '../../components/dialog';
-import { XIcon } from '../../components/icons';
+import { XIcon, CongressIcon } from '../../components/icons';
 import { formatUnitArrangedBy } from '../../utils/unitFormat';
 function bodySupported(level) {
   return level === 'AREA' || level === 'DISTRICT' || level === 'PROVINCE' || level === 'CENTRAL';
@@ -24,10 +24,24 @@ const DEFAULT_TYPE_CODE = 'CAMPAIGN';
 const MAX_PHOTOS = 10;
 
 export default function ActivitiesPage() {
-  const { ctx } = useUnit();
-  const { user } = useAuth();
+  const { ctx, setCtx } = useUnit();
+  const { user, setActiveRole, allRoles } = useAuth();
   const toast = useToast();
   const location = useLocation();
+
+  function handleSwitchToCentral() {
+    const rolesList = allRoles || user?.allRoles || user?.roles || [];
+    const isSuper = rolesList.includes('SUPER_ADMIN') || user?.isBootstrap;
+    const isCentral = rolesList.includes('CENTRAL_ADMIN');
+    if (isSuper && setActiveRole) {
+      setActiveRole('SUPER_ADMIN');
+    } else if (isCentral && setActiveRole) {
+      setActiveRole('CENTRAL_ADMIN');
+    }
+    api.get('/org/central')
+      .then((r) => setCtx({ unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' }))
+      .catch(() => setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' }));
+  }
 
   // URL check: committee vs jirga vs congress vs regular executive activities
   const queryBody = new URLSearchParams(location.search).get('body');
@@ -224,6 +238,7 @@ export default function ActivitiesPage() {
       unitLevel: ctx.unitLevel,
       unitId: ctx.unitId,
       body: targetBody,
+      scope: 'own',
     });
     return params;
   }
@@ -238,6 +253,35 @@ export default function ActivitiesPage() {
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
+
+  // If user opened Congress stream but is below Central tier, show guidance card
+  if (isCongressView && ctx?.unitLevel !== 'CENTRAL') {
+    return (
+      <div>
+        <div className="page-header">
+          <h2>National Congress Activities · قومي کانګرس</h2>
+        </div>
+        <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
+          <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
+            <CongressIcon size={36} />
+          </div>
+          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <p className="muted" style={{ lineHeight: 1.6 }}>
+            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleSwitchToCentral}
+            >
+              Switch to Central Unit Context →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

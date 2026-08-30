@@ -3,10 +3,10 @@ import { useAuth } from '../../src/context/AuthContext';
 import { ActivityIndicator, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
-import { canManageFinance, isHigherAdmin, isAreaAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
+import { canManageFinance, isHigherAdmin, isAreaAdmin, isSuperAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
 
 function TabIcon({ name, color, size }) {
-  return <Ionicons name={name} size={size} color={color} />;
+  return <Ionicons name={name} size={size ? Math.min(size, 22) : 22} color={color} />;
 }
 
 export default function AppLayout() {
@@ -22,8 +22,11 @@ export default function AppLayout() {
 
   if (!user) return <Redirect href="/login" />;
 
-  const showFinance = canManageFinance(user);
-  const showAdmin = !isPureMember(user) || isHigherAdmin(user) || isAreaAdmin(user) || canInitiateRole(user) || canDecideRole(user) || hasPermission(user, 'MANAGE_EVENT_CONFIG') || hasPermission(user, 'VIEW_SYSTEM_BRANDING');
+  const isMember = isPureMember(user);
+  const isAdminRole = isSuperAdmin(user) || isHigherAdmin(user) || isAreaAdmin(user);
+  const tabTitle = isAdminRole ? 'Admin' : (isMember ? 'Portal' : 'Cabinet');
+  const headerTitle = isAdminRole ? 'Admin Panel' : (isMember ? 'Member Portal' : 'Cabinet Hub');
+  const iconName = isAdminRole ? 'shield-checkmark' : (isMember ? 'apps' : 'briefcase');
 
   return (
     <Tabs
@@ -37,7 +40,7 @@ export default function AppLayout() {
           borderTopColor: Colors.border,
           borderTopWidth: 1,
           backgroundColor: Colors.surface,
-          paddingTop: 6,
+          paddingTop: 4,
           paddingBottom: Platform.OS === 'ios' ? 24 : 6,
           height: Platform.OS === 'ios' ? 84 : 64,
           elevation: 8,
@@ -49,15 +52,18 @@ export default function AppLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
-          marginBottom: 4,
+          lineHeight: 14,
+          marginTop: 1,
+          marginBottom: 0,
         },
         tabBarIconStyle: {
-          marginTop: 2,
+          marginTop: 0,
+          marginBottom: 0,
         },
         tabBarItemStyle: {
+          paddingVertical: 2,
           justifyContent: 'center',
           alignItems: 'center',
-          height: '100%',
         },
       }}
     >
@@ -81,19 +87,17 @@ export default function AppLayout() {
         }}
       />
 
-      {/* ─── 3. Admin Tab ─── */}
-      {showAdmin ? (
-        <Tabs.Screen
-          name="admin/index"
-          options={{
-            title: 'Admin',
-            tabBarIcon: ({ color, size }) => <TabIcon name="shield-checkmark" color={color} size={size} />,
-            headerTitle: 'Admin Panel',
-          }}
-        />
-      ) : (
-        <Tabs.Screen name="admin/index" options={{ href: null }} />
-      )}
+      {/* ─── 3. Admin / Cabinet / Member Portal Tab ─── */}
+      <Tabs.Screen
+        name="admin/index"
+        options={{
+          title: tabTitle,
+          tabBarIcon: ({ color, size }) => (
+            <TabIcon name={iconName} color={color} size={size} />
+          ),
+          headerTitle: headerTitle,
+        }}
+      />
 
       {/* ─── All Sub-Screens Hidden from Tab Bar (href: null) ─── */}
       {/* Activities & Meetings */}
@@ -113,8 +117,10 @@ export default function AppLayout() {
       <Tabs.Screen name="announcements" options={{ href: null, headerTitle: 'Announcements', headerShown: false }} />
       <Tabs.Screen name="notifications" options={{ href: null, headerTitle: 'Notifications', headerShown: true }} />
       <Tabs.Screen name="unit/jirga" options={{ href: null, headerTitle: 'Sobayi Jirga', headerShown: true }} />
+      <Tabs.Screen name="unit/committee" options={{ href: null, headerTitle: 'Committee Roster', headerShown: true }} />
 
       {/* Admin Modules */}
+      <Tabs.Screen name="admin/committee" options={{ href: null, headerTitle: 'Committee Roster', headerShown: true }} />
       <Tabs.Screen name="admin/audit" options={{ href: null, headerTitle: 'Audit Logs', headerShown: true }} />
       <Tabs.Screen name="admin/breakdown" options={{ href: null, headerTitle: 'Unit Breakdown', headerShown: true }} />
       <Tabs.Screen name="admin/congress" options={{ href: null, headerTitle: 'National Congress', headerShown: true }} />

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
 import { getCommitteeTierLabel, getRegularTierLabel } from '../../utils/unitFormat';
 import UnitSwitcher from '../../components/UnitSwitcher';
+import { CongressIcon } from '../../components/icons';
 
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
@@ -29,8 +30,22 @@ export default function ReportsPage() {
   const isCongressView = queryBody === 'CONGRESS';
   const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
-  const { user } = useAuth();
+  const { user, setActiveRole, allRoles } = useAuth();
   const { ctx, setCtx, provinces, districts, areas, units } = useUnit();
+
+  function handleSwitchToCentral() {
+    const rolesList = allRoles || user?.allRoles || user?.roles || [];
+    const isSuper = rolesList.includes('SUPER_ADMIN') || user?.isBootstrap;
+    const isCentral = rolesList.includes('CENTRAL_ADMIN');
+    if (isSuper && setActiveRole) {
+      setActiveRole('SUPER_ADMIN');
+    } else if (isCentral && setActiveRole) {
+      setActiveRole('CENTRAL_ADMIN');
+    }
+    api.get('/org/central')
+      .then((r) => setCtx({ unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' }))
+      .catch(() => setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' }));
+  }
 
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [from, setFrom] = useState('');
@@ -108,7 +123,11 @@ export default function ReportsPage() {
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
-    if (ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && scope) p.set('scope', scope);
+    if (ctx.unitLevel === 'BASIC_UNIT') {
+      p.set('scope', 'own');
+    } else if (!isCongressView && scope) {
+      p.set('scope', scope);
+    }
     if (isCongressView) {
       p.set('body', 'CONGRESS');
       p.set('scope', 'own');
@@ -180,7 +199,39 @@ export default function ReportsPage() {
     );
   }
 
+  // If user opened Congress stream but is below Central tier, show guidance card
+  if (isCongressView && ctx?.unitLevel !== 'CENTRAL') {
+    return (
+      <div>
+        <div className="page-header">
+          <h2>National Congress Reports · قومي کانګرس</h2>
+        </div>
+        <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
+          <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
+            <CongressIcon size={36} />
+          </div>
+          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <p className="muted" style={{ lineHeight: 1.6 }}>
+            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleSwitchToCentral}
+            >
+              Switch to Central Unit Context →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const committeeTier = getCommitteeTierLabel(ctx.unitLevel);
+  const committeeTierFormatted = committeeTier
+    ? (committeeTier.toLowerCase().endsWith('committee') ? committeeTier : `${committeeTier} Committee`)
+    : 'Committee';
   const jirgaTier = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
   const hasSubordinates = ctx.unitLevel !== 'BASIC_UNIT';
 
@@ -207,7 +258,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Reports · ${ctx.unitName}`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee` : 'Committee'} Reports · ${ctx.unitName}`
+      ? `${committeeTierFormatted} Reports · ${ctx.unitName}`
       : `Reports · ${ctx.unitName}`));
 
   const meetingsReportTitle = isCongressView
@@ -215,7 +266,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Meetings & Activities Report`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Meetings & Activities Report`
+      ? `${committeeTierFormatted} Meetings & Activities Report`
       : 'Meetings & Activities Report'));
 
   const financeReportTitle = isCongressView
@@ -223,7 +274,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Finance Report`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Finance Report`
+      ? `${committeeTierFormatted} Finance Report`
       : 'Finance Report'));
 
   return (

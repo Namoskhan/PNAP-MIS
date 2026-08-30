@@ -16,8 +16,15 @@ export default function NationalPage() {
     ]).then(([c, a]) => { setCongress(c); setAlerts(a); }).finally(() => setBusy(false));
   }, []);
 
-  function jumpToCentral() {
-    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' });
+  async function jumpToCentral() {
+    try {
+      const res = await api.get('/org/central');
+      if (res.data?.data?._id) {
+        setCtx({ unitLevel: 'CENTRAL', unitId: res.data.data._id, unitName: res.data.data.name || 'PKNAP Central' });
+        return;
+      }
+    } catch {}
+    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
   }
 
   if (busy) return <p>Loading…</p>;
@@ -30,10 +37,17 @@ export default function NationalPage() {
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-        <h2>National Congress</h2>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Link className="btn secondary" to="/unit/jirga" onClick={jumpToCentral}>Open Qomi Jirga Assembly →</Link>
-          <Link className="btn" to="/unit" onClick={jumpToCentral}>Open Central Unit Dashboard →</Link>
+        <div>
+          <h2 style={{ margin: 0 }}>National Congress · Country-Wide Structure</h2>
+          <div className="muted small" style={{ marginTop: 4 }}>
+            Supreme Consultative &amp; Representative Overview of PKNAP
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Link className="btn" to="/unit/congress" onClick={jumpToCentral}>Open Congress Roster →</Link>
+          <Link className="btn secondary" to="/unit/meetings?body=CONGRESS" onClick={jumpToCentral}>Congress Meetings →</Link>
+          <Link className="btn secondary" to="/unit/jirga" onClick={jumpToCentral}>Qomi Jirga Assembly →</Link>
+          <Link className="btn secondary" to="/unit" onClick={jumpToCentral}>Central Dashboard →</Link>
         </div>
       </div>
 

@@ -1,12 +1,22 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, Spacing } from '../constants/colors';
 
-export default function EmptyState({ icon = '📭', title = 'Nothing here', subtitle }) {
+export default function EmptyState({ icon = '📭', title = 'Nothing here', subtitle, message }) {
+  const isIonicons = typeof icon === 'string' && (icon.includes('-outline') || icon.includes('-sharp'));
+  const textSub = subtitle || message;
+
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
+      {typeof icon !== 'string' ? (
+        icon
+      ) : isIonicons ? (
+        <Ionicons name={icon} size={48} color={Colors.textMuted} style={styles.iconIonicons} />
+      ) : (
+        <Text style={styles.icon}>{icon}</Text>
+      )}
       <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {textSub ? <Text style={styles.subtitle}>{textSub}</Text> : null}
     </View>
   );
 }
@@ -21,6 +31,9 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 48,
+    marginBottom: Spacing.lg,
+  },
+  iconIonicons: {
     marginBottom: Spacing.lg,
   },
   title: {

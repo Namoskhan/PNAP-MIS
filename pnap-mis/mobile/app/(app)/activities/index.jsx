@@ -24,16 +24,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage } from '../../../src/api/client';
-import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin } from '../../../src/utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, isHigherAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Badge from '../../../src/components/Badge';
-import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
+import DateTimePicker from '../../../src/components/DateTimePicker';
+import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { ACTIVITY_TYPE_LABEL } from '../../../src/utils/formatters';
 import { downloadAndShare } from '../../../src/utils/export';
 import { formatUnitArrangedBy } from '../../../src/utils/unitFormat';
 import useEventTypes from '../../../src/hooks/useEventTypes';
 
-const DEFAULT_TYPE_CODE = 'CAMPAIGN';
+const DEFAULT_TYPE_CODE = 'COR';
 const MAX_PHOTOS = 10;
 
 const EMPTY_FORM = {
@@ -51,11 +52,9 @@ const EMPTY_FORM = {
   campaign_volunteerHours: '',
 };
 
-function ageLabel(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+function timeAgo(date) {
+  if (!date) return '—';
+  const diffDays = Math.floor((Date.now() - new Date(date)) / (1000 * 60 * 60 * 24));
   if (diffDays === 0) return 'today';
   if (diffDays === 1) return 'yesterday';
   return `${diffDays} days ago`;
@@ -72,7 +71,7 @@ function gmapsLink(lat, lng) {
 
 export default function ActivitiesScreen() {
   const { user } = useAuth();
-  const { ctx, provinces } = useUnit();
+  const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
 
@@ -82,53 +81,36 @@ export default function ActivitiesScreen() {
   const isCommitteeView = queryBody === 'COMMITTEE';
   const targetBody = isCongressView ? 'CONGRESS' : (isJirgaView ? 'JIRGA' : (isCommitteeView ? 'COMMITTEE' : 'EXECUTIVE'));
 
-  const [selectedLevel, setSelectedLevel] = useState(() => {
-    if (params.unitLevel) return params.unitLevel;
-    if (isJirgaView && provinces && provinces.length > 0) return 'PROVINCE';
-    return ctx?.unitLevel || 'CENTRAL';
-  });
-
-  const [selectedUnitId, setSelectedUnitId] = useState(() => {
-    if (params.unitId && params.unitId !== 'CENTRAL') return params.unitId;
-    if (isJirgaView && provinces && provinces.length > 0) return provinces[0]._id;
-    return ctx?.unitId || '';
-  });
-
-  // Sync with provinces when they become available
-  useEffect(() => {
-    if (isJirgaView && !selectedUnitId && provinces && provinces.length > 0) {
-      setSelectedLevel('PROVINCE');
-      setSelectedUnitId(provinces[0]._id);
-    }
-  }, [provinces, isJirgaView]);
-
-  const activeLevel = selectedLevel;
+  const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
+  const rawUnitId = params.unitId || ctx?.unitId || '';
   const canManage = canManageMeetings(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
     && !(isSuperAdmin(user) && (activeLevel === 'CENTRAL' || isCongressView));
-  const [resolvedUnitId, setResolvedUnitId] = useState(selectedUnitId);
+  const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
 
   useEffect(() => {
-    let rawId = selectedUnitId;
-    if (activeLevel === 'CENTRAL' && (!rawId || rawId === 'CENTRAL')) {
+    let currentRaw = rawUnitId;
+    if (activeLevel === 'CENTRAL' && (!currentRaw || currentRaw === 'CENTRAL')) {
       api.get('/org/central').then((r) => {
         if (r.data?.data?._id) setResolvedUnitId(r.data.data._id);
       }).catch(() => {});
     } else {
-      setResolvedUnitId(rawId);
+      setResolvedUnitId(currentRaw);
     }
-  }, [selectedUnitId, activeLevel]);
+  }, [rawUnitId, activeLevel]);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(null);
 
   const [photosFor, setPhotosFor] = useState(null);
+  const [photoError, setPhotoError] = useState('');
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
@@ -164,6 +146,7 @@ export default function ActivitiesScreen() {
       unitLevel: activeLevel,
       unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : (params.unitId || ctx?.unitId)),
       body: targetBody,
+      scope: 'own',
     };
   }
 
@@ -231,16 +214,22 @@ export default function ActivitiesScreen() {
       startAt: startDefault,
       endAt: endDefault,
     });
+    setFormError('');
     setShowForm(true);
   }
 
   async function handleCreate() {
+    setFormError('');
     if (!form.title?.trim()) {
-      toast.error('Title is required.');
+      const msg = 'Title is required.';
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
     if (!form.startAt) {
-      toast.error('Start date & time is required.');
+      const msg = 'Start date & time is required.';
+      setFormError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -250,8 +239,8 @@ export default function ActivitiesScreen() {
         title: form.title.trim(),
         description: form.description?.trim() || undefined,
         venue: form.venue?.trim() || undefined,
-        startAt: new Date(form.startAt).toISOString(),
-        endAt: form.endAt ? new Date(form.endAt).toISOString() : undefined,
+        startAt: form.startAt,
+        endAt: form.endAt || undefined,
         typeCode: form.typeCode,
         type: form.typeCode,
         body: targetBody,
@@ -273,9 +262,12 @@ export default function ActivitiesScreen() {
       toast.success(`${streamLabel} activity "${form.title}" recorded.`);
       setShowForm(false);
       setForm(EMPTY_FORM);
+      setFormError('');
       load(true);
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setFormError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -283,22 +275,36 @@ export default function ActivitiesScreen() {
 
   async function uploadPhotos(activityId, files) {
     if (!files || !files.length) return;
+    setPhotoError('');
     if (files.length > MAX_PHOTOS) {
       toast.error(`Only ${MAX_PHOTOS} photos can be uploaded at once. Sending first ${MAX_PHOTOS}.`);
     }
     const batch = files.slice(0, MAX_PHOTOS);
     const fd = new FormData();
 
-    if (Platform.OS === 'web') {
-      batch.forEach((f) => fd.append('photos', f));
-    } else {
-      batch.forEach((f) => {
+    for (let i = 0; i < batch.length; i++) {
+      const f = batch[i];
+      if (Platform.OS === 'web') {
+        if (f.file) {
+          fd.append('photos', f.file);
+        } else if (f.uri) {
+          try {
+            const res = await fetch(f.uri);
+            const blob = await res.blob();
+            fd.append('photos', blob, f.name || `photo_${Date.now()}_${i}.jpg`);
+          } catch {
+            fd.append('photos', f);
+          }
+        } else {
+          fd.append('photos', f);
+        }
+      } else {
         fd.append('photos', {
           uri: f.uri,
-          name: f.name,
-          type: f.type,
+          name: f.name || `photo_${Date.now()}_${i}.jpg`,
+          type: f.type || 'image/jpeg',
         });
-      });
+      }
     }
 
     setUploadingPhotos(true);
@@ -311,14 +317,18 @@ export default function ActivitiesScreen() {
         toast.success(`${data.accepted.length} photo(s) uploaded successfully.`);
       }
       if (data?.rejected?.length) {
-        toast.error(data.rejected.map((x) => `${x.filename}: ${x.reason}`).join(' | '));
+        const rejectMsg = data.rejected.map((x) => `${x.filename || 'Photo'}: ${x.reason}`).join('\n');
+        setPhotoError(rejectMsg);
+        toast.error(`Rejected: ${data.rejected[0]?.reason || 'GPS/EXIF check failed'}`);
       }
       load(true);
       if (photosFor && photosFor._id === activityId) {
         setPhotosFor(data?.activity || { ...photosFor, photos: data?.activity?.photos });
       }
     } catch (e) {
-      toast.error(errorMessage(e));
+      const msg = errorMessage(e);
+      setPhotoError(msg);
+      toast.error(msg);
     } finally {
       setUploadingPhotos(false);
     }
@@ -531,12 +541,11 @@ export default function ActivitiesScreen() {
     </View>
   );
 
-  const selectedProvince = (provinces || []).find((p) => String(p._id) === String(selectedUnitId));
   const pageTitle = isCongressView
-    ? 'National Congress Activities · PKNAP Central'
+    ? 'National Congress Activities'
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Activities · PKNAP Central' : `Sobayi Jirga Activities · ${selectedProvince?.name || 'Province'}`)
-      : (isCommitteeView ? `Committee Activities · ${ctx?.unitName || 'PKNAP Central'}` : `Executive Activities · ${ctx?.unitName || 'PKNAP Central'}`));
+      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Activities' : 'Sobayi Jirga Activities')
+      : (isCommitteeView ? 'Committee Activities' : 'Activities'));
 
   const recordBtnLabel = isCongressView
     ? '+ Record Congress Activity'
@@ -544,80 +553,140 @@ export default function ActivitiesScreen() {
       ? '+ Record Jirga Activity'
       : (isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity'));
 
+  // If user opened Congress stream but is below Central tier, show guidance card
+  if (isCongressView && activeLevel !== 'CENTRAL') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>National Congress operates exclusively at the Central Level</Text>
+            <Text style={styles.guidanceText}>
+              Under the PKNAP constitution, the <Text style={{ fontWeight: '700' }}>National Congress (قومي کانګرس)</Text> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <Text style={{ fontWeight: '700' }}>Sobayi Jirga</Text> (Province) and <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text> (District & Area).
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              <TouchableOpacity
+                style={styles.guidanceBtnPrimary}
+                onPress={() => {
+                  setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                }}
+              >
+                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                <Text style={styles.guidanceBtnPrimaryText}>Switch to Central Unit Context →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // If user opened Jirga stream but is below Province tier, show guidance card
+  if (isJirgaView && activeLevel !== 'CENTRAL' && activeLevel !== 'PROVINCE') {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={styles.guidanceCard}>
+            <View style={styles.guidanceIconBox}>
+              <Ionicons name="people-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
+            <Text style={styles.guidanceText}>
+              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            </Text>
+
+            <View style={styles.guidanceBtnCol}>
+              {isHigherAdmin(user) && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnPrimary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
+                  }}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                </TouchableOpacity>
+              )}
+
+              {user?.scope?.provinceId && (
+                <TouchableOpacity
+                  style={styles.guidanceBtnSecondary}
+                  onPress={() => {
+                    setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                </TouchableOpacity>
+              )}
+
+              {isHigherAdmin(user) && provinces && provinces.length > 0 && (
+                <View style={{ marginTop: 12 }}>
+                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <View style={styles.provGrid}>
+                    {provinces.map((prov) => (
+                      <TouchableOpacity
+                        key={prov._id}
+                        style={styles.provPillBtn}
+                        onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
+                      >
+                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.pageTitle}>{pageTitle}</Text>
-        <View style={styles.actionsRow}>
-           <TouchableOpacity
-             style={[styles.btnSecondary, exporting === 'pdf' && { opacity: 0.6 }]}
-             onPress={() => handleExport('pdf')}
-             disabled={!!exporting}
-           >
-             {exporting === 'pdf' ? (
-               <ActivityIndicator size="small" color={Colors.textMuted} />
-             ) : (
-               <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
-             )}
-             <Text style={styles.btnSecondaryText}>Export PDF</Text>
-           </TouchableOpacity>
-           <TouchableOpacity
-             style={[styles.btnSecondary, exporting === 'xlsx' && { opacity: 0.6 }]}
-             onPress={() => handleExport('xlsx')}
-             disabled={!!exporting}
-           >
-             {exporting === 'xlsx' ? (
-               <ActivityIndicator size="small" color={Colors.textMuted} />
-             ) : (
-               <Ionicons name="stats-chart-outline" size={16} color={Colors.textMuted} />
-             )}
-             <Text style={styles.btnSecondaryText}>Export Excel</Text>
-           </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.pageTitle}>{pageTitle}</Text>
+          <Text style={styles.pageSubtitle}>
+            {ctx?.unitName ? `${ctx.unitName} · ` : ''}{activeLevel.replace('_', ' ')}
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => handleExport('pdf')}
+            disabled={!!exporting}
+          >
+            {exporting === 'pdf' ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => handleExport('xlsx')}
+            disabled={!!exporting}
+          >
+            {exporting === 'xlsx' ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="grid-outline" size={20} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
 
-           {canManage && (
-             <TouchableOpacity style={styles.btnPrimary} onPress={openCreate}>
-               <Ionicons name="calendar" size={16} color="#fff" />
-               <Text style={styles.btnPrimaryText}>{recordBtnLabel}</Text>
-             </TouchableOpacity>
-           )}
+          {canManage && (
+            <TouchableOpacity style={styles.primaryBtn} onPress={openCreate}>
+              <Ionicons name="add" size={18} color="#fff" />
+              <Text style={styles.primaryBtnText}>Record</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
-
-      {/* Province Switcher Pills for Jirga */}
-      {isJirgaView && provinces && provinces.length > 0 && (
-        <View style={styles.tierPillsWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tierPillsScroll}>
-            {provinces.map((prov) => {
-              const isActive = selectedLevel === 'PROVINCE' && String(selectedUnitId) === String(prov._id);
-              return (
-                <TouchableOpacity
-                  key={prov._id}
-                  style={[styles.tierPill, isActive && styles.tierPillActive]}
-                  onPress={() => {
-                    setSelectedLevel('PROVINCE');
-                    setSelectedUnitId(prov._id);
-                  }}
-                >
-                  <Text style={[styles.tierPillText, isActive && styles.tierPillTextActive]}>
-                    {prov.name} Sobayi Jirga
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-            <TouchableOpacity
-              style={[styles.tierPill, selectedLevel === 'CENTRAL' && styles.tierPillActive]}
-              onPress={() => {
-                setSelectedLevel('CENTRAL');
-                setSelectedUnitId('CENTRAL');
-              }}
-            >
-              <Text style={[styles.tierPillText, selectedLevel === 'CENTRAL' && styles.tierPillTextActive]}>
-                Qomi Jirga (Central)
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      )}
 
       <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
         <View style={{ flex: 1 }}>
@@ -657,6 +726,13 @@ export default function ActivitiesScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
+              {formError ? (
+                <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 16 }}>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Could not record activity:</Text>
+                  <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{formError}</Text>
+                </View>
+              ) : null}
+
               {/* Type Dropdown */}
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Type *</Text>
@@ -674,15 +750,19 @@ export default function ActivitiesScreen() {
 
               <FormField label="Title *" value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Activity title" />
 
-              <DateTimeField
+              <DateTimePicker
                 label="Start Date & Time *"
                 value={form.startAt}
+                mode="datetime"
+                placeholder="Select start date & time"
                 onChange={(val) => setForm((f) => ({ ...f, startAt: val }))}
               />
 
-              <DateTimeField
+              <DateTimePicker
                 label="End Date & Time"
                 value={form.endAt}
+                mode="datetime"
+                placeholder="Select end date & time"
                 onChange={(val) => setForm((f) => ({ ...f, endAt: val }))}
               />
 
@@ -759,6 +839,13 @@ export default function ActivitiesScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.formContent}>
+              {photoError ? (
+                <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Photo Rejection Details:</Text>
+                  <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4, lineHeight: 17 }}>{photoError}</Text>
+                </View>
+              ) : null}
+
               {(!photosFor.photos || photosFor.photos.length === 0) ? (
                 <View style={{ padding: 24, alignItems: 'center' }}>
                   <Text style={{ color: Colors.textMuted }}>No photos attached to this activity yet.</Text>
@@ -872,47 +959,6 @@ export default function ActivitiesScreen() {
   );
 }
 
-function DateTimeField({ label, value, onChange }) {
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <input
-          type="datetime-local"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            width: '100%',
-            height: 44,
-            padding: '8px 12px',
-            borderRadius: 10,
-            border: `1.5px solid ${Colors.border}`,
-            backgroundColor: Colors.surfaceAlt,
-            color: Colors.text,
-            fontSize: '15px',
-            fontFamily: 'inherit',
-            outline: 'none',
-            boxSizing: 'border-box',
-          }}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={styles.fieldInput}
-        value={value}
-        onChangeText={onChange}
-        placeholder="YYYY-MM-DDTHH:mm"
-        placeholderTextColor={Colors.textLight}
-      />
-    </View>
-  );
-}
-
 function FormField({ label, value, onChangeText, placeholder, multiline, keyboardType }) {
   return (
     <View style={styles.field}>
@@ -932,8 +978,44 @@ function FormField({ label, value, onChangeText, placeholder, multiline, keyboar
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
-  header: { padding: Spacing.lg, paddingBottom: Spacing.sm, backgroundColor: Colors.surface },
-  pageTitle: { fontSize: FontSize.xl, fontWeight: '700', color: Colors.text, marginBottom: 12 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  pageTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
+  pageSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconBtn: {
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: Radius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  primaryBtnText: { fontSize: FontSize.xs, fontWeight: '700', color: '#fff' },
   actionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   btnSecondary: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: Colors.surfaceAlt, borderRadius: 8, borderWidth: 1, borderColor: Colors.border },
   btnSecondaryText: { fontSize: FontSize.sm, fontWeight: '600', color: Colors.textMuted },
@@ -1010,4 +1092,98 @@ const styles = StyleSheet.create({
   },
   thumbBtnActive: { borderColor: Colors.primary, borderWidth: 2 },
   thumbImg: { width: '100%', height: '100%' },
+
+  // Guidance Card (when on lower tier context)
+  guidanceCard: {
+    backgroundColor: '#fff',
+    borderRadius: Radius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    textAlign: 'center',
+    marginVertical: Spacing.lg,
+  },
+  guidanceIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  guidanceTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  guidanceText: {
+    fontSize: FontSize.sm,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  guidanceBtnCol: {
+    width: '100%',
+    gap: 10,
+  },
+  guidanceBtnPrimary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnPrimaryText: {
+    color: '#fff',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.md,
+  },
+  guidanceBtnSecondaryText: {
+    color: Colors.primary,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  guidanceSubHead: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  provGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  provPillBtn: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radius.full,
+  },
+  provPillBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
 });

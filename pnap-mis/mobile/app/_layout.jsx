@@ -64,6 +64,15 @@ export default function RootLayout() {
           * {
             box-sizing: border-box !important;
           }
+          [role="tablist"] [role="tab"] {
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+            justify-content: center !important;
+          }
+          [role="tablist"] [role="tab"] > div:last-child {
+            line-height: 14px !important;
+            overflow: visible !important;
+          }
         `;
         document.head?.appendChild(style);
       }
