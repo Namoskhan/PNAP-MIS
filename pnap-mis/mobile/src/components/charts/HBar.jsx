@@ -13,7 +13,7 @@ export default function HBar({ rows, accent = Colors.primary, emptyLabel = 'No d
       {rows.map((r, i) => {
         const pct = Math.round(((r.value || 0) / max) * 100);
         return (
-          <View key={r.label || i} style={styles.row}>
+          <View key={`${r.label || 'r'}-${i}`} style={styles.row}>
             <Text style={styles.label} numberOfLines={1}>{r.label}</Text>
             
             <View style={styles.track}>

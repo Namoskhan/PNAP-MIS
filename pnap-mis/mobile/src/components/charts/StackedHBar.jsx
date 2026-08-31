@@ -32,19 +32,19 @@ export default function StackedHBar({
           const scale = (total / max) * 100;
 
           return (
-            <View key={r.label || i} style={styles.row}>
+            <View key={`${r.label || 'r'}-${i}`} style={styles.row}>
               <Text style={styles.rowLabel} numberOfLines={1}>{r.label}</Text>
               
               <View style={styles.track}>
                 <View style={[styles.stack, { width: `${Math.max(scale, total > 0 ? 2 : 0)}%` }]}>
-                  {series.map((s) => {
+                  {series.map((s, si) => {
                     const v = r.values[s.key] || 0;
                     if (v <= 0) return null;
                     const widthPct = (v / total) * 100;
 
                     return (
                       <View
-                        key={s.key}
+                        key={`${s.key || 's'}-${si}`}
                         style={[
                           styles.segment,
                           { width: `${widthPct}%`, backgroundColor: s.color }

@@ -33,7 +33,7 @@ export default function AreaTrendChart({
           const heightPct = Math.max(6, Math.round((total / max) * 100));
 
           return (
-            <View key={bucket.month || i} style={styles.col}>
+            <View key={`${bucket.month || 'm'}-${i}`} style={styles.col}>
               <Text style={styles.colVal}>{total}</Text>
               
               <View style={[styles.track, { backgroundColor: trackColor }]}>

@@ -937,8 +937,8 @@ async function meetingsAnalytics(f, { yearBasis = 'CALENDAR', years = 5 } = {}) 
 
     const end = f.to || new Date();
     const trendStart = new Date(end);
-    trendStart.setMonth(trendStart.getMonth() - 11);
     trendStart.setDate(1);
+    trendStart.setMonth(trendStart.getMonth() - 11);
     trendStart.setHours(0, 0, 0, 0);
 
     // The yearly series deliberately ignores the activity window: a
@@ -1180,8 +1180,8 @@ async function campaignsAnalytics(f) {
 
     const end = f.to || new Date();
     const trendStart = new Date(end);
-    trendStart.setMonth(trendStart.getMonth() - 11);
     trendStart.setDate(1);
+    trendStart.setMonth(trendStart.getMonth() - 11);
     trendStart.setHours(0, 0, 0, 0);
 
     const [byStage, byUnit, reach, trendRows, org] = await Promise.all([
@@ -1387,8 +1387,8 @@ async function activityTrend(f, months = 12) {
   return cached(`trend:${span}`, f, async () => {
     const end = f.to || new Date();
     const start = new Date(end);
-    start.setMonth(start.getMonth() - (span - 1));
     start.setDate(1);
+    start.setMonth(start.getMonth() - (span - 1));
     start.setHours(0, 0, 0, 0);
 
     const rows = await ActivityLog.aggregate([
