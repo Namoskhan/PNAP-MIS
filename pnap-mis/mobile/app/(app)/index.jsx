@@ -79,7 +79,7 @@ export default function DashboardScreen() {
               <Text style={styles.execToggleBtnText}>Switch to Unit Dashboard →</Text>
             </TouchableOpacity>
           </View>
-          <CommandCenter />
+          <CommandCenter accessScope={user?.dashboardScope} />
         </View>
       );
     }

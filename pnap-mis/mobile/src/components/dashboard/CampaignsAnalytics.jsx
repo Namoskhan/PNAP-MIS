@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { api, errorMessage } from '../../api/client';
-import { useToast } from '../Toast';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import useAnalytics from '../../hooks/useAnalytics';
 import { Colors, FontSize, Spacing } from '../../constants/colors';
 import Card from '../Card';
-import { HBar, BRAND } from '../charts';
-import KpiCard from '../KpiCard';
+import { AreaTrendChart, HBar, PieChart, SmartKpi, BRAND } from '../charts';
 
 const LEVEL_NOUN = {
   PROVINCE: 'Province',
@@ -21,25 +23,23 @@ const LEVEL_ACCENT = {
   BASIC_UNIT: BRAND.light,
 };
 
-export default function CampaignsAnalytics({ days = 365 }) {
-  const toast = useToast();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+function ChartCard({ title, sub, meta, children }) {
+  return (
+    <Card style={styles.chartCard}>
+      <View style={styles.cardHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardTitle}>{title}</Text>
+          {sub && <Text style={styles.cardSub}>{sub}</Text>}
+        </View>
+        {meta && <Text style={styles.cardMeta}>{meta}</Text>}
+      </View>
+      {children}
+    </Card>
+  );
+}
 
-  useEffect(() => {
-    async function fetch() {
-      setLoading(true);
-      try {
-        const res = await api.get('/dashboard/campaigns', { params: { days } });
-        setData(res.data?.data);
-      } catch (err) {
-        toast.error(errorMessage(err));
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetch();
-  }, [days]);
+export default function CampaignsAnalytics({ params, windowLabel = 'last 12 months' }) {
+  const { data, loading, error } = useAnalytics('/dashboard/campaigns', params);
 
   if (loading && !data) {
     return (
@@ -49,102 +49,170 @@ export default function CampaignsAnalytics({ days = 365 }) {
     );
   }
 
+  if (error) {
+    return (
+      <Card style={styles.errorCard}>
+        <Text style={styles.errorText}>{error}</Text>
+      </Card>
+    );
+  }
+
   if (!data) return null;
 
-  const t = data.totals;
+  const t = data.totals || {};
   const levels = data.levels || [];
 
-  if (t.total === 0) {
+  if ((t.total || 0) === 0) {
     return (
-      <Card style={styles.center}>
-        <Text style={{ fontSize: 32 }}>🎯</Text>
-        <Text style={styles.emptyText}>No campaigns recorded for this scope.</Text>
+      <Card style={styles.emptyCard}>
+        <Text style={styles.emptyIcon}>🎯</Text>
+        <Text style={styles.emptyText}>
+          No campaigns recorded in the {windowLabel} for this scope.
+        </Text>
       </Card>
     );
   }
 
   const stageRows = [
-    { label: 'Running', value: t.running, color: BRAND.dark },
-    { label: 'Upcoming', value: t.upcoming, color: Colors.warning },
-    { label: 'Completed', value: t.completed, color: Colors.success },
-    { label: 'Cancelled', value: t.cancelled, color: Colors.textMuted },
-  ].filter(r => r.value > 0);
+    { label: 'Running', value: t.running || 0, color: BRAND.dark },
+    { label: 'Upcoming', value: t.upcoming || 0, color: Colors.warning },
+    { label: 'Completed', value: t.completed || 0, color: Colors.success },
+    { label: 'Cancelled', value: t.cancelled || 0, color: Colors.textMuted },
+  ].filter((r) => r.value > 0);
+
+  const trendBuckets = (data.trend || []).map((b) => ({
+    month: b.label,
+    meetings: b.total || 0,
+    activities: 0,
+  }));
 
   return (
     <View style={styles.container}>
+      {/* 4 KPIs */}
       <View style={styles.kpiGrid}>
-        <KpiCard label="Active Campaigns" value={t.running?.toLocaleString()} icon="🎯" color={Colors.primary} />
-        <KpiCard label="Completed" value={t.completed?.toLocaleString()} icon="✅" color={Colors.success} />
+        <SmartKpi
+          label="Active Campaigns"
+          value={t.running}
+          icon="🎯"
+          iconBg="rgba(30, 64, 175, 0.12)"
+          iconColor={Colors.primary}
+        />
+        <SmartKpi
+          label="Completed"
+          value={t.completed}
+          icon="✅"
+          iconBg="rgba(22, 163, 74, 0.12)"
+          iconColor={Colors.success}
+        />
       </View>
       <View style={styles.kpiGrid}>
-        <KpiCard label="Upcoming" value={t.upcoming?.toLocaleString()} icon="⏱️" color={Colors.warning} />
-        {data.reach && (
-          <KpiCard label="People Contacted" value={data.reach.peopleContacted?.toLocaleString()} icon="👥" color={Colors.accent} />
+        <SmartKpi
+          label="Upcoming"
+          value={t.upcoming}
+          icon="⏱️"
+          iconBg="rgba(217, 119, 6, 0.12)"
+          iconColor={Colors.warning}
+        />
+        {data.reach ? (
+          <SmartKpi
+            label="People Contacted"
+            value={data.reach.peopleContacted}
+            icon="👥"
+            iconBg="rgba(30, 64, 175, 0.12)"
+            iconColor={Colors.primary}
+          />
+        ) : (
+          <SmartKpi
+            label="Total Recorded"
+            value={t.total}
+            icon="📋"
+            iconBg="rgba(100, 116, 139, 0.15)"
+            iconColor={Colors.textMuted}
+          />
         )}
       </View>
 
-      <Card style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Campaigns by stage</Text>
-        </View>
-        <HBar rows={stageRows} />
-      </Card>
+      {/* Campaign Trend */}
+      <ChartCard
+        title="Campaign trend"
+        sub="Campaigns per month"
+        meta={`${(t.total || 0).toLocaleString()} in window`}
+      >
+        {trendBuckets.length > 1 ? (
+          <AreaTrendChart
+            trend={trendBuckets}
+            height={130}
+            barColor={BRAND.dark}
+            trackColor={BRAND.tint}
+          />
+        ) : (
+          <Text style={styles.mutedText}>Not enough history yet.</Text>
+        )}
+      </ChartCard>
 
+      {/* Campaigns by Stage */}
+      <ChartCard title="Campaigns by stage" sub={windowLabel}>
+        <View style={styles.stageChartContainer}>
+          <PieChart
+            segments={stageRows.map((s) => ({
+              label: s.label,
+              value: s.value,
+              color: s.color,
+            }))}
+            size={90}
+          />
+          <View style={{ flex: 1 }}>
+            <HBar rows={stageRows} />
+          </View>
+        </View>
+      </ChartCard>
+
+      {/* Level-wise campaigns */}
       {levels.map((lvl) => {
-        const rows = data.byLevel[lvl] || [];
-        const attributed = rows.reduce((a, r) => a + r.total, 0);
+        const rows = data.byLevel?.[lvl] || [];
+        const attributed = rows.reduce((a, r) => a + (r.total || 0), 0);
         return (
-          <Card key={lvl} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{LEVEL_NOUN[lvl]}-wise campaigns</Text>
-              {attributed < t.total && (
-                <Text style={styles.cardSub}>{attributed} of {t.total}</Text>
-              )}
-            </View>
+          <ChartCard
+            key={lvl}
+            title={`${LEVEL_NOUN[lvl]}-wise campaigns`}
+            sub="All stages"
+            meta={attributed < t.total ? `${attributed} of ${t.total}` : undefined}
+          >
             <HBar
               rows={rows.slice(0, 10).map((r) => ({ label: r.name, value: r.total }))}
               accent={LEVEL_ACCENT[lvl]}
               emptyLabel={`No ${LEVEL_NOUN[lvl]} campaigns.`}
             />
-          </Card>
+          </ChartCard>
         );
       })}
 
+      {/* Campaign Reach Details */}
       {data.reach && (
-        <Card style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Campaign reach</Text>
-            <Text style={styles.cardSub}>Aggregated across recorded campaigns</Text>
-          </View>
-          <View style={styles.table}>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Households visited</Text>
-              <Text style={styles.rowVal}>{data.reach.householdsVisited?.toLocaleString()}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>People contacted</Text>
-              <Text style={styles.rowVal}>{data.reach.peopleContacted?.toLocaleString()}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Expected joiners</Text>
-              <Text style={styles.rowVal}>{data.reach.expectedJoiners?.toLocaleString()}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Actual joiners</Text>
-              <Text style={styles.rowVal}>{data.reach.actualJoiners?.toLocaleString()}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Volunteer hours</Text>
-              <Text style={styles.rowVal}>{data.reach.volunteerHours?.toLocaleString()}</Text>
-            </View>
+        <ChartCard title="Campaign reach" sub="Aggregated across recorded campaigns">
+          <View style={styles.reachTable}>
+            {[
+              ['Households visited', data.reach.householdsVisited],
+              ['People contacted', data.reach.peopleContacted],
+              ['Expected joiners', data.reach.expectedJoiners],
+              ['Actual joiners', data.reach.actualJoiners],
+              ['Volunteer hours', data.reach.volunteerHours],
+            ].map(([label, v]) => (
+              <View key={label} style={styles.reachRow}>
+                <Text style={styles.reachLabel}>{label}</Text>
+                <Text style={styles.reachVal}>{(v || 0).toLocaleString()}</Text>
+              </View>
+            ))}
             {data.reach.conversionPct != null && (
-              <View style={[styles.row, { borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.sm }]}>
-                <Text style={styles.rowLabel}>Conversion</Text>
-                <Text style={[styles.rowVal, { color: Colors.success }]}>{data.reach.conversionPct}%</Text>
+              <View style={[styles.reachRow, styles.conversionRow]}>
+                <Text style={styles.reachLabel}>Conversion</Text>
+                <Text style={[styles.reachVal, { color: Colors.success, fontWeight: '800' }]}>
+                  {data.reach.conversionPct}%
+                </Text>
               </View>
             )}
           </View>
-        </Card>
+        </ChartCard>
       )}
     </View>
   );
@@ -153,53 +221,98 @@ export default function CampaignsAnalytics({ days = 365 }) {
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.md,
-    paddingBottom: Spacing.xl,
   },
   center: {
     padding: Spacing.xl,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCard: {
+    padding: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.sm,
+  },
+  emptyIcon: {
+    fontSize: 32,
   },
   emptyText: {
     color: Colors.textMuted,
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
+    textAlign: 'center',
+  },
+  errorCard: {
+    padding: Spacing.md,
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: FontSize.xs,
+    fontWeight: '600',
   },
   kpiGrid: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
-  card: {
-    padding: Spacing.lg,
-    gap: Spacing.md,
+  chartCard: {
+    padding: Spacing.md,
+    gap: Spacing.sm,
   },
   cardHeader: {
-    marginBottom: Spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+    gap: 8,
   },
   cardTitle: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     fontWeight: '700',
     color: Colors.text,
   },
   cardSub: {
-    fontSize: FontSize.xs,
+    fontSize: 11,
     color: Colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
-  table: {
-    gap: Spacing.sm,
+  cardMeta: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.primary,
   },
-  row: {
+  stageChartContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  reachTable: {
+    gap: 8,
+  },
+  reachRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  rowLabel: {
-    fontSize: FontSize.sm,
+  conversionRow: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 8,
+    marginTop: 2,
+  },
+  reachLabel: {
+    fontSize: FontSize.xs,
     color: Colors.textMuted,
   },
-  rowVal: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
+  reachVal: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
     color: Colors.text,
+  },
+  mutedText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: 12,
   },
 });
