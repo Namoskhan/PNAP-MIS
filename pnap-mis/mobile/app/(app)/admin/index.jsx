@@ -175,7 +175,7 @@ export default function AdminHubScreen() {
     // 3. Province Admin: My Province
     {
       key: 'my_province',
-      title: `My Province · ${ctx?.unitName || 'Province'}`,
+      title: 'My Province',
       icon: '🏢',
       show: () => isProvince,
       items: [
@@ -185,14 +185,14 @@ export default function AdminHubScreen() {
         { key: 'p-cab', icon: '🏛️', title: 'Assign District Cabinet Roles', description: 'Appoint district office-holders and review cabinet.', route: '/cabinet' },
         { key: 'p-resp', icon: '📋', title: 'Responsibilities', description: 'Provincial task allocations and tracking.', route: '/admin/responsibilities' },
         { key: 'p-breakdown', icon: '📊', title: 'District Breakdown', description: 'Comparative district activity, membership & finance stats.', route: '/admin/breakdown' },
-        { key: 'p-reports', icon: '📈', title: 'Reports Center', description: 'Generate and download PDF and Excel summary packages.', route: '/admin/reports' },
+        { key: 'p-reports', icon: '📈', title: 'Reports', description: 'Generate and download PDF and Excel summary packages.', route: '/admin/reports' },
       ],
     },
 
     // 4. District Admin: My District
     {
       key: 'my_district',
-      title: `My District · ${ctx?.unitName || 'District'}`,
+      title: 'My District',
       icon: '🏢',
       show: () => isDistrict || hasRole(user, 'DISTRICT_ADMIN'),
       items: [
@@ -209,7 +209,7 @@ export default function AdminHubScreen() {
     // 5. Area Admin: My Area
     {
       key: 'my_area',
-      title: `My Area · ${ctx?.unitName || 'Area'}`,
+      title: 'My Area',
       icon: '🏢',
       show: () => isArea || hasRole(user, 'AREA_ADMIN'),
       items: [
@@ -219,6 +219,7 @@ export default function AdminHubScreen() {
         { key: 'a-members', icon: '👥', title: 'All Members', description: 'Browse and filter members in the area.', route: '/members' },
         { key: 'a-cab', icon: '🏛️', title: 'Assign Cabinet Roles', description: 'Assign office-holders and approve proposals.', route: '/cabinet' },
         { key: 'a-resp', icon: '📋', title: 'Responsibilities', description: 'Area task allocations and tracking.', route: '/admin/responsibilities' },
+        { key: 'a-breakdown', icon: '📊', title: 'Basic Unit Breakdown', description: 'Comparative basic unit activity, membership & finance stats.', route: '/admin/breakdown' },
         { key: 'a-reports', icon: '📈', title: 'Reports', description: 'Download PDF and Excel reports for the area.', route: '/admin/reports' },
       ],
     },
@@ -339,7 +340,7 @@ export default function AdminHubScreen() {
     // 11. Communication (Always available)
     {
       key: 'communication',
-      title: 'Communication & Broadcasts',
+      title: 'Communication',
       icon: '📢',
       show: () => true,
       items: [

@@ -93,16 +93,17 @@ function UnitNavLink({ to, body = null, children }) {
 // the wider body, each pinned to ?body=COMMITTEE. Basic Units have no
 // committee (SRS §3.1, and `committeeController.composition` rejects
 // that level outright), so the whole group is hidden there.
-function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }) {
-  if (!ctx || ctx.unitLevel === 'BASIC_UNIT') return null;
-  const label = committeeLabel(ctx.unitLevel);
+function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true, fixedTitle = null, fixedLevel = null }) {
+  const activeLevel = fixedLevel || ctx?.unitLevel;
+  if (!activeLevel || activeLevel === 'BASIC_UNIT') return null;
+  const label = fixedTitle || committeeLabel(activeLevel);
   if (!label) return null;
   return (
     <NavGroup
       label={label}
       icon={<CommitteeIcon size={14} />}
       variant="committee"
-      storageKey="pnap_nav_committee"
+      storageKey={`pnap_nav_committee_${activeLevel.toLowerCase()}`}
       defaultOpen={defaultOpen}
     >
       <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
@@ -340,6 +341,7 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">Basic Unit Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
+            <CommitteeNav ctx={ctx} fixedTitle="Elaqayi Committee" fixedLevel="AREA" canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -372,6 +374,7 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">Area Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
+            <CommitteeNav ctx={ctx} fixedTitle="Zilla Committee" fixedLevel="DISTRICT" canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -388,6 +391,7 @@ export default function Layout() {
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
             <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
+            <CommitteeNav ctx={ctx} fixedTitle="Sobayi Committee" fixedLevel="PROVINCE" canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 

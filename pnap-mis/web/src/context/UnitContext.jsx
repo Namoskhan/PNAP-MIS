@@ -130,10 +130,7 @@ export function UnitProvider({ children }) {
       || user.isBootstrap;
 
     if (!isSuperOrCentral && user.roles?.includes('PROVINCE_ADMIN') && user.scope?.provinceId) {
-      const inScope = ctx && (
-        ['DISTRICT', 'AREA', 'BASIC_UNIT'].includes(ctx.unitLevel)
-        || (ctx.unitLevel === 'PROVINCE' && String(ctx.unitId) === String(user.scope.provinceId))
-      );
+      const inScope = ctx && ctx.unitLevel === 'PROVINCE' && String(ctx.unitId) === String(user.scope.provinceId);
       if (!inScope) {
         setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: 'My Province' });
         api.get('/org/provinces')
@@ -151,10 +148,7 @@ export function UnitProvider({ children }) {
 
     if (!isSuperOrCentral && user.roles?.includes('DISTRICT_ADMIN')
       && !user.roles?.includes('PROVINCE_ADMIN') && user.scope?.districtId) {
-      const inScope = ctx && (
-        ['AREA', 'BASIC_UNIT'].includes(ctx.unitLevel)
-        || (ctx.unitLevel === 'DISTRICT' && String(ctx.unitId) === String(user.scope.districtId))
-      );
+      const inScope = ctx && ctx.unitLevel === 'DISTRICT' && String(ctx.unitId) === String(user.scope.districtId);
       if (!inScope) {
         setCtx({ unitLevel: 'DISTRICT', unitId: user.scope.districtId, unitName: 'My District' });
         api.get('/org/districts', { params: { provinceId: user.scope.provinceId } })

@@ -47,8 +47,22 @@ export default function CommitteePage() {
   // BU-level Senior Mawin can still see the body they're a member of.
   const [resolved, setResolved] = useState(null);
   useEffect(() => {
-    if (!ctx) { setResolved(null); return; }
-    if (ctx.unitLevel !== 'BASIC_UNIT') {
+    if (!ctx && !user?.scope?.districtId && !user?.scope?.provinceId) { setResolved(null); return; }
+
+    const isDistAdmin = user?.roles?.includes('DISTRICT_ADMIN') && !user?.roles?.includes('SUPER_ADMIN') && !user?.roles?.includes('PROVINCE_ADMIN');
+    const isProvAdmin = user?.roles?.includes('PROVINCE_ADMIN') && !user?.roles?.includes('SUPER_ADMIN');
+
+    if (isDistAdmin && user?.scope?.districtId && ctx?.unitLevel !== 'DISTRICT') {
+      setResolved({ unitLevel: 'DISTRICT', unitId: user.scope.districtId, unitName: user.scope.districtName || 'Zilla Committee' });
+      return;
+    }
+
+    if (isProvAdmin && user?.scope?.provinceId && ctx?.unitLevel !== 'PROVINCE') {
+      setResolved({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Sobayi Committee' });
+      return;
+    }
+
+    if (ctx && ctx.unitLevel !== 'BASIC_UNIT') {
       setResolved({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, unitName: ctx.unitName });
       return;
     }
