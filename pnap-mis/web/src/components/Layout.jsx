@@ -305,7 +305,6 @@ export default function Layout() {
             <NavGroup label="Central Tier" icon={<GlobeIcon size={14} />} storageKey="pnap_nav_central_tier" defaultOpen={false}>
               <NavLink to="/unit" end>Central Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Central Cabinet</NavLink>
-              <NavLink to="/unit/congress">National Congress</NavLink>
               <UnitNavLink to="/unit/meetings">Central Meetings</UnitNavLink>
               <UnitNavLink to="/unit/activities">Central Activities</UnitNavLink>
               <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
@@ -313,9 +312,6 @@ export default function Layout() {
               <UnitNavLink to="/unit/transfers">Central Fund Transfers</UnitNavLink>
               <UnitNavLink to="/unit/reports">Central Reports</UnitNavLink>
             </NavGroup>
-            <CongressNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
-            <JirgaNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
-            {/* Super Admin removed from Committee group per request. */}
           </>
         )}
 
@@ -341,7 +337,6 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">Basic Unit Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            <CommitteeNav ctx={ctx} fixedTitle="Elaqayi Committee" fixedLevel="AREA" canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -357,8 +352,6 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            <CongressNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
-            <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -374,7 +367,6 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">Area Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            <CommitteeNav ctx={ctx} fixedTitle="Zilla Committee" fixedLevel="DISTRICT" canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -390,8 +382,6 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">District Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
-            <CommitteeNav ctx={ctx} fixedTitle="Sobayi Committee" fixedLevel="PROVINCE" canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -578,6 +568,7 @@ export default function Layout() {
           <header className="topbar">
             <div className="topbar-spacer" aria-hidden="true" />
             {(() => {
+              if (isSuperAdmin) return null;
               // Show the persona switcher whenever the user holds more
               // than one role INCLUDING the base member portal — a
               // custom-role holder (e.g. MEMBER + CUSTOM_X) needs it to

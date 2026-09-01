@@ -145,7 +145,6 @@ export default function AdminHubScreen() {
       items: [
         { key: 'ct-dash', icon: '🏠', title: 'Central Dashboard', description: 'Central Command & Analytics Overview', route: '/' },
         { key: 'ct-cab', icon: '🏛️', title: 'Central Cabinet', description: 'Cabinet appointments and office-holders', route: '/cabinet' },
-        { key: 'ct-congress', icon: '🤝', title: 'National Congress', description: 'National Congress roster and assemblies', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'ct-meetings', icon: '📅', title: 'Central Meetings', description: 'Central executive assemblies & meeting records', route: '/meetings?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'ct-activities', icon: '🚩', title: 'Central Activities', description: 'Central events, campaigns and gatherings', route: '/activities?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'ct-resp', icon: '📋', title: 'Central Responsibilities', description: 'Central task allocations and monitoring', route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
@@ -281,7 +280,9 @@ export default function AdminHubScreen() {
             ? 'Zilla Committee'
             : 'Elaqayi Committee',
       icon: '👥',
-      show: () => ctx?.unitLevel !== 'BASIC_UNIT' && (isSuper || isCentral || isProvince || isDistrict || isArea || isCabinet),
+      show: () => ctx?.unitLevel !== 'BASIC_UNIT'
+        && !isSuper && !isCentral && !isProvince && !isDistrict && !isArea
+        && (isCabinet || isSeniorMawin || isSecretary || isFinanceSec || isPresident),
       items: [
         ...(!isFinanceSec ? [
           { key: 'committee-comp', icon: '👥', title: 'Composition', description: 'Consultative committee roster, cabinet & selective members', route: '/admin/committee' },
@@ -301,7 +302,9 @@ export default function AdminHubScreen() {
       key: 'congress',
       title: 'National Congress',
       icon: '🤝',
-      show: () => (ctx?.unitLevel === 'CENTRAL' || (!ctx?.unitLevel && (isSuper || isCentral))) && (isSuper || isCentral || isCabinet),
+      show: () => !isSuper && !isCentral && !isProvince && !isDistrict && !isArea
+        && (ctx?.unitLevel === 'CENTRAL' || (!ctx?.unitLevel && isCabinet))
+        && isCabinet,
       items: [
         ...(!isFinanceSec ? [
           { key: 'congress-roster', icon: '👥', title: 'Congress Roster', description: 'National Congress composition & member assignments', route: '/admin/congress?unitLevel=CENTRAL&unitId=CENTRAL' },
@@ -319,9 +322,10 @@ export default function AdminHubScreen() {
       title: (ctx?.unitLevel === 'CENTRAL' || (!ctx?.unitLevel && (isSuper || isCentral))) ? 'Qomi Jirga' : 'Sobayi Jirga',
       icon: '⚖️',
       show: () => {
-        const level = ctx?.unitLevel || (isSuper || isCentral ? 'CENTRAL' : (isProvince ? 'PROVINCE' : null));
+        if (isSuper || isCentral || isProvince || isDistrict || isArea) return false;
+        const level = ctx?.unitLevel;
         if (level !== 'CENTRAL' && level !== 'PROVINCE') return false;
-        return isSuper || isCentral || isProvince || isCabinet;
+        return isCabinet;
       },
       items: [
         { key: 'jirga-comp', icon: '⚖️', title: 'Composition', description: (ctx?.unitLevel === 'CENTRAL' || isSuper || isCentral) ? 'Central Jirga members & elders assembly' : 'Sobayi Jirga members & elders assembly', route: ctx?.unitLevel === 'CENTRAL' ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : (ctx?.unitLevel === 'PROVINCE' ? `/admin/jirga?unitLevel=PROVINCE&unitId=${ctx.unitId}` : (isSuper || isCentral ? '/admin/jirga?unitLevel=CENTRAL&unitId=CENTRAL' : '/admin/jirga')) },

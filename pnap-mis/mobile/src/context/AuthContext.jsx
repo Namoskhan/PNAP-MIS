@@ -24,10 +24,7 @@ const ROLE_PRIORITY = [
 ];
 
 function pickDefault(user) {
-  const isSuper = (user?.roles || []).includes('SUPER_ADMIN') || user?.isBootstrap;
-  const roles = isSuper
-    ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN']
-    : (user?.roles || []);
+  const roles = user?.roles || [];
   if (roles.length === 0) return null;
   for (const r of ROLE_PRIORITY) {
     if (r === 'MEMBER') continue;
@@ -145,9 +142,14 @@ export function AuthProvider({ children }) {
       return;
     }
     const isSuper = (user.roles || []).includes('SUPER_ADMIN') || user.isBootstrap;
-    const all = isSuper
-      ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', ...(user.roles || []).filter((r) => !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r))]
-      : (user.roles || []);
+    if (isSuper) {
+      if (activeRole) {
+        setActiveRoleRaw(null);
+        Storage.removeItem(ACTIVE_ROLE_KEY).catch(() => {});
+      }
+      return;
+    }
+    const all = user.roles || [];
     if (all.length <= 1) {
       if (activeRole) setActiveRole(null);
       return;
@@ -163,15 +165,20 @@ export function AuthProvider({ children }) {
   const effectiveUser = useMemo(() => {
     if (!user) return null;
     const isSuper = (user.roles || []).includes('SUPER_ADMIN') || user.isBootstrap;
-    const all = isSuper
-      ? ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', ...(user.roles || []).filter((r) => !['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r))]
-      : (user.roles || []);
+    if (isSuper) {
+      return {
+        ...user,
+        roles: ['SUPER_ADMIN'],
+        allRoles: ['SUPER_ADMIN'],
+        permissions: user.permissions || [],
+        canViewExecutiveDashboard: true,
+      };
+    }
+    const all = user.roles || [];
     if (!activeRole || all.length <= 1) {
       return { ...user, allRoles: all };
     }
-    const perms = isSuper && activeRole === 'SUPER_ADMIN'
-      ? (user.permissions || [])
-      : (user.rolePermissions?.[activeRole] || user.permissions || []);
+    const perms = (user.rolePermissions?.[activeRole] || user.permissions || []);
     const EXECUTIVE_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'CHAIRMAN', 'CO_CHAIRMAN', 'SR_VICE_CHAIRMAN', 'VICE_CHAIRMAN', 'FIRST_SECRETARY'];
     const canViewExec = EXECUTIVE_ROLES.includes(activeRole) || (activeRole === 'GENERAL_SECRETARY' && !user.scope?.provinceId);
     return {
