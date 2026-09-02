@@ -54,6 +54,17 @@ const EMPTY_FORM = {
   campaign_volunteerHours: '',
 };
 
+function ageLabel(d) {
+  if (!d) return '';
+  const ms = Date.now() - new Date(d).getTime();
+  const days = Math.floor(ms / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return '1 day ago';
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  return months === 1 ? '1 month ago' : `${months} months ago`;
+}
+
 function timeAgo(date) {
   if (!date) return '—';
   const diffDays = Math.floor((Date.now() - new Date(date)) / (1000 * 60 * 60 * 24));
