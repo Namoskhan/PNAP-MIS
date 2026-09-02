@@ -12,17 +12,19 @@ async function seedProvinceAdmins() {
 
   const accounts = [
     {
-      provinceName: 'Balochistan',
+      provinceName: 'Junubi Pakhtunkhwa',
+      legacyNames: ['Junubi Pakhtunkhwa', 'Balochistan'],
       email: 'balochistan@admin.com',
       username: 'balochistan',
-      fullName: 'Balochistan Provincial Admin',
+      fullName: 'Junubi Pakhtunkhwa Provincial Admin',
       password: '123456',
     },
     {
-      provinceName: 'KPK',
+      provinceName: 'Khyber Pakhtunkhwa',
+      legacyNames: ['Khyber Pakhtunkhwa', 'KPK'],
       email: 'kpk@admin.com',
       username: 'kpk',
-      fullName: 'KPK Provincial Admin',
+      fullName: 'Khyber Pakhtunkhwa Provincial Admin',
       password: '123456',
     }
   ];
@@ -30,7 +32,7 @@ async function seedProvinceAdmins() {
   const results = [];
 
   for (const acc of accounts) {
-    const province = provinces.find(p => p.name.toLowerCase() === acc.provinceName.toLowerCase());
+    const province = provinces.find(p => (acc.legacyNames || [acc.provinceName]).some(n => n.toLowerCase() === p.name.toLowerCase()));
     if (!province) {
       console.warn(`Province ${acc.provinceName} not found!`);
       continue;

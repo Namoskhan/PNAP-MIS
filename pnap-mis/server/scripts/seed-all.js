@@ -184,7 +184,7 @@ const ROLE_CATALOGUE = [
 const ORG = {
   provinces: [
     {
-      name: 'Balochistan', code: 'BL',
+      name: 'Junubi Pakhtunkhwa', code: 'JPK',
       districts: [
         {
           name: 'Quetta', code: 'QTA',
@@ -203,7 +203,7 @@ const ORG = {
       ],
     },
     {
-      name: 'KPK', code: 'KP',
+      name: 'Khyber Pakhtunkhwa', code: 'KP',
       districts: [
         {
           name: 'Peshawar', code: 'PSH',

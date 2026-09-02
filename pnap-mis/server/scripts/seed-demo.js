@@ -196,7 +196,7 @@ async function run() {
     { name: 'Punjab', code: 'PB' },
     { name: 'Sindh', code: 'SD' },
     { name: 'Khyber Pakhtunkhwa', code: 'KP' },
-    { name: 'Balochistan', code: 'BL' },
+    { name: 'Junubi Pakhtunkhwa', code: 'BL' },
     { name: 'Islamabad Capital Territory', code: 'ICT' },
   ];
 
