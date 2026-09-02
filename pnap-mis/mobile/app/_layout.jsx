@@ -31,6 +31,49 @@ if (Platform.OS === 'web' && typeof console !== 'undefined') {
   };
 }
 
+// Global protection against third-party Chrome extension / web-vitals injected errors
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  const isIgnoredError = (msg = '', filename = '', stack = '') => {
+    const text = `${msg} ${filename} ${stack}`.toLowerCase();
+    return (
+      text.includes('chrome-extension://') ||
+      text.includes('m_id') ||
+      text.includes('reportallchanges') ||
+      text.includes('starttime') ||
+      text.includes('web-vitals')
+    );
+  };
+
+  window.addEventListener(
+    'error',
+    (event) => {
+      const msg = event?.message || '';
+      const filename = event?.filename || '';
+      const stack = event?.error?.stack || '';
+      if (isIgnoredError(msg, filename, stack)) {
+        event.stopImmediatePropagation?.();
+        event.preventDefault?.();
+        return true;
+      }
+    },
+    true
+  );
+
+  window.addEventListener(
+    'unhandledrejection',
+    (event) => {
+      const reason = event?.reason?.message || String(event?.reason || '');
+      const stack = event?.reason?.stack || '';
+      if (isIgnoredError(reason, '', stack)) {
+        event.stopImmediatePropagation?.();
+        event.preventDefault?.();
+        return true;
+      }
+    },
+    true
+  );
+}
+
 // Fetch and mutate Colors dynamically at startup
 function useGlobalBranding() {
   const [ready, setReady] = useState(false);
@@ -55,19 +98,7 @@ export default function RootLayout() {
   const brandingReady = useGlobalBranding();
 
   useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      const handleExtensionError = (event) => {
-        if (
-          (event.filename && event.filename.includes('chrome-extension://')) ||
-          (event.message && event.message.includes('M_ID'))
-        ) {
-          event.stopImmediatePropagation();
-          event.preventDefault();
-          return true;
-        }
-      };
-      window.addEventListener('error', handleExtensionError, true);
-
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       const styleId = 'pnap-mobile-web-reset';
       if (typeof document !== 'undefined' && !document.getElementById(styleId)) {
         const style = document.createElement('style');
