@@ -44,41 +44,8 @@ async function connectDB() {
     }
     if (allDropped.length) console.log(`[db] reconciled indexes; dropped: ${allDropped.join(' | ')}`);
 
-    // ── One-time migration: wipe auto-provisioned tier admins ──
-    // Per the new SRS-aligned flow, tier admins (PROVINCE_ADMIN /
-    // DISTRICT_ADMIN / AREA_ADMIN) are no longer auto-created when a
-    // unit is created — they must be created explicitly by the next
-    // tier up via POST /api/admin/users. Wipe any users left over
-    // from the previous auto-provision logic. Idempotent by pattern:
-    // we only delete users whose fullName matches the auto-seeder
-    // format ("<X> Province Admin" / "<X> District Admin" / "<X>
-    // Area Admin") AND whose role list contains exactly one of those
-    // three codes — manually-created admins (real fullName, multiple
-    // identifiers) are not affected.
-    try {
-      const User = require('../models/User');
-      const RoleAssignment = require('../models/RoleAssignment');
-      const candidates = await User.find({
-        fullName: { $regex: /(Province|District|Area) Admin$/i },
-        roles: { $size: 1 },
-        $or: [
-          { roles: 'PROVINCE_ADMIN' },
-          { roles: 'DISTRICT_ADMIN' },
-          { roles: 'AREA_ADMIN' },
-        ],
-      }).select('_id fullName username').lean();
-      if (candidates.length > 0) {
-        const ids = candidates.map((u) => u._id);
-        await RoleAssignment.updateMany(
-          { proposedBy: { $in: ids }, state: { $in: ['PENDING', 'APPROVED'] } },
-          { $set: { state: 'ENDED', endedAt: new Date() } },
-        );
-        const r = await User.deleteMany({ _id: { $in: ids } });
-        console.log(`[db] wiped ${r.deletedCount} auto-provisioned tier admin(s): ${candidates.map((c) => c.username || c.fullName).join(', ')}`);
-      }
-    } catch (err) {
-      console.warn(`[db] auto-admin wipe failed: ${err.message}`);
-    }
+    // ── One-time migration: wiped auto-provisioned tier admins ──
+    // (Removed because it was inadvertently deleting admins created by the seed scripts on every server restart)
 
     // CENTRAL_ADMIN is a live tier again. This block used to run
     // `User.deleteMany({ roles: 'CENTRAL_ADMIN' })` on every boot,

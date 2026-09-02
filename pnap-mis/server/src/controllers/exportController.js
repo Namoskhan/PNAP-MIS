@@ -481,9 +481,13 @@ async function _loadBrandingSafe() {
 // Member roster filter — uses the chain id (areaId / districtId /
 // etc.) because members are rostered at BU only; "members in this
 // area" is the union of its BU rosters.
-function memberFilter(unitLevel, chain) {
+async function memberFilter(unitLevel, chain) {
   if (unitLevel === 'BASIC_UNIT') return { basicUnitId: chain.basicUnitId };
-  if (unitLevel === 'AREA') return { areaId: chain.areaId };
+  if (unitLevel === 'AREA') {
+    const bus = await BasicUnit.find({ areaId: chain.areaId }).select('_id').lean();
+    const buIds = bus.map((b) => b._id);
+    return { $or: [{ areaId: chain.areaId }, { basicUnitId: { $in: buIds } }] };
+  }
   if (unitLevel === 'DISTRICT') return { districtId: chain.districtId };
   if (unitLevel === 'PROVINCE') return { provinceId: chain.provinceId };
   return {};
@@ -496,7 +500,15 @@ function memberFilter(unitLevel, chain) {
 // from BUs below.
 function ownFilter(unitLevel, unitId) {
   if (unitLevel === 'CENTRAL') return { unitLevel: 'CENTRAL' };
-  return { unitLevel, unitId };
+  const oid = (v) => {
+    try { return new mongoose.Types.ObjectId(String(v)); } catch { return v; }
+  };
+  return {
+    $or: [
+      { unitLevel, unitId: String(unitId) },
+      { unitLevel, unitId: oid(unitId) },
+    ],
+  };
 }
 
 // Records carry BOTH their owning unit (unitLevel + unitId) and the
@@ -507,12 +519,69 @@ function ownFilter(unitLevel, unitId) {
 //
 // Deliberately mirrors financeController.applyScopeFilter so the report
 // and the on-screen figures can never disagree about what a scope means.
-function scopeFilter(unitLevel, unitId, scope, chain) {
+async function scopeFilter(unitLevel, unitId, scope, chain) {
   if (scope !== 'subtree') return ownFilter(unitLevel, unitId);
-  if (unitLevel === 'BASIC_UNIT') return { basicUnitId: chain.basicUnitId };
-  if (unitLevel === 'AREA') return { areaId: chain.areaId };
-  if (unitLevel === 'DISTRICT') return { districtId: chain.districtId };
-  if (unitLevel === 'PROVINCE') return { provinceId: chain.provinceId };
+  const oid = (v) => {
+    try { return new mongoose.Types.ObjectId(String(v)); } catch { return v; }
+  };
+  if (unitLevel === 'BASIC_UNIT') {
+    return {
+      $or: [
+        { basicUnitId: chain.basicUnitId },
+        { unitLevel: 'BASIC_UNIT', unitId: String(unitId) },
+        { unitLevel: 'BASIC_UNIT', unitId: oid(unitId) },
+      ],
+    };
+  }
+  if (unitLevel === 'AREA') {
+    const bus = await BasicUnit.find({ areaId: chain.areaId }).select('_id').lean();
+    const buIds = bus.map((b) => b._id);
+    return {
+      $or: [
+        { areaId: chain.areaId },
+        { basicUnitId: { $in: buIds } },
+        { unitLevel: 'AREA', unitId: String(unitId) },
+        { unitLevel: 'AREA', unitId: oid(unitId) },
+      ],
+    };
+  }
+  if (unitLevel === 'DISTRICT') {
+    const [areas, bus] = await Promise.all([
+      Area.find({ districtId: chain.districtId }).select('_id').lean(),
+      BasicUnit.find({ districtId: chain.districtId }).select('_id').lean(),
+    ]);
+    const areaIds = areas.map((a) => a._id);
+    const buIds = bus.map((b) => b._id);
+    return {
+      $or: [
+        { districtId: chain.districtId },
+        { areaId: { $in: areaIds } },
+        { basicUnitId: { $in: buIds } },
+        { unitLevel: 'DISTRICT', unitId: String(unitId) },
+        { unitLevel: 'DISTRICT', unitId: oid(unitId) },
+      ],
+    };
+  }
+  if (unitLevel === 'PROVINCE') {
+    const [districts, areas, bus] = await Promise.all([
+      District.find({ provinceId: chain.provinceId }).select('_id').lean(),
+      Area.find({ provinceId: chain.provinceId }).select('_id').lean(),
+      BasicUnit.find({ provinceId: chain.provinceId }).select('_id').lean(),
+    ]);
+    const districtIds = districts.map((d) => d._id);
+    const areaIds = areas.map((a) => a._id);
+    const buIds = bus.map((b) => b._id);
+    return {
+      $or: [
+        { provinceId: chain.provinceId },
+        { districtId: { $in: districtIds } },
+        { areaId: { $in: areaIds } },
+        { basicUnitId: { $in: buIds } },
+        { unitLevel: 'PROVINCE', unitId: String(unitId) },
+        { unitLevel: 'PROVINCE', unitId: oid(unitId) },
+      ],
+    };
+  }
   // CENTRAL heads the organization, so its subtree is everything.
   return {};
 }
@@ -580,7 +649,8 @@ function bodyLabel(body) {
 function bodyTierLabel(body, unitLevel) {
   if (body === 'COMMITTEE') {
     const tier = getCommitteeTierLabel(unitLevel);
-    return tier ? `${tier} Committee` : 'Committee';
+    if (!tier) return 'Committee';
+    return tier.toLowerCase().endsWith('committee') ? tier : `${tier} Committee`;
   }
   if (body === 'JIRGA') {
     return unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
@@ -601,13 +671,20 @@ function bodySuffix(body) {
   return l ? `-${l.toLowerCase()}` : '';
 }
 
+function mergeFilters(...filters) {
+  const clean = filters.filter((f) => f && typeof f === 'object' && Object.keys(f).length > 0);
+  if (clean.length === 0) return {};
+  if (clean.length === 1) return clean[0];
+  return { $and: clean };
+}
+
 async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
   const chain = unitLevel === 'CENTRAL' ? {} : await resolveUnitChain(unitLevel, unitId);
   if (unitLevel !== 'CENTRAL' && !chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
-  const memberQ = memberFilter(unitLevel, chain);
+  const memberQ = await memberFilter(unitLevel, chain);
   // `ownQ` is the scoped record filter — named for history, but it now
   // widens to the whole subtree when the caller asks for it.
-  const ownQ = scopeFilter(unitLevel, unitId, scope, chain);
+  const ownQ = await scopeFilter(unitLevel, unitId, scope, chain);
   const dateFilter = {};
   if (from) dateFilter.$gte = new Date(from);
   if (to) dateFilter.$lte = new Date(to);
@@ -627,17 +704,37 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
     try { return new mongoose.Types.ObjectId(String(v)); } catch { return null; }
   };
   const unitOid = oid(unitId);
-  const outFilter = { sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...financeBodyQ };
-  const inFilter = { destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED', ...xferClause, ...financeBodyQ };
+
+  let outFilter;
+  let inFilter;
+  if (scope === 'subtree') {
+    if (unitLevel === 'CENTRAL') {
+      outFilter = mergeFilters({ state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+      inFilter = mergeFilters({ state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+    } else {
+      outFilter = mergeFilters(ownQ, { state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+      inFilter = mergeFilters({ destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+    }
+  } else {
+    // This unit only
+    if (unitLevel === 'CENTRAL') {
+      outFilter = mergeFilters({ sourceLevel: 'CENTRAL', state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+      inFilter = mergeFilters({ destinationLevel: 'CENTRAL', state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+    } else {
+      outFilter = mergeFilters({ sourceLevel: unitLevel, sourceUnitId: unitOid, state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+      inFilter = mergeFilters({ destinationLevel: unitLevel, destinationUnitId: unitOid, state: 'ACKNOWLEDGED' }, xferClause, financeBodyQ);
+    }
+  }
 
   const isCongress = body === 'CONGRESS';
   const isComm = body === 'COMMITTEE';
   const isJrg = body === 'JIRGA';
+  const allowTransfers = (unitOid || unitLevel === 'CENTRAL') && !isCongress;
 
   const [members, meetings, activities, donations, expenses, responsibilities,
     transfersOut, transfersIn] = await Promise.all([
-    Member.find({ ...memberQ, status: 'ACTIVE' }).select('fullName memberId cnic phone').lean(),
-    Meeting.find({ ...ownQ, ...startClause, ...meetingBodyQ })
+    Member.find(mergeFilters(memberQ, { status: 'ACTIVE' })).select('fullName memberId cnic phone').lean(),
+    Meeting.find(mergeFilters(ownQ, startClause, meetingBodyQ))
       .populate('chairpersonId', 'fullName memberId')
       .populate('attendance.memberId', 'fullName memberId')
       .populate('basicUnitId', 'name')
@@ -647,7 +744,7 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
       .lean(),
     // Lead + participants are populated so activity blocks can name
     // people the same way meeting blocks name the chair and roster.
-    Activity.find({ ...ownQ, ...startClause, ...activityBodyQ })
+    Activity.find(mergeFilters(ownQ, startClause, activityBodyQ))
       .populate('leadMemberId', 'fullName memberId')
       .populate('participants', 'fullName memberId')
       .populate('basicUnitId', 'name')
@@ -655,14 +752,14 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
       .populate('districtId', 'name code')
       .populate('provinceId', 'name code')
       .lean(),
-    Donation.find({ ...ownQ, ...recvClause, ...financeBodyQ })
+    Donation.find(mergeFilters(ownQ, recvClause, financeBodyQ))
       .populate('donorMemberId', 'fullName memberId cnic')
       .populate('basicUnitId', 'name')
       .populate('areaId', 'name')
       .populate('districtId', 'name code')
       .populate('provinceId', 'name code')
       .lean(),
-    Expense.find({ ...ownQ, ...incurClause, ...financeBodyQ })
+    Expense.find(mergeFilters(ownQ, incurClause, financeBodyQ))
       .populate('basicUnitId', 'name')
       .populate('areaId', 'name')
       .populate('districtId', 'name code')
@@ -675,8 +772,8 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
       .populate('districtId', 'name code')
       .populate('provinceId', 'name code')
       .lean(),
-    unitOid && !isCongress ? FundTransfer.find(outFilter).lean() : [],
-    unitOid && !isCongress ? FundTransfer.find(inFilter).lean() : [],
+    allowTransfers ? FundTransfer.find(outFilter).lean() : [],
+    allowTransfers ? FundTransfer.find(inFilter).lean() : [],
   ]);
 
   // Attach formatted arrangedBy to every record
@@ -698,7 +795,7 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
   };
 }
 
-// ─── FINANCE-only Excel — Summary + Donations + Expenses ───────────
+// ─── FINANCE-only Excel — Summary + Donations + Expenses + Transfers ───────────
 exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
@@ -706,114 +803,178 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   const effectiveScope = isCongress ? 'own' : scope;
   const data = await gatherUnitData({ unitLevel, unitId, from, to, scope: effectiveScope, body });
 
+  const branding = await _loadBrandingSafe();
+  const headerArgb = _argb(branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary);
+  const orgName = branding?.identity?.organizationName
+    || branding?.identity?.systemName
+    || 'PKNAP';
+
+  const DATETIME_FMT = 'dd-mmm-yyyy hh:mm';
+  const DATE_FMT = 'dd-mmm-yyyy';
+  const CURRENCY_FMT = '#,##0';
+
   const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
   const expApproved = data.expenses.filter((e) => e.state === 'APPROVED').reduce((a, e) => a + (e.amount || 0), 0);
   const expPending = data.expenses.filter((e) => e.state === 'PENDING').reduce((a, e) => a + (e.amount || 0), 0);
-
-  const wb = new ExcelJS.Workbook();
-  wb.creator = 'PKNAP';
-  wb.created = new Date();
-
-  // Acknowledged transfers are real movements of money and belong in
-  // the bottom line — the previous Net Balance ignored them and so
-  // disagreed with the Finance page. (Congress has no transfers)
   const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
   const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
+  const netBalance = isCongress
+    ? (donTotal - expApproved)
+    : (donTotal + xferInTotal - expApproved - xferOutTotal);
 
-  const sum = wb.addWorksheet('Summary');
-  sum.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 26 }];
-  sum.addRow({ k: 'Unit', v: `${data.unitLevel} · ${data.name}` });
-  if (!isCongress) sum.addRow({ k: 'Scope', v: scope === 'subtree' ? 'Including all subordinate units' : 'This unit only' });
-  // Only emitted when the caller asked for one body, so a combined
-  // export keeps exactly the rows it had before.
-  if (bodyLabel(body)) sum.addRow({ k: 'Body', v: `${bodyLabel(body)} only` });
-  sum.addRow({ k: 'Period', v: `${from || 'all'} → ${to || 'all'}` });
-  sum.addRow({ k: 'Donations Count', v: data.donations.length });
-  sum.addRow({ k: 'Donations Total (PKR)', v: donTotal });
-  if (!isCongress) sum.addRow({ k: 'Transfers In (PKR)', v: xferInTotal });
-  sum.addRow({ k: 'Expenses Approved (PKR)', v: expApproved });
-  sum.addRow({ k: 'Expenses Pending (PKR)', v: expPending });
-  if (!isCongress) sum.addRow({ k: 'Transfers Out (PKR)', v: xferOutTotal });
-  sum.addRow({ k: 'Net Balance (PKR)', v: isCongress ? (donTotal - expApproved) : (donTotal + xferInTotal - expApproved - xferOutTotal) });
-  sum.getRow(1).font = { bold: true };
+  const wb = new ExcelJS.Workbook();
+  wb.creator = orgName;
+  wb.created = new Date();
 
+  // ── Summary tab ──
+  const sum = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] });
+  sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
+
+  sum.mergeCells('A1:B1');
+  sum.getCell('A1').value = `${orgName} — ${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Finance Report`;
+  sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
+  sum.getRow(1).height = 24;
+
+  sum.mergeCells('A2:B2');
+  sum.getCell('A2').value = `${data.unitLevel} · ${data.name}   ·   Period: ${from || 'all'} → ${to || 'all'}`;
+  sum.getCell('A2').font = { size: 10, color: { argb: 'FF6B7280' } };
+  sum.addRow([]);
+
+  const sumHeaderRow = sum.addRow(['Financial Metric', 'Value / Amount']);
+  sumHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  sumHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  sumHeaderRow.height = 20;
+
+  const summaryRows = [
+    ['Reporting Unit', `${data.unitLevel} · ${data.name}`],
+    ['Scope', isCongress ? 'National Congress (Central)' : (scope === 'subtree' ? 'Aggregated (Including all subordinate units)' : 'This unit tier only')],
+    ...(bodyLabel(body) ? [['Stream / Body', `${bodyLabel(body)} Only`]] : []),
+    ['Reporting Period', `${from || 'All time'} → ${to || 'Present'}`],
+    ['Donations Count', data.donations.length],
+    ['Total Donations (PKR)', donTotal],
+    ...(!isCongress ? [['Transfers In (PKR)', xferInTotal]] : []),
+    ['Approved Expenses Count', data.expenses.filter((e) => e.state === 'APPROVED').length],
+    ['Approved Expenses (PKR)', expApproved],
+    ['Pending Expenses Count', data.expenses.filter((e) => e.state === 'PENDING').length],
+    ['Pending Expenses (PKR)', expPending],
+    ...(!isCongress ? [['Transfers Out (PKR)', xferOutTotal]] : []),
+    ['Net Available Balance (PKR)', netBalance],
+  ];
+
+  summaryRows.forEach(([k, v], i) => {
+    const row = sum.addRow([k, v]);
+    if (i % 2 === 1) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+    }
+    row.getCell(2).font = { bold: true };
+    if (typeof v === 'number' && k.includes('(PKR)')) {
+      row.getCell(2).numFmt = CURRENCY_FMT;
+    }
+    row.getCell(2).alignment = { horizontal: 'left' };
+  });
+
+  // ── Donations tab ──
   const don = wb.addWorksheet('Donations');
   don.columns = [
-    { header: 'Receipt #', key: 'r', width: 14 },
-    { header: 'Date', key: 'd', width: 14 },
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Receipt #', key: 'r', width: 16 },
+    { header: 'Date', key: 'd', width: 18, style: { numFmt: DATE_FMT } },
     { header: 'Unit / Arranged By', key: 'u', width: 26 },
     { header: 'Donor Type', key: 'dt', width: 14 },
-    { header: 'Donor', key: 'dn', width: 28 },
-    { header: 'CNIC', key: 'c', width: 18 },
-    { header: 'Mode', key: 'm', width: 16 },
-    { header: 'Amount (PKR)', key: 'a', width: 16 },
+    { header: 'Donor Name', key: 'dn', width: 28 },
+    { header: 'Donor CNIC', key: 'c', width: 18 },
+    { header: 'Payment Mode', key: 'm', width: 16 },
+    { header: 'Amount (PKR)', key: 'a', width: 18, style: { numFmt: CURRENCY_FMT } },
+    { header: 'Reference', key: 'ref', width: 18 },
+    { header: 'Notes', key: 'note', width: 36 },
   ];
   data.donations
     .slice()
     .sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt))
-    .forEach((d) => don.addRow({
+    .forEach((d, i) => don.addRow({
+      n: i + 1,
       r: d.receiptNo || '',
-      d: new Date(d.receivedAt).toLocaleDateString(),
+      d: d.receivedAt ? new Date(d.receivedAt) : null,
       u: d.arrangedBy || formatUnitArrangedBy(d, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
       dt: d.donorType,
       dn: d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
       c: d.donorCnic || '',
       m: d.paymentMode,
-      a: d.amount,
+      a: d.amount || 0,
+      ref: d.reference || '',
+      note: d.notes || d.note || '',
     }));
-  don.getRow(1).font = { bold: true };
+  _styleSheet(don, headerArgb, { freezeColumns: 3 });
 
+  // ── Expenses tab ──
   const exp = wb.addWorksheet('Expenses');
   exp.columns = [
-    { header: 'Date', key: 'd', width: 14 },
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Date', key: 'd', width: 18, style: { numFmt: DATE_FMT } },
     { header: 'Unit / Incurred By', key: 'u', width: 26 },
     { header: 'Category', key: 'c', width: 18 },
     { header: 'Description', key: 'desc', width: 36 },
     { header: 'Vendor', key: 'v', width: 24 },
-    { header: 'Mode', key: 'm', width: 16 },
-    { header: 'State', key: 's', width: 12 },
-    { header: 'Amount (PKR)', key: 'a', width: 16 },
+    { header: 'Payment Mode', key: 'm', width: 16 },
+    { header: 'State', key: 's', width: 14 },
+    { header: 'Amount (PKR)', key: 'a', width: 18, style: { numFmt: CURRENCY_FMT } },
+    { header: 'Reference', key: 'ref', width: 18 },
+    { header: 'Notes / Reason', key: 'note', width: 36 },
   ];
   data.expenses
     .slice()
     .sort((a, b) => new Date(b.incurredAt) - new Date(a.incurredAt))
-    .forEach((e) => exp.addRow({
-      d: new Date(e.incurredAt).toLocaleDateString(),
+    .forEach((e, i) => exp.addRow({
+      n: i + 1,
+      d: e.incurredAt ? new Date(e.incurredAt) : null,
       u: e.arrangedBy || formatUnitArrangedBy(e, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
       c: e.category,
       desc: e.description || '',
       v: e.vendor || '',
       m: e.paymentMode,
       s: e.state,
-      a: e.amount,
+      a: e.amount || 0,
+      ref: e.reference || '',
+      note: e.rejectionReason || e.notes || '',
     }));
-  exp.getRow(1).font = { bold: true };
+  _styleSheet(exp, headerArgb, { freezeColumns: 3 });
 
-  // Transfers get their own sheet for non-Congress bodies
+  // ── Fund Transfers tab (if not Congress) ──
   if (!isCongress) {
     const xf = wb.addWorksheet('Fund Transfers');
     xf.columns = [
-      { header: 'Date', key: 'd', width: 14 },
-      { header: 'Direction', key: 'dir', width: 12 },
-      { header: 'Counterparty', key: 'p', width: 32 },
-      { header: 'Mode', key: 'm', width: 18 },
+      { header: '#', key: 'n', width: 6 },
+      { header: 'Date', key: 'd', width: 18, style: { numFmt: DATE_FMT } },
+      { header: 'Direction', key: 'dir', width: 14 },
+      { header: 'Counterparty', key: 'p', width: 30 },
+      { header: 'Mode', key: 'm', width: 16 },
       { header: 'State', key: 's', width: 16 },
-      { header: 'Amount (PKR)', key: 'a', width: 16 },
+      { header: 'Amount (PKR)', key: 'a', width: 18, style: { numFmt: CURRENCY_FMT } },
+      { header: 'Initiated By', key: 'init', width: 22 },
+      { header: 'Acknowledged By', key: 'ack', width: 22 },
+      { header: 'Reference', key: 'ref', width: 18 },
+      { header: 'Notes', key: 'note', width: 36 },
     ];
     [
       ...data.transfersIn.map((t) => ({ t, dir: 'Incoming', party: t.sourceName || t.sourceLevel })),
       ...data.transfersOut.map((t) => ({ t, dir: 'Outgoing', party: t.destinationName || t.destinationLevel })),
     ]
       .sort((a, b) => new Date(b.t.transferredAt || b.t.createdAt) - new Date(a.t.transferredAt || a.t.createdAt))
-      .forEach(({ t, dir, party }) => xf.addRow({
-        d: new Date(t.transferredAt || t.createdAt).toLocaleDateString(),
+      .forEach(({ t, dir, party }, i) => xf.addRow({
+        n: i + 1,
+        d: (t.transferredAt || t.createdAt) ? new Date(t.transferredAt || t.createdAt) : null,
         dir,
         p: party || '',
         m: t.mode || '',
         s: t.state || '',
         a: t.amount || 0,
+        init: t.initiatedBy?.fullName || '',
+        ack: t.acknowledgedBy?.fullName || '',
+        ref: t.reference || '',
+        note: t.note || '',
       }));
-    xf.getRow(1).font = { bold: true };
+    _styleSheet(xf, headerArgb, { freezeColumns: 3 });
   }
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1500,40 +1661,163 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
   doc.end();
 });
 
-// ─── ACTIVITIES-only Excel / PDF ─────────────────────────────────
+// ─── ACTIVITIES-only Excel ─────────────────────────────────
 exports.unitActivitiesXlsx = asyncHandler(async (req, res) => {
   const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
   const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
 
+  const branding = await _loadBrandingSafe();
+  const headerArgb = _argb(branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary);
+  const orgName = branding?.identity?.organizationName
+    || branding?.identity?.systemName
+    || 'PKNAP';
+
+  const DATETIME_FMT = 'dd-mmm-yyyy hh:mm';
+  const DATE_FMT = 'dd-mmm-yyyy';
+
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'PKNAP';
+  wb.creator = orgName;
   wb.created = new Date();
 
+  // ── Summary tab ──
+  const sum = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] });
+  sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
+
+  sum.mergeCells('A1:B1');
+  sum.getCell('A1').value = `${orgName} — ${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Activities Report`;
+  sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
+  sum.getRow(1).height = 24;
+
+  sum.mergeCells('A2:B2');
+  sum.getCell('A2').value = `${data.unitLevel} · ${data.name}   ·   Period: ${from || 'all'} → ${to || 'all'}`;
+  sum.getCell('A2').font = { size: 10, color: { argb: 'FF6B7280' } };
+  sum.addRow([]);
+
+  const sumHeaderRow = sum.addRow(['Activity Metric', 'Value']);
+  sumHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  sumHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  sumHeaderRow.height = 20;
+
+  const completedCount = data.activities.filter((a) => a.state === 'COMPLETED').length;
+  const inProgressCount = data.activities.filter((a) => a.state === 'IN_PROGRESS' || a.state === 'PLANNED').length;
+  const totalPhotos = data.activities.reduce((a, x) => a + (x.photos || []).length, 0);
+  const totalPart = data.activities.reduce((a, x) => a + (x.participants || []).length, 0);
+
+  const households = data.activities.reduce((a, x) => a + (x.campaign?.householdsVisited || 0), 0);
+  const contacted = data.activities.reduce((a, x) => a + (x.campaign?.peopleContacted || 0), 0);
+  const pamphlets = data.activities.reduce((a, x) => a + (x.campaign?.pamphletsDistributed || 0), 0);
+  const volHours = data.activities.reduce((a, x) => a + (x.campaign?.volunteerHours || 0), 0);
+
+  [
+    ['Reporting Unit', `${data.unitLevel} · ${data.name}`],
+    ['Scope', scope === 'subtree' ? 'Aggregated (Including all subordinate units)' : 'This unit tier only'],
+    ...(bodyLabel(body) ? [['Stream / Body', `${bodyLabel(body)} Only`]] : []),
+    ['Reporting Period', `${from || 'All time'} → ${to || 'Present'}`],
+    ['Total Activities', data.activities.length],
+    ['Completed Activities', completedCount],
+    ['Planned / In Progress', inProgressCount],
+    ['Total Registered Participants', totalPart],
+    ['Total Photographs Attached', totalPhotos],
+    ['Total Households Visited', households],
+    ['Total People Contacted', contacted],
+    ['Total Pamphlets Distributed', pamphlets],
+    ['Total Volunteer Hours', volHours],
+  ].forEach(([k, v], i) => {
+    const row = sum.addRow([k, v]);
+    if (i % 2 === 1) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+    }
+    row.getCell(2).font = { bold: true };
+    row.getCell(2).alignment = { horizontal: 'left' };
+  });
+
+  const activityDynCols = await eventExportService.columnsForMany(
+    data.activities.map((a) => a.configSnapshotId).filter(Boolean),
+  );
+
+  // ── Activities tab ──
   const ac = wb.addWorksheet('Activities');
   ac.columns = [
     { header: '#', key: 'n', width: 6 },
-    { header: 'Date', key: 'd', width: 14 },
+    { header: 'Start Date', key: 'd', width: 20, style: { numFmt: DATETIME_FMT } },
+    { header: 'End Date', key: 'e', width: 20, style: { numFmt: DATETIME_FMT } },
     { header: 'Arranged By', key: 'ab', width: 24 },
     { header: 'Type', key: 't', width: 18 },
-    { header: 'Title', key: 'ti', width: 36 },
-    { header: 'Lead', key: 'l', width: 26 },
-    { header: 'Participants', key: 'p', width: 40 },
+    { header: 'Title', key: 'tt', width: 34 },
+    { header: 'State', key: 's', width: 13 },
+    { header: 'Body', key: 'b', width: 12 },
     { header: 'Venue', key: 'v', width: 26 },
-    { header: 'State', key: 's', width: 14 },
+    { header: 'Venue GPS', key: 'g', width: 20 },
+    { header: 'Lead Member', key: 'ld', width: 24 },
+    { header: 'Participants', key: 'pn', width: 12 },
+    { header: 'Participant Names', key: 'pl', width: 46 },
+    { header: 'External Attendance Est.', key: 'ae', width: 20 },
+    { header: 'Photos', key: 'ph', width: 9 },
+    { header: 'Press Links', key: 'pr', width: 36 },
+    { header: 'Households Visited', key: 'hv', width: 17 },
+    { header: 'People Contacted', key: 'pc', width: 16 },
+    { header: 'Pamphlets Distributed', key: 'pd', width: 19 },
+    { header: 'Expected Joiners', key: 'ej', width: 15 },
+    { header: 'Actual Joiners', key: 'aj', width: 14 },
+    { header: 'Volunteer Hours', key: 'vh', width: 15 },
+    { header: 'Description', key: 'desc', width: 46 },
+    { header: 'Outcome Notes', key: 'on', width: 46 },
+    ...activityDynCols.map((c) => ({ header: c.label, key: `dyn_${c.key}`, width: 20 })),
   ];
-  data.activities.slice().sort((a, b) => new Date(b.startAt) - new Date(a.startAt)).forEach((a, i) => ac.addRow({
-    n: i + 1,
-    d: a.startAt ? new Date(a.startAt).toLocaleDateString() : '',
-    ab: a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' }),
-    t: a.type || '',
-    ti: a.title || '',
-    l: a.leadMemberId?.fullName || '',
-    p: (a.participants || []).map((p) => p?.fullName).filter(Boolean).join(', '),
-    v: a.venue || '',
-    s: a.state || '',
+
+  data.activities.slice().sort((a, b) => new Date(b.startAt) - new Date(a.startAt)).forEach((a, i) => {
+    const parts = a.participants || [];
+    const cmp = a.campaign || {};
+    const row = {
+      n: i + 1,
+      d: a.startAt ? new Date(a.startAt) : null,
+      e: a.endAt ? new Date(a.endAt) : null,
+      ab: a.arrangedBy || formatUnitArrangedBy(a, { isCommitteeView: body === 'COMMITTEE' }),
+      t: a.type,
+      tt: a.title || '',
+      s: a.state,
+      b: a.body || '',
+      v: a.venue || '',
+      g: (a.gps?.lat != null && a.gps?.lng != null)
+        ? `${Number(a.gps.lat).toFixed(6)}, ${Number(a.gps.lng).toFixed(6)}` : '',
+      ld: a.leadMemberId?.fullName || '',
+      pn: parts.length,
+      pl: parts.map((p) => p?.fullName).filter(Boolean).join(', '),
+      ae: a.externalAttendanceEstimate || 0,
+      ph: (a.photos || []).length,
+      pr: (a.pressLinks || []).join('\n'),
+      hv: cmp.householdsVisited ?? '',
+      pc: cmp.peopleContacted ?? '',
+      pd: cmp.pamphletsDistributed ?? '',
+      ej: cmp.expectedJoiners ?? '',
+      aj: cmp.actualJoiners ?? '',
+      vh: cmp.volunteerHours ?? '',
+      desc: a.description || '',
+      on: a.outcomeNotes || '',
+    };
+    const dyn = a.dynamicData || {};
+    for (const col of activityDynCols) {
+      row[`dyn_${col.key}`] = _formatDynamicValue(col, dyn[col.key]);
+    }
+    ac.addRow(row);
+  });
+  _styleSheet(ac, headerArgb, { freezeColumns: 4 });
+
+  // ── Members Tab ──
+  const mb = wb.addWorksheet('Members');
+  mb.columns = [
+    { header: '#', key: 'n', width: 6 },
+    { header: 'Member ID', key: 'mid', width: 28 },
+    { header: 'Full Name', key: 'fn', width: 28 },
+    { header: 'CNIC', key: 'c', width: 18 },
+    { header: 'Phone', key: 'p', width: 16 },
+  ];
+  data.members.forEach((m, i) => mb.addRow({
+    n: i + 1, mid: m.memberId, fn: m.fullName, c: m.cnic, p: m.phone,
   }));
-  ac.getRow(1).font = { bold: true };
+  _styleSheet(mb, headerArgb, { freezeColumns: 1 });
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-activities.xlsx"`);
@@ -1576,53 +1860,130 @@ exports.unitActivitiesPdf = asyncHandler(async (req, res) => {
   doc.end();
 });
 
-// ─── TRANSFERS-only Excel / PDF ──────────────────────────────────
+// ─── TRANSFERS-only Excel ──────────────────────────────────
 exports.unitTransfersXlsx = asyncHandler(async (req, res) => {
   const { unitLevel, unitId, from, to, scope, body } = req.query;
   if (!unitLevel) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel required');
   const data = await gatherUnitData({ unitLevel, unitId, from, to, scope, body });
 
+  const branding = await _loadBrandingSafe();
+  const headerArgb = _argb(branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary);
+  const orgName = branding?.identity?.organizationName
+    || branding?.identity?.systemName
+    || 'PKNAP';
+
+  const DATETIME_FMT = 'dd-mmm-yyyy hh:mm';
+  const DATE_FMT = 'dd-mmm-yyyy';
+  const CURRENCY_FMT = '#,##0';
+
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'PKNAP';
+  wb.creator = orgName;
   wb.created = new Date();
 
+  // ── Summary tab ──
+  const sum = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] });
+  sum.columns = [{ key: 'k', width: 34 }, { key: 'v', width: 30 }];
+
+  sum.mergeCells('A1:B1');
+  sum.getCell('A1').value = `${orgName} — ${bodyTierLabel(body, data.unitLevel) ? `${bodyTierLabel(body, data.unitLevel)} ` : ''}Fund Transfers Report`;
+  sum.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
+  sum.getRow(1).height = 24;
+
+  sum.mergeCells('A2:B2');
+  sum.getCell('A2').value = `${data.unitLevel} · ${data.name}   ·   Period: ${from || 'all'} → ${to || 'all'}`;
+  sum.getCell('A2').font = { size: 10, color: { argb: 'FF6B7280' } };
+  sum.addRow([]);
+
+  const sumHeaderRow = sum.addRow(['Transfer Metric', 'Amount / Count']);
+  sumHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  sumHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  sumHeaderRow.height = 20;
+
+  const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
+  const xferInTotal = data.transfersIn.reduce((a, t) => a + (t.amount || 0), 0);
+
+  [
+    ['Reporting Unit', `${data.unitLevel} · ${data.name}`],
+    ['Scope', scope === 'subtree' ? 'Aggregated (Including all subordinate units)' : 'This unit tier only'],
+    ...(bodyLabel(body) ? [['Stream / Body', `${bodyLabel(body)} Only`]] : []),
+    ['Reporting Period', `${from || 'All time'} → ${to || 'Present'}`],
+    ['Outgoing Transfers Count', data.transfersOut.length],
+    ['Total Outgoing Transfers (PKR)', xferOutTotal],
+    ['Incoming Transfers Count', data.transfersIn.length],
+    ['Total Incoming Transfers (PKR)', xferInTotal],
+    ['Net Transfer Flow (PKR)', xferInTotal - xferOutTotal],
+  ].forEach(([k, v], i) => {
+    const row = sum.addRow([k, v]);
+    if (i % 2 === 1) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+    }
+    row.getCell(2).font = { bold: true };
+    if (typeof v === 'number' && k.includes('(PKR)')) {
+      row.getCell(2).numFmt = CURRENCY_FMT;
+    }
+    row.getCell(2).alignment = { horizontal: 'left' };
+  });
+
+  // ── Transfers Out tab ──
   const out = wb.addWorksheet('Transfers Out');
   out.columns = [
     { header: '#', key: 'n', width: 6 },
-    { header: 'Date', key: 'd', width: 18 },
-    { header: 'Amount', key: 'a', width: 16 },
-    { header: 'Destination', key: 'dest', width: 30 },
+    { header: 'Date', key: 'd', width: 18, style: { numFmt: DATE_FMT } },
+    { header: 'Destination Level', key: 'destLvl', width: 18 },
+    { header: 'Destination Name', key: 'destName', width: 28 },
+    { header: 'Amount (PKR)', key: 'a', width: 18, style: { numFmt: CURRENCY_FMT } },
+    { header: 'Payment Mode', key: 'm', width: 16 },
     { header: 'State', key: 's', width: 14 },
-    { header: 'Note', key: 'note', width: 40 },
+    { header: 'Initiated By', key: 'init', width: 22 },
+    { header: 'Acknowledged By', key: 'ack', width: 22 },
+    { header: 'Reference', key: 'ref', width: 18 },
+    { header: 'Notes', key: 'note', width: 36 },
   ];
-  data.transfersOut.slice().sort((a, b) => new Date(b.transferredAt) - new Date(a.transferredAt)).forEach((t, i) => out.addRow({
+  data.transfersOut.slice().sort((a, b) => new Date(b.transferredAt || b.createdAt) - new Date(a.transferredAt || a.createdAt)).forEach((t, i) => out.addRow({
     n: i + 1,
-    d: t.transferredAt ? new Date(t.transferredAt).toLocaleString() : '',
+    d: (t.transferredAt || t.createdAt) ? new Date(t.transferredAt || t.createdAt) : null,
+    destLvl: t.destinationLevel || '',
+    destName: t.destinationName || '',
     a: t.amount || 0,
-    dest: `${t.destinationLevel || ''} · ${t.destinationUnitId || ''}`,
+    m: t.mode || '',
     s: t.state || '',
+    init: t.initiatedBy?.fullName || '',
+    ack: t.acknowledgedBy?.fullName || '',
+    ref: t.reference || '',
     note: t.note || '',
   }));
-  out.getRow(1).font = { bold: true };
+  _styleSheet(out, headerArgb, { freezeColumns: 3 });
 
+  // ── Transfers In tab ──
   const inn = wb.addWorksheet('Transfers In');
   inn.columns = [
     { header: '#', key: 'n', width: 6 },
-    { header: 'Date', key: 'd', width: 18 },
-    { header: 'Amount', key: 'a', width: 16 },
-    { header: 'Source', key: 'src', width: 30 },
+    { header: 'Date', key: 'd', width: 18, style: { numFmt: DATE_FMT } },
+    { header: 'Source Level', key: 'srcLvl', width: 18 },
+    { header: 'Source Name', key: 'srcName', width: 28 },
+    { header: 'Amount (PKR)', key: 'a', width: 18, style: { numFmt: CURRENCY_FMT } },
+    { header: 'Payment Mode', key: 'm', width: 16 },
     { header: 'State', key: 's', width: 14 },
-    { header: 'Note', key: 'note', width: 40 },
+    { header: 'Initiated By', key: 'init', width: 22 },
+    { header: 'Acknowledged By', key: 'ack', width: 22 },
+    { header: 'Reference', key: 'ref', width: 18 },
+    { header: 'Notes', key: 'note', width: 36 },
   ];
-  data.transfersIn.slice().sort((a, b) => new Date(b.transferredAt) - new Date(a.transferredAt)).forEach((t, i) => inn.addRow({
+  data.transfersIn.slice().sort((a, b) => new Date(b.transferredAt || b.createdAt) - new Date(a.transferredAt || a.createdAt)).forEach((t, i) => inn.addRow({
     n: i + 1,
-    d: t.transferredAt ? new Date(t.transferredAt).toLocaleString() : '',
+    d: (t.transferredAt || t.createdAt) ? new Date(t.transferredAt || t.createdAt) : null,
+    srcLvl: t.sourceLevel || '',
+    srcName: t.sourceName || '',
     a: t.amount || 0,
-    src: `${t.sourceLevel || ''} · ${t.sourceUnitId || ''}`,
+    m: t.mode || '',
     s: t.state || '',
+    init: t.initiatedBy?.fullName || '',
+    ack: t.acknowledgedBy?.fullName || '',
+    ref: t.reference || '',
     note: t.note || '',
   }));
-  inn.getRow(1).font = { bold: true };
+  _styleSheet(inn, headerArgb, { freezeColumns: 3 });
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${data.unitLevel}-${data.name}${bodySuffix(body)}-transfers.xlsx"`);
@@ -1817,6 +2178,17 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
   const m = await Member.findById(id).lean();
   if (!m) throw new ApiError(404, 'NOT_FOUND', 'Member not found');
 
+  const branding = await _loadBrandingSafe();
+  const headerArgb = _argb(branding?.reportBranding?.pdfHeaderColor
+    || branding?.theme?.light?.primary);
+  const orgName = branding?.identity?.organizationName
+    || branding?.identity?.systemName
+    || 'PKNAP';
+
+  const DATETIME_FMT = 'dd-mmm-yyyy hh:mm';
+  const DATE_FMT = 'dd-mmm-yyyy';
+  const CURRENCY_FMT = '#,##0';
+
   const dateFilter = {};
   if (from) dateFilter.$gte = new Date(from);
   if (to) dateFilter.$lte = new Date(to);
@@ -1827,6 +2199,7 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
     activitiesPart, activitiesLed,
     donAgg, respPending, respCompleted, respCancelled,
     homeUnit,
+    meetingsList, activitiesList, responsibilitiesList,
   ] = await Promise.all([
     Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
@@ -1841,6 +2214,9 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'COMPLETED' }),
     Responsibility.countDocuments({ assignedToMemberId: m._id, state: 'CANCELLED' }),
     m.basicUnitId ? BasicUnit.findById(m.basicUnitId).select('name').lean() : null,
+    Meeting.find({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }).sort({ startAt: -1 }).limit(100).lean(),
+    Activity.find({ $or: [{ participants: m._id }, { leadMemberId: m._id }], ...startClause }).sort({ startAt: -1 }).limit(100).lean(),
+    Responsibility.find({ assignedToMemberId: m._id }).sort({ dueDate: -1 }).limit(100).lean(),
   ]);
 
   const absent = Math.max(0, meetingsTotal - meetingsPresent - meetingsLate);
@@ -1852,41 +2228,155 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
   const donTotal = donAgg[0]?.total || 0;
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'PKNAP';
+  wb.creator = orgName;
   wb.created = new Date();
 
-  const ws = wb.addWorksheet('Performance Summary');
-  ws.columns = [{ header: 'Metric', key: 'k', width: 34 }, { header: 'Value', key: 'v', width: 30 }];
-  ws.addRow({ k: 'Member Name', v: m.fullName });
-  ws.addRow({ k: 'Member ID', v: m.memberId || '—' });
-  ws.addRow({ k: 'CNIC', v: m.cnic });
-  ws.addRow({ k: 'Phone', v: m.phone || '—' });
-  ws.addRow({ k: 'Email', v: m.email || '—' });
-  ws.addRow({ k: 'Basic Unit', v: homeUnit?.name || '—' });
-  ws.addRow({ k: 'Status', v: m.status || 'ACTIVE' });
-  ws.addRow({ k: 'Reporting Period', v: `${from || 'All time'} → ${to || 'Present'}` });
-  ws.addRow({ k: '', v: '' });
-  ws.addRow({ k: '─── MEETING ATTENDANCE ───', v: '' });
-  ws.addRow({ k: 'Meetings on Roster (Finalized)', v: meetingsTotal });
-  ws.addRow({ k: 'Present', v: meetingsPresent });
-  ws.addRow({ k: 'Late', v: meetingsLate });
-  ws.addRow({ k: 'Absent', v: absent });
-  ws.addRow({ k: 'Attendance Rate', v: attendanceRate !== null ? `${attendanceRate}%` : 'N/A' });
-  ws.addRow({ k: '', v: '' });
-  ws.addRow({ k: '─── ACTIVITIES ───', v: '' });
-  ws.addRow({ k: 'Activities Participated', v: activitiesPart });
-  ws.addRow({ k: 'Activities Led', v: activitiesLed });
-  ws.addRow({ k: 'Total Activities Involved', v: activitiesPart + activitiesLed });
-  ws.addRow({ k: '', v: '' });
-  ws.addRow({ k: '─── DONATIONS ───', v: '' });
-  ws.addRow({ k: 'Donations Count', v: donCount });
-  ws.addRow({ k: 'Total Donated (PKR)', v: donTotal });
-  ws.addRow({ k: '', v: '' });
-  ws.addRow({ k: '─── RESPONSIBILITIES ───', v: '' });
-  ws.addRow({ k: 'Pending Tasks', v: respPending });
-  ws.addRow({ k: 'Completed Tasks', v: respCompleted });
-  ws.addRow({ k: 'Completion Rate', v: completionRate !== null ? `${completionRate}%` : 'N/A' });
-  ws.getRow(1).font = { bold: true };
+  // ── Summary Sheet ──
+  const ws = wb.addWorksheet('Performance Scorecard', { views: [{ showGridLines: false }] });
+  ws.columns = [{ key: 'k', width: 36 }, { key: 'v', width: 32 }];
+
+  ws.mergeCells('A1:B1');
+  ws.getCell('A1').value = `${orgName} — Member Performance Scorecard`;
+  ws.getCell('A1').font = { bold: true, size: 15, color: { argb: headerArgb } };
+  ws.getRow(1).height = 24;
+
+  ws.mergeCells('A2:B2');
+  ws.getCell('A2').value = `${m.fullName} (${m.memberId || 'N/A'})   ·   Period: ${from || 'All time'} → ${to || 'Present'}`;
+  ws.getCell('A2').font = { size: 10, color: { argb: 'FF6B7280' } };
+  ws.addRow([]);
+
+  const sumHeaderRow = ws.addRow(['Profile & Performance Metric', 'Details / Score']);
+  sumHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  sumHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerArgb } };
+  sumHeaderRow.height = 20;
+
+  const scorecardRows = [
+    ['Full Name', m.fullName],
+    ['Member ID', m.memberId || '—'],
+    ['CNIC', m.cnic || '—'],
+    ['Phone', m.phone || '—'],
+    ['Email', m.email || '—'],
+    ['Basic Unit', homeUnit?.name || '—'],
+    ['Status', m.status || 'ACTIVE'],
+    ['Reporting Period', `${from || 'All time'} → ${to || 'Present'}`],
+    ['', ''],
+    ['─── MEETING ATTENDANCE ───', ''],
+    ['Meetings on Roster (Finalized)', meetingsTotal],
+    ['Meetings Present', meetingsPresent],
+    ['Meetings Late', meetingsLate],
+    ['Meetings Absent', absent],
+    ['Attendance Rate', attendanceRate !== null ? `${attendanceRate}%` : 'N/A'],
+    ['', ''],
+    ['─── FIELD ACTIVITIES ───', ''],
+    ['Activities Participated', activitiesPart],
+    ['Activities Led', activitiesLed],
+    ['Total Activities Involved', activitiesPart + activitiesLed],
+    ['', ''],
+    ['─── FINANCIAL CONTRIBUTIONS ───', ''],
+    ['Donations Count', donCount],
+    ['Total Donated (PKR)', donTotal],
+    ['', ''],
+    ['─── RESPONSIBILITIES & TASKS ───', ''],
+    ['Pending Tasks', respPending],
+    ['Completed Tasks', respCompleted],
+    ['Cancelled Tasks', respCancelled || 0],
+    ['Task Completion Rate', completionRate !== null ? `${completionRate}%` : 'N/A'],
+  ];
+
+  scorecardRows.forEach(([k, v], i) => {
+    const row = ws.addRow([k, v]);
+    if (k.startsWith('───')) {
+      row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      row.getCell(1).font = { bold: true, color: { argb: headerArgb }, size: 10 };
+      row.getCell(2).font = { bold: true };
+    } else {
+      if (i % 2 === 1 && k) {
+        row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+      }
+      row.getCell(1).font = { bold: !!v };
+      row.getCell(2).font = { bold: true };
+      if (typeof v === 'number' && k.includes('(PKR)')) {
+        row.getCell(2).numFmt = CURRENCY_FMT;
+      }
+      row.getCell(2).alignment = { horizontal: 'left' };
+    }
+  });
+
+  // ── Meetings Detail Sheet ──
+  if (meetingsList && meetingsList.length > 0) {
+    const mt = wb.addWorksheet('Meetings Attended');
+    mt.columns = [
+      { header: '#', key: 'n', width: 6 },
+      { header: 'Date', key: 'd', width: 18, style: { numFmt: DATETIME_FMT } },
+      { header: 'Type', key: 't', width: 18 },
+      { header: 'Title', key: 'title', width: 34 },
+      { header: 'Venue', key: 'v', width: 26 },
+      { header: 'Attendance Status', key: 'st', width: 18 },
+      { header: 'Supervisor Present', key: 'sup', width: 16 },
+    ];
+    meetingsList.forEach((meeting, idx) => {
+      const myAtt = (meeting.attendance || []).find((a) => String(a.memberId) === String(m._id));
+      mt.addRow({
+        n: idx + 1,
+        d: meeting.startAt ? new Date(meeting.startAt) : null,
+        t: meeting.type || '',
+        title: meeting.title || '',
+        v: meeting.venue || '',
+        st: myAtt?.status || 'N/A',
+        sup: meeting.supervisorAttended ? 'Yes' : 'No',
+      });
+    });
+    _styleSheet(mt, headerArgb, { freezeColumns: 3 });
+  }
+
+  // ── Activities Detail Sheet ──
+  if (activitiesList && activitiesList.length > 0) {
+    const act = wb.addWorksheet('Activities');
+    act.columns = [
+      { header: '#', key: 'n', width: 6 },
+      { header: 'Date', key: 'd', width: 18, style: { numFmt: DATETIME_FMT } },
+      { header: 'Type', key: 't', width: 18 },
+      { header: 'Title', key: 'title', width: 34 },
+      { header: 'My Role', key: 'role', width: 16 },
+      { header: 'Venue', key: 'v', width: 26 },
+      { header: 'State', key: 'st', width: 14 },
+    ];
+    activitiesList.forEach((activity, idx) => {
+      const isLead = String(activity.leadMemberId) === String(m._id);
+      act.addRow({
+        n: idx + 1,
+        d: activity.startAt ? new Date(activity.startAt) : null,
+        t: activity.type || '',
+        title: activity.title || '',
+        role: isLead ? 'Lead' : 'Participant',
+        v: activity.venue || '',
+        st: activity.state || '',
+      });
+    });
+    _styleSheet(act, headerArgb, { freezeColumns: 3 });
+  }
+
+  // ── Responsibilities Detail Sheet ──
+  if (responsibilitiesList && responsibilitiesList.length > 0) {
+    const rsp = wb.addWorksheet('Responsibilities');
+    rsp.columns = [
+      { header: '#', key: 'n', width: 6 },
+      { header: 'Title', key: 'title', width: 38 },
+      { header: 'Due Date', key: 'due', width: 16, style: { numFmt: DATE_FMT } },
+      { header: 'State', key: 'st', width: 14 },
+      { header: 'Completed At', key: 'done', width: 16, style: { numFmt: DATE_FMT } },
+    ];
+    responsibilitiesList.forEach((r, idx) => {
+      rsp.addRow({
+        n: idx + 1,
+        title: r.title || '',
+        due: r.dueDate ? new Date(r.dueDate) : null,
+        st: r.state || '',
+        done: r.completedAt ? new Date(r.completedAt) : null,
+      });
+    });
+    _styleSheet(rsp, headerArgb, { freezeColumns: 2 });
+  }
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="member-${m.memberId || m._id}-performance.xlsx"`);

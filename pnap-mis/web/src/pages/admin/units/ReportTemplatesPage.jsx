@@ -453,22 +453,80 @@ function TemplateDialog({ mode, template, sectionRegistry, onClose, onSaved }) {
 function RenderDialog({ template, onClose }) {
   const [unitLevel, setUnitLevel] = useState('AREA');
   const [unitId, setUnitId] = useState('');
+  const [units, setUnits] = useState([]);
+  const [loadingUnits, setLoadingUnits] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [format, setFormat] = useState(
     template.format === 'BOTH' ? 'PDF' : template.format,
   );
-  // SRS §3.1 — which body's records the report covers. '' means
-  // Combined: the param is omitted and the renderer pools both, which
-  // is exactly how this dialog behaved before the split existed, so
-  // it stays the default.
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  useEffect(() => {
+    let active = true;
+    async function loadUnits() {
+      setLoadingUnits(true);
+      try {
+        let endpoint = '/org/areas';
+        if (unitLevel === 'BASIC_UNIT') endpoint = '/org/basic-units';
+        else if (unitLevel === 'AREA') endpoint = '/org/areas';
+        else if (unitLevel === 'DISTRICT') endpoint = '/org/districts';
+        else if (unitLevel === 'PROVINCE') endpoint = '/org/provinces';
+        else if (unitLevel === 'CENTRAL') endpoint = '/org/central';
+
+        const res = await api.get(endpoint);
+        const data = res.data?.data;
+        const list = Array.isArray(data) ? data : data ? [data] : [];
+        if (active) {
+          setUnits(list);
+          if (list.length > 0) {
+            setUnitId(list[0]._id);
+          } else {
+            setUnitId('');
+          }
+        }
+      } catch (e) {
+        if (active) setUnits([]);
+      } finally {
+        if (active) setLoadingUnits(false);
+      }
+    }
+    loadUnits();
+    return () => { active = false; };
+  }, [unitLevel]);
+
+  function setQuickRange(type) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${m}-${d}`;
+
+    if (type === 'thisMonth') {
+      setFrom(`${y}-${m}-01`);
+      setTo(todayStr);
+    } else if (type === 'last30') {
+      const past = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const py = past.getFullYear();
+      const pm = String(past.getMonth() + 1).padStart(2, '0');
+      const pd = String(past.getDate()).padStart(2, '0');
+      setFrom(`${py}-${pm}-${pd}`);
+      setTo(todayStr);
+    } else if (type === 'ytd') {
+      setFrom(`${y}-01-01`);
+      setTo(todayStr);
+    } else if (type === 'all') {
+      setFrom('');
+      setTo('');
+    }
+  }
+
   async function go() {
     setErr(''); setBusy(true);
     try {
+      if (!unitId) throw new Error('Please select a unit to render report for');
       const params = new URLSearchParams({ unitLevel, unitId, format });
       if (from) params.set('from', from);
       if (to) params.set('to', to);
@@ -479,8 +537,6 @@ function RenderDialog({ template, onClose }) {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
-        // Renamed off `body` — that identifier is now the body-filter
-        // state above, and shadowing it here reads as a bug.
         const errBody = await res.json().catch(() => ({}));
         throw new Error(errBody?.error?.message || `Render failed (${res.status})`);
       }
@@ -512,21 +568,45 @@ function RenderDialog({ template, onClose }) {
             </select>
           </div>
           <div className="field">
-            <label>Unit ID</label>
-            <input
+            <label>Select Unit</label>
+            <select
               value={unitId}
               onChange={(e) => setUnitId(e.target.value)}
-              placeholder="ObjectId of the unit"
-              pattern="[a-fA-F0-9]{24}"
-            />
+              disabled={loadingUnits || units.length === 0}
+            >
+              {loadingUnits ? (
+                <option value="">Loading units…</option>
+              ) : units.length === 0 ? (
+                <option value="">No units found at this level</option>
+              ) : (
+                units.map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name || 'Unnamed Unit'} {u.code ? `(${u.code})` : ''}
+                  </option>
+                ))
+              )}
+            </select>
           </div>
-          <div className="field">
-            <label>From</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>To</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <div className="field full">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <label style={{ margin: 0 }}>Date Range</label>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button type="button" className="btn secondary" style={{ padding: '2px 6px', fontSize: 11 }} onClick={() => setQuickRange('thisMonth')}>This Month</button>
+                <button type="button" className="btn secondary" style={{ padding: '2px 6px', fontSize: 11 }} onClick={() => setQuickRange('last30')}>Last 30 Days</button>
+                <button type="button" className="btn secondary" style={{ padding: '2px 6px', fontSize: 11 }} onClick={() => setQuickRange('ytd')}>YTD</button>
+                <button type="button" className="btn secondary" style={{ padding: '2px 6px', fontSize: 11 }} onClick={() => setQuickRange('all')}>Clear</button>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div>
+                <span className="hint" style={{ display: 'block', marginBottom: 2 }}>From</span>
+                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              </div>
+              <div>
+                <span className="hint" style={{ display: 'block', marginBottom: 2 }}>To</span>
+                <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              </div>
+            </div>
           </div>
           <div className="field">
             <label>Format</label>

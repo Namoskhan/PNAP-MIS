@@ -5,9 +5,15 @@ const { ApiError } = require('../utils/response');
 
 async function authenticate(req, res, next) {
   try {
+    let token = '';
     const header = req.headers.authorization || '';
-    const [scheme, token] = header.split(' ');
-    if (scheme !== 'Bearer' || !token) {
+    const [scheme, bearerToken] = header.split(' ');
+    if (scheme === 'Bearer' && bearerToken) {
+      token = bearerToken;
+    } else if (req.query?.token) {
+      token = req.query.token;
+    }
+    if (!token) {
       throw new ApiError(401, 'UNAUTHENTICATED', 'Missing bearer token');
     }
     const payload = jwt.verify(token, env.JWT_SECRET);

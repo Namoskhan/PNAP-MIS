@@ -110,8 +110,8 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
   // ─── Analytics derived from meetings + activities (SRS §7-8) ─────
   // Computed in parallel for the same own-unit scope used above.
   const since6mo = new Date();
-  since6mo.setMonth(since6mo.getMonth() - 5);  // last 6 months
   since6mo.setDate(1);
+  since6mo.setMonth(since6mo.getMonth() - 5);  // last 6 months
   since6mo.setHours(0, 0, 0, 0);
 
   const [
@@ -210,6 +210,7 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
   const trendBuckets = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date();
+    d.setDate(1);
     d.setMonth(d.getMonth() - i);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const m = meetingsTrend.find((r) => r._id === key)?.count || 0;

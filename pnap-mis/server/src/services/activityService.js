@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const ActivityLog = require('../models/ActivityLog');
 const Member = require('../models/Member');
 const { resolveUnitChain } = require('../utils/unitScope');
@@ -67,17 +68,20 @@ function buildDoc({
   targetType, targetId, targetLabel,
   occurredAt, dedupeKey,
 }) {
+  const validTargetId = mongoose.Types.ObjectId.isValid(targetId) ? targetId : undefined;
+  const label = targetLabel ? String(targetLabel).slice(0, 200) : (targetId && !validTargetId ? String(targetId) : undefined);
+
   return {
     action,
     category: ACTIONS[action] || 'OTHER',
     memberId: memberId || memberIdOfUser(actorUser) || null,
     actorUserId: actorUserId || actorUser?._id || null,
     unitLevel: unitLevel || undefined,
-    unitId: unitId || undefined,
+    unitId: unitId && mongoose.Types.ObjectId.isValid(unitId) ? unitId : undefined,
     ...chainFields,
     targetType,
-    targetId,
-    targetLabel: targetLabel ? String(targetLabel).slice(0, 200) : undefined,
+    targetId: validTargetId,
+    targetLabel: label,
     occurredAt: occurredAt ? new Date(occurredAt) : new Date(),
     dedupeKey: dedupeKey || undefined,
   };

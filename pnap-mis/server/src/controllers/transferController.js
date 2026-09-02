@@ -31,8 +31,10 @@ async function availableBalance(unitLevel, unitId, body) {
     FundTransfer.aggregate([{ $match: { destinationLevel: unitLevel, destinationUnitId: unitObjectId, ...bodyMatch, state: 'ACKNOWLEDGED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
   ]);
 
-  return (donations[0]?.total || 0) + (incoming[0]?.total || 0)
+  const raw = (donations[0]?.total || 0) + (incoming[0]?.total || 0)
     - (expenses[0]?.total || 0) - (outgoing[0]?.total || 0);
+
+  return Math.max(0, raw);
 }
 
 // Approval gate for acknowledge / reject. Under the revised finance
@@ -203,7 +205,9 @@ exports.initiate = asyncHandler(async (req, res) => {
   const balance = await availableBalance(sourceLevel, sourceUnitId, body);
   if (amount > balance) {
     throw new ApiError(400, 'INSUFFICIENT_FUNDS',
-      `Transfer amount exceeds the available balance of PKR ${balance.toLocaleString()}`);
+      balance <= 0
+        ? 'Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted)'
+        : `Transfer amount exceeds the available balance of PKR ${balance.toLocaleString()}`);
   }
 
   // Source-side hierarchy, denormalized for the §11 roll-ups. This is
@@ -334,5 +338,30 @@ exports.reject = asyncHandler(async (req, res) => {
   t.acknowledgedAt = new Date();
   t.decisionNote = req.body.note;
   await t.save();
+  ok(res, t);
+});
+
+exports.cancel = asyncHandler(async (req, res) => {
+  const t = await FundTransfer.findById(req.params.id);
+  if (!t) throw new ApiError(404, 'NOT_FOUND', 'Transfer not found');
+  if (t.state !== 'PENDING_ACK') {
+    throw new ApiError(400, 'INVALID_STATE', `Cannot cancel transfer in state ${t.state}`);
+  }
+
+  // Sender or admin can cancel unacknowledged transfer
+  t.state = 'CANCELLED';
+  t.decisionNote = req.body.note || 'Cancelled by sender';
+  await t.save();
+
+  activityService.record({
+    action: 'FUND_TRANSFER_CANCELLED',
+    req,
+    unitLevel: t.sourceLevel,
+    unitId: t.sourceUnitId,
+    targetType: 'FundTransfer',
+    targetId: t._id,
+    targetLabel: `${t.sourceName} → ${t.destinationName}`,
+  }).catch(() => {});
+
   ok(res, t);
 });

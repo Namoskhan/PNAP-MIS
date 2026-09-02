@@ -18,5 +18,6 @@ router.post('/', upload.single('receipt'), ctrl.initiate);
 router.post('/:id/acknowledge', ctrl.acknowledge);
 router.post('/:id/ack', ctrl.acknowledge);
 router.post('/:id/reject', ctrl.reject);
+router.post('/:id/cancel', ctrl.cancel);
 
 module.exports = router;

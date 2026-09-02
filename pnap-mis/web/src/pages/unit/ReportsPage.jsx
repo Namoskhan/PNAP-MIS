@@ -1,28 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
+import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
 import { getCommitteeTierLabel, getRegularTierLabel } from '../../utils/unitFormat';
+import UnitSwitcher from '../../components/UnitSwitcher';
+import { CongressIcon } from '../../components/icons';
 
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
-// SRS §6.1 "view reports" + §13.2 + §15. Single hub for unit-level
-// exports and per-member performance PDFs.
 function downloadAuthed(path, filename) {
-  const token = localStorage.getItem('pnap_token');
-  return fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-    .then(async (res) => {
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    });
-}
-
-function downloadAuthed2(path, filename) {
   const token = localStorage.getItem('pnap_token');
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   return fetch(path, { headers })
@@ -43,7 +30,24 @@ export default function ReportsPage() {
   const isCongressView = queryBody === 'CONGRESS';
   const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
-  const { ctx } = useUnit();
+  const { user, setActiveRole, allRoles } = useAuth();
+  const { ctx, setCtx, provinces, districts, areas, units } = useUnit();
+
+  function handleSwitchToCentral() {
+    const rolesList = allRoles || user?.allRoles || user?.roles || [];
+    const isSuper = rolesList.includes('SUPER_ADMIN') || user?.isBootstrap;
+    const isCentral = rolesList.includes('CENTRAL_ADMIN');
+    if (isSuper && setActiveRole) {
+      setActiveRole('SUPER_ADMIN');
+    } else if (isCentral && setActiveRole) {
+      setActiveRole('CENTRAL_ADMIN');
+    }
+    api.get('/org/central')
+      .then((r) => setCtx({ unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' }))
+      .catch(() => setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' }));
+  }
+
+  const [showSwitcher, setShowSwitcher] = useState(false);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [scope, setScope] = useState('subtree');
@@ -54,9 +58,34 @@ export default function ReportsPage() {
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
 
-  // Fetch the member's performance report whenever the member or
-  // date range changes, so the Senior Mawin can preview before
-  // downloading the PDF.
+  // Quick date presets
+  function applyDatePreset(preset) {
+    const now = new Date();
+    if (preset === 'THIS_MONTH') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(end.toISOString().split('T')[0]);
+    } else if (preset === 'LAST_MONTH') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 0);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(end.toISOString().split('T')[0]);
+    } else if (preset === '30_DAYS') {
+      const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(now.toISOString().split('T')[0]);
+    } else if (preset === 'YTD') {
+      const start = new Date(now.getFullYear(), 0, 1);
+      setFrom(start.toISOString().split('T')[0]);
+      setTo(now.toISOString().split('T')[0]);
+    } else if (preset === 'CLEAR') {
+      setFrom('');
+      setTo('');
+    }
+  }
+
+  // Fetch the member's performance report whenever the member or date range changes
   useEffect(() => {
     if (!memberId) { setReport(null); return; }
     setReportLoading(true); setErr('');
@@ -90,10 +119,15 @@ export default function ReportsPage() {
   }, [ctx, isCommitteeView, isJirgaView, isCongressView]);
 
   function unitParams(kind) {
+    if (!ctx) return '';
     const p = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
     if (from) p.set('from', from);
     if (to) p.set('to', to);
-    if (ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && scope) p.set('scope', scope);
+    if (ctx.unitLevel === 'BASIC_UNIT') {
+      p.set('scope', 'own');
+    } else if (!isCongressView && scope) {
+      p.set('scope', scope);
+    }
     if (isCongressView) {
       p.set('body', 'CONGRESS');
       p.set('scope', 'own');
@@ -112,14 +146,16 @@ export default function ReportsPage() {
   }
 
   async function downloadUnit(kind, format) {
+    if (!ctx) return;
     setErr(''); setBusy(true);
     try {
       const ext = format === 'pdf' ? 'pdf' : 'xlsx';
       const bodySuffix = isCongressView ? '-congress' : (isJirgaView ? '-jirga' : (isCommitteeView ? '-committee' : (kind === 'finance' ? '-executive' : '')));
       const scopeSuffix = (ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && scope === 'subtree') ? '-aggregated' : '';
-      await downloadAuthed2(
+      const safeUnit = (ctx.unitName || ctx.unitLevel).replace(/[^a-zA-Z0-9_-]/g, '_');
+      await downloadAuthed(
         `/api/exports/unit/${kind}/${format}?${unitParams(kind)}`,
-        `${ctx.unitLevel}-${ctx.unitName}-${kind}${bodySuffix}${scopeSuffix}.${ext}`,
+        `${ctx.unitLevel}-${safeUnit}-${kind}${bodySuffix}${scopeSuffix}.${ext}`,
       );
     } catch (e) { setErr('Export failed: ' + (e.message || 'unknown')); }
     finally { setBusy(false); }
@@ -132,7 +168,7 @@ export default function ReportsPage() {
       const p = new URLSearchParams();
       if (from) p.set('from', from);
       if (to) p.set('to', to);
-      await downloadAuthed2(
+      await downloadAuthed(
         `/api/exports/member/${memberId}/pdf?${p.toString()}`,
         `member-${memberId}-performance.pdf`,
       );
@@ -147,7 +183,7 @@ export default function ReportsPage() {
       const p = new URLSearchParams();
       if (from) p.set('from', from);
       if (to) p.set('to', to);
-      await downloadAuthed2(
+      await downloadAuthed(
         `/api/exports/member/${memberId}/xlsx?${p.toString()}`,
         `member-${memberId}-performance.xlsx`,
       );
@@ -155,16 +191,54 @@ export default function ReportsPage() {
     finally { setBusy(false); }
   }
 
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) {
+    return (
+      <div style={{ maxWidth: 800, margin: '20px auto' }}>
+        <UnitSwitcher />
+      </div>
+    );
+  }
+
+  // If user opened Congress stream but is below Central tier, show guidance card
+  if (isCongressView && ctx?.unitLevel !== 'CENTRAL') {
+    return (
+      <div>
+        <div className="page-header">
+          <h2>National Congress Reports · قومي کانګرس</h2>
+        </div>
+        <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
+          <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
+            <CongressIcon size={36} />
+          </div>
+          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <p className="muted" style={{ lineHeight: 1.6 }}>
+            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleSwitchToCentral}
+            >
+              Switch to Central Unit Context →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const committeeTier = getCommitteeTierLabel(ctx.unitLevel);
+  const committeeTierFormatted = committeeTier
+    ? (committeeTier.toLowerCase().endsWith('committee') ? committeeTier : `${committeeTier} Committee`)
+    : 'Committee';
   const jirgaTier = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
-  const regularTier = getRegularTierLabel(ctx.unitLevel);
+  const hasSubordinates = ctx.unitLevel !== 'BASIC_UNIT';
 
   const scopeDescription = isCongressView ? (
     'National Congress Assembly Records (Central)'
   ) : (isJirgaView ? (
-    scope === 'subtree' ? `Aggregated ${jirgaTier} Report` : `${jirgaTier} Direct Records`
+    scope === 'subtree' ? `Aggregated ${jirgaTier} Report (Including all subordinate tiers)` : `${jirgaTier} Direct Records Only`
   ) : (isCommitteeView ? {
     BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
     AREA: scope === 'subtree' ? 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)' : 'Elaqai Committee Level Only (Records authored directly at Elaqai)',
@@ -184,7 +258,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Reports · ${ctx.unitName}`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee` : 'Committee'} Reports · ${ctx.unitName}`
+      ? `${committeeTierFormatted} Reports · ${ctx.unitName}`
       : `Reports · ${ctx.unitName}`));
 
   const meetingsReportTitle = isCongressView
@@ -192,7 +266,7 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Meetings & Activities Report`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Meetings & Activities Report`
+      ? `${committeeTierFormatted} Meetings & Activities Report`
       : 'Meetings & Activities Report'));
 
   const financeReportTitle = isCongressView
@@ -200,37 +274,84 @@ export default function ReportsPage() {
     : (isJirgaView
       ? `${jirgaTier} Finance Report`
       : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Finance Report`
+      ? `${committeeTierFormatted} Finance Report`
       : 'Finance Report'));
-
-  const comprehensiveReportTitle = isCongressView
-    ? 'National Congress Comprehensive Periodic Report'
-    : (isJirgaView
-      ? `${jirgaTier} Comprehensive Periodic Report`
-      : (isCommitteeView
-      ? `${committeeTier ? `${committeeTier} Committee ` : 'Committee '}Comprehensive Periodic Report`
-      : 'Comprehensive Periodic Report'));
 
   return (
     <div>
-      <div className="page-header">
-        <h2>{pageTitle}</h2>
+      {/* Page Header */}
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ margin: 0 }}>{pageTitle}</h2>
+          <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+            Active Tier: <strong>{ctx.unitLevel.replace('_', ' ')}</strong> · Unit: <strong>{ctx.unitName}</strong>
+          </div>
+        </div>
+        {!isCongressView && (
+          <button
+            type="button"
+            className="btn secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+            onClick={() => setShowSwitcher((v) => !v)}
+          >
+            <span>🔄</span>
+            <span>{showSwitcher ? 'Hide Unit Switcher' : 'Switch Unit Context'}</span>
+          </button>
+        )}
       </div>
 
-      {err && <div className="alert error">{err}</div>}
+      {/* Unit Switcher Collapsible Card */}
+      {showSwitcher && (
+        <div style={{ marginBottom: 16 }}>
+          <UnitSwitcher />
+        </div>
+      )}
 
+      {err && <div className="alert error" style={{ marginBottom: 16 }}>{err}</div>}
+
+      {/* Scope & Date Filter Card */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Report Scope & Period Filter</h3>
-        <div className="form-grid">
-          {ctx.unitLevel !== 'BASIC_UNIT' && !isCongressView && (
-            <div className="field">
-              <label>Data Aggregation Scope</label>
-              <select value={scope} onChange={(e) => setScope(e.target.value)}>
-                <option value="subtree">Aggregated (Include all subordinate units roll-up)</option>
-                <option value="own">This unit tier only</option>
-              </select>
+        <h3 style={{ marginTop: 0, marginBottom: 12 }}>Report Scope &amp; Period Filter</h3>
+
+        {hasSubordinates && !isCongressView && (
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
+              Data Aggregation Scope
+            </label>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`btn ${scope === 'subtree' ? '' : 'secondary'}`}
+                style={{ flex: 1, minWidth: 240, textAlign: 'center', padding: '10px 16px' }}
+                onClick={() => setScope('subtree')}
+              >
+                📊 <strong>Aggregated</strong> (Include all subordinate units roll-up)
+              </button>
+              <button
+                type="button"
+                className={`btn ${scope === 'own' ? '' : 'secondary'}`}
+                style={{ flex: 1, minWidth: 200, textAlign: 'center', padding: '10px 16px' }}
+                onClick={() => setScope('own')}
+              >
+                🏢 <strong>This Unit Tier Only</strong> (Direct unit records)
+              </button>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Quick Date Presets */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Quick Date Range</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('THIS_MONTH')}>This Month</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('LAST_MONTH')}>Last Month</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('30_DAYS')}>Last 30 Days</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('YTD')}>Year to Date</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px', color: 'var(--danger)' }} onClick={() => applyDatePreset('CLEAR')}>Clear Dates</button>
+          </div>
+        </div>
+
+        <div className="form-grid">
           <div className="field">
             <label>From Date</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -240,16 +361,18 @@ export default function ReportsPage() {
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
+
         {scopeDescription && (
-          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text-soft)', background: 'var(--surface-alt)', padding: '8px 12px', borderRadius: 'var(--radius)' }}>
+          <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-soft)', background: 'var(--surface-alt)', padding: '10px 14px', borderRadius: 'var(--radius)', borderLeft: '4px solid var(--primary)' }}>
             📊 <strong>Report Mode:</strong> {scopeDescription}
           </div>
         )}
       </div>
 
+      {/* Meetings & Activities Report Card */}
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>{meetingsReportTitle}</h3>
-        <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
+        <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
           {isCongressView
             ? 'National Congress meetings (with embedded photos), congress activities, and responsibilities.'
             : (isCommitteeView
@@ -262,14 +385,27 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Activities-Only Report Card */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ marginTop: 0 }}>Activities &amp; Field Operations Report</h3>
+        <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
+          Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" disabled={busy} onClick={() => downloadUnit('activities', 'pdf')}>Download PDF</button>
+          <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('activities', 'xlsx')}>Download Excel</button>
+        </div>
+      </div>
+
+      {/* Finance Report Card */}
       <div className="card" style={{ marginBottom: 16 }}>
         <h3 style={{ marginTop: 0 }}>{financeReportTitle}</h3>
-        <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
+        <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
           {isCongressView
             ? 'National Congress donations ledger, expenses ledger, and congress net balance for the period.'
             : (isCommitteeView
               ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'
-              : 'Executive donations ledger, expenses ledger, and the executive net balance for the period.')}
+              : 'Executive donations ledger, expenses ledger, fund transfers, and net balance for the period.')}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>Download PDF</button>
@@ -277,9 +413,12 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {/* Member Performance Report Card */}
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>{isCongressView ? 'Congress Member Performance Report' : (isCommitteeView ? 'Committee Member Performance Report' : 'Individual Performance Report')}</h3>
-        <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
+        <h3 style={{ marginTop: 0 }}>
+          {isCongressView ? 'Congress Member Performance Report' : (isCommitteeView ? 'Committee Member Performance Report' : 'Individual Performance Report')}
+        </h3>
+        <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
           {isCongressView
             ? 'Performance scorecard and attendance report for National Congress members.'
             : (isCommitteeView

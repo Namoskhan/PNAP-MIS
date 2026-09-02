@@ -22,7 +22,7 @@ import { useBranding } from '../context/BrandingContext';
 import {
   UsersIcon, FolderIcon, BuildingIcon, GearIcon,
   UserIcon, PowerIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon,
-  CommitteeIcon, JirgaIcon, CongressIcon,
+  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon,
 } from './icons';
 
 const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
@@ -93,16 +93,17 @@ function UnitNavLink({ to, body = null, children }) {
 // the wider body, each pinned to ?body=COMMITTEE. Basic Units have no
 // committee (SRS §3.1, and `committeeController.composition` rejects
 // that level outright), so the whole group is hidden there.
-function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true }) {
-  if (!ctx || ctx.unitLevel === 'BASIC_UNIT') return null;
-  const label = committeeLabel(ctx.unitLevel);
+function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true, fixedTitle = null, fixedLevel = null }) {
+  const activeLevel = fixedLevel || ctx?.unitLevel;
+  if (!activeLevel || activeLevel === 'BASIC_UNIT') return null;
+  const label = fixedTitle || committeeLabel(activeLevel);
   if (!label) return null;
   return (
     <NavGroup
       label={label}
       icon={<CommitteeIcon size={14} />}
       variant="committee"
-      storageKey="pnap_nav_committee"
+      storageKey={`pnap_nav_committee_${activeLevel.toLowerCase()}`}
       defaultOpen={defaultOpen}
     >
       <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
@@ -301,21 +302,16 @@ export default function Layout() {
               <NavLink to="/admin/settings/login">Login Customization</NavLink>
               <NavLink to="/admin/settings/history">Settings History</NavLink>
             </NavGroup>
-            <div className="nav-group">Central Tier</div>
-            <nav>
+            <NavGroup label="Central Tier" icon={<GlobeIcon size={14} />} storageKey="pnap_nav_central_tier" defaultOpen={false}>
               <NavLink to="/unit" end>Central Dashboard</NavLink>
               <NavLink to="/unit/cabinet">Central Cabinet</NavLink>
-              <NavLink to="/unit/congress">National Congress</NavLink>
               <UnitNavLink to="/unit/meetings">Central Meetings</UnitNavLink>
               <UnitNavLink to="/unit/activities">Central Activities</UnitNavLink>
               <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
               <UnitNavLink to="/unit/finance">Central Finance</UnitNavLink>
               <UnitNavLink to="/unit/transfers">Central Fund Transfers</UnitNavLink>
               <UnitNavLink to="/unit/reports">Central Reports</UnitNavLink>
-            </nav>
-            <CongressNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
-            <JirgaNav ctx={{ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'Central' }} canFinance={true} defaultOpen={false} />
-            {/* Super Admin removed from Committee group per request. */}
+            </NavGroup>
           </>
         )}
 
@@ -338,6 +334,8 @@ export default function Layout() {
               >All Members</NavLink>
               <NavLink to="/unit/cabinet">Assign Cabinet Roles</NavLink>
               <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+              <NavLink to="/unit/breakdown">Basic Unit Breakdown</NavLink>
+              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
           </>
         )}
@@ -354,8 +352,6 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            <CongressNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
-            <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -386,7 +382,6 @@ export default function Layout() {
               <NavLink to="/unit/breakdown">District Breakdown</NavLink>
               <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
             </nav>
-            <JirgaNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
           </>
         )}
 
@@ -510,34 +505,50 @@ export default function Layout() {
 
         {!isSuperAdmin && !isCentralAdmin && !isAreaAdmin && !isSeniorMawin && !isSecretary && !isFinanceSecretary && !isDistrictAdmin && !isProvinceAdmin && !isMember && !isPresident && (
           <>
-            <div className="nav-group">
-              {user?.canViewExecutiveDashboard ? 'CENTRAL · PKNAP CENTRAL' : 'Global'}
-            </div>
-            <nav>
-              <NavLink to="/" end>{user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}</NavLink>
-              <NavLink to="/members">Members</NavLink>
-              {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
-              {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
-            </nav>
-            {!user?.canViewExecutiveDashboard && (
-              <div className="nav-group">
-                {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
-              </div>
+            {user?.canViewExecutiveDashboard && ctx?.unitLevel === 'CENTRAL' ? (
+              <>
+                <div className="nav-group">
+                  {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'CENTRAL · PKNAP Central'}
+                </div>
+                <nav>
+                  <NavLink to="/" end>Central Dashboard</NavLink>
+                  <NavLink to="/members">Members</NavLink>
+                  {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
+                  {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
+                  <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
+                  <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+                  <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+                  <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+                  <NavLink to="/unit/performance">Member Performance</NavLink>
+                  {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+                  {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
+                  <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+                </nav>
+              </>
+            ) : (
+              <>
+                <div className="nav-group">
+                  {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+                </div>
+                <nav>
+                  <NavLink to="/unit" end>Dashboard</NavLink>
+                  <NavLink to="/members">Members</NavLink>
+                  {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
+                  {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
+                  <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
+                  <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
+                  <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
+                  <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
+                  <NavLink to="/unit/performance">Member Performance</NavLink>
+                  {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
+                  {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
+                  <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+                  {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
+                    <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
+                  )}
+                </nav>
+              </>
             )}
-            <nav>
-              {!user?.canViewExecutiveDashboard && <NavLink to="/unit" end>Dashboard</NavLink>}
-              <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              <NavLink to="/unit/performance">Member Performance</NavLink>
-              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
-              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
-              {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
-                <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
-              )}
-            </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
             <CongressNav ctx={ctx} canFinance={canFinance} />
             <JirgaNav ctx={ctx} canFinance={canFinance} />
@@ -557,6 +568,7 @@ export default function Layout() {
           <header className="topbar">
             <div className="topbar-spacer" aria-hidden="true" />
             {(() => {
+              if (isSuperAdmin) return null;
               // Show the persona switcher whenever the user holds more
               // than one role INCLUDING the base member portal — a
               // custom-role holder (e.g. MEMBER + CUSTOM_X) needs it to

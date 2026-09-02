@@ -2,17 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
-import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, roleLabel } from '../../utils/permissions';
+import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, roleLabel } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import useEventTypes from '../../hooks/useEventTypes';
 import DynamicForm from '../../components/dynamic-form/DynamicForm';
 import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
-import { XIcon } from '../../components/icons';
+import { XIcon, CongressIcon } from '../../components/icons';
 import { formatUnitArrangedBy } from '../../utils/unitFormat';
-// Default starting type when no types have loaded yet — kept here so
-// the form has a sensible empty state. The picker itself is sourced
 // Default starting type when no types have loaded yet — kept here so
 // the form has a sensible empty state. The picker itself is sourced
 // from /api/events/types (active types only) so admins can extend
@@ -71,11 +69,36 @@ function downloadAuthed(path, filename) {
 }
 
 export default function MeetingsPage() {
-  const { ctx } = useUnit();
-  const { user } = useAuth();
+  const { ctx, setCtx } = useUnit();
+  const { user, setActiveRole, allRoles } = useAuth();
   const location = useLocation();
   const toast = useToast();
-  const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
+
+  function handleSwitchToCentral() {
+    const rolesList = allRoles || user?.allRoles || user?.roles || [];
+    const isSuper = rolesList.includes('SUPER_ADMIN') || user?.isBootstrap;
+    const isCentral = rolesList.includes('CENTRAL_ADMIN');
+    if (isSuper && setActiveRole) {
+      setActiveRole('SUPER_ADMIN');
+    } else if (isCentral && setActiveRole) {
+      setActiveRole('CENTRAL_ADMIN');
+    }
+    api.get('/org/central')
+      .then((r) => setCtx({ unitLevel: 'CENTRAL', unitId: r.data.data._id, unitName: r.data.data.name || 'PKNAP Central' }))
+      .catch(() => setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' }));
+  }
+
+  // URL check: committee vs jirga vs congress vs regular meetings
+  const queryBody = new URLSearchParams(location.search).get('body');
+  const isCongressView = queryBody === 'CONGRESS';
+  const isJirgaView = queryBody === 'JIRGA';
+  const isCommitteeView = queryBody === 'COMMITTEE';
+
+  const canManage = canManageMeetings(user)
+    && !isCentralAdminOversight(user)
+    && !isSuperAdminOversight(user)
+    && !(isSuperAdmin(user) && (ctx?.unitLevel === 'CENTRAL' || isCongressView));
+
   // Pure-member viewers (no admin / cabinet / operator role) shouldn't
   // see the "this unit only / subtree" scope selector — they're
   // pinned to a single Basic Unit and the option is meaningless.
@@ -98,12 +121,6 @@ export default function MeetingsPage() {
   const [loadingChairpersons, setLoadingChairpersons] = useState(false);
   const [meetingTab, setMeetingTab] = useState('ALL'); // 'ALL' | 'EXECUTIVE' | 'GENERAL_BODY'
   const [showCreate, setShowCreate] = useState(false);
-  
-  // URL check: committee vs jirga vs congress vs regular meetings
-  const queryBody = new URLSearchParams(location.search).get('body');
-  const isCongressView = queryBody === 'CONGRESS';
-  const isJirgaView = queryBody === 'JIRGA';
-  const isCommitteeView = queryBody === 'COMMITTEE';
   const [form, setForm] = useState(EMPTY_FORM);
   const [finalizing, setFinalizing] = useState(null);
   const [editing, setEditing] = useState(null);
@@ -274,18 +291,18 @@ export default function MeetingsPage() {
   function captureGps() {
     setGpsHint('');
     if (!navigator.geolocation) {
-      setGpsHint('GPS not supported on this device. Enter coordinates manually or skip — GPS is optional.');
+      setGpsHint('GPS not supported on this browser. Please enter coordinates manually.');
       return;
     }
     setGpsHint('Requesting location…');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setForm((f) => ({ ...f, gpsLat: pos.coords.latitude, gpsLng: pos.coords.longitude }));
-        setGpsHint('Location captured.');
+        setForm((f) => ({ ...f, gpsLat: pos.coords.latitude.toFixed(6), gpsLng: pos.coords.longitude.toFixed(6) }));
+        setGpsHint(`Location captured: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
       },
       (e) => {
-        if (e.code === 1) setGpsHint('Location permission denied. GPS is optional.');
-        else setGpsHint(`Could not get location (${e.message}). GPS is optional.`);
+        if (e.code === 1) setGpsHint('Location permission denied. Please allow location access or enter coordinates manually.');
+        else setGpsHint(`Could not get location (${e.message}). Please enter coordinates manually.`);
       },
       { enableHighAccuracy: true, timeout: 8000 },
     );
@@ -309,13 +326,35 @@ export default function MeetingsPage() {
   // Schedule button had done nothing.
   async function create() {
     if (creating) return;
+    if (!form.venue?.trim()) {
+      toast.error('Venue is required.', { title: 'Missing required field' });
+      return;
+    }
+    if (form.gpsLat === '' || form.gpsLat == null || form.gpsLng === '' || form.gpsLng == null) {
+      toast.error('Venue GPS coordinates (latitude and longitude) are mandatory for creating meetings.', { title: 'Missing Venue GPS' });
+      return;
+    }
+    const lat = Number(form.gpsLat);
+    const lng = Number(form.gpsLng);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      toast.error('Please enter valid GPS coordinates (Latitude between -90 and 90, Longitude between -180 and 180).', { title: 'Invalid GPS coordinates' });
+      return;
+    }
     setCreating(true);
     try {
       // Strip empty strings so optional fields don't ship as ''.
       // dynamicData is preserved as-is — server validates it against
       // the type's snapshot resolved fields.
       const { dynamicData, ...rest } = form;
-      const payload = { ...rest, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
+      const payload = {
+        ...rest,
+        venue: form.venue.trim(),
+        gpsLat: lat,
+        gpsLng: lng,
+        gps: { lat, lng },
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
+      };
       if (isCongressView) {
         payload.body = 'CONGRESS';
       } else if (isJirgaView) {
@@ -513,7 +552,7 @@ export default function MeetingsPage() {
   // Body travels with the download alongside scope, so the exported
   // report covers exactly the stream the user is looking at.
   function exportParams() {
-    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId });
+    const params = new URLSearchParams({ unitLevel: ctx.unitLevel, unitId: ctx.unitId, scope: 'own' });
     if (isCongressView) {
       params.set('body', 'CONGRESS');
     } else if (isJirgaView) {
@@ -541,6 +580,35 @@ export default function MeetingsPage() {
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
+
+  // If user opened Congress stream but is below Central tier, show guidance card
+  if (isCongressView && ctx?.unitLevel !== 'CENTRAL') {
+    return (
+      <div>
+        <div className="page-header">
+          <h2>National Congress Meetings · قومي کانګرس</h2>
+        </div>
+        <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
+          <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
+            <CongressIcon size={36} />
+          </div>
+          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <p className="muted" style={{ lineHeight: 1.6 }}>
+            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={handleSwitchToCentral}
+            >
+              Switch to Central Unit Context →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -616,13 +684,29 @@ export default function MeetingsPage() {
               </select>
             </div>
             <div className="field">
-              <label>Venue GPS (optional, enables photo geo-fencing)</label>
+              <label>Venue GPS (Latitude &amp; Longitude) *</label>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input style={{ flex: 1 }} placeholder="lat" value={form.gpsLat} onChange={(e) => setForm({ ...form, gpsLat: e.target.value })} />
-                <input style={{ flex: 1 }} placeholder="lng" value={form.gpsLng} onChange={(e) => setForm({ ...form, gpsLng: e.target.value })} />
+                <input
+                  style={{ flex: 1 }}
+                  placeholder="Latitude (e.g. 34.0151)"
+                  value={form.gpsLat}
+                  onChange={(e) => setForm({ ...form, gpsLat: e.target.value })}
+                  required
+                />
+                <input
+                  style={{ flex: 1 }}
+                  placeholder="Longitude (e.g. 71.5249)"
+                  value={form.gpsLng}
+                  onChange={(e) => setForm({ ...form, gpsLng: e.target.value })}
+                  required
+                />
                 <button type="button" className="btn secondary" onClick={captureGps}>Capture</button>
               </div>
-              {gpsHint && <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>{gpsHint}</div>}
+              {gpsHint ? (
+                <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>{gpsHint}</div>
+              ) : (
+                <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>Mandatory for meeting scheduling and photo geo-fencing.</div>
+              )}
             </div>
             <div className="field full">
               <label>Description</label>
