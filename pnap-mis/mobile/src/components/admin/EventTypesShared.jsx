@@ -31,7 +31,7 @@ export function EventTypeList({ entity, title, icon }) {
   const toast = useToast();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isSmall = width < 480;
+  const isSmall = width < 560;
   const isTablet = width >= 768;
   const canWrite = hasPermission(user, 'MANAGE_EVENT_CONFIG');
 
@@ -116,7 +116,7 @@ export function EventTypeList({ entity, title, icon }) {
     return (
       <Card style={[styles.typeCard, isSmall && styles.typeCardSmall]}>
         <View style={[styles.typeRow, isSmall && styles.typeRowSmall]}>
-          <View style={{ flex: 1, minWidth: 200 }}>
+          <View style={{ flex: 1, width: '100%' }}>
             <View style={styles.typeNameRow}>
               <Text style={styles.typeName}>{t.label}</Text>
               <View style={styles.badgeRow}>

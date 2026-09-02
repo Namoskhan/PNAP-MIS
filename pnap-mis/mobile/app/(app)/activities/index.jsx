@@ -14,6 +14,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -27,6 +28,7 @@ import { api, errorMessage } from '../../../src/api/client';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, isHigherAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Badge from '../../../src/components/Badge';
+import Card from '../../../src/components/Card';
 import DateTimePicker from '../../../src/components/DateTimePicker';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { ACTIVITY_TYPE_LABEL } from '../../../src/utils/formatters';
@@ -70,6 +72,9 @@ function gmapsLink(lat, lng) {
 }
 
 export default function ActivitiesScreen() {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+
   const { user } = useAuth();
   const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
@@ -529,6 +534,144 @@ export default function ActivitiesScreen() {
     );
   }
 
+  function renderCardItem(a) {
+    const isCng = a.body === 'CONGRESS';
+    const isJrg = a.body === 'JIRGA';
+    const isCm = a.body === 'COMMITTEE';
+
+    const typeBadgeLabel = isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'));
+    const typeBadgeBg = isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'));
+    const typeBadgeColor = isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'));
+
+    const photoCount = (a.photos || []).length;
+    const statusColor = a.state === 'COMPLETED' ? '#15803d' : (a.state === 'CANCELLED' ? '#b91c1c' : '#b45309');
+    const statusBg = a.state === 'COMPLETED' ? '#dcfce7' : (a.state === 'CANCELLED' ? '#fee2e2' : '#fef3c7');
+
+    return (
+      <Card style={styles.activityCard}>
+        {/* Top Badges Row */}
+        <View style={styles.cardBadgesRow}>
+          <View style={styles.cardBadgesLeft}>
+            <Badge label={typeBadgeLabel} color={typeBadgeColor} bg={typeBadgeBg} />
+            <Badge
+              label={a.type || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode || 'Activity'}
+              color={Colors.primary}
+              bg="#eff6ff"
+            />
+          </View>
+          <Badge label={a.state || 'DRAFT'} color={statusColor} bg={statusBg} />
+        </View>
+
+        {/* Title */}
+        <Text style={styles.cardActivityTitle}>{a.title || 'Untitled Activity'}</Text>
+
+        {/* Arranged by Unit */}
+        {a.unitLevel && (
+          <View style={styles.cardUnitRow}>
+            <Ionicons name="business-outline" size={13} color={Colors.textMuted} />
+            <Text style={styles.cardUnitText} numberOfLines={1}>
+              {formatUnitArrangedBy(a, { isCommitteeView, isJirgaView, isCongressView })}
+            </Text>
+          </View>
+        )}
+
+        {/* Info Grid: Date/Time & Venue */}
+        <View style={styles.cardInfoGrid}>
+          <View style={styles.cardInfoRow}>
+            <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
+            <Text style={styles.cardInfoText}>{new Date(a.startAt).toLocaleString()}</Text>
+          </View>
+          {a.venue ? (
+            <View style={styles.cardInfoRow}>
+              <Ionicons name="location-outline" size={14} color={Colors.error} />
+              <Text style={styles.cardInfoText} numberOfLines={1}>{a.venue}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Description */}
+        {a.description ? (
+          <Text style={styles.cardDescText} numberOfLines={3}>{a.description}</Text>
+        ) : null}
+
+        {/* Campaign Metrics */}
+        {a.campaignMetrics && Object.values(a.campaignMetrics).some((v) => Number(v) > 0) && (
+          <View style={styles.metricsPillsRow}>
+            {Number(a.campaignMetrics.peopleContacted) > 0 && (
+              <View style={styles.metricBadge}>
+                <Text style={styles.metricBadgeVal}>{a.campaignMetrics.peopleContacted}</Text>
+                <Text style={styles.metricBadgeLbl}>Contacted</Text>
+              </View>
+            )}
+            {Number(a.campaignMetrics.householdsVisited) > 0 && (
+              <View style={styles.metricBadge}>
+                <Text style={styles.metricBadgeVal}>{a.campaignMetrics.householdsVisited}</Text>
+                <Text style={styles.metricBadgeLbl}>Households</Text>
+              </View>
+            )}
+            {Number(a.campaignMetrics.actualJoiners) > 0 && (
+              <View style={styles.metricBadge}>
+                <Text style={styles.metricBadgeVal}>{a.campaignMetrics.actualJoiners}</Text>
+                <Text style={styles.metricBadgeLbl}>Joiners</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Bottom Actions Row */}
+        <View style={styles.cardBottomBar}>
+          {photoCount > 0 ? (
+            <TouchableOpacity
+              style={styles.cardPhotoTag}
+              onPress={() => {
+                setPhotosFor(a);
+                setActivePhotoIdx(0);
+              }}
+            >
+              <Ionicons name="images-outline" size={14} color={Colors.primary} />
+              <Text style={styles.cardPhotoTagText}>{photoCount} Photo{photoCount === 1 ? '' : 's'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.cardNoPhotoTag}>
+              <Ionicons name="image-outline" size={14} color={Colors.textLight} />
+              <Text style={styles.cardNoPhotoText}>0 Photos</Text>
+            </View>
+          )}
+
+          <View style={styles.cardButtonCluster}>
+            {canManage && a.state !== 'COMPLETED' && a.state !== 'CANCELLED' && (
+              <>
+                <TouchableOpacity
+                  style={styles.cardActionBtnSecondary}
+                  onPress={() => handlePhotoUploadPress(a)}
+                  disabled={uploadingPhotos}
+                >
+                  <Ionicons name="camera-outline" size={14} color={Colors.text} />
+                  <Text style={styles.cardActionBtnSecondaryText}>Photo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cardActionBtnComplete}
+                  onPress={() => handleCompleteActivity(a)}
+                >
+                  <Ionicons name="checkmark-circle" size={14} color="#fff" />
+                  <Text style={styles.cardActionBtnCompleteText}>Complete</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.cardActionBtnCancel}
+                  onPress={() => handleCancelActivity(a)}
+                >
+                  <Ionicons name="close-circle-outline" size={15} color={Colors.error} />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Card>
+    );
+  }
+
   const tableHeader = () => (
     <View style={styles.thRow}>
       <Text style={[styles.th, { width: 140 }]}>When</Text>
@@ -688,29 +831,54 @@ export default function ActivitiesScreen() {
         </View>
       </View>
 
-      <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
-        <View style={{ flex: 1 }}>
-          <FlatList
-            data={items}
-            renderItem={renderItem}
-            keyExtractor={(a) => a._id}
-            ListHeaderComponent={tableHeader}
-            onRefresh={onRefresh}
-            refreshing={refreshing}
-            contentContainerStyle={styles.tableWrap}
-            ListEmptyComponent={
-              !loading ? (
-                <View style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ color: Colors.textMuted }}>
-                    No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} activities recorded yet.
-                  </Text>
-                </View>
-              ) : null
-            }
-            ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
-          />
-        </View>
-      </ScrollView>
+      {isMobile ? (
+        <FlatList
+          data={items}
+          renderItem={({ item }) => renderCardItem(item)}
+          keyExtractor={(a) => a._id}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          contentContainerStyle={styles.mobileListContainer}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="flag-outline" size={44} color={Colors.textLight} style={{ marginBottom: 10 }} />
+                <Text style={styles.emptyTitle}>No activities recorded yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  {canManage
+                    ? 'Tap the Record button above to log a new activity.'
+                    : 'No activities found for this unit.'}
+                </Text>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
+        />
+      ) : (
+        <ScrollView horizontal style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg }}>
+          <View style={{ flex: 1 }}>
+            <FlatList
+              data={items}
+              renderItem={renderItem}
+              keyExtractor={(a) => a._id}
+              ListHeaderComponent={tableHeader}
+              onRefresh={onRefresh}
+              refreshing={refreshing}
+              contentContainerStyle={styles.tableWrap}
+              ListEmptyComponent={
+                !loading ? (
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <Text style={{ color: Colors.textMuted }}>
+                      No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} activities recorded yet.
+                    </Text>
+                  </View>
+                ) : null
+              }
+              ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
+            />
+          </View>
+        </ScrollView>
+      )}
 
       {/* Record Activity Modal */}
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
@@ -982,15 +1150,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   pageTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   pageSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   iconBtn: {
     backgroundColor: Colors.surfaceAlt,
     paddingHorizontal: 10,
@@ -1192,5 +1362,202 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.text,
+  },
+
+  // Responsive Cards Layout for Mobile
+  mobileListContainer: {
+    padding: Spacing.md,
+    paddingBottom: 40,
+  },
+  activityCard: {
+    marginBottom: Spacing.md,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cardBadgesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  cardBadgesLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  cardActivityTitle: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 4,
+    lineHeight: 22,
+  },
+  cardUnitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 8,
+  },
+  cardUnitText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    fontWeight: '500',
+    flex: 1,
+  },
+  cardInfoGrid: {
+    flexDirection: 'column',
+    gap: 6,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    marginBottom: 8,
+  },
+  cardInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cardInfoText: {
+    fontSize: FontSize.xs,
+    color: Colors.text,
+    fontWeight: '500',
+    flex: 1,
+  },
+  cardDescText: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  metricsPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  metricBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  metricBadgeVal: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  metricBadgeLbl: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  cardBottomBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  cardPhotoTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  cardPhotoTagText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  cardNoPhotoTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  cardNoPhotoText: {
+    fontSize: FontSize.xs,
+    color: Colors.textLight,
+  },
+  cardButtonCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  cardActionBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cardActionBtnSecondaryText: {
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  cardActionBtnComplete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#16a34a',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+  },
+  cardActionBtnCompleteText: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  cardActionBtnCancel: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: '#fee2e2',
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  emptyWrap: {
+    padding: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: FontSize.base,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    maxWidth: 280,
   },
 });
