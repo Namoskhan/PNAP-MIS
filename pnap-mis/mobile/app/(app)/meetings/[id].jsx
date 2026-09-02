@@ -54,6 +54,7 @@ export default function MeetingDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const toast = useToast();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
 
