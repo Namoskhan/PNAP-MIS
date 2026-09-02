@@ -54,15 +54,15 @@ export default function MeetingDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const [meeting, setMeeting] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const isSuper = isSuperAdmin(user);
   const isCentralOrCongress = meeting?.unitLevel === 'CENTRAL' || meeting?.body === 'CONGRESS';
   const canManage = canManageMeetings(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
     && !(isSuper && isCentralOrCongress);
-
-  const [meeting, setMeeting] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   // Modals
   const [showFinalize, setShowFinalize] = useState(false);

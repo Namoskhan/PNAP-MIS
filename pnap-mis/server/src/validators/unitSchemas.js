@@ -46,14 +46,23 @@ const meetingCreateSchema = z.object({
   endAt: z.coerce.date(),
   agenda: z.string().max(5000).optional(),
   chairpersonId: objectId.optional(),
-  gpsLat: z.coerce.number().optional(),
-  gpsLng: z.coerce.number().optional(),
+  gpsLat: z.coerce.number().min(-90).max(90).optional(),
+  gpsLng: z.coerce.number().min(-180).max(180).optional(),
+  gps: z.object({
+    lat: z.coerce.number().min(-90).max(90),
+    lng: z.coerce.number().min(-180).max(180),
+  }).optional(),
   // Custom-field bag. Strict shape validation (per the snapshot's
   // resolved fields) happens in dynamicFormService inside the
   // controller; here we just ensure it's a plain object.
   dynamicData: z.record(z.any()).optional(),
 }).refine((d) => d.type || d.typeCode, { message: 'type or typeCode is required', path: ['typeCode'] })
-  .refine((d) => d.endAt > d.startAt, { message: 'endAt must be after startAt', path: ['endAt'] });
+  .refine((d) => d.endAt > d.startAt, { message: 'endAt must be after startAt', path: ['endAt'] })
+  .refine(
+    (d) => (d.gpsLat != null && !isNaN(d.gpsLat) && d.gpsLng != null && !isNaN(d.gpsLng)) ||
+           (d.gps?.lat != null && !isNaN(d.gps.lat) && d.gps?.lng != null && !isNaN(d.gps.lng)),
+    { message: 'Venue GPS coordinates (latitude and longitude) are mandatory for creating meetings', path: ['gpsLat'] }
+  );
 
 const meetingFinalizeSchema = z.object({
   decisions: z.string().max(10000),
@@ -89,8 +98,12 @@ const meetingUpdateSchema = z.object({
   upcomingStrategy: z.string().max(5000).optional(),
   notes: z.string().max(5000).optional(),
   previousMeetingId: objectId.optional(),
-  gpsLat: z.coerce.number().optional(),
-  gpsLng: z.coerce.number().optional(),
+  gpsLat: z.coerce.number().min(-90).max(90).optional(),
+  gpsLng: z.coerce.number().min(-180).max(180).optional(),
+  gps: z.object({
+    lat: z.coerce.number().min(-90).max(90),
+    lng: z.coerce.number().min(-180).max(180),
+  }).optional(),
   dynamicData: z.record(z.any()).optional(),
 });
 

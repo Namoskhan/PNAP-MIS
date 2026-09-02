@@ -291,18 +291,18 @@ export default function MeetingsPage() {
   function captureGps() {
     setGpsHint('');
     if (!navigator.geolocation) {
-      setGpsHint('GPS not supported on this device. Enter coordinates manually or skip — GPS is optional.');
+      setGpsHint('GPS not supported on this browser. Please enter coordinates manually.');
       return;
     }
     setGpsHint('Requesting location…');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setForm((f) => ({ ...f, gpsLat: pos.coords.latitude, gpsLng: pos.coords.longitude }));
-        setGpsHint('Location captured.');
+        setForm((f) => ({ ...f, gpsLat: pos.coords.latitude.toFixed(6), gpsLng: pos.coords.longitude.toFixed(6) }));
+        setGpsHint(`Location captured: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`);
       },
       (e) => {
-        if (e.code === 1) setGpsHint('Location permission denied. GPS is optional.');
-        else setGpsHint(`Could not get location (${e.message}). GPS is optional.`);
+        if (e.code === 1) setGpsHint('Location permission denied. Please allow location access or enter coordinates manually.');
+        else setGpsHint(`Could not get location (${e.message}). Please enter coordinates manually.`);
       },
       { enableHighAccuracy: true, timeout: 8000 },
     );
@@ -326,13 +326,35 @@ export default function MeetingsPage() {
   // Schedule button had done nothing.
   async function create() {
     if (creating) return;
+    if (!form.venue?.trim()) {
+      toast.error('Venue is required.', { title: 'Missing required field' });
+      return;
+    }
+    if (form.gpsLat === '' || form.gpsLat == null || form.gpsLng === '' || form.gpsLng == null) {
+      toast.error('Venue GPS coordinates (latitude and longitude) are mandatory for creating meetings.', { title: 'Missing Venue GPS' });
+      return;
+    }
+    const lat = Number(form.gpsLat);
+    const lng = Number(form.gpsLng);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      toast.error('Please enter valid GPS coordinates (Latitude between -90 and 90, Longitude between -180 and 180).', { title: 'Invalid GPS coordinates' });
+      return;
+    }
     setCreating(true);
     try {
       // Strip empty strings so optional fields don't ship as ''.
       // dynamicData is preserved as-is — server validates it against
       // the type's snapshot resolved fields.
       const { dynamicData, ...rest } = form;
-      const payload = { ...rest, unitLevel: ctx.unitLevel, unitId: ctx.unitId };
+      const payload = {
+        ...rest,
+        venue: form.venue.trim(),
+        gpsLat: lat,
+        gpsLng: lng,
+        gps: { lat, lng },
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
+      };
       if (isCongressView) {
         payload.body = 'CONGRESS';
       } else if (isJirgaView) {
@@ -662,13 +684,29 @@ export default function MeetingsPage() {
               </select>
             </div>
             <div className="field">
-              <label>Venue GPS (optional, enables photo geo-fencing)</label>
+              <label>Venue GPS (Latitude &amp; Longitude) *</label>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input style={{ flex: 1 }} placeholder="lat" value={form.gpsLat} onChange={(e) => setForm({ ...form, gpsLat: e.target.value })} />
-                <input style={{ flex: 1 }} placeholder="lng" value={form.gpsLng} onChange={(e) => setForm({ ...form, gpsLng: e.target.value })} />
+                <input
+                  style={{ flex: 1 }}
+                  placeholder="Latitude (e.g. 34.0151)"
+                  value={form.gpsLat}
+                  onChange={(e) => setForm({ ...form, gpsLat: e.target.value })}
+                  required
+                />
+                <input
+                  style={{ flex: 1 }}
+                  placeholder="Longitude (e.g. 71.5249)"
+                  value={form.gpsLng}
+                  onChange={(e) => setForm({ ...form, gpsLng: e.target.value })}
+                  required
+                />
                 <button type="button" className="btn secondary" onClick={captureGps}>Capture</button>
               </div>
-              {gpsHint && <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>{gpsHint}</div>}
+              {gpsHint ? (
+                <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>{gpsHint}</div>
+              ) : (
+                <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>Mandatory for meeting scheduling and photo geo-fencing.</div>
+              )}
             </div>
             <div className="field full">
               <label>Description</label>

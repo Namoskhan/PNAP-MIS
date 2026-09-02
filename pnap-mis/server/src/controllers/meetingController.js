@@ -143,6 +143,17 @@ exports.create = asyncHandler(async (req, res) => {
   // and confirm the requested body is allowed for this type.
   const { snapshot, typeCode, dynamicData, body } = await resolveEventConfig(data, 'MEETING');
 
+  const rawLat = data.gpsLat ?? data.gps?.lat;
+  const rawLng = data.gpsLng ?? data.gps?.lng;
+  if (rawLat == null || rawLng == null) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Venue GPS coordinates (latitude and longitude) are mandatory for creating meetings');
+  }
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Valid Venue GPS coordinates (latitude -90 to 90, longitude -180 to 180) are required');
+  }
+
   const m = await Meeting.create({
     unitLevel: data.unitLevel,
     unitId: data.unitId,
@@ -162,7 +173,7 @@ exports.create = asyncHandler(async (req, res) => {
     endAt: data.endAt,
     agenda: data.agenda,
     chairpersonId: data.chairpersonId,
-    gps: (data.gpsLat && data.gpsLng) ? { lat: data.gpsLat, lng: data.gpsLng } : undefined,
+    gps: { lat, lng },
     state: 'SCHEDULED',
     createdBy: req.user._id,
   });
@@ -242,8 +253,14 @@ exports.update = asyncHandler(async (req, res) => {
   for (const k of editable) {
     if (req.body[k] !== undefined) m[k] = req.body[k];
   }
-  if (req.body.gpsLat != null && req.body.gpsLng != null) {
-    m.gps = { lat: req.body.gpsLat, lng: req.body.gpsLng };
+  const rawUpLat = req.body.gpsLat ?? req.body.gps?.lat;
+  const rawUpLng = req.body.gpsLng ?? req.body.gps?.lng;
+  if (rawUpLat != null && rawUpLng != null) {
+    const uLat = Number(rawUpLat);
+    const uLng = Number(rawUpLng);
+    if (!isNaN(uLat) && !isNaN(uLng) && uLat >= -90 && uLat <= 90 && uLng >= -180 && uLng <= 180) {
+      m.gps = { lat: uLat, lng: uLng };
+    }
   }
   await m.save();
   ok(res, m);

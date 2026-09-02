@@ -341,6 +341,27 @@ export default function MeetingsScreen() {
       toast.error(msg);
       return;
     }
+    if (!form.venue.trim()) {
+      const msg = 'Venue is required.';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+    if (form.gpsLat === null || form.gpsLat === undefined || form.gpsLat === '' ||
+        form.gpsLng === null || form.gpsLng === undefined || form.gpsLng === '') {
+      const msg = 'Venue GPS (latitude and longitude) is mandatory for creating meetings.';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+    const lat = Number(form.gpsLat);
+    const lng = Number(form.gpsLng);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      const msg = 'Please enter valid GPS coordinates (Latitude between -90 and 90, Longitude between -180 and 180).';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
     setSaving(true);
     try {
       const targetBodyForCreate = isCongressView ? 'CONGRESS'
@@ -354,16 +375,16 @@ export default function MeetingsScreen() {
         typeCode: form.typeCode,
         title: form.title.trim(),
         description: form.description.trim() || undefined,
-        venue: form.venue.trim() || undefined,
+        venue: form.venue.trim(),
         startAt: form.startAt,
         endAt: form.endAt || undefined,
         chairpersonId: form.chairpersonId || undefined,
         agenda: form.agenda.trim() || undefined,
         body: targetBodyForCreate,
+        gpsLat: lat,
+        gpsLng: lng,
+        gps: { lat, lng },
       };
-      if (form.gpsLat && form.gpsLng) {
-        bodyPayload.gps = { lat: Number(form.gpsLat), lng: Number(form.gpsLng) };
-      }
       await api.post('/meetings', bodyPayload);
       toast.success('Meeting scheduled successfully.');
       setShowForm(false);
@@ -695,7 +716,7 @@ export default function MeetingsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Venue</Text>
+                <Text style={styles.fieldLabel}>Venue *</Text>
                 <TextInput
                   style={styles.fieldInput}
                   placeholder="e.g. Central Secretariat / Conference Room"
@@ -729,7 +750,7 @@ export default function MeetingsScreen() {
               {/* Venue GPS */}
               <View style={styles.field}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <Text style={styles.fieldLabel}>Venue GPS (Latitude & Longitude)</Text>
+                  <Text style={styles.fieldLabel}>Venue GPS (Latitude & Longitude) *</Text>
                   <TouchableOpacity onPress={handleGetLocation} style={styles.captureGpsBtn}>
                     <Text style={styles.captureGpsText}>📍 Capture GPS</Text>
                   </TouchableOpacity>
