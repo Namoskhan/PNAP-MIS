@@ -388,7 +388,21 @@ const styles = StyleSheet.create({
 
   modeTabs: { flexDirection: 'row', gap: Spacing.sm, backgroundColor: '#f1f5f9', padding: 4, borderRadius: Radius.sm },
   modeTab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: Radius.sm },
-  modeTabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: {width:0, height:1}, shadowOpacity: 0.1, shadowRadius: 2, elevation: 1 },
+  modeTabActive: {
+    backgroundColor: '#fff',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 1,
+      },
+    }),
+  },
   modeTabText: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '600' },
   modeTabTextActive: { color: Colors.primary },
 
@@ -415,7 +429,31 @@ const styles = StyleSheet.create({
   colorInput: { flex: 1, paddingHorizontal: 8, paddingVertical: 6, fontSize: FontSize.sm, fontFamily: 'monospace', color: Colors.text },
   tokenError: { fontSize: FontSize.xs, color: Colors.error },
 
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: Spacing.md, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: Colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: {width:0, height:-2}, shadowOpacity: 0.05, shadowRadius: 8, elevation: 10 },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: Spacing.md,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.05)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 10,
+      },
+    }),
+  },
   dirtyText: { fontSize: FontSize.sm, color: Colors.textMuted, fontWeight: '500' },
   saveBtn: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.lg, paddingVertical: 10, borderRadius: Radius.sm },
   saveBtnText: { color: '#fff', fontSize: FontSize.sm, fontWeight: '600' },

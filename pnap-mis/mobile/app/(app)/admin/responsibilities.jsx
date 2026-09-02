@@ -804,10 +804,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.lg,
     padding: Spacing.lg,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+      },
+    }),
   },
   promptTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
   promptSubtitle: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: 2 },

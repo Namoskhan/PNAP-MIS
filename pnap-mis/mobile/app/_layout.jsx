@@ -4,10 +4,32 @@ import { AuthProvider } from '../src/context/AuthContext';
 import { UnitProvider } from '../src/context/UnitContext';
 import { ToastProvider } from '../src/components/Toast';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, LogBox } from 'react-native';
 import { useEffect, useState } from 'react';
 import { api } from '../src/api/client';
 import { Colors } from '../src/constants/colors';
+
+// Suppress non-actionable dev/library warnings (React Navigation web pointerEvents, reanimated reduced motion, etc.)
+LogBox.ignoreLogs([
+  'props.pointerEvents is deprecated',
+  '"shadow*" style props are deprecated',
+  '[Reanimated] Reduced motion',
+]);
+
+if (Platform.OS === 'web' && typeof console !== 'undefined') {
+  const origWarn = console.warn;
+  console.warn = (...args) => {
+    const msg = typeof args[0] === 'string' ? args[0] : '';
+    if (
+      msg.includes('props.pointerEvents is deprecated') ||
+      msg.includes('"shadow*" style props are deprecated') ||
+      msg.includes('[Reanimated] Reduced motion')
+    ) {
+      return;
+    }
+    origWarn.apply(console, args);
+  };
+}
 
 // Fetch and mutate Colors dynamically at startup
 function useGlobalBranding() {

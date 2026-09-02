@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, Modal } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, Modal, Platform } from 'react-native';
 import { Colors } from '../constants/colors';
 
 export default function LoadingOverlay({ visible = false, message = 'Loading...' }) {
@@ -31,11 +31,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+      },
+    }),
     minWidth: 160,
   },
   text: {

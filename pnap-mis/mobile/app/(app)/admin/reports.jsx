@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -869,7 +870,20 @@ const styles = StyleSheet.create({
   label: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, marginBottom: 6 },
   scopeTabs: { backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md, padding: 4, gap: 4 },
   scopeTab: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: Radius.sm, alignItems: 'center' },
-  scopeTabActive: { backgroundColor: Colors.surface, elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 },
+  scopeTabActive: {
+    backgroundColor: Colors.surface,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+      },
+      default: {
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+    }),
+  },
   scopeTabText: { fontSize: FontSize.xs, fontWeight: '600', color: Colors.textMuted, textAlign: 'center' },
   scopeTabTextActive: { color: Colors.text },
 

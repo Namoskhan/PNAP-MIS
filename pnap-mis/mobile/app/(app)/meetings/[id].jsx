@@ -955,8 +955,25 @@ const styles = StyleSheet.create({
 
   // Dialog Overlay
   overlayBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: Spacing.lg },
-  dialogCard: { backgroundColor: Colors.surface, width: '100%', maxWidth: 420, borderRadius: Radius.lg, padding: Spacing.lg, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 10 },
-  dialogTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text, marginBottom: 4 },
+  dialogCard: {
+    backgroundColor: Colors.surface,
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 10,
+      },
+    }),
+  },
   dialogSubtitle: { fontSize: FontSize.sm, color: Colors.textMuted },
   dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 16 },
   dialogBtnSecondary: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: Radius.sm, backgroundColor: Colors.surfaceAlt },

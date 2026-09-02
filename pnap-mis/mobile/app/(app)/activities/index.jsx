@@ -1009,11 +1009,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 3px rgba(30, 64, 175, 0.18)',
+      },
+      default: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius: 3,
+        elevation: 2,
+      },
+    }),
   },
   primaryBtnText: { fontSize: FontSize.xs, fontWeight: '700', color: '#fff' },
   actionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },

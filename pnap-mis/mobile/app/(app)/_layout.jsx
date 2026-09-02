@@ -43,11 +43,18 @@ export default function AppLayout() {
           paddingTop: 4,
           paddingBottom: Platform.OS === 'ios' ? 24 : 6,
           height: Platform.OS === 'ios' ? 84 : 64,
-          elevation: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 4,
+          ...Platform.select({
+            web: {
+              boxShadow: '0 -2px 4px rgba(0, 0, 0, 0.05)',
+            },
+            default: {
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+            },
+          }),
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -150,7 +157,6 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/settings/dashboard" options={{ href: null, headerTitle: 'Dashboard Settings', headerShown: true }} />
       <Tabs.Screen name="admin/settings/history" options={{ href: null, headerTitle: 'Settings History', headerShown: true }} />
       <Tabs.Screen name="admin/settings/identity" options={{ href: null, headerTitle: 'System Identity', headerShown: true }} />
-      <Tabs.Screen name="admin/settings/index" options={{ href: null, headerTitle: 'System Settings', headerShown: true }} />
       <Tabs.Screen name="admin/settings/login" options={{ href: null, headerTitle: 'Login Settings', headerShown: true }} />
       <Tabs.Screen name="admin/settings/logos" options={{ href: null, headerTitle: 'Logo Manager', headerShown: true }} />
       <Tabs.Screen name="admin/settings/reports" options={{ href: null, headerTitle: 'Report Settings', headerShown: true }} />

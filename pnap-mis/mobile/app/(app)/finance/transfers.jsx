@@ -1229,11 +1229,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 3px rgba(30, 64, 175, 0.18)',
+      },
+      default: {
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius: 3,
+        elevation: 2,
+      },
+    }),
   },
   primaryBtnText: { fontSize: FontSize.xs, fontWeight: '700', color: '#fff' },
   btnSecondary: {
@@ -1306,11 +1313,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 10px 20px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 10,
+      },
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1352,7 +1366,25 @@ const styles = StyleSheet.create({
 
   // Generic Dialog Modal Styles
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 16 },
-  confirmModal: { width: '100%', maxWidth: 520, backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 6 },
+  confirmModal: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    padding: 20,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 6px 10px rgba(0, 0, 0, 0.2)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 6,
+      },
+    }),
+  },
   confirmTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   confirmSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2, marginBottom: 14 },
   alertError: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, padding: 10, marginBottom: 14 },

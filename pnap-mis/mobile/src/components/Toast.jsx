@@ -63,7 +63,10 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      <View style={styles.container} pointerEvents="box-none">
+      <View
+        style={[styles.container, Platform.OS === 'web' ? { pointerEvents: 'box-none' } : null]}
+        {...(Platform.OS !== 'web' ? { pointerEvents: 'box-none' } : {})}
+      >
         {toasts.map((t) => (
           <ToastItem key={t.id} message={t.message} type={t.type} onDismiss={() => dismiss(t.id)} />
         ))}

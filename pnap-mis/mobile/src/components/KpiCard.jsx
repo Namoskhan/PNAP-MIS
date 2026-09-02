@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Platform } from 'react-native';
 import { Colors, FontSize, Radius, Spacing } from '../constants/colors';
 
 /**
@@ -34,11 +34,18 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderTopWidth: 3,
     padding: Spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 1px 4px rgba(0, 0, 0, 0.06)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
     borderWidth: 1,
     borderColor: Colors.borderLight || '#f1f5f9',
   },
