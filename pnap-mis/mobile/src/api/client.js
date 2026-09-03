@@ -4,6 +4,11 @@ import { Platform } from 'react-native';
 import { Storage } from '../utils/storage';
 
 export function resolveApiBaseUrl() {
+  // If explicitly configured via environment (or EAS build profile), use it first
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.location?.hostname) {
       return `http://${window.location.hostname}:5000/api`;
@@ -22,10 +27,6 @@ export function resolveApiBaseUrl() {
     if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
       return `http://${ip}:5000/api`;
     }
-  }
-
-  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
-    return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
 
   if (Platform.OS === 'android') {

@@ -40,6 +40,8 @@
     "android": "expo start --android -c",
     "ios": "expo start --ios -c",
     "web": "expo start --web -c",
+    "build:apk": "eas build -p android --profile preview",
+    "build:aab": "eas build -p android --profile production",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios"
   },
