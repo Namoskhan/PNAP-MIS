@@ -1,0 +1,104 @@
+name: CI / CD - Build & Deploy to Render
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Code Validation & Web Frontend Build ───────────────────────
+  validate-and-build:
+    name: Validate & Build Web Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pnap-mis
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: pnap-mis/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend SPA (Vite)
+        run: npm run build
+
+      - name: Verify server entrypoints syntax
+        run: |
+          node --check server/src/index.js
+          node --check server/src/app.js
+
+  # ── 2. Docker Container Build Verification ────────────────────────
+  docker-verify:
+    name: Verify Docker Container Build
+    runs-on: ubuntu-latest
+    needs: validate-and-build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (from root)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: pnap-mis:latest
+          load: true
+
+      - name: Test container health
+        run: |
+          docker run --rm pnap-mis:latest node -e "console.log('Container runtime verified successfully');"
+
+  # ── 3. Deploy to Render ───────────────────────────────────────────
+  deploy-render:
+    name: Trigger Render Deployment
+    runs-on: ubuntu-latest
+    needs: [validate-and-build, docker-verify]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Deploy to Render via Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            echo "Triggering Render Deploy Hook..."
+            RESPONSE=$(curl -fsS -X POST "$RENDER_DEPLOY_HOOK")
+            echo "Render response: $RESPONSE"
+            echo "Deployment triggered successfully on Render!"
+          else
+            echo "------------------------------------------------------------------"
+            echo "NOTICE: RENDER_DEPLOY_HOOK_URL secret is not set in this repository."
+            echo "If your Render Web Service has 'Auto-Deploy: Yes' enabled, Render"
+            echo "will build and deploy automatically from your latest Git push."
+            echo ""
+            echo "To trigger deployments from this action:"
+            echo "1. In Render, go to your Web Service -> Settings -> Deploy Hook."
+            echo "2. Copy the Deploy Hook URL."
+            echo "3. In GitHub, go to Settings -> Secrets and variables -> Actions."
+            echo "4. Add a secret named RENDER_DEPLOY_HOOK_URL with the URL value."
+            echo "------------------------------------------------------------------"
+          fi

@@ -1,0 +1,45 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies
+node_modules
+**/node_modules
+mobile
+pnap-mis/mobile
+.pnpm-store
+.yarn
+
+# Local environment & secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Local build artifacts
+dist
+**/dist
+dist-ssr
+build
+.vite
+
+# Local uploads & exports
+uploads
+exports
+pnap-mis/uploads
+pnap-mis/exports
+pnap-mis/server/uploads/*
+!pnap-mis/server/uploads/.gitkeep
+pnap-mis/server/exports/*
+!pnap-mis/server/exports/.gitkeep
+
+# Logs & debug files
+logs
+*.log
+
+# Editor & OS files
+.vscode
+.idea
+.claude
+.DS_Store
+Thumbs.db
