@@ -5,6 +5,7 @@
 # Dependencies (will be freshly installed in container)
 node_modules
 **/node_modules
+mobile
 .pnpm-store
 .yarn
 

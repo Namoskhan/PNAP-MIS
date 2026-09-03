@@ -55,6 +55,11 @@ app.use('/api', limiter);
 
 app.use('/uploads', express.static(path.resolve(process.cwd(), env.UPLOAD_DIR)));
 
+// Direct health check endpoint for Render, Docker, and uptime monitoring
+app.get(['/health', '/api/health'], (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'pnap-mis', timestamp: new Date().toISOString() });
+});
+
 // API routes
 app.use('/api', routes);
 

@@ -21,7 +21,6 @@ FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=5000
 
 # Copy workspace package manifests
 COPY package.json package-lock.json ./
@@ -38,14 +37,18 @@ COPY server ./server
 COPY --from=web-builder /app/web/dist ./web/dist
 
 # Create writable upload and export directories and grant ownership to node user
-RUN mkdir -p /app/server/uploads /app/server/exports && \
-    chown -R node:node /app/server/uploads /app/server/exports
+RUN mkdir -p /app/uploads /app/server/uploads /app/server/exports && \
+    chown -R node:node /app/uploads /app/server/uploads /app/server/exports
 
 # Switch to non-root node user for container security
 USER node
 
-# Railway assigns PORT dynamically at runtime
-EXPOSE 5000
+# Render dynamically assigns PORT at runtime (defaults to 10000 on Render, 5000 locally)
+EXPOSE 5000 10000
+
+# Docker / Platform Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD node -e "const http = require('http'); const port = process.env.PORT || 5000; http.get('http://127.0.0.1:' + port + '/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
 
 # Start Express server (serves both API and SPA frontend)
 CMD ["node", "server/src/index.js"]
