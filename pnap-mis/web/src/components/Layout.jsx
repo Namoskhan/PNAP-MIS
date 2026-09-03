@@ -22,7 +22,7 @@ import { useBranding } from '../context/BrandingContext';
 import {
   UsersIcon, FolderIcon, BuildingIcon, GearIcon,
   UserIcon, PowerIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon,
-  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon,
+  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon, XIcon,
 } from './icons';
 
 const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
@@ -195,6 +195,30 @@ export default function Layout() {
     });
   }
 
+  // Mobile navigation drawer state (< 992px)
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Automatically close mobile drawer whenever the user navigates
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname, search]);
+
+  // Lock body scroll and listen for Escape key when mobile drawer is open
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    function onKeyDown(e) {
+      if (e.key === 'Escape') setMobileOpen(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileOpen]);
+
   // Persona detection — single source of truth in utils/permissions.js.
   // Each "isFoo" mirrors the precise sidebar branch ordering used
   // below (Super → National → Area Admin → Operator (SM/1stSec) →
@@ -225,20 +249,34 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-        <button
-          className={`sidebar-toggle ${collapsed ? 'collapsed' : 'open'}`}
-          onClick={toggleSidebar}
-          title={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
-          aria-label={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <MenuIcon /> : <ChevronLeftIcon />}
-        </button>
-        {/* Sidebar brand. Reads from BrandingContext so admin
-            edits to identity.shortName show up here on next focus
-            without a hard reload. Falls back to 'PKNAP' if
-            branding hasn't loaded yet. */}
-        <h1>{branding.identity?.shortName || 'PKNAP'}</h1>
+      {/* Mobile drawer backdrop */}
+      <div
+        className={`sidebar-backdrop ${mobileOpen ? 'visible' : ''}`}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
+      <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-top-row">
+          <h1>{branding.identity?.shortName || 'PKNAP'}</h1>
+          <button
+            type="button"
+            className={`sidebar-toggle ${collapsed ? 'collapsed' : 'open'}`}
+            onClick={toggleSidebar}
+            title={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Open sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <MenuIcon /> : <ChevronLeftIcon />}
+          </button>
+          <button
+            type="button"
+            className="sidebar-mobile-close"
+            onClick={() => setMobileOpen(false)}
+            title="Close navigation"
+            aria-label="Close navigation"
+          >
+            <XIcon size={18} />
+          </button>
+        </div>
 
         {isSuperAdmin && (
           <>
@@ -566,6 +604,19 @@ export default function Layout() {
       <div className="main-col">
         {user && (
           <header className="topbar">
+            <button
+              type="button"
+              className="topbar-mobile-toggle"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation menu"
+              title="Open menu"
+              aria-expanded={mobileOpen}
+            >
+              <MenuIcon size={20} />
+            </button>
+            <span className="topbar-mobile-brand">
+              {branding.identity?.shortName || 'PKNAP'}
+            </span>
             <div className="topbar-spacer" aria-hidden="true" />
             {(() => {
               if (isSuperAdmin) return null;
