@@ -8,6 +8,7 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "seed": "node src/utils/seed.js",
+    "seed:all": "node scripts/seed-all.js --yes",
     "seed:demo": "node scripts/seed-demo.js",
     "export:demo": "node scripts/generate-demo-excel.js",
     "import:credentials": "node scripts/import-excel-credentials.js",

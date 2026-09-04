@@ -146,12 +146,16 @@ exports.login = asyncHandler(async (req, res) => {
 // fails identically to a wrong password, so this cannot be used to
 // discover which usernames exist.
 async function loginByBootstrapUsername(username, password, res) {
-  const user = await User.findOne({ username, isBootstrap: true });
+  const user = await User.findOne({ username });
   if (user && user.isActive && await user.verifyPassword(password)) {
     user.lastLoginAt = new Date();
     await user.save();
     return ok(res, { token: signToken(user), user: await shapeUser(user) });
   }
+
+  const member = await Member.findOne({ username }).select('+passwordHash');
+  if (member) return _finishMemberLogin(member, password, res);
+
   throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
 }
 

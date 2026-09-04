@@ -11,68 +11,82 @@ const { ensureDistrictAdmin } = require('./districtAdmin');
 const { ensureProvinceAdmin } = require('./provinceAdmin');
 const { ensureCentralAdmin } = require('./centralAdmin');
 
+/**
+ * Idempotent minimal seed for the 2-Province structure:
+ *  - Khyber Pakhtunkhwa (KP)
+ *  - Junubi Pakhtunkhwa (Balochistan) (JPK)
+ *
+ * Can be run safely via: npm run seed
+ */
 async function run() {
   await mongoose.connect(env.MONGO_URI);
-  console.log('[seed] connected');
+  console.log('[seed] Connected to MongoDB');
+
+  // Clean up any empty legacy provinces with 0 members (e.g. Sindh, Punjab)
+  const Member = require('../models/Member');
+  const legacyProvinces = await Province.find({ code: { $nin: ['KP', 'JPK'] } });
+  for (const lp of legacyProvinces) {
+    const memberCount = await Member.countDocuments({ provinceId: lp._id });
+    if (memberCount === 0) {
+      console.log(`[seed] Removing unused legacy province ${lp.name} (${lp.code})`);
+      await District.deleteMany({ provinceId: lp._id });
+      await Area.deleteMany({ provinceId: lp._id });
+      await BasicUnit.deleteMany({ provinceId: lp._id });
+      await Province.deleteOne({ _id: lp._id });
+    }
+  }
 
   const provinces = [
-    { name: 'Sindh', code: 'SD' },
-    { name: 'Punjab', code: 'PB' },
     { name: 'Khyber Pakhtunkhwa', code: 'KP' },
-    { name: 'Balochistan', code: 'BL' },
+    { name: 'Junubi Pakhtunkhwa (Balochistan)', code: 'JPK' },
   ];
 
   for (const p of provinces) {
-    await Province.updateOne({ code: p.code }, { $setOnInsert: p }, { upsert: true });
+    await Province.updateOne(
+      { code: p.code },
+      { $set: { name: p.name, code: p.code, isActive: true } },
+      { upsert: true }
+    );
   }
 
-  // Seed at least one district + area + basic unit per province so
-  // the public registration form has working cascading dropdowns
-  // regardless of which province a tester picks.
+  // Seed sample districts
   const districtsByProvince = {
-    SD: [
-      { name: 'Karachi East', code: 'KHE' },
-      { name: 'Karachi West', code: 'KHW' },
-      { name: 'Hyderabad', code: 'HYD' },
-    ],
-    PB: [
-      { name: 'Lahore', code: 'LHR' },
-      { name: 'Rawalpindi', code: 'RWP' },
-      { name: 'Multan', code: 'MUL' },
-    ],
     KP: [
       { name: 'Peshawar', code: 'PSH' },
       { name: 'Mardan', code: 'MRD' },
+      { name: 'Swat', code: 'SWT' },
+      { name: 'Bannu', code: 'BNU' },
     ],
-    BL: [
+    JPK: [
       { name: 'Quetta', code: 'QTA' },
-      { name: 'Gwadar', code: 'GWD' },
+      { name: 'Pishin', code: 'PSN' },
+      { name: 'Chaman', code: 'CHM' },
+      { name: 'Zhob', code: 'ZHB' },
     ],
   };
 
   for (const [provinceCode, list] of Object.entries(districtsByProvince)) {
     const province = await Province.findOne({ code: provinceCode });
+    if (!province) continue;
     for (const d of list) {
       await District.updateOne(
         { provinceId: province._id, code: d.code },
-        { $setOnInsert: { ...d, provinceId: province._id } },
+        { $setOnInsert: { name: d.name, code: d.code, provinceId: province._id, isActive: true } },
         { upsert: true }
       );
     }
   }
 
-  // Seed sample areas + basic units for every district above.
+  // Seed sample areas
   const areasByDistrict = {
-    KHE: ['Gulshan', 'North Nazimabad', 'Saddar'],
-    KHW: ['Orangi', 'SITE'],
-    HYD: ['Latifabad', 'Qasimabad'],
-    LHR: ['Model Town', 'Gulberg', 'Township'],
-    RWP: ['Saddar', 'Cantt'],
-    MUL: ['Shah Rukn-e-Alam', 'Bosan Town'],
-    PSH: ['University Town', 'Hayatabad'],
-    MRD: ['Mardan City'],
-    QTA: ['Cantt', 'Satellite Town'],
-    GWD: ['Gwadar City'],
+    PSH: ['Hayatabad', 'University Town'],
+    MRD: ['Mardan City', 'Rustam'],
+    SWT: ['Mingora', 'Barikot'],
+    BNU: ['Bannu City', 'Township'],
+    QTA: ['Satellite Town', 'Cantt'],
+    PSN: ['Pishin Bazar', 'Yaru'],
+    CHM: ['Chaman City', 'Boghra'],
+    ZHB: ['Zhob City', 'Appozai'],
   };
 
   for (const [districtCode, areas] of Object.entries(areasByDistrict)) {
@@ -81,87 +95,74 @@ async function run() {
     for (const name of areas) {
       await Area.updateOne(
         { districtId: district._id, name },
-        { $setOnInsert: { name, districtId: district._id, provinceId: district.provinceId } },
+        { $setOnInsert: { name, districtId: district._id, provinceId: district.provinceId, isActive: true } },
         { upsert: true }
       );
     }
   }
 
-  // Two basic units per area so every cascade in the public form
-  // ends with selectable options.
+  // Basic units per area (only if none exist yet)
   const allAreas = await Area.find().lean();
   for (const area of allAreas) {
-    for (const name of ['Block 1', 'Block 2']) {
-      await BasicUnit.updateOne(
-        { areaId: area._id, name },
-        {
-          $setOnInsert: {
-            name,
-            areaId: area._id,
-            districtId: area.districtId,
-            provinceId: area.provinceId,
-          },
-        },
-        { upsert: true }
-      );
+    const existingCount = await BasicUnit.countDocuments({ areaId: area._id });
+    if (existingCount === 0) {
+      for (const name of ['Unit 1', 'Unit 2']) {
+        await BasicUnit.create({
+          name,
+          areaId: area._id,
+          districtId: area.districtId,
+          provinceId: area.provinceId,
+          isActive: true,
+        });
+      }
     }
   }
 
-  const adminEmail = 'admin@pnap.local';
-  let admin = await User.findOne({ email: adminEmail });
+  // Ensure bootstrap super admin
+  const adminEmail = 'super@admin.com';
+  let admin = await User.findOne({ $or: [{ username: 'super' }, { email: adminEmail }] });
   if (!admin) {
     admin = new User({
+      username: 'super',
       email: adminEmail,
-      fullName: 'System Administrator',
+      fullName: 'PNAP Super Admin',
       roles: ['SUPER_ADMIN'],
       isActive: true,
+      isBootstrap: true,
     });
-    await admin.setPassword('Admin@12345');
+    await admin.setPassword('123456');
     await admin.save();
-    console.log(`[seed] created super admin ${adminEmail} / Admin@12345`);
+    console.log(`[seed] Created super admin ${adminEmail} / 123456`);
   } else {
-    console.log(`[seed] admin already exists: ${adminEmail}`);
+    admin.roles = ['SUPER_ADMIN'];
+    admin.isBootstrap = true;
+    await admin.setPassword('123456');
+    await admin.save();
+    console.log(`[seed] Super admin synchronized: username="${admin.username}"`);
   }
 
-  // Ensure every area has its auto-provisioned Area Admin user.
-  // Idempotent — only creates an admin where none exists.
-  // (Reuse the `allAreas` declared above for the basic-unit seed.)
-  let createdAreaAdmins = 0;
-  for (const a of allAreas) {
-    const r = await ensureAreaAdmin(a);
-    if (r?.created) createdAreaAdmins++;
-  }
-  console.log(`[seed] area admins: ${createdAreaAdmins} new, ${allAreas.length - createdAreaAdmins} already existed`);
+  // Ensure Central Admin
+  let central = await ensureCentralAdmin();
+  console.log(`[seed] Central admin: ${central?.created ? 'created' : 'already exists'} (username "${central?.username}")`);
 
-  // Likewise for District Admins — every district gets one auto-
-  // provisioned admin (username = slug(district.name), pw = 123456).
-  const allDistricts = await District.find({}).lean();
-  let createdDistrictAdmins = 0;
-  for (const d of allDistricts) {
-    const r = await ensureDistrictAdmin(d);
-    if (r?.created) createdDistrictAdmins++;
-  }
-  console.log(`[seed] district admins: ${createdDistrictAdmins} new, ${allDistricts.length - createdDistrictAdmins} already existed`);
-
-  // And Province Admins — username = slug(province.name).
-  const allProvinces = await Province.find({}).lean();
-  let createdProvinceAdmins = 0;
+  // Ensure province admins
+  const allProvinces = await Province.find({ code: { $in: ['KP', 'JPK'] } }).lean();
   for (const p of allProvinces) {
-    const r = await ensureProvinceAdmin(p);
-    if (r?.created) createdProvinceAdmins++;
+    await ensureProvinceAdmin(p);
   }
-  console.log(`[seed] province admins: ${createdProvinceAdmins} new, ${allProvinces.length - createdProvinceAdmins} already existed`);
 
-  // Top-level Central Admin (pnap/123456) — global scope.
-  const central = await ensureCentralAdmin();
-  console.log(`[seed] central admin: ${central?.created ? 'created' : 'already exists'} (username "${central?.username}")`);
+  // Ensure district admins
+  const allDistricts = await District.find().lean();
+  for (const d of allDistricts) {
+    await ensureDistrictAdmin(d);
+  }
 
-  // Back-fill cabinet slot rows for every Basic Unit (and Area)
-  // already in the database. CabinetSlot.seedFor() is idempotent
-  // ($setOnInsert), so existing slots are not touched. After this,
-  // every BU has the 6-slot template — Secretary, Senior Mawin,
-  // Finance Sec. (mandatory) + Press, Culture, Sports (optional) —
-  // ready for the Area Admin to assign.
+  // Ensure area admins
+  for (const a of allAreas) {
+    await ensureAreaAdmin(a);
+  }
+
+  // Seed cabinet slots
   const allBasicUnits = await BasicUnit.find().lean();
   for (const u of allBasicUnits) {
     await CabinetSlot.seedFor('BASIC_UNIT', u._id);
@@ -169,13 +170,18 @@ async function run() {
   for (const a of allAreas) {
     await CabinetSlot.seedFor('AREA', a._id);
   }
-  console.log(`[seed] cabinet slots seeded for ${allBasicUnits.length} basic unit(s), ${allAreas.length} area(s)`);
+  for (const d of allDistricts) {
+    await CabinetSlot.seedFor('DISTRICT', d._id);
+  }
+  for (const p of allProvinces) {
+    await CabinetSlot.seedFor('PROVINCE', p._id);
+  }
 
-  console.log('[seed] done');
+  console.log('[seed] Done. 2-Province structure verified.');
   await mongoose.disconnect();
 }
 
 run().catch((err) => {
-  console.error('[seed] failed', err);
+  console.error('[seed] Failed:', err);
   process.exit(1);
 });

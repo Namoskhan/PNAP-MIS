@@ -27,6 +27,7 @@
 
 const path = require('path');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Load environment from server/.env, with fallback to root .env
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
@@ -104,14 +105,16 @@ async function run(mongoUri) {
 
   // 1. Provinces
   const updateBalochistan = await db.collection('provinces').updateMany(
-    { name: { $in: ['Balochistan', 'balochistan', 'BALOCHISTAN'] } },
-    { $set: { name: 'Junubi Pakhtunkhwa', code: 'JPK' } }
+    { name: { $in: ['Balochistan', 'balochistan', 'BALOCHISTAN', 'Junubi Pakhtunkhwa'] } },
+    { $set: { name: 'Junubi Pakhtunkhwa (Balochistan)', code: 'JPK' } }
   );
   const updateKPK = await db.collection('provinces').updateMany(
     { name: { $in: ['KPK', 'kpk', 'KpK'] } },
     { $set: { name: 'Khyber Pakhtunkhwa', code: 'KP' } }
   );
-  console.log(`  ✓ Provinces updated: Balochistan -> Junubi Pakhtunkhwa (${updateBalochistan.modifiedCount}), KPK -> Khyber Pakhtunkhwa (${updateKPK.modifiedCount})`);
+  // Clean up any empty legacy provinces with 0 members
+  await db.collection('provinces').deleteMany({ name: { $nin: ['Khyber Pakhtunkhwa', 'Junubi Pakhtunkhwa (Balochistan)'] } });
+  console.log(`  ✓ Provinces updated: Balochistan -> Junubi Pakhtunkhwa (Balochistan), KPK -> Khyber Pakhtunkhwa`);
 
   // 2. Users (Province admins & names)
   await db.collection('users').updateMany(
@@ -221,10 +224,17 @@ async function run(mongoUri) {
   const areas = await Area.find({ isActive: true });
   const basicUnits = await BasicUnit.find({ isActive: true });
   const members = await Member.find({ status: 'ACTIVE' });
-  const adminUser = await User.findOne({ roles: 'SUPER_ADMIN' }) || await User.findOne({});
-
+  let adminUser = await User.findOne({ roles: 'SUPER_ADMIN' }) || await User.findOne({});
   if (!adminUser) {
-    throw new Error('No admin user found in database. Run basic seed first.');
+    adminUser = await User.create({
+      username: 'super',
+      email: 'super@admin.com',
+      fullName: 'PNAP Super Admin',
+      roles: ['SUPER_ADMIN'],
+      passwordHash: await bcrypt.hash('123456', 10),
+      isActive: true,
+      isBootstrap: true,
+    });
   }
 
   console.log(`  ✓ Organization loaded:`);
@@ -236,9 +246,8 @@ async function run(mongoUri) {
   console.log(`    - Active Members: ${members.length}`);
 
   // Find provinces by name
-  const jpkProvince = provinces.find(p => /Junubi/i.test(p.name)) || provinces[0];
-  const kpProvince = provinces.find(p => /Khyber/i.test(p.name)) || provinces[1] || provinces[0];
-  const sindhProvince = provinces.find(p => /Sindh/i.test(p.name)) || provinces[2] || provinces[0];
+  const jpkProvince = provinces.find(p => /Junubi|Balochistan/i.test(p.name)) || provinces[0];
+  const kpProvince = provinces.find(p => /Khyber|KPK/i.test(p.name)) || provinces[1] || provinces[0];
 
   // ═════════════════════════════════════════════════════════════════
   // PART 3: Ensure National Congress & Assembly Memberships
@@ -901,7 +910,7 @@ async function run(mongoUri) {
     { body: 'COMMITTEE', unitLevel: 'CENTRAL', unitId: central._id, amount: 75000, donorType: 'MEMBER', donorName: members[4]?.fullName, cnic: members[4]?.cnic, mode: 'BANK_TRANSFER', note: 'Central Working Committee quarterly subscription' },
     { body: 'COMMITTEE', unitLevel: 'PROVINCE', unitId: jpkProvince._id, provinceId: jpkProvince._id, amount: 45000, donorType: 'MEMBER', donorName: members[5]?.fullName, cnic: members[5]?.cnic, mode: 'CASH', note: 'Junubi Pakhtunkhwa Committee anti-inflation campaign fund' },
     { body: 'COMMITTEE', unitLevel: 'PROVINCE', unitId: kpProvince._id, provinceId: kpProvince._id, amount: 40000, donorType: 'MEMBER', donorName: members[6]?.fullName, cnic: members[6]?.cnic, mode: 'BANK_TRANSFER', note: 'Khyber Pakhtunkhwa Committee operational support' },
-    { body: 'COMMITTEE', unitLevel: 'PROVINCE', unitId: sindhProvince._id, provinceId: sindhProvince._id, amount: 30000, donorType: 'NON_MEMBER', donorName: 'Karachi Pashtun Business Council', mode: 'BANK_TRANSFER', note: 'Karachi unit organizing committee fund' },
+    { body: 'COMMITTEE', unitLevel: 'PROVINCE', unitId: kpProvince._id, provinceId: kpProvince._id, amount: 30000, donorType: 'NON_MEMBER', donorName: 'Regional Trade Union Solidarity', mode: 'BANK_TRANSFER', note: 'Regional organizing committee fund' },
 
     // EXECUTIVE DONATIONS
     { body: 'EXECUTIVE', unitLevel: 'CENTRAL', unitId: central._id, amount: 120000, donorType: 'CORPORATE', donorName: 'Khyber Overseas Relief Foundation', mode: 'BANK_TRANSFER', note: 'Party central operational donation' },

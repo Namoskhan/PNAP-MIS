@@ -12,11 +12,11 @@ async function seedProvinceAdmins() {
 
   const accounts = [
     {
-      provinceName: 'Junubi Pakhtunkhwa',
-      legacyNames: ['Junubi Pakhtunkhwa', 'Balochistan'],
-      email: 'balochistan@admin.com',
+      provinceName: 'Junubi Pakhtunkhwa (Balochistan)',
+      legacyNames: ['Junubi Pakhtunkhwa (Balochistan)', 'Junubi Pakhtunkhwa', 'Balochistan'],
+      email: 'jpk@admin.com',
       username: 'balochistan',
-      fullName: 'Junubi Pakhtunkhwa Provincial Admin',
+      fullName: 'Junubi Pakhtunkhwa (Balochistan) Provincial Admin',
       password: '123456',
     },
     {

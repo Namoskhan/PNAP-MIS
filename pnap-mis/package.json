@@ -16,6 +16,7 @@
     "build:mobile:aab": "npm --prefix mobile run build:aab",
     "dev": "npm-run-all --parallel dev:server dev:web",
     "seed": "npm run seed --workspace=server",
+    "seed:all": "npm run seed:all --workspace=server",
     "seed:demo": "npm run seed:demo --workspace=server",
     "export:demo": "npm run export:demo --workspace=server",
     "import:credentials": "npm run import:credentials --workspace=server"

@@ -13,17 +13,17 @@ async function seedAllAdmins() {
   const districts = await District.find().lean();
   const areas = await Area.find().lean();
 
-  const quettaEast = districts.find(d => d.name.toLowerCase().includes('quetta east'));
+  const quetta = districts.find(d => d.name.toLowerCase().includes('quetta'));
   const peshawar = districts.find(d => d.name.toLowerCase().includes('peshawar'));
-  const quettaCity = areas.find(a => a.name.toLowerCase().includes('quetta city'));
-  const saddar = areas.find(a => a.name.toLowerCase().includes('saddar') && String(a.districtId) === String(quettaEast?._id));
+  const satelliteTown = areas.find(a => a.name.toLowerCase().includes('satellite'));
+  const hayatabad = areas.find(a => a.name.toLowerCase().includes('hayatabad'));
 
   const accounts = [
     {
       fullName: 'PNAP Super Admin',
       username: 'super',
       email: 'super@admin.com',
-      password: 'password', // also test '123456'
+      password: '123456',
       roles: ['SUPER_ADMIN'],
       scope: {},
     },
@@ -31,49 +31,57 @@ async function seedAllAdmins() {
       fullName: 'Central Admin',
       username: 'central',
       email: 'central@admin.com',
-      password: 'password',
+      password: '123456',
       roles: ['CENTRAL_ADMIN'],
       scope: {},
     },
     {
-      fullName: 'Junubi Pakhtunkhwa Provincial Admin',
+      fullName: 'Junubi Pakhtunkhwa (Balochistan) Provincial Admin',
       username: 'balochistan',
-      email: 'balochistan@admin.com',
-      password: 'password',
+      email: 'jpk@admin.com',
+      password: '123456',
       roles: ['PROVINCE_ADMIN'],
-      scope: { provinceId: provinces.find(p => p.code === 'JPK' || p.code === 'BL' || /Junubi/i.test(p.name))?._id },
+      scope: { provinceId: provinces.find(p => p.code === 'JPK' || /Junubi/i.test(p.name))?._id },
     },
     {
       fullName: 'Khyber Pakhtunkhwa Provincial Admin',
       username: 'kpk',
-      email: 'kpk@admin.com',
-      password: 'password',
+      email: 'kp@admin.com',
+      password: '123456',
       roles: ['PROVINCE_ADMIN'],
       scope: { provinceId: provinces.find(p => p.code === 'KP' || /Khyber/i.test(p.name))?._id },
     },
     {
-      fullName: 'Quetta East District Admin',
+      fullName: 'Quetta District Admin',
       username: 'district_quetta',
       email: 'district.quetta@admin.com',
-      password: 'password',
+      password: '123456',
       roles: ['DISTRICT_ADMIN'],
-      scope: { provinceId: quettaEast?.provinceId, districtId: quettaEast?._id },
+      scope: { provinceId: quetta?.provinceId, districtId: quetta?._id },
     },
     {
       fullName: 'Peshawar District Admin',
       username: 'district_peshawar',
       email: 'district.peshawar@admin.com',
-      password: 'password',
+      password: '123456',
       roles: ['DISTRICT_ADMIN'],
       scope: { provinceId: peshawar?.provinceId, districtId: peshawar?._id },
     },
     {
-      fullName: 'Quetta City Area Admin',
-      username: 'area_city',
-      email: 'area.city@admin.com',
-      password: 'password',
+      fullName: 'Satellite Town Area Admin',
+      username: 'area_satellite-town',
+      email: 'area.satellite-town@admin.com',
+      password: '123456',
       roles: ['AREA_ADMIN'],
-      scope: { provinceId: quettaCity?.provinceId || quettaEast?.provinceId, districtId: quettaCity?.districtId || quettaEast?._id, areaId: quettaCity?._id },
+      scope: { provinceId: satelliteTown?.provinceId, districtId: satelliteTown?.districtId, areaId: satelliteTown?._id },
+    },
+    {
+      fullName: 'Hayatabad Area Admin',
+      username: 'area_hayatabad',
+      email: 'area.hayatabad@admin.com',
+      password: '123456',
+      roles: ['AREA_ADMIN'],
+      scope: { provinceId: hayatabad?.provinceId, districtId: hayatabad?.districtId, areaId: hayatabad?._id },
     },
   ];
 
@@ -94,7 +102,7 @@ async function seedAllAdmins() {
       user.roles = acc.roles;
       user.scope = acc.scope;
       user.isActive = true;
-      await user.setPassword('password');
+      await user.setPassword(acc.password);
       await user.save();
       results.push({ ...acc, status: 'updated', id: user._id });
     } else {
@@ -106,7 +114,7 @@ async function seedAllAdmins() {
         scope: acc.scope,
         isActive: true,
       });
-      await user.setPassword('password');
+      await user.setPassword(acc.password);
       await user.save();
       results.push({ ...acc, status: 'created', id: user._id });
     }
