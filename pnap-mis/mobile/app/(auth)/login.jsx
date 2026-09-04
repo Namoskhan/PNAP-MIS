@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { errorMessage } from '../../src/api/client';
 import { useToast } from '../../src/components/Toast';
@@ -90,7 +91,7 @@ export default function LoginScreen() {
               <Text style={styles.label}>Password</Text>
               <View style={styles.passwordRow}>
                 <TextInput
-                  style={[styles.input, styles.passwordInput]}
+                  style={styles.passwordInput}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
@@ -100,8 +101,18 @@ export default function LoginScreen() {
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
                 />
-                <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeBtn}>
-                  <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁'}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowPassword((s) => !s)}
+                  style={styles.eyeBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={Colors.textMuted}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -230,12 +241,28 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.text,
     backgroundColor: Colors.surfaceAlt,
-    flex: 1,
   },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  passwordInput: { flex: 1 },
-  eyeBtn: { padding: 10 },
-  eyeText: { fontSize: 18 },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surfaceAlt,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    fontSize: FontSize.base,
+    color: Colors.text,
+  },
+  eyeBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   btn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,

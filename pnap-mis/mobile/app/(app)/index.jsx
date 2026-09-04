@@ -33,9 +33,8 @@ export default function DashboardScreen() {
   const [loadingMember, setLoadingMember] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Executive toggle
+  // Executive view check
   const isSuperOrExecutive = !!user?.canViewExecutiveDashboard || user?.roles?.includes('SUPER_ADMIN');
-  const [execView, setExecView] = useState('NATIONAL'); // 'NATIONAL' | 'UNIT'
 
   useEffect(() => {
     if (!isMember) return;
@@ -67,36 +66,7 @@ export default function DashboardScreen() {
 
   // 1. Executive / Super Admin view
   if (isSuperOrExecutive) {
-    if (execView === 'NATIONAL') {
-      return (
-        <View style={{ flex: 1 }}>
-          <View style={styles.execBar}>
-            <Text style={styles.execBarText}>National Command Center</Text>
-            <TouchableOpacity
-              style={styles.execToggleBtn}
-              onPress={() => setExecView('UNIT')}
-            >
-              <Text style={styles.execToggleBtnText}>Switch to Unit Dashboard →</Text>
-            </TouchableOpacity>
-          </View>
-          <CommandCenter accessScope={user?.dashboardScope} />
-        </View>
-      );
-    }
-    return (
-      <View style={{ flex: 1 }}>
-        <View style={styles.execBar}>
-          <Text style={styles.execBarText}>Unit Domain: {ctx?.unitName}</Text>
-          <TouchableOpacity
-            style={styles.execToggleBtn}
-            onPress={() => setExecView('NATIONAL')}
-          >
-            <Text style={styles.execToggleBtnText}>← National Command Center</Text>
-          </TouchableOpacity>
-        </View>
-        <UnitDashboard />
-      </View>
-    );
+    return <CommandCenter accessScope={user?.dashboardScope} />;
   }
 
   // 2. Member Portal for Pure Members
@@ -256,30 +226,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.background },
   scroll: { flex: 1 },
   content: { padding: Spacing.md, paddingBottom: 32 },
-  execBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e293b',
-    paddingVertical: 8,
-    paddingHorizontal: Spacing.md,
-  },
-  execBarText: {
-    color: '#cbd5e1',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  execToggleBtn: {
-    backgroundColor: '#334155',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: Radius.sm,
-  },
-  execToggleBtnText: {
-    color: '#f8fafc',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+
   memberBanner: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.xl,

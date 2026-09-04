@@ -322,7 +322,9 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
     const Province = require('../models/Province');
     const RoleAssignment = require('../models/RoleAssignment');
     const PermanentMembership = require('../models/PermanentMembership');
-    const central = await Central.findById(unitId).lean();
+    const central = (unitId && mongoose.isValidObjectId(unitId))
+      ? await Central.findById(unitId).lean()
+      : await Central.findOne().lean();
     if (central) {
       const provinceIds = await Province.find({ isActive: true }).distinct('_id');
       const [executiveCount, subordinateCount, permanentCount] = await Promise.all([
