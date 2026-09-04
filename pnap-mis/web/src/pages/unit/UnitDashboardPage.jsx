@@ -742,8 +742,8 @@ export default function UnitDashboardPage() {
                 ))}
               </div>
               {subordinates.length > 0 && (
-                <>
-                  <table className="list" style={{ marginTop: 14 }}>
+                <div className="table-responsive" style={{ marginTop: 14 }}>
+                  <table className="list">
                     <thead>
                       <tr>
                         <th>{childLabel}</th>
@@ -776,7 +776,7 @@ export default function UnitDashboardPage() {
                       ))}
                     </tbody>
                   </table>
-                </>
+                </div>
               )}
             </div>
           )}
@@ -844,6 +844,7 @@ export default function UnitDashboardPage() {
                   {reportPreview.meetings.length > 0 && (
                     <>
                       <h4 style={{ marginTop: 16, marginBottom: 6 }}>Meetings</h4>
+                      <div className="table-responsive">
                       <table className="list">
                         <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Venue</th><th>State</th></tr></thead>
                         <tbody>
@@ -858,12 +859,14 @@ export default function UnitDashboardPage() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </>
                   )}
 
                   {reportPreview.activities.length > 0 && (
                     <>
                       <h4 style={{ marginTop: 16, marginBottom: 6 }}>Activities</h4>
+                      <div className="table-responsive">
                       <table className="list">
                         <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Venue</th></tr></thead>
                         <tbody>
@@ -877,6 +880,7 @@ export default function UnitDashboardPage() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </>
                   )}
 

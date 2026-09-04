@@ -125,7 +125,7 @@ export default function PerformancePage() {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button className="btn secondary" onClick={downloadPdf}>Download PDF</button>
                 <button className="btn secondary" onClick={downloadXlsx}>Download Excel</button>
               </div>

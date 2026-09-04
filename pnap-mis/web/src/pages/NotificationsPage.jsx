@@ -92,7 +92,7 @@ export default function NotificationsPage() {
           <h2>Notifications</h2>
           <div className="subtitle">{unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className={`btn ${filter === 'all' ? '' : 'secondary'}`} onClick={() => setFilter('all')}>All</button>
           <button className={`btn ${filter === 'unread' ? '' : 'secondary'}`} onClick={() => setFilter('unread')}>Unread</button>
           {unreadCount > 0 && <button className="btn secondary" onClick={markAllRead}>Mark all read</button>}

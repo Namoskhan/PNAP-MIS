@@ -457,6 +457,7 @@ export default function TransfersPage() {
         <button className={`btn ${tab === 'incoming' ? '' : 'secondary'}`} onClick={() => setTab('incoming')}>Incoming</button>
       </div>
 
+      <div className="table-responsive">
       <table className="list">
         <thead>
           <tr>
@@ -534,6 +535,7 @@ export default function TransfersPage() {
           ))}
         </tbody>
       </table>
+      </div>
 
       {previewUrl && (
         <div className="modal-backdrop" onClick={() => setPreviewUrl(null)}>

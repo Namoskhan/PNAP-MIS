@@ -106,7 +106,7 @@ export default function ResponsibilitiesPage() {
     <div>
       <div className="page-header">
         <h2>Responsibilities · {ctx.unitName}</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <select value={filterState} onChange={(e) => setFilterState(e.target.value)}>
             <option value="">All states</option>
             {Object.keys(STATE_LABEL).map((s) => <option key={s} value={s}>{STATE_LABEL[s]}</option>)}
@@ -154,7 +154,7 @@ export default function ResponsibilitiesPage() {
                 <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
             </div>
-            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button className="btn secondary" type="button" onClick={() => setShow(false)}>Cancel</button>
               <button className="btn" onClick={create}>Assign</button>
             </div>
@@ -162,6 +162,7 @@ export default function ResponsibilitiesPage() {
         </div>
       )}
 
+      <div className="table-responsive">
       <table className="list">
         <thead>
           <tr><th>Title</th><th>Assigned to</th><th>Due</th><th>State</th><th></th></tr>
@@ -214,6 +215,7 @@ export default function ResponsibilitiesPage() {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

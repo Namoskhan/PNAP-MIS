@@ -392,6 +392,7 @@ export default function ActivitiesPage() {
         </div>
       )}
 
+      <div className="table-responsive">
       <table className="list">
         <thead>
           <tr><th>When</th><th>Type</th><th>Title</th><th>Venue</th><th>State</th><th>Photos</th><th></th></tr>
@@ -471,6 +472,7 @@ export default function ActivitiesPage() {
         })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

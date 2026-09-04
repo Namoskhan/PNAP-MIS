@@ -329,7 +329,7 @@ export default function AnnouncementsPage() {
                 </label>
               </div>
             </div>
-            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button className="btn secondary" type="button" onClick={() => setComposeOpen(false)}>Cancel</button>
               <button className="btn" onClick={submit}>{form.mode === 'PERSON' ? 'Send Message' : 'Post'}</button>
             </div>

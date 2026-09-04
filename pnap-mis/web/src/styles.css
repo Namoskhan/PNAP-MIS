@@ -1645,9 +1645,22 @@ table.smart .cell-muted { color: var(--muted); }
 /* Helper for horizontal table scrolling */
 .table-responsive {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.table-responsive table.list,
+.table-responsive table.smart {
+  margin-bottom: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-width: 620px;
 }
 
 /* Ensure wide tables scroll smoothly inside cards and pages without bursting horizontal viewport */
@@ -1657,7 +1670,9 @@ table.smart .cell-muted { color: var(--muted); }
 .main > table.smart {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
+
 
 @media (max-width: 991px) {
   .app-shell {
@@ -1780,6 +1795,56 @@ table.smart .cell-muted { color: var(--muted); }
   .form-grid {
     grid-template-columns: 1fr;
   }
+
+  /* Modal responsive defaults */
+  .modal {
+    width: 100%;
+    max-width: min(100%, calc(100vw - 32px)) !important;
+    box-sizing: border-box;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .kpi {
+    padding: 12px 14px;
+  }
+  .kpi .value {
+    font-size: 22px;
+    word-break: break-word;
+  }
+
+  .cc-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .cc-stat {
+    padding: 12px 14px;
+  }
+  .cc-stat-value {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .tr-modal {
+    max-height: 90dvh;
+  }
+  .tr-panes {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .tr-tree-pane {
+    max-height: 240px;
+    overflow-y: auto;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1808,6 +1873,12 @@ table.smart .cell-muted { color: var(--muted); }
     align-items: flex-start;
     gap: 12px;
   }
+  .page-header > div:last-child {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
   .page-header h2 {
     font-size: 20px;
   }
@@ -1830,6 +1901,19 @@ table.smart .cell-muted { color: var(--muted); }
   .login-card {
     padding: 28px 22px;
   }
+  .modal {
+    padding: 18px 16px;
+    border-radius: var(--radius);
+  }
+  .modal-backdrop {
+    padding: 12px;
+  }
+  .audience-grid {
+    grid-template-columns: 1fr;
+  }
+  .pm-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 520px) {
@@ -1845,6 +1929,25 @@ table.smart .cell-muted { color: var(--muted); }
     max-width: 130px;
   }
 }
+
+@media (max-width: 440px) {
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .cc-stats {
+    grid-template-columns: 1fr;
+  }
+  .notif-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .notif-row-meta {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
 
 /* ============================================================
    INTERACTION POLISH LAYER

@@ -322,7 +322,7 @@ export default function ReportsPage() {
               <button
                 type="button"
                 className={`btn ${scope === 'subtree' ? '' : 'secondary'}`}
-                style={{ flex: 1, minWidth: 240, textAlign: 'center', padding: '10px 16px' }}
+                style={{ flex: '1 1 220px', textAlign: 'center', padding: '10px 16px' }}
                 onClick={() => setScope('subtree')}
               >
                 📊 <strong>Aggregated</strong> (Include all subordinate units roll-up)
@@ -330,7 +330,7 @@ export default function ReportsPage() {
               <button
                 type="button"
                 className={`btn ${scope === 'own' ? '' : 'secondary'}`}
-                style={{ flex: 1, minWidth: 200, textAlign: 'center', padding: '10px 16px' }}
+                style={{ flex: '1 1 200px', textAlign: 'center', padding: '10px 16px' }}
                 onClick={() => setScope('own')}
               >
                 🏢 <strong>This Unit Tier Only</strong> (Direct unit records)
@@ -379,7 +379,7 @@ export default function ReportsPage() {
               ? 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.'
               : 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.')}
         </p>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('meetings', 'pdf')}>Download PDF</button>
           <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('meetings', 'xlsx')}>Download Excel</button>
         </div>
@@ -391,7 +391,7 @@ export default function ReportsPage() {
         <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
           Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.
         </p>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('activities', 'pdf')}>Download PDF</button>
           <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('activities', 'xlsx')}>Download Excel</button>
         </div>
@@ -407,7 +407,7 @@ export default function ReportsPage() {
               ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'
               : 'Executive donations ledger, expenses ledger, fund transfers, and net balance for the period.')}
         </p>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>Download PDF</button>
           <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('finance', 'xlsx')}>Download Excel</button>
         </div>

@@ -685,16 +685,16 @@ export default function MeetingsPage() {
             </div>
             <div className="field">
               <label>Venue GPS (Latitude &amp; Longitude) *</label>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
-                  style={{ flex: 1 }}
+                  style={{ flex: '1 1 120px' }}
                   placeholder="Latitude (e.g. 34.0151)"
                   value={form.gpsLat}
                   onChange={(e) => setForm({ ...form, gpsLat: e.target.value })}
                   required
                 />
                 <input
-                  style={{ flex: 1 }}
+                  style={{ flex: '1 1 120px' }}
                   placeholder="Longitude (e.g. 71.5249)"
                   value={form.gpsLng}
                   onChange={(e) => setForm({ ...form, gpsLng: e.target.value })}
@@ -783,6 +783,7 @@ export default function MeetingsPage() {
         </div>
       )}
 
+      <div className="table-responsive">
       <table className="list">
         <thead>
           <tr>
@@ -892,6 +893,7 @@ export default function MeetingsPage() {
           })}
         </tbody>
       </table>
+      </div>
 
       {finalizing && (
         <FinalizeDialog
@@ -1629,7 +1631,8 @@ function DocumentsDialog({ meeting, onClose, onDone }) {
           </div>
         </div>
 
-        <table className="list" style={{ marginTop: 14 }}>
+        <div className="table-responsive" style={{ marginTop: 14 }}>
+        <table className="list">
           <thead><tr><th>Filename</th><th>Type</th><th>Uploaded</th><th></th></tr></thead>
           <tbody>
             {docs.length === 0 && <tr><td colSpan="4" className="muted">No documents yet.</td></tr>}
@@ -1643,6 +1646,7 @@ function DocumentsDialog({ meeting, onClose, onDone }) {
             ))}
           </tbody>
         </table>
+        </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
           <button className="btn" onClick={onDone}>Done</button>

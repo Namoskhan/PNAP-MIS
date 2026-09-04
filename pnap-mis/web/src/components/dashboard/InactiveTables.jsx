@@ -105,7 +105,7 @@ export function InactiveUnitsTable({ params }) {
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
+      <div className="table-responsive">
         <table className="list">
           <thead>
             <tr>
@@ -205,7 +205,7 @@ export function InactiveMembersTable({ params }) {
         <div className="chart-card-meta">{(data?.total || 0).toLocaleString()} members</div>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
+      <div className="table-responsive">
         <table className="list">
           <thead>
             <tr>

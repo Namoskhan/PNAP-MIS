@@ -621,7 +621,7 @@ export default function FinancePage() {
                     <input type="file" accept="image/*,application/pdf" onChange={(e) => setDonReceipt(e.target.files?.[0] || null)} />
                     <div className="hint">Optional.</div></div>
                 </div>
-                <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                   <button className="btn secondary" type="button" onClick={() => setDonModalOpen(false)}>Cancel</button>
                   <button className="btn" onClick={recordDonation}>Record Donation</button>
                 </div>
@@ -629,6 +629,7 @@ export default function FinancePage() {
             </div>
           )}
 
+          <div className="table-responsive">
           <table className="list">
             <thead>
               <tr><th>Receipt</th><th>Date</th><th>Donor</th><th>Mode</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
@@ -690,6 +691,7 @@ export default function FinancePage() {
               })}
             </tbody>
           </table>
+          </div>
         </>
       )}
 
@@ -753,6 +755,7 @@ export default function FinancePage() {
             </div>
           )}
 
+          <div className="table-responsive">
           <table className="list">
             <thead>
               <tr><th>Date</th><th>Category</th><th>Description</th><th>Vendor</th><th style={{ textAlign: 'right' }}>Amount</th><th>State</th><th></th></tr>
@@ -812,6 +815,7 @@ export default function FinancePage() {
               })}
             </tbody>
           </table>
+          </div>
         </>
       )}
 
@@ -837,6 +841,7 @@ export default function FinancePage() {
             </div>
           </div>
 
+          <div className="table-responsive">
           <table className="list">
             <thead>
               <tr>
@@ -880,6 +885,7 @@ export default function FinancePage() {
               )}
             </tbody>
           </table>
+          </div>
         </>
       )}
     </div>
