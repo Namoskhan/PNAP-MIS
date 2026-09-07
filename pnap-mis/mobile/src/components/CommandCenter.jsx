@@ -16,7 +16,6 @@ import { Colors, FontSize, Radius, Spacing } from '../constants/colors';
 import Card from './Card';
 import Badge from './Badge';
 import EmptyState from './EmptyState';
-import { Donut, SmartKpi } from './charts';
 
 // Dashboard Acts Components
 import ScopeBreadcrumb from './dashboard/ScopeBreadcrumb';
@@ -52,69 +51,93 @@ const LEVEL_NOUN = {
 const num = (v) => (v ?? 0).toLocaleString();
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
-const unitStat = (u) => {
-  if (!u || !u.total) return {};
-  const p = pct(u.active, u.total);
-  return { share: p, tone: p >= 50 ? 'good' : 'warn' };
-};
+/**
+ * Layman-friendly Unit Tier Card
+ * Shows clear functioning units vs total with a progress bar and status badge
+ */
+function UnitTierCard({ title, active = 0, total = 0, noun = 'units' }) {
+  const p = total > 0 ? Math.round((active / total) * 100) : 0;
+  const isGood = p >= 50;
+  const silent = Math.max(0, total - active);
 
-/** Act section header */
-function ActHeader({ n, title, lead, meta }) {
   return (
-    <View style={styles.actHeader}>
-      <View style={styles.actMarker}>
-        <Text style={styles.actMarkerText}>{n}</Text>
-      </View>
-      <View style={styles.actHeading}>
-        <Text style={styles.actTitle}>{title}</Text>
-        {lead && <Text style={styles.actLead}>{lead}</Text>}
-      </View>
-      {meta && (
-        <View style={styles.actMetaBadge}>
-          <Text style={styles.actMetaText}>{meta}</Text>
+    <View style={styles.unitTierCard}>
+      <View style={styles.unitTierTop}>
+        <Text style={styles.unitTierTitle} numberOfLines={1}>{title}</Text>
+        <View style={[styles.unitTierBadge, { backgroundColor: isGood ? 'rgba(22, 163, 74, 0.12)' : 'rgba(217, 119, 6, 0.12)' }]}>
+          <Text style={[styles.unitTierBadgeText, { color: isGood ? Colors.success : Colors.warning }]}>
+            {total > 0 ? `${p}% active` : '0%'}
+          </Text>
         </View>
-      )}
+      </View>
+
+      <View style={styles.unitTierNumberRow}>
+        <Text style={styles.unitTierActive}>{num(active)}</Text>
+        <Text style={styles.unitTierTotal}> of {num(total)}</Text>
+      </View>
+
+      <View style={styles.unitProgressBar}>
+        <View
+          style={[
+            styles.unitProgressFill,
+            {
+              width: `${p}%`,
+              backgroundColor: isGood ? Colors.success : Colors.warning,
+            },
+          ]}
+        />
+      </View>
+
+      <Text style={styles.unitTierSub} numberOfLines={1}>
+        {num(active)} working · {num(silent)} silent
+      </Text>
     </View>
   );
 }
 
-/** Act 1 Standing Stat Tile with Donut Gauge */
-function StandingStat({ value, label, sub, share }) {
+/**
+ * Section Card
+ * Clean, visually distinct section container with icon, number, layman title, subtitle and live count chip
+ */
+function SectionCard({
+  icon,
+  number,
+  title,
+  subtitle,
+  meta,
+  children,
+}) {
   return (
-    <Card style={styles.statCard}>
-      <View style={styles.statMainRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.statVal}>{typeof value === 'number' ? num(value) : value || 0}</Text>
-          <Text style={styles.statLabel}>{label}</Text>
-          {sub && <Text style={styles.statSub}>{sub}</Text>}
-        </View>
-        {share != null && (
-          <View style={styles.statGauge}>
-            <Donut
-              percent={share}
-              label=""
-              size={54}
-              stroke={6}
-              color={share >= 50 ? Colors.success : Colors.warning}
-              trackColor={Colors.surfaceAlt}
-            />
+    <View style={styles.sectionContainer}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderLeft}>
+          <View style={styles.sectionIconBadge}>
+            <Text style={styles.sectionIconText}>{icon}</Text>
           </View>
-        )}
+          <View style={{ flex: 1 }}>
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionNumber}>{number}.</Text>
+              <Text style={styles.sectionTitle} numberOfLines={1}>{title}</Text>
+            </View>
+            {subtitle ? (
+              <Text style={styles.sectionSubtitle} numberOfLines={1}>{subtitle}</Text>
+            ) : null}
+          </View>
+        </View>
+
+        {meta ? (
+          <View style={styles.sectionMetaBadge}>
+            <Text style={styles.sectionMetaText}>{meta}</Text>
+          </View>
+        ) : null}
       </View>
-    </Card>
+
+      <View style={styles.sectionBody}>
+        {children}
+      </View>
+    </View>
   );
 }
-
-const ACT_TABS = [
-  { key: 'ALL', label: 'All Acts' },
-  { key: 'STANDING', label: '1. Standing' },
-  { key: 'PROVINCES', label: '2. Provinces' },
-  { key: 'PEOPLE', label: '3. People' },
-  { key: 'WORK', label: '4. Work' },
-  { key: 'GOVERNANCE', label: '5. Governance' },
-  { key: 'REPORTS', label: '6. Reports' },
-  { key: 'ATTENTION', label: '7. Attention' },
-];
 
 export default function CommandCenter({ accessScope = null }) {
   const { user } = useAuth();
@@ -127,7 +150,7 @@ export default function CommandCenter({ accessScope = null }) {
 
   const [scope, setScope] = useState(initialScope);
   const [filters, setFilters] = useState({ days: 365, memberStatus: '', orgStatus: '' });
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const lockedScope = Boolean(accessScope?.unitId);
@@ -213,14 +236,39 @@ export default function CommandCenter({ accessScope = null }) {
     return d.toISOString().slice(0, 10);
   })();
 
+  // Aggregate active & total units across all tiers
+  const activeUnits =
+    (o?.basicUnits?.active || 0) +
+    (o?.areas?.active || 0) +
+    (o?.districts?.active || 0) +
+    (o?.provinces?.active || 0);
+
+  const totalUnits =
+    (o?.basicUnits?.total || 0) +
+    (o?.areas?.total || 0) +
+    (o?.districts?.total || 0) +
+    (o?.provinces?.total || 0);
+
+  const unitHealthPct = totalUnits > 0 ? Math.round((activeUnits / totalUnits) * 100) : 0;
+
+  const isFiltered = Boolean(
+    scope.provinceId ||
+    scope.districtId ||
+    scope.areaId ||
+    scope.basicUnitId ||
+    filters.memberStatus ||
+    filters.orgStatus ||
+    filters.days !== 365
+  );
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Banner / Masthead */}
+      {/* ── Banner / Masthead ── */}
       <View style={styles.banner}>
         <View style={{ flex: 1 }}>
           <Text style={styles.bannerEyebrow}>COMMAND CENTER</Text>
           <Text style={styles.bannerTitle} numberOfLines={1}>{scopeName}</Text>
-          <Text style={styles.bannerSub}>System-wide Organizational Intelligence</Text>
+          <Text style={styles.bannerSub}>Executive Leadership Overview</Text>
         </View>
         <View style={styles.bannerActions}>
           <Link href="/announcements" asChild>
@@ -240,26 +288,6 @@ export default function CommandCenter({ accessScope = null }) {
         </View>
       </View>
 
-      {/* Acts Jump Bar */}
-      <View style={styles.tabsBar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          {ACT_TABS.map((t) => {
-            const active = activeTab === t.key;
-            return (
-              <TouchableOpacity
-                key={t.key}
-                style={[styles.tabBtn, active && styles.tabBtnActive]}
-                onPress={() => setActiveTab(t.key)}
-              >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {t.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
       <ScrollView
         ref={scrollViewRef}
         style={styles.scroll}
@@ -274,7 +302,7 @@ export default function CommandCenter({ accessScope = null }) {
       >
         {/* Scope Breadcrumb & Reset button */}
         {scope.provinceId && !lockedScope ? (
-          <View style={{ marginBottom: Spacing.xs }}>
+          <View style={{ marginBottom: Spacing.sm }}>
             <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
             <TouchableOpacity
               style={styles.backNationalBtn}
@@ -285,15 +313,55 @@ export default function CommandCenter({ accessScope = null }) {
           </View>
         ) : null}
 
-        {/* Filters Panel */}
-        <AnalyticsFilters
-          scope={scope}
-          filters={filters}
-          onScope={(next) => setScope({ ...EMPTY_SCOPE, ...next })}
-          onFilters={setFilters}
-          busy={summary.loading}
-          lockScope={lockedScope}
-        />
+        {/* ── Compact Filter Summary Bar (De-cluttered) ── */}
+        <View style={styles.filterSummaryBar}>
+          <View style={styles.filterSummaryPills}>
+            <View style={styles.filterChip}>
+              <Text style={styles.filterChipText}>
+                ⏱️ {filters.days === 365 ? 'Past 1 Year' : `Past ${filters.days} Days`}
+              </Text>
+            </View>
+            <View style={styles.filterChip}>
+              <Text style={styles.filterChipText} numberOfLines={1}>
+                📍 {scope.provinceId ? scopeName : 'National (All)'}
+              </Text>
+            </View>
+            {isFiltered && (
+              <TouchableOpacity
+                style={styles.filterResetMini}
+                onPress={() => {
+                  if (!lockedScope) setScope(EMPTY_SCOPE);
+                  setFilters({ days: 365, memberStatus: '', orgStatus: '' });
+                }}
+              >
+                <Text style={styles.filterResetMiniText}>Reset</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.filterToggleBtn}
+            onPress={() => setShowFilters((v) => !v)}
+          >
+            <Text style={styles.filterToggleText}>
+              {showFilters ? 'Hide Filters ▴' : 'Filters ⚙️'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Expandable Full Filter Panel */}
+        {showFilters && (
+          <View style={{ marginBottom: Spacing.sm }}>
+            <AnalyticsFilters
+              scope={scope}
+              filters={filters}
+              onScope={(next) => setScope({ ...EMPTY_SCOPE, ...next })}
+              onFilters={setFilters}
+              busy={summary.loading}
+              lockScope={lockedScope}
+            />
+          </View>
+        )}
 
         {summary.error ? (
           <Card style={styles.errorCard}>
@@ -301,153 +369,262 @@ export default function CommandCenter({ accessScope = null }) {
           </Card>
         ) : null}
 
-        {/* ── ACT 1 — Standing ── */}
-        {(activeTab === 'ALL' || activeTab === 'STANDING') && (
-          <View style={styles.actSection}>
-            <ActHeader n="1" title="Where the party stands" />
-            {summary.loading && !s ? (
-              <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
-            ) : s && o ? (
-              <View style={styles.statsGrid}>
-                <StandingStat
-                  value={s.membership?.total}
-                  label="Total Membership"
-                  sub={`${num(s.membership?.newMembers)} joined in ${windowLabel}`}
-                />
-                <StandingStat
-                  value={o.basicUnits?.total}
-                  label="Basic Units"
-                  sub={`${num(o.basicUnits?.active)} working · ${num(o.basicUnits?.inactive)} silent`}
-                  {...unitStat(o.basicUnits)}
-                />
-                <StandingStat
-                  value={o.areas?.total}
-                  label="Area Units"
-                  sub={`${num(o.areas?.active)} working · ${num(o.areas?.inactive)} silent`}
-                  {...unitStat(o.areas)}
-                />
-                <StandingStat
-                  value={o.districts?.total}
-                  label="District Units"
-                  sub={`${num(o.districts?.active)} working · ${num(o.districts?.inactive)} silent`}
-                  {...unitStat(o.districts)}
-                />
-                <StandingStat
-                  value={o.provinces?.total}
-                  label="Provincial Parties"
-                  sub={`${num(o.provinces?.active)} working · ${num(o.provinces?.inactive)} silent`}
-                  {...unitStat(o.provinces)}
-                />
-              </View>
-            ) : null}
-          </View>
-        )}
-
-        {/* ── ACT 2 — Provinces / Units Matrix ── */}
-        {(activeTab === 'ALL' || activeTab === 'PROVINCES') && (
-          <View style={styles.actSection}>
-            <ActHeader
-              n="2"
-              title={`Every ${childNoun.toLowerCase()}, side by side`}
-              lead="Tap any card to drill in."
-              meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
-            />
-            {org.loading && !org.data ? (
-              <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
-            ) : org.error ? (
-              <Card style={styles.errorCard}>
-                <Text style={styles.errorText}>{org.error}</Text>
-              </Card>
-            ) : (
-              <ProvinceMatrix
-                rows={org.data?.rows || []}
-                levelNoun={childNoun}
-                onDrill={drillTo}
-              />
-            )}
-          </View>
-        )}
-
-        {/* ── ACT 3 — People (Membership) ── */}
-        {(activeTab === 'ALL' || activeTab === 'PEOPLE') && (
-          <View style={styles.actSection}>
-            <ActHeader
-              n="3"
-              title="Who is joining, and who is taking part"
-              meta={s ? `${num(s.membership?.newMembers)} new` : null}
-            />
-            <MembershipAnalytics
-              params={params}
-              windowLabel={windowLabel}
-              byStatus={s?.membership?.byStatus}
-            />
-          </View>
-        )}
-
-        {/* ── ACT 4 — Work (Campaigns) ── */}
-        {(activeTab === 'ALL' || activeTab === 'WORK') && (
-          <View style={styles.actSection}>
-            <ActHeader
-              n="4"
-              title="Coordination campaigns"
-              meta={s ? `${num(s.campaigns?.running)} running` : null}
-            />
-            <CampaignsAnalytics params={params} windowLabel={windowLabel} />
-          </View>
-        )}
-
-        {/* ── ACT 5 — Governance (Meetings) ── */}
-        {(activeTab === 'ALL' || activeTab === 'GOVERNANCE') && (
-          <View style={styles.actSection}>
-            <ActHeader
-              n="5"
-              title="Meetings and governance"
-              lead="Scheduled vs conducted by tier, body & year."
-              meta={s ? `${num(s.meetings?.conducted)} of ${num(s.meetings?.total)} held` : null}
-            />
-            <MeetingsAnalytics params={params} windowLabel={windowLabel} />
-          </View>
-        )}
-
-        {/* ── ACT 6 — Reports ── */}
-        {(activeTab === 'ALL' || activeTab === 'REPORTS') && (
-          <View style={styles.actSection}>
-            <ActHeader
-              n="6"
-              title="Reports"
-              meta={s ? `${num(s.reports?.outstanding)} owed` : null}
-            />
-            <ReportsAnalytics
-              params={params}
-              periodFrom={periodFrom}
-              scope={scope}
-            />
-          </View>
-        )}
-
-        {/* ── ACT 7 — Attention (Dormant Entities) ── */}
-        {(activeTab === 'ALL' || activeTab === 'ATTENTION') && (
-          <View style={styles.actSection}>
-            <ActHeader
-              n="7"
-              title="Needs attention"
-              lead="Dormant units & members with officers responsible."
-            />
-            <View style={{ gap: Spacing.md }}>
-              <InactiveUnitsTable params={params} />
-              <InactiveMembersTable params={params} />
+        {/* ── Executive Pulse: 4 High-Level Indicators (Layman Overview) ── */}
+        <View style={styles.pulseSection}>
+          <View style={styles.pulseHeaderRow}>
+            <Text style={styles.pulseSectionTitle}>ORGANIZATIONAL PULSE</Text>
+            <View style={styles.healthStatusBadge}>
+              <View style={[styles.healthDot, { backgroundColor: unitHealthPct >= 50 ? '#16a34a' : '#d97706' }]} />
+              <Text style={[styles.healthStatusText, { color: unitHealthPct >= 50 ? '#16a34a' : '#d97706' }]}>
+                {unitHealthPct >= 50 ? 'Healthy Standing' : 'Needs Follow-up'}
+              </Text>
             </View>
           </View>
-        )}
+
+          <View style={styles.pulseGrid}>
+            {/* 1. Total Members */}
+            <View style={styles.pulseCard}>
+              <View style={styles.pulseCardHeader}>
+                <Text style={styles.pulseIcon}>👥</Text>
+                <View style={[styles.pulsePill, { backgroundColor: 'rgba(22, 163, 74, 0.12)' }]}>
+                  <Text style={[styles.pulsePillText, { color: Colors.success }]}>
+                    +{num(s?.membership?.newMembers)}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.pulseValue}>{num(s?.membership?.total)}</Text>
+              <Text style={styles.pulseLabel}>Total Members</Text>
+            </View>
+
+            {/* 2. Working Units */}
+            <View style={styles.pulseCard}>
+              <View style={styles.pulseCardHeader}>
+                <Text style={styles.pulseIcon}>🏢</Text>
+                <View style={[styles.pulsePill, { backgroundColor: 'rgba(30, 64, 175, 0.12)' }]}>
+                  <Text style={[styles.pulsePillText, { color: Colors.primary }]}>
+                    {unitHealthPct}% active
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.pulseValue}>{num(activeUnits)}</Text>
+              <Text style={styles.pulseLabel}>Working Units (of {num(totalUnits)})</Text>
+            </View>
+
+            {/* 3. Meetings Conducted */}
+            <View style={styles.pulseCard}>
+              <View style={styles.pulseCardHeader}>
+                <Text style={styles.pulseIcon}>📅</Text>
+                <View style={[styles.pulsePill, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
+                  <Text style={[styles.pulsePillText, { color: '#6366f1' }]}>
+                    {pct(s?.meetings?.conducted, s?.meetings?.total)}% held
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.pulseValue}>{num(s?.meetings?.conducted)}</Text>
+              <Text style={styles.pulseLabel}>Meetings Held (of {num(s?.meetings?.total)})</Text>
+            </View>
+
+            {/* 4. Active Campaigns */}
+            <View style={styles.pulseCard}>
+              <View style={styles.pulseCardHeader}>
+                <Text style={styles.pulseIcon}>📢</Text>
+                <View style={[styles.pulsePill, { backgroundColor: 'rgba(217, 119, 6, 0.12)' }]}>
+                  <Text style={[styles.pulsePillText, { color: Colors.warning }]}>
+                    {num(s?.campaigns?.running)} active
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.pulseValue}>{num(s?.campaigns?.total || s?.campaigns?.running)}</Text>
+              <Text style={styles.pulseLabel}>Field Campaigns</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Detailed Sections List ── */}
+        <View style={styles.sectionsListHeader}>
+          <Text style={styles.sectionsListTitle}>DETAILED REPORTS & ANALYTICS</Text>
+        </View>
+
+        {/* ── SECTION 1: Overview & Standing ── */}
+        <SectionCard
+          icon="📊"
+          number="1"
+          title="Overview & Standing"
+          subtitle="Membership totals and tier-by-tier health"
+          meta={s ? `${num(s.membership?.total)} members` : null}
+        >
+          {summary.loading && !s ? (
+            <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
+          ) : s && o ? (
+            <View style={{ gap: Spacing.sm }}>
+              {/* Highlight Card: Total Membership */}
+              <View style={styles.memberHighlightCard}>
+                <View style={styles.memberHighlightLeft}>
+                  <Text style={styles.memberHighlightLabel}>TOTAL REGISTERED MEMBERS</Text>
+                  <Text style={styles.memberHighlightVal}>{num(s.membership?.total)}</Text>
+                  <Text style={styles.memberHighlightSub}>
+                    Active across all party levels and registered branches
+                  </Text>
+                </View>
+                <View style={styles.memberHighlightRight}>
+                  <View style={styles.newMemberBadge}>
+                    <Text style={styles.newMemberIcon}>✨</Text>
+                    <Text style={styles.newMemberCount}>+{num(s.membership?.newMembers)}</Text>
+                    <Text style={styles.newMemberLabel}>new in {windowLabel}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* 2x2 Unit Tier Cards (De-cluttered Grid) */}
+              <View style={styles.tierGridRow}>
+                <UnitTierCard
+                  title="Provincial Parties"
+                  active={o.provinces?.active}
+                  total={o.provinces?.total}
+                  noun="parties"
+                />
+                <UnitTierCard
+                  title="District Units"
+                  active={o.districts?.active}
+                  total={o.districts?.total}
+                  noun="districts"
+                />
+              </View>
+
+              <View style={styles.tierGridRow}>
+                <UnitTierCard
+                  title="Area Units"
+                  active={o.areas?.active}
+                  total={o.areas?.total}
+                  noun="areas"
+                />
+                <UnitTierCard
+                  title="Basic Units"
+                  active={o.basicUnits?.active}
+                  total={o.basicUnits?.total}
+                  noun="units"
+                />
+              </View>
+
+              {/* Layman Guide Note */}
+              <View style={styles.laymanTipCard}>
+                <Text style={styles.laymanTipIcon}>💡</Text>
+                <Text style={styles.laymanTipText}>
+                  <Text style={{ fontWeight: '700' }}>Layman Guide: </Text>
+                  "Working" units are active with registered officers and recent meetings. "Silent" units haven't recorded activity recently and may need leadership check-ins.
+                </Text>
+              </View>
+            </View>
+          ) : null}
+        </SectionCard>
+
+        {/* ── SECTION 2: Provinces & Units Matrix ── */}
+        <SectionCard
+          icon="🏛️"
+          number="2"
+          title={`Provinces & Units (${childNoun}s)`}
+          subtitle="Side-by-side comparison; tap any card to drill in"
+          meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
+        >
+          {org.loading && !org.data ? (
+            <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
+          ) : org.error ? (
+            <Card style={styles.errorCard}>
+              <Text style={styles.errorText}>{org.error}</Text>
+            </Card>
+          ) : (
+            <ProvinceMatrix
+              rows={org.data?.rows || []}
+              levelNoun={childNoun}
+              onDrill={drillTo}
+            />
+          )}
+        </SectionCard>
+
+        {/* ── SECTION 3: Membership Trends & Growth ── */}
+        <SectionCard
+          icon="👥"
+          number="3"
+          title="Membership & Growth Trends"
+          subtitle="Registration velocity, member statuses, and distribution"
+          meta={s ? `${num(s.membership?.newMembers)} new` : null}
+        >
+          <MembershipAnalytics
+            params={params}
+            windowLabel={windowLabel}
+            byStatus={s?.membership?.byStatus}
+          />
+        </SectionCard>
+
+        {/* ── SECTION 4: Field Campaigns & Initiatives ── */}
+        <SectionCard
+          icon="📢"
+          number="4"
+          title="Field Campaigns & Initiatives"
+          subtitle="Coordination drives, active initiatives, and field progress"
+          meta={s ? `${num(s.campaigns?.running)} running` : null}
+        >
+          <CampaignsAnalytics params={params} windowLabel={windowLabel} />
+        </SectionCard>
+
+        {/* ── SECTION 5: Governance & Meetings ── */}
+        <SectionCard
+          icon="📅"
+          number="5"
+          title="Governance & Meetings"
+          subtitle="Scheduled vs conducted meetings by council and tier"
+          meta={s ? `${num(s.meetings?.conducted)} of ${num(s.meetings?.total)} held` : null}
+        >
+          <MeetingsAnalytics params={params} windowLabel={windowLabel} />
+        </SectionCard>
+
+        {/* ── SECTION 6: Periodic Reports ── */}
+        <SectionCard
+          icon="📑"
+          number="6"
+          title="Periodic Performance Reports"
+          subtitle="Report filing status and overdue unit submissions"
+          meta={s ? `${num(s.reports?.outstanding)} owed` : null}
+        >
+          <ReportsAnalytics
+            params={params}
+            periodFrom={periodFrom}
+            scope={scope}
+          />
+        </SectionCard>
+
+        {/* ── SECTION 7: Needs Attention ── */}
+        <SectionCard
+          icon="⚠️"
+          number="7"
+          title="Attention Needed (Dormant)"
+          subtitle="Inactive units and members requiring leadership follow-up"
+          meta="Action items"
+        >
+          <View style={{ gap: Spacing.md }}>
+            <InactiveUnitsTable params={params} />
+            <InactiveMembersTable params={params} />
+          </View>
+        </SectionCard>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  scroll: { flex: 1 },
-  content: { padding: Spacing.md, paddingBottom: 40 },
+  safe: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: Spacing.md,
+    paddingBottom: 50,
+  },
+
+  // ── Masthead ──
   banner: {
     backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.md,
@@ -470,9 +647,9 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   bannerSub: {
-    fontSize: 10,
+    fontSize: 11,
     color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 1,
+    marginTop: 2,
   },
   bannerActions: {
     flexDirection: 'row',
@@ -512,32 +689,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#4ade80',
   },
-  tabsBar: {
-    backgroundColor: '#1e293b',
-    paddingVertical: 6,
-  },
-  tabsScroll: {
-    paddingHorizontal: Spacing.md,
-    gap: 6,
-  },
-  tabBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: Radius.pill,
-    backgroundColor: '#334155',
-  },
-  tabBtnActive: {
-    backgroundColor: Colors.accent,
-  },
-  tabText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#cbd5e1',
-  },
-  tabTextActive: {
-    color: '#fff',
-    fontWeight: '700',
-  },
+
+  // ── Breadcrumb & Reset ──
   backNationalBtn: {
     backgroundColor: Colors.surfaceAlt,
     paddingVertical: 6,
@@ -553,6 +706,394 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.primary,
   },
+
+  // ── Compact Filter Summary Bar ──
+  filterSummaryBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 8,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.sm,
+    gap: 8,
+  },
+  filterSummaryPills: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  filterChip: {
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  filterResetMini: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  filterResetMiniText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  filterToggleBtn: {
+    backgroundColor: Colors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterToggleText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+
+  // ── Executive Pulse (2x2 Grid) ──
+  pulseSection: {
+    marginBottom: Spacing.md,
+  },
+  pulseHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  pulseSectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 0.8,
+  },
+  healthStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  healthDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  healthStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pulseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pulseCard: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  pulseCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  pulseIcon: {
+    fontSize: 18,
+  },
+  pulsePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
+  },
+  pulsePillText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pulseValue: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    color: Colors.text,
+    letterSpacing: -0.5,
+  },
+  pulseLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+
+  // ── Sections Header ──
+  sectionsListHeader: {
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: 2,
+  },
+  sectionsListTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 0.8,
+  },
+
+  // ── Section Card Container ──
+  sectionContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.lg,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    backgroundColor: Colors.surfaceAlt,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
+  },
+  sectionHeaderLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  sectionIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionIconText: {
+    fontSize: 16,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  sectionNumber: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  sectionTitle: {
+    fontSize: FontSize.sm + 1,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  sectionSubtitle: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  sectionMetaBadge: {
+    backgroundColor: Colors.surface,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginLeft: 6,
+  },
+  sectionMetaText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  sectionBody: {
+    padding: Spacing.md,
+    backgroundColor: Colors.surface,
+  },
+
+  // ── Section 1 Highlight Card ──
+  memberHighlightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#eff6ff',
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    gap: 12,
+  },
+  memberHighlightLeft: {
+    flex: 1,
+  },
+  memberHighlightLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: Colors.primary,
+    letterSpacing: 0.5,
+  },
+  memberHighlightVal: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: Colors.text,
+    letterSpacing: -0.5,
+    marginVertical: 2,
+  },
+  memberHighlightSub: {
+    fontSize: 10,
+    color: Colors.textMuted,
+  },
+  memberHighlightRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newMemberBadge: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+  },
+  newMemberIcon: {
+    fontSize: 12,
+  },
+  newMemberCount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.success,
+  },
+  newMemberLabel: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+
+  // ── 2x2 Unit Tier Cards ──
+  tierGridRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  unitTierCard: {
+    flex: 1,
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: Radius.md,
+    padding: Spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  unitTierTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  unitTierTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.text,
+    flex: 1,
+    marginRight: 4,
+  },
+  unitTierBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: Radius.pill,
+  },
+  unitTierBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  unitTierNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 6,
+  },
+  unitTierActive: {
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  unitTierTotal: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  unitProgressBar: {
+    height: 5,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  unitProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  unitTierSub: {
+    fontSize: 9,
+    color: Colors.textMuted,
+  },
+
+  // ── Layman Tip Card ──
+  laymanTipCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f8fafc',
+    padding: Spacing.sm + 2,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 6,
+    marginTop: 2,
+  },
+  laymanTipIcon: {
+    fontSize: 13,
+  },
+  laymanTipText: {
+    flex: 1,
+    fontSize: 11,
+    color: Colors.textMuted,
+    lineHeight: 15,
+  },
+
+  // ── Errors ──
   errorCard: {
     padding: Spacing.md,
     backgroundColor: '#fef2f2',
@@ -563,89 +1104,5 @@ const styles = StyleSheet.create({
     color: Colors.error,
     fontSize: FontSize.xs,
     fontWeight: '600',
-  },
-  actSection: {
-    marginBottom: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  actHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.border,
-    paddingBottom: 6,
-    marginBottom: 4,
-  },
-  actMarker: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actMarkerText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  actHeading: {
-    flex: 1,
-  },
-  actTitle: {
-    fontSize: FontSize.sm + 1,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  actLead: {
-    fontSize: 10,
-    color: Colors.textMuted,
-  },
-  actMetaBadge: {
-    backgroundColor: Colors.surfaceAlt,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  actMetaText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  statsGrid: {
-    gap: Spacing.xs,
-  },
-  statCard: {
-    padding: Spacing.md,
-  },
-  statMainRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  statVal: {
-    fontSize: FontSize.xl,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginTop: 1,
-  },
-  statSub: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  statGauge: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
