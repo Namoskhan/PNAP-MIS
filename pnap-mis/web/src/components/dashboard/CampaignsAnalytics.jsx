@@ -50,7 +50,7 @@ export default function CampaignsAnalytics({ params, windowLabel }) {
     return (
       <div className="empty-smart" style={{ padding: '28px 16px' }}>
         <div className="empty-icon">🎯</div>
-        <p style={{ margin: 0 }}>No campaigns recorded in the {windowLabel} for this scope.</p>
+        <p style={{ margin: 0 }}>No campaigns recorded in the {windowLabel} for this selection.</p>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function CampaignsAnalytics({ params, windowLabel }) {
         gap: 10,
       }}>
         <ChartCard
-          title="Campaign trend"
+          title="Campaigns each month"
           sub="Campaigns per month, last 12 months"
           meta={`${t.total.toLocaleString()} in ${windowLabel}`}
         >
@@ -105,11 +105,11 @@ export default function CampaignsAnalytics({ params, windowLabel }) {
               fill={BRAND.tint}
             />
           ) : (
-            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough history yet.</p>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough data to show this chart yet.</p>
           )}
         </ChartCard>
 
-        <ChartCard title="Campaigns by stage" sub={windowLabel}>
+        <ChartCard title="Campaign status" sub={windowLabel}>
           <PieChart
             segments={[
               { label: 'Running', value: t.running, color: BRAND.dark },
@@ -130,8 +130,8 @@ export default function CampaignsAnalytics({ params, windowLabel }) {
           return (
             <ChartCard
               key={lvl}
-              title={`${LEVEL_NOUN[lvl]}-wise campaigns`}
-              sub="All stages"
+              title={`Campaigns by ${LEVEL_NOUN[lvl].toLowerCase()}`}
+              sub="All campaign statuses"
               // A campaign run AT district level belongs to no area, so
               // the area-wise bars legitimately sum to less than the
               // grand total. Saying so beats letting it read as data loss.
@@ -146,13 +146,13 @@ export default function CampaignsAnalytics({ params, windowLabel }) {
         })}
 
         {data.reach && (
-          <ChartCard title="Campaign reach" sub="Aggregated across recorded campaigns">
+          <ChartCard title="Campaign results" sub="Totals from all recorded campaigns">
             <div style={{ display: 'grid', gap: 7, fontSize: 13 }}>
               {[
-                ['Households visited', data.reach.householdsVisited],
+                ['Homes visited', data.reach.householdsVisited],
                 ['People contacted', data.reach.peopleContacted],
-                ['Expected joiners', data.reach.expectedJoiners],
-                ['Actual joiners', data.reach.actualJoiners],
+                ['People expected to join', data.reach.expectedJoiners],
+                ['People who joined', data.reach.actualJoiners],
                 ['Volunteer hours', data.reach.volunteerHours],
               ].map(([label, v]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -165,7 +165,7 @@ export default function CampaignsAnalytics({ params, windowLabel }) {
                   display: 'flex', justifyContent: 'space-between',
                   borderTop: '1px solid var(--border)', paddingTop: 7,
                 }}>
-                  <span className="muted">Conversion</span>
+                  <span className="muted">People who joined compared with the expected number (%)</span>
                   <strong style={{ color: 'var(--success)' }}>{data.reach.conversionPct}%</strong>
                 </div>
               )}

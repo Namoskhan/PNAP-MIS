@@ -81,22 +81,22 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
         gap: 10, marginBottom: 12,
       }}>
         <SmartKpi
-          label="Total Membership" value={t.total}
+          label="Total members" value={t.total}
           icon={<UsersIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="New Membership" value={t.newMembers}
+          label="New members" value={t.newMembers}
           icon={<ZapIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Active" value={t.active}
+          label="Active members" value={t.active}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />
         <SmartKpi
-          label="Inactive" value={t.inactive}
+          label="Inactive members" value={t.inactive}
           icon={<MinusCircleIcon size={14} />}
           iconBg="var(--surface-alt)" iconColor="var(--muted)"
         />
@@ -107,7 +107,7 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
           display: 'flex', gap: 6, flexWrap: 'wrap',
           alignItems: 'center', marginBottom: 10,
         }}>
-          <span className="muted" style={{ fontSize: 12, marginRight: 2 }}>Break down by</span>
+          <span className="muted" style={{ fontSize: 12, marginRight: 2 }}>Show by</span>
           {levels.map((lvl) => (
             <button
               key={lvl}
@@ -132,8 +132,8 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
             that distinction becomes visible. */}
         {statusRows.length > 0 && (
           <ChartCard
-            title="Member status distribution"
-            sub="Registration workflow state, not activity"
+            title="Members by status"
+            sub="Shows each member's registration status. Activity is shown separately."
             meta={`${statusTotal.toLocaleString()} total`}
           >
             <HBar rows={statusRows} emptyLabel="No members registered yet." />
@@ -141,7 +141,7 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
         )}
 
         <ChartCard
-          title="Registration trend"
+          title="New members each month"
           sub="New members per month, last 12 months"
           meta={`${t.newMembers.toLocaleString()} in ${windowLabel}`}
         >
@@ -154,38 +154,38 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
               fill={BRAND.tint}
             />
           ) : (
-            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough history yet.</p>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough data to show this chart yet.</p>
           )}
         </ChartCard>
 
         {noun && (
           <>
-            <ChartCard title={`${noun}-wise membership`} sub="Total members">
+            <ChartCard title={`Members by ${noun.toLowerCase()}`} sub="Total members">
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.total }))}
                 accent={BRAND.dark}
-                emptyLabel="No units in this scope."
+                emptyLabel="No units found for this selection."
               />
             </ChartCard>
-            <ChartCard title={`${noun}-wise new membership`} sub={`Registered in the ${windowLabel}`}>
+            <ChartCard title={`New members by ${noun.toLowerCase()}`} sub={`Registered in the ${windowLabel}`}>
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.newMembers }))}
                 accent={BRAND.bright}
-                emptyLabel="No units in this scope."
+                emptyLabel="No units found for this selection."
               />
             </ChartCard>
-            <ChartCard title={`${noun}-wise active members`} sub="Acted inside the window">
+            <ChartCard title={`Active members by ${noun.toLowerCase()}`} sub="Took part during the selected dates">
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.active }))}
                 accent="var(--success)"
-                emptyLabel="No units in this scope."
+                emptyLabel="No units found for this selection."
               />
             </ChartCard>
-            <ChartCard title={`${noun}-wise inactive members`} sub="No activity inside the window">
+            <ChartCard title={`Inactive members by ${noun.toLowerCase()}`} sub="No activity during the selected dates">
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.inactive }))}
                 accent="var(--muted-soft)"
-                emptyLabel="No units in this scope."
+                emptyLabel="No units found for this selection."
               />
             </ChartCard>
           </>
@@ -194,8 +194,8 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
 
       {noun && rows.length > 0 && (
         <ChartCard
-          title={`Every ${noun.toLowerCase()}, side by side`}
-          sub="Bar length is how many members there are. The colours show how many of them are actually taking part."
+          title={`Compare members by ${noun.toLowerCase()}`}
+          sub="Each bar shows total members. Colours show active and inactive members."
           meta={`${rows.length} ${noun.toLowerCase()}${rows.length === 1 ? '' : 's'}`}
         >
           <StackedHBar
@@ -209,7 +209,7 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
               { key: 'inactive', label: 'Not taking part', color: 'var(--muted-soft)' },
             ]}
             noteLabel="Joined recently"
-            emptyLabel="No units in this scope."
+            emptyLabel="No units found for this selection."
           />
           <p className="muted" style={{ fontSize: 11.5, marginTop: 12, marginBottom: 0 }}>
             The green figure after each bar is how many people joined recently.

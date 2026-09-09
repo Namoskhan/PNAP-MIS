@@ -94,8 +94,8 @@ export default function CongressManager({ onChanged }) {
     }}>
       <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Congress calendar</div>
       <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-        Each Congress is a period boundary. A period runs from one Congress to the
-        next; the most recent opens a period that is still running.
+        Meetings are grouped from one Congress date to the next.
+        The latest group runs from the most recent Congress to today.
       </div>
 
       {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
@@ -104,7 +104,7 @@ export default function CongressManager({ onChanged }) {
         <p className="muted" style={{ margin: 0, fontSize: 13 }}>Loading…</p>
       ) : items.length === 0 ? (
         <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
-          No Congresses recorded yet. Add at least two to get a closed reporting period.
+          No Congress dates added yet. Add two dates to see meetings between them.
         </p>
       ) : (
         <div style={{ overflowX: 'auto', marginBottom: 10 }}>

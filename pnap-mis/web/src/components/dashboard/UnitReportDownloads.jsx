@@ -170,8 +170,7 @@ export default function UnitReportDownloads({ scope, from, to }) {
         <div>
           <div className="chart-card-title">Unit reports</div>
           <div className="chart-card-sub">
-            Walk down province → district → area → basic unit, then generate that
-            unit&apos;s report
+            Choose a province, district, area or basic unit, then download its report.
           </div>
         </div>
         {deepest !== 'CENTRAL' && (
@@ -231,16 +230,16 @@ export default function UnitReportDownloads({ scope, from, to }) {
             <FileTextIcon size={13} /> Meetings &amp; Activities
           </div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 9 }}>
-            Roster, meetings with photos, activities and responsibilities.
+            Member list, meetings with photos, activities and assigned tasks.
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="button" className="btn sm" disabled={!!busy}
               onClick={() => download('meetings', 'pdf')}>
-              {busy === 'meetings-pdf' ? 'Generating…' : 'PDF'}
+              {busy === 'meetings-pdf' ? 'Preparing…' : 'PDF'}
             </button>
             <button type="button" className="btn secondary sm" disabled={!!busy}
               onClick={() => download('meetings', 'xlsx')}>
-              {busy === 'meetings-xlsx' ? 'Generating…' : 'Excel'}
+              {busy === 'meetings-xlsx' ? 'Preparing…' : 'Excel'}
             </button>
           </div>
         </div>
@@ -250,25 +249,24 @@ export default function UnitReportDownloads({ scope, from, to }) {
             <WalletIcon size={13} /> Finance
           </div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 9 }}>
-            Donations ledger, expenses ledger and the unit&apos;s net balance.
+            Donations, expenses and money left.
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="button" className="btn sm" disabled={!!busy}
               onClick={() => download('finance', 'pdf')}>
-              {busy === 'finance-pdf' ? 'Generating…' : 'PDF'}
+              {busy === 'finance-pdf' ? 'Preparing…' : 'PDF'}
             </button>
             <button type="button" className="btn secondary sm" disabled={!!busy}
               onClick={() => download('finance', 'xlsx')}>
-              {busy === 'finance-xlsx' ? 'Generating…' : 'Excel'}
+              {busy === 'finance-xlsx' ? 'Preparing…' : 'Excel'}
             </button>
           </div>
         </div>
       </div>
 
       <p className="muted" style={{ fontSize: 11.5, marginTop: 10, marginBottom: 0 }}>
-        A unit report covers records authored <em>at that unit</em> — a Province
-        report contains province-level meetings and finance, not the sum of its
-        districts. Pick the district or area itself to report on its own work.
+        Each report shows only the selected unit's own meetings and finances.
+        For a district or area report, select that district or area above.
       </p>
     </div>
   );

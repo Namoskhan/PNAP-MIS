@@ -44,17 +44,17 @@ export default function ReportsAnalytics({
         gap: 10, marginBottom: 12,
       }}>
         <SmartKpi
-          label="Reports Filed" value={t.filed}
+          label="Reports submitted" value={t.filed}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />
         <SmartKpi
-          label="Reports Outstanding" value={t.outstanding}
+          label="Reports not submitted" value={t.outstanding}
           icon={<InfoIcon size={14} />}
           iconBg="var(--danger-bg)" iconColor="var(--danger)"
         />
         <SmartKpi
-          label="Filing Rate" value={t.filingRate ?? 0}
+          label="Reports submitted (%)" value={t.filingRate ?? 0}
           icon={<FileTextIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
           format={(v) => (t.filingRate == null ? '—' : `${v}%`)}
@@ -64,7 +64,7 @@ export default function ReportsAnalytics({
       {/* Only the counter-intuitive half is worth saying: filed/outstanding
           are self-explanatory, the date-filter exemption is not. */}
       <p className="muted" style={{ fontSize: 12, marginTop: -4, marginBottom: 12 }}>
-        Outstanding counts ignore the date filter — an old report is still owed today.
+        Reports not submitted include older reports, even if they fall outside the selected dates.
       </p>
 
       {noun && rows.length > 0 && (
@@ -80,8 +80,8 @@ export default function ReportsAnalytics({
           <div className="chart-card">
             <div className="chart-card-head">
               <div>
-                <div className="chart-card-title">Filing status by {noun.toLowerCase()}</div>
-                <div className="chart-card-sub">Most outstanding first</div>
+                <div className="chart-card-title">Report status by {noun.toLowerCase()}</div>
+                <div className="chart-card-sub">Units with the most missing reports appear first</div>
               </div>
             </div>
             <StackedHBar
@@ -90,18 +90,18 @@ export default function ReportsAnalytics({
                 values: { filed: r.filed, outstanding: r.outstanding },
               }))}
               series={[
-                { key: 'filed', label: 'Filed', color: 'var(--success)' },
-                { key: 'outstanding', label: 'Outstanding', color: 'var(--danger)' },
+                { key: 'filed', label: 'Submitted', color: 'var(--success)' },
+                { key: 'outstanding', label: 'Not submitted', color: 'var(--danger)' },
               ]}
-              emptyLabel="Nothing on record."
+              emptyLabel="No reports found."
             />
           </div>
 
           <div className="chart-card rep-gauge">
             <div className="chart-card-head">
               <div>
-                <div className="chart-card-title">Filing rate</div>
-                <div className="chart-card-sub">Filed ÷ (filed + outstanding)</div>
+                <div className="chart-card-title">Reports submitted (%)</div>
+                <div className="chart-card-sub">Submitted reports as a percentage of all required reports</div>
               </div>
             </div>
             <div className="rep-gauge-body">
@@ -114,7 +114,7 @@ export default function ReportsAnalytics({
                 trackColor="var(--surface-alt)"
               />
               <p className="rep-gauge-note">
-                {t.filed.toLocaleString()} filed · {t.outstanding.toLocaleString()} still owed
+                {t.filed.toLocaleString()} submitted · {t.outstanding.toLocaleString()} not submitted
               </p>
             </div>
           </div>

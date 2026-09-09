@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import useAnalytics from '../useAnalytics';
 import CountUp from '../../CountUp';
 import { SkeletonKpiGrid, SkeletonCard } from '../../Skeleton';
@@ -110,6 +111,8 @@ function Act({ n, title, lead, children, meta }) {
 }
 
 export default function CommandCenter({ accessScope = null }) {
+  const { user } = useAuth();
+  const isSuper = user?.roles?.includes('SUPER_ADMIN');
   const initialScope = useMemo(() => {
     if (!accessScope?.level || !accessScope?.unitId) return EMPTY_SCOPE;
     return { ...EMPTY_SCOPE, [DRILL_KEY[accessScope.level]]: accessScope.unitId };
@@ -153,7 +156,9 @@ export default function CommandCenter({ accessScope = null }) {
   }, [lockedScope]);
 
   const s = summary.data;
-  const trail = scopeInfo.data?.trail;
+  const trail = isSuper
+    ? scopeInfo.data?.trail?.filter((item) => item.level !== 'NATIONAL')
+    : scopeInfo.data?.trail;
   const scopeName = trail?.length ? trail[trail.length - 1].name : 'the whole country';
   const windowLabel = `last ${filters.days} days`;
   const childNoun = LEVEL_NOUN[org.data?.level] || 'Province';
@@ -171,10 +176,10 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── Masthead ── */}
       <header className="cc-masthead">
         <div>
-          <div className="cc-eyebrow">Command Centre</div>
-          <h2 className="cc-title">{scopeName === 'the whole country' ? 'National Standing' : scopeName}</h2>
+          <div className="cc-eyebrow">Dashboard</div>
+          <h2 className="cc-title">{scopeName === 'the whole country' ? 'Command Center' : scopeName}</h2>
         </div>
-        <div className="cc-live" title="Headline totals refresh every minute">
+        <div className="cc-live" title="Totals update every minute">
           <span className="cc-live-dot" aria-hidden="true" />
           Live
         </div>
@@ -182,9 +187,11 @@ export default function CommandCenter({ accessScope = null }) {
 
       {scope.provinceId && !lockedScope && (
         <div className="dash-scope-bar">
-          <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
+          {(!isSuper || trail?.length > 0) && (
+            <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
+          )}
           <button type="button" className="btn secondary sm" onClick={() => navigateTo('NATIONAL')}>
-            Back to the whole country
+            Back to all provinces
           </button>
         </div>
       )}
@@ -203,23 +210,23 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 1 — Standing ── */}
       <Act
         n="1"
-        title="Where the party stands"
+        title="Members and units"
       >
         {summary.loading && !s ? <SkeletonKpiGrid count={5} /> : s && (
           <div className="cc-stats">
-            <Stat delay={0} value={s.membership.total} label="Total membership"
+            <Stat delay={0} value={s.membership.total} label="Total members"
               sub={`${num(s.membership.newMembers)} joined in the ${windowLabel}`} />
             <Stat delay={70} value={o.basicUnits.total} label="Basic units"
-              sub={`${num(o.basicUnits.active)} working · ${num(o.basicUnits.inactive)} silent`}
+              sub={`${num(o.basicUnits.active)} active · ${num(o.basicUnits.inactive)} inactive`}
               {...unitStat(o.basicUnits)} />
             <Stat delay={140} value={o.areas.total} label="Area units"
-              sub={`${num(o.areas.active)} working · ${num(o.areas.inactive)} silent`}
+              sub={`${num(o.areas.active)} active · ${num(o.areas.inactive)} inactive`}
               {...unitStat(o.areas)} />
             <Stat delay={210} value={o.districts.total} label="District units"
-              sub={`${num(o.districts.active)} working · ${num(o.districts.inactive)} silent`}
+              sub={`${num(o.districts.active)} active · ${num(o.districts.inactive)} inactive`}
               {...unitStat(o.districts)} />
-            <Stat delay={280} value={o.provinces.total} label="Provincial parties"
-              sub={`${num(o.provinces.active)} working · ${num(o.provinces.inactive)} silent`}
+            <Stat delay={280} value={o.provinces.total} label="Provinces"
+              sub={`${num(o.provinces.active)} active · ${num(o.provinces.inactive)} inactive`}
               {...unitStat(o.provinces)} />
           </div>
         )}
@@ -228,8 +235,8 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 2 — Provinces ── */}
       <Act
         n="2"
-        title={`Every ${childNoun.toLowerCase()}, side by side`}
-        lead="Click any name to drill in."
+        title={`${childNoun} comparison`}
+        lead="Click a name to view details."
         meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
       >
         {org.loading && !org.data ? <SkeletonCard lines={5} />
@@ -246,7 +253,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 3 — People ── */}
       <Act
         n="3"
-        title="Who is joining, and who is taking part"
+        title="New and active members"
         meta={s ? `${num(s.membership.newMembers)} new` : null}
       >
         <MembershipAnalytics params={params} windowLabel={windowLabel} byStatus={s?.membership.byStatus} />
@@ -255,7 +262,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 4 — Work ── */}
       <Act
         n="4"
-        title="Coordination campaigns"
+        title="Campaigns"
         meta={s ? `${num(s.campaigns.running)} running` : null}
       >
         <CampaignsAnalytics params={params} windowLabel={windowLabel} />
@@ -264,8 +271,8 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 5 — Governance ── */}
       <Act
         n="5"
-        title="Meetings and governance"
-        lead="Scheduled against held, by tier, body and year."
+        title="Meetings"
+        lead="See planned and completed meetings by level, group and year."
         meta={s ? `${num(s.meetings.conducted)} of ${num(s.meetings.total)} held` : null}
       >
         <MeetingsAnalytics params={params} windowLabel={windowLabel} />
@@ -275,7 +282,7 @@ export default function CommandCenter({ accessScope = null }) {
       <Act
         n="6"
         title="Reports"
-        meta={s ? `${num(s.reports.outstanding)} owed` : null}
+        meta={s ? `${num(s.reports.outstanding)} not submitted` : null}
       >
         <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} />
       </Act>
@@ -284,7 +291,7 @@ export default function CommandCenter({ accessScope = null }) {
       <Act
         n="7"
         title="Needs attention"
-        lead="With the officer responsible for each."
+        lead="See inactive units, members and the officers in charge."
       >
         <div style={{ display: 'grid', gap: 16 }}>
           <InactiveUnitsTable params={params} />

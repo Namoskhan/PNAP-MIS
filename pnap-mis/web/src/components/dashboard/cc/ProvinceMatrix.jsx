@@ -48,7 +48,7 @@ function TierBar({ label, active, total }) {
           <span className="pm-tier-of"> of {num(total)}</span>
         </span>
       </div>
-      <div className="pm-tier-track" title={`${p}% working`}>
+      <div className="pm-tier-track" title={`${p}% active`}>
         <div
           className="pm-tier-fill"
           style={{
@@ -76,7 +76,7 @@ function UnitCard({ r, onDrill }) {
           {r.name}
         </button>
         <span className={`pm-flag ${r.isActiveUnit ? 'on' : 'off'}`}>
-          {r.isActiveUnit ? 'Working' : 'Silent'}
+          {r.isActiveUnit ? 'Active' : 'Inactive'}
         </span>
       </div>
 
@@ -85,7 +85,7 @@ function UnitCard({ r, onDrill }) {
         <span className="pm-members-value">{num(m.total)}</span>
         <span className="pm-members-label">members</span>
         <span className="pm-members-split">
-          {num(m.active)} taking part · {num(m.inactive)} not
+          {num(m.active)} active · {num(m.inactive)} inactive
         </span>
         <div className="pm-members-track">
           <div className="pm-members-fill" style={{ width: `${memberPct}%` }} />
@@ -107,7 +107,7 @@ function UnitCard({ r, onDrill }) {
           </span>
         </div>
       ) : (
-        <div className="pm-officer pm-officer-none">No office bearer on record</div>
+        <div className="pm-officer pm-officer-none">No officer listed</div>
       )}
     </div>
   );
@@ -144,15 +144,15 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Filter ${noun}s by name…`}
-              aria-label={`Filter ${noun}s by name`}
+              placeholder={`Search ${noun}s by name…`}
+              aria-label={`Search ${noun}s by name`}
             />
             {query && (
               <button
                 type="button"
                 className="pm-search-clear"
                 onClick={() => setQuery('')}
-                aria-label="Clear filter"
+                aria-label="Clear search"
               ><XIcon size={13} /></button>
             )}
           </div>

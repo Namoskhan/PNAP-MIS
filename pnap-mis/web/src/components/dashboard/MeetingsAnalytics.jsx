@@ -28,10 +28,10 @@ const BODY_LABEL = { EXECUTIVE: 'Cabinet', COMMITTEE: 'Committee', GENERAL_BODY:
 // shape of the pipeline is readable.
 const STATE_META = [
   { key: 'DRAFT', label: 'Draft', color: 'var(--muted-soft)' },
-  { key: 'SCHEDULED', label: 'Scheduled', color: 'var(--info)' },
-  { key: 'IN_PROGRESS', label: 'In progress', color: 'var(--warning)' },
-  { key: 'PENDING_REPORT', label: 'Pending report', color: 'var(--warning-strong)' },
-  { key: 'FINALIZED', label: 'Finalized', color: 'var(--success)' },
+  { key: 'SCHEDULED', label: 'Planned', color: 'var(--info)' },
+  { key: 'IN_PROGRESS', label: 'Ongoing', color: 'var(--warning)' },
+  { key: 'PENDING_REPORT', label: 'Report needed', color: 'var(--warning-strong)' },
+  { key: 'FINALIZED', label: 'Completed', color: 'var(--success)' },
   { key: 'CANCELLED', label: 'Cancelled', color: 'var(--danger)' },
 ];
 
@@ -151,17 +151,17 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Conducted" value={t.conducted}
+          label="Completed meetings" value={t.conducted}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />
         <SmartKpi
-          label="Scheduled" value={t.scheduled}
+          label="Planned meetings" value={t.scheduled}
           icon={<ClockIcon size={14} />}
           iconBg="var(--warning-bg)" iconColor="var(--warning)"
         />
         <SmartKpi
-          label="Overdue Reports" value={t.overdueReports}
+          label="Late reports" value={t.overdueReports}
           icon={<InfoIcon size={14} />}
           iconBg="var(--danger-bg)" iconColor="var(--danger)"
         />
@@ -173,7 +173,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         gap: 10,
       }}>
         <ChartCard
-          title="Meeting trend"
+          title="Meetings each month"
           sub="Meetings per month, last 12 months"
           meta={`${t.total.toLocaleString()} in ${windowLabel}`}
         >
@@ -186,18 +186,18 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
               fill={BRAND.tint}
             />
           ) : (
-            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough history yet.</p>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough data to show this chart yet.</p>
           )}
         </ChartCard>
 
         {/* Where meetings sit in their lifecycle — the pipeline behind
             the headline "conducted" number. */}
-        <ChartCard title="Meetings by state" sub={`Lifecycle position, ${windowLabel}`}>
+        <ChartCard title="Meeting status" sub={`Status of meetings in the ${windowLabel}`}>
           <HBar
             rows={STATE_META
               .map((s) => ({ label: s.label, value: data.byState?.[s.key] || 0, color: s.color }))
               .filter((r) => r.value > 0)}
-            emptyLabel="No meetings in this window."
+            emptyLabel="No meetings during the selected dates."
           />
         </ChartCard>
 
@@ -210,9 +210,9 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
       <div className="chart-card" style={{ marginTop: 10 }}>
         <div className="chart-card-head">
           <div>
-            <div className="chart-card-title">Conducted meetings by year</div>
+            <div className="chart-card-title">Completed meetings by year</div>
             <div className="chart-card-sub">
-              {data.yearBasisLabel} · all years, independent of the date filter
+              {data.yearBasisLabel} · this chart uses the year options below
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -221,14 +221,14 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
               className={`chip${yearBasis === 'CALENDAR' ? ' on' : ''}`}
               onClick={() => setYearBasis('CALENDAR')}
             >
-              Calendar
+              January–December
             </button>
             <button
               type="button"
               className={`chip${yearBasis === 'FISCAL' ? ' on' : ''}`}
               onClick={() => setYearBasis('FISCAL')}
             >
-              Fiscal Jul–Jun
+              July–June
             </button>
             <button
               type="button"
@@ -289,8 +289,8 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
               </div>
             </div>
             <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
-              Solid = conducted (finalized) · light track = total held
-              {yearly.length > 6 && ' · scroll sideways for the full range'}
+              Dark bars = completed meetings · light bars = all meetings held
+              {yearly.length > 6 && ' · scroll sideways to see all years'}
             </div>
           </>
         )}
@@ -301,8 +301,8 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         {yearBasis === 'CONGRESS' && data.unassignedMeetings > 0 && (
           <p className="muted" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
             <InfoIcon size={12} /> {data.unassignedMeetings.toLocaleString()} meeting
-            {data.unassignedMeetings === 1 ? '' : 's'} predate the earliest Congress and
-            fall outside every period.
+            {data.unassignedMeetings === 1 ? '' : 's'} took place before the first Congress date and
+            are not included in these periods.
           </p>
         )}
 
@@ -318,7 +318,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
           <div className="chart-card-head">
             <div>
               <div className="chart-card-title">
-                Conducted by year, split by {yearSplit === 'BODY' ? 'body' : 'tier'}
+                Completed meetings by year and {yearSplit === 'BODY' ? 'group' : 'level'}
               </div>
               <div className="chart-card-sub">{data.yearBasisLabel}</div>
             </div>
@@ -329,7 +329,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
                 onClick={() => setYearSplit('BODY')}
                 disabled={bodiesPresent.length === 0}
               >
-                By body
+                By group
               </button>
               <button
                 type="button"
@@ -337,7 +337,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
                 onClick={() => setYearSplit('TIER')}
                 disabled={tiersPresent.length === 0}
               >
-                By tier
+                By level
               </button>
             </div>
           </div>
@@ -352,7 +352,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
             series={yearSeries}
             height={240}
             colWidth={Math.max(58, Math.min(150, slotWidth))}
-            emptyLabel="No conducted meetings on record."
+            emptyLabel="No completed meetings found."
           />
         </div>
       )}
@@ -361,22 +361,22 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         <div className="chart-card" style={{ marginTop: 10 }}>
           <div className="chart-card-head">
             <div>
-              <div className="chart-card-title">Year · tier · body detail</div>
+              <div className="chart-card-title">Meetings by year, level and group</div>
               <div className="chart-card-sub">
-                Conducted meetings in every combination on record — darker is busier
+                Darker colours mean more completed meetings
               </div>
             </div>
-            <div className="chart-card-meta">{matrixCols.length} combinations</div>
+            <div className="chart-card-meta">{matrixCols.length} groups</div>
           </div>
           {/* A real <table>, so this doubles as the accessible table view of
               the shaded chart above it. */}
           <Heatmap
             rowHeader="Period"
-            valueNoun="conducted"
+            valueNoun="completed"
             rows={matrixRows}
             cols={matrixCols}
             cells={matrixCells}
-            emptyLabel="Nothing on record yet."
+            emptyLabel="No records yet."
           />
         </div>
       )}
@@ -385,9 +385,9 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         <div className="chart-card" style={{ marginTop: 10 }}>
           <div className="chart-card-head">
             <div>
-              <div className="chart-card-title">Breakdown by tier and body</div>
+              <div className="chart-card-title">Meetings by level and group</div>
               <div className="chart-card-sub">
-                Conducted vs still scheduled, {windowLabel}
+                Completed and planned meetings, {windowLabel}
               </div>
             </div>
           </div>
@@ -399,10 +399,10 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
               values: { conducted: r.conducted, scheduled: r.scheduled },
             }))}
             series={[
-              { key: 'conducted', label: 'Conducted', color: 'var(--success)' },
-              { key: 'scheduled', label: 'Scheduled', color: 'var(--warning)' },
+              { key: 'conducted', label: 'Completed', color: 'var(--success)' },
+              { key: 'scheduled', label: 'Planned', color: 'var(--warning)' },
             ]}
-            emptyLabel="No meetings in this window."
+            emptyLabel="No meetings during the selected dates."
           />
         </div>
       )}

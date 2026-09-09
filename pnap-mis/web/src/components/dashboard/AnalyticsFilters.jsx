@@ -137,7 +137,7 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
           onChange={(e) => onFilters({ ...filters, memberStatus: e.target.value })}
           aria-label="Member status"
         >
-          <option value="">Any member status</option>
+          <option value="">All member statuses</option>
           {MEMBER_STATUSES.map((s) => (
             <option key={s} value={s}>{s.replace(/_/g, ' ').toLowerCase()}</option>
           ))}
@@ -146,9 +146,9 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
         <select
           value={filters.orgStatus}
           onChange={(e) => onFilters({ ...filters, orgStatus: e.target.value })}
-          aria-label="Organization status"
+          aria-label="Unit activity"
         >
-          <option value="">Dormant units</option>
+          <option value="">Inactive units</option>
           <option value="ACTIVE">Active units</option>
         </select>
 

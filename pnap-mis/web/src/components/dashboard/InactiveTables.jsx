@@ -23,7 +23,7 @@ function fmtDate(d) {
 // produced it, so "never acted" stays explicit rather than becoming a
 // misleadingly precise day count.
 function fmtDays(n) {
-  if (n == null) return <span className="muted">No activity on record</span>;
+  if (n == null) return <span className="muted">No activity recorded</span>;
   return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{n.toLocaleString()}</span>;
 }
 
@@ -42,7 +42,7 @@ function Pager({ page, pages, total, onPage, busy }) {
           type="button" className="btn secondary sm"
           disabled={busy || page <= 1} onClick={() => onPage(page - 1)}
         >
-          ← Prev
+          ← Previous
         </button>
         <button
           type="button" className="btn secondary sm"
@@ -83,12 +83,12 @@ export function InactiveUnitsTable({ params }) {
       <div className="chart-card-head">
         <div>
           <div className="chart-card-title">
-            {showingActive ? 'Active units' : 'Dormant units'} — detail
+            {showingActive ? 'Active units' : 'Inactive units'} — detail
           </div>
           <div className="chart-card-sub">
             {showingActive
-              ? 'Units whose key office bearers have acted inside the window'
-              : 'No key office bearer has acted inside the window. Longest silence first.'}
+              ? 'Units where key officers took part during the selected dates'
+              : 'No key officer took part during the selected dates. Units inactive the longest appear first.'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -113,9 +113,9 @@ export function InactiveUnitsTable({ params }) {
               <th>District</th>
               <th>Area</th>
               <th>Basic Unit</th>
-              <th>Responsible Officer</th>
+              <th>Officer in charge</th>
               <th>Last Activity</th>
-              <th style={{ textAlign: 'right' }}>Days Inactive</th>
+              <th style={{ textAlign: 'right' }}>Days without activity</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -127,7 +127,7 @@ export function InactiveUnitsTable({ params }) {
                 <td colSpan="9" className="muted">
                   {showingActive
                     ? 'No active units match these filters.'
-                    : 'Nothing dormant here — every unit at this tier has recent activity.'}
+                    : 'No inactive units found for this selection.'}
                 </td>
               </tr>
             )}
@@ -153,7 +153,7 @@ export function InactiveUnitsTable({ params }) {
                 </td>
                 <td style={{ fontSize: 13 }}>{fmtDate(u.lastActivityAt)}</td>
                 <td style={{ textAlign: 'right' }}>{fmtDays(u.daysInactive)}</td>
-                <td><span className={`badge ${u.status}`}>{u.status}</span></td>
+                <td><span className={`badge ${u.status}`}>{u.status === 'DORMANT' ? 'Inactive' : u.status?.replace(/_/g, ' ').toLowerCase()}</span></td>
                 <td>
                   <Link className="btn ghost sm" to="/admin/manage-org">Manage</Link>
                 </td>
@@ -197,9 +197,9 @@ export function InactiveMembersTable({ params }) {
     <div className="chart-card">
       <div className="chart-card-head">
         <div>
-          <div className="chart-card-title">Dormant members — detail</div>
+          <div className="chart-card-title">Inactive members — details</div>
           <div className="chart-card-sub">
-            No meaningful organizational activity inside the window
+            No party activity recorded during the selected dates
           </div>
         </div>
         <div className="chart-card-meta">{(data?.total || 0).toLocaleString()} members</div>
@@ -215,7 +215,7 @@ export function InactiveMembersTable({ params }) {
               <th>Area</th>
               <th>Basic Unit</th>
               <th>Last Activity</th>
-              <th style={{ textAlign: 'right' }}>Days Inactive</th>
+              <th style={{ textAlign: 'right' }}>Days without activity</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -225,7 +225,7 @@ export function InactiveMembersTable({ params }) {
             {!busy && items.length === 0 && (
               <tr>
                 <td colSpan="9" className="muted">
-                  No dormant members match these filters.
+                  No inactive members found for this selection.
                 </td>
               </tr>
             )}
@@ -241,7 +241,7 @@ export function InactiveMembersTable({ params }) {
                 <td>{m.basicUnit || <span className="muted">—</span>}</td>
                 <td style={{ fontSize: 13 }}>{fmtDate(m.lastActivityAt)}</td>
                 <td style={{ textAlign: 'right' }}>{fmtDays(m.daysInactive)}</td>
-                <td><span className={`badge ${m.status}`}>{m.status}</span></td>
+                <td><span className={`badge ${m.status}`}>{m.status === 'DORMANT' ? 'Inactive' : m.status?.replace(/_/g, ' ').toLowerCase()}</span></td>
                 <td><Link className="btn ghost sm" to={`/members/${m._id}`}>View</Link></td>
               </tr>
             ))}
