@@ -10,7 +10,7 @@ import { useToast } from '../components/Toast';
 
 export default function LoginPage() {
   const { login, user } = useAuth();
-  const { identity, loginPage } = useBranding();
+  const { identity, loginPage, logos } = useBranding();
   const nav = useNavigate();
   const toast = useToast();
   const [identifier, setIdentifier] = useState('');
@@ -83,6 +83,21 @@ export default function LoginPage() {
         className={`login-card ${loginPage?.cardStyle === 'GLASS' ? 'login-card-glass' : ''}`}
         onSubmit={onSubmit}
       >
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <img
+            src={logos?.login?.url || '/logo.png'}
+            alt="Pakhtunkhwa National Awami Party Logo"
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: '50%',
+              objectFit: 'contain',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+              margin: '0 auto',
+              display: 'inline-block'
+            }}
+          />
+        </div>
         {/* Branded title — falls back to the system short name, then
             to the literal 'PKNAP' if nothing has loaded yet. */}
         <h1>{identity?.loginTitle || identity?.shortName || 'PKNAP'}</h1>

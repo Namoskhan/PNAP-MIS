@@ -28,6 +28,7 @@ export default function PublicStatusPage() {
     <div className="public-shell">
       <div className="public-card">
         <div className="public-brand">
+          <img src="/logo.png" alt="PKNAP Logo" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'contain' }} />
           <span className="public-logo">PKNAP</span>
           <span>Application Status</span>
         </div>

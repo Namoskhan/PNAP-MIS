@@ -257,7 +257,21 @@ export default function Layout() {
       />
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-top-row">
-          <h1>{branding.identity?.shortName || 'PKNAP'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <img
+              src={branding?.logos?.sidebar?.url || '/logo.png'}
+              alt="PNAP Logo"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                objectFit: 'contain',
+                flexShrink: 0,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            />
+            {!collapsed && <h1 style={{ margin: 0, fontSize: 18 }}>{branding.identity?.shortName || 'PKNAP'}</h1>}
+          </div>
           <button
             type="button"
             className={`sidebar-toggle ${collapsed ? 'collapsed' : 'open'}`}

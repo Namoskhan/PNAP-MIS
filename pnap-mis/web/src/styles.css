@@ -235,21 +235,11 @@ textarea:disabled {
   gap: 8px;
 }
 .sidebar-top-row h1 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: .02em;
   margin: 0;
   color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.sidebar-top-row h1::before {
-  content: "";
-  width: 8px;
-  height: 22px;
-  background: #fff;
-  border-radius: 3px;
 }
 
 .sidebar-toggle {
