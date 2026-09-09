@@ -477,7 +477,7 @@ export default function Layout() {
             </div>
             <nav>
               <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
-                {user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}
+                {user?.canViewExecutiveDashboard && !user?.dashboardScope ? 'Central Dashboard' : 'Dashboard'}
               </NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
               {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
@@ -523,7 +523,7 @@ export default function Layout() {
             </div>
             <nav>
               <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
-                {user?.canViewExecutiveDashboard ? 'Central Dashboard' : 'Dashboard'}
+                {user?.canViewExecutiveDashboard && !user?.dashboardScope ? 'Central Dashboard' : 'Dashboard'}
               </NavLink>
               <NavLink to="/members">Members</NavLink>
               <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>

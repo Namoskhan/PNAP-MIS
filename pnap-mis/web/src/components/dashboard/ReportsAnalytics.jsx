@@ -24,7 +24,7 @@ const LEVEL_NOUN = {
 };
 
 export default function ReportsAnalytics({
-  params, periodFrom, scope,
+  params, periodFrom, scope, accessScope,
 }) {
   const { data, loading, error } = useAnalytics('/dashboard/reports', params);
 
@@ -122,7 +122,7 @@ export default function ReportsAnalytics({
       )}
 
       {/* Province / District / Area / Basic Unit report downloads. */}
-      <UnitReportDownloads scope={scope} from={periodFrom} />
+      <UnitReportDownloads scope={scope} from={periodFrom} accessScope={accessScope} />
     </>
   );
 }

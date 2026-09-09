@@ -9,6 +9,10 @@ export const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('pnap_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (config.url?.startsWith('/dashboard/')) {
+    const role = localStorage.getItem('pnap_active_role');
+    if (role) config.headers['X-Dashboard-Role'] = role;
+  }
   return config;
 });
 

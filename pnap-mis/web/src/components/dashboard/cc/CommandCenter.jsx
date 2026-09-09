@@ -176,7 +176,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── Masthead ── */}
       <header className="cc-masthead">
         <div>
-          <div className="cc-eyebrow">Dashboard</div>
+          {!isSuper && <div className="cc-eyebrow">Dashboard</div>}
           <h2 className="cc-title">{scopeName === 'the whole country' ? 'Command Center' : scopeName}</h2>
         </div>
         <div className="cc-live" title="Totals update every minute">
@@ -236,7 +236,7 @@ export default function CommandCenter({ accessScope = null }) {
       <Act
         n="2"
         title={`${childNoun} comparison`}
-        lead="Click a name to view details."
+        lead={lockedScope ? 'Records from units that belong to your unit.' : 'Click a name to view details.'}
         meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
       >
         {org.loading && !org.data ? <SkeletonCard lines={5} />
@@ -245,7 +245,7 @@ export default function CommandCenter({ accessScope = null }) {
             <ProvinceMatrix
               rows={org.data?.rows || []}
               levelNoun={childNoun}
-              onDrill={drillTo}
+              onDrill={lockedScope ? undefined : drillTo}
             />
           )}
       </Act>
@@ -265,7 +265,7 @@ export default function CommandCenter({ accessScope = null }) {
         title="Campaigns"
         meta={s ? `${num(s.campaigns.running)} running` : null}
       >
-        <CampaignsAnalytics params={params} windowLabel={windowLabel} />
+        <CampaignsAnalytics params={params} windowLabel={windowLabel} showResults={!isSuper} />
       </Act>
 
       {/* ── ACT 5 — Governance ── */}
@@ -284,7 +284,7 @@ export default function CommandCenter({ accessScope = null }) {
         title="Reports"
         meta={s ? `${num(s.reports.outstanding)} not submitted` : null}
       >
-        <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} />
+        <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} accessScope={accessScope} />
       </Act>
 
       {/* ── ACT 7 — Attention ── */}

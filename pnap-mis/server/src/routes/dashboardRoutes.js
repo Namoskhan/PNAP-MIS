@@ -9,10 +9,8 @@ router.get('/unit', ctrl.unitDashboard);
 router.get('/subordinates', ctrl.subordinateBreakdown);
 
 // ─── Executive analytics ───────────────────────────────────────────
-// System-wide organizational intelligence. Every route below reads
-// across ALL provinces regardless of the caller's own scope. Super
-// Admin and approved Central Cabinet officeholders may read these
-// dashboard endpoints; no other management powers are granted here.
+// National viewers see all units. Approved local officeholders use
+// the same endpoints, clamped to their assigned unit and its hierarchy.
 const SUPER_ONLY = requireExecutiveDashboardAccess;
 
 router.get('/summary', SUPER_ONLY, ctrl.executiveSummary);

@@ -70,8 +70,9 @@ function UnitCard({ r, onDrill }) {
         <button
           type="button"
           className="pm-name"
+          disabled={!onDrill}
           onClick={() => onDrill?.(r.level, r._id, r.name)}
-          title={`Open ${r.name}`}
+          title={onDrill ? `Open ${r.name}` : r.name}
         >
           {r.name}
         </button>

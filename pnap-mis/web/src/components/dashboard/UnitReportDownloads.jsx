@@ -56,7 +56,8 @@ function downloadAuthed(path, filename) {
     });
 }
 
-export default function UnitReportDownloads({ scope, from, to }) {
+export default function UnitReportDownloads({ scope, from, to, accessScope }) {
+  const locked = Boolean(accessScope?.unitId);
   const [sel, setSel] = useState(EMPTY);
   const [target, setTarget] = useState('CENTRAL');
   const [provinces, setProvinces] = useState([]);
@@ -124,7 +125,7 @@ export default function UnitReportDownloads({ scope, from, to }) {
 
   // Every level in the chain up to what's selected — these are the
   // levels a report can be generated at right now.
-  const chain = LEVELS.slice(0, LEVELS.indexOf(deepest) + 1);
+  const chain = locked ? [accessScope.level] : LEVELS.slice(0, LEVELS.indexOf(deepest) + 1);
 
   function pick(level, value) {
     // Narrowing a level clears everything beneath it: a district from
@@ -141,8 +142,9 @@ export default function UnitReportDownloads({ scope, from, to }) {
     setErr('');
     setBusy(`${kind}-${format}`);
     try {
-      const p = new URLSearchParams({ unitLevel: target });
-      if (target !== 'CENTRAL') p.set('unitId', sel[KEY_OF[target]]);
+      const reportLevel = locked ? accessScope.level : target;
+      const p = new URLSearchParams({ unitLevel: reportLevel });
+      if (reportLevel !== 'CENTRAL') p.set('unitId', locked ? accessScope.unitId : sel[KEY_OF[target]]);
       if (from) p.set('from', from);
       if (to) p.set('to', to);
       const safe = (nameAt[target] || 'unit').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
@@ -170,17 +172,17 @@ export default function UnitReportDownloads({ scope, from, to }) {
         <div>
           <div className="chart-card-title">Unit reports</div>
           <div className="chart-card-sub">
-            Choose a province, district, area or basic unit, then download its report.
+            {locked ? 'Download reports for your own unit.' : 'Choose a province, district, area or basic unit, then download its report.'}
           </div>
         </div>
-        {deepest !== 'CENTRAL' && (
+        {!locked && deepest !== 'CENTRAL' && (
           <button type="button" className="btn ghost sm" onClick={() => setSel(EMPTY)}>
             Reset
           </button>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+      {!locked && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
         {selects.map((s) => (
           <select
             key={s.level}
@@ -196,7 +198,7 @@ export default function UnitReportDownloads({ scope, from, to }) {
             {s.options.map((o) => <option key={o._id} value={o._id}>{o.name}</option>)}
           </select>
         ))}
-      </div>
+      </div>}
 
       {/* Report at any level of the chosen chain without clearing the
           selection to get back up to it. */}
@@ -207,6 +209,7 @@ export default function UnitReportDownloads({ scope, from, to }) {
             key={lvl}
             type="button"
             className={`chip${target === lvl ? ' on' : ''}`}
+            disabled={locked}
             onClick={() => setTarget(lvl)}
             title={`${LEVEL_LABEL[lvl]} report`}
           >
@@ -266,7 +269,7 @@ export default function UnitReportDownloads({ scope, from, to }) {
 
       <p className="muted" style={{ fontSize: 11.5, marginTop: 10, marginBottom: 0 }}>
         Each report shows only the selected unit's own meetings and finances.
-        For a district or area report, select that district or area above.
+        {!locked && 'For a district or area report, select that district or area above.'}
       </p>
     </div>
   );

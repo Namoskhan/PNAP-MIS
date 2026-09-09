@@ -157,14 +157,14 @@ export function AuthProvider({ children }) {
     // Falls back to the full union if rolePermissions wasn't shipped
     // (legacy token / older server build).
     const perms = (user.rolePermissions?.[activeRole] || user.permissions || []);
-    const EXECUTIVE_ROLES = ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'CHAIRMAN', 'CO_CHAIRMAN', 'SR_VICE_CHAIRMAN', 'VICE_CHAIRMAN', 'FIRST_SECRETARY'];
-    const canViewExec = EXECUTIVE_ROLES.includes(activeRole) || (activeRole === 'GENERAL_SECRETARY' && !user.scope?.provinceId);
+    const dashboard = user.dashboardAccessByRole?.[activeRole];
     return {
       ...user,
       roles: [activeRole],
       allRoles: all,
       permissions: perms,
-      canViewExecutiveDashboard: canViewExec,
+      canViewExecutiveDashboard: Boolean(dashboard),
+      dashboardScope: dashboard?.level === 'CENTRAL' ? null : dashboard,
     };
   }, [user, activeRole]);
 

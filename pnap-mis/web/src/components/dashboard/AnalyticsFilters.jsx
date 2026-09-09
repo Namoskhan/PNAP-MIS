@@ -81,13 +81,13 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {!lockScope && <select
+        <select
           value={filters.days}
           onChange={(e) => onFilters({ ...filters, days: Number(e.target.value) })}
           aria-label="Date range"
         >
           {PRESETS.map((p) => <option key={p.days} value={p.days}>{p.label}</option>)}
-        </select>}
+        </select>
 
         {/* Narrowing a level clears everything beneath it, so the scope
             can never describe an area that isn't in the chosen district. */}
@@ -122,7 +122,7 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
           {areas.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
         </select>}
 
-        <select
+        {!lockScope && <select
           value={scope.basicUnitId}
           onChange={(e) => onScope({ ...scope, basicUnitId: e.target.value })}
           disabled={!scope.areaId}
@@ -130,7 +130,7 @@ export default function AnalyticsFilters({ scope, filters, onScope, onFilters, b
         >
           <option value="">All basic units</option>
           {units.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
-        </select>
+        </select>}
 
         <select
           value={filters.memberStatus}

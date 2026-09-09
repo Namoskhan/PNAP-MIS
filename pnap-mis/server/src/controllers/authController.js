@@ -49,8 +49,11 @@ async function buildRoleMaps(userRoles) {
 async function shapeUser(user) {
   const obj = typeof user.toJSON === 'function' ? user.toJSON() : { ...user };
   obj.permissions = userPermissions(user);
-  const { dashboardAccess } = require('../utils/centralCabinetDashboard');
-  const dashboard = await dashboardAccess(user);
+  const { dashboardAccessByRole } = require('../utils/centralCabinetDashboard');
+  obj.dashboardAccessByRole = await dashboardAccessByRole(user);
+  const dashboard = ['CENTRAL', 'PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT']
+    .map((level) => Object.values(obj.dashboardAccessByRole).find((a) => a?.level === level))
+    .find(Boolean);
   obj.canViewExecutiveDashboard = Boolean(dashboard);
   obj.dashboardScope = dashboard?.level === 'CENTRAL' ? null : dashboard;
   const { labels, userPerms } = await buildRoleMaps(obj.roles);

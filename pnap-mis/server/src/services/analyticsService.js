@@ -752,7 +752,7 @@ async function orgBreakdown(f) {
 // bare province array; keep that exact shape so anything already
 // calling it keeps working.
 async function provinceBreakdown(f) {
-  const out = await orgBreakdown({ ...f, provinceId: null, districtId: null, areaId: null, basicUnitId: null });
+  const out = await orgBreakdown(f);
   return out.rows;
 }
 

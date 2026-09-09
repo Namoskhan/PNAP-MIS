@@ -36,7 +36,7 @@ function ChartCard({ title, sub, meta, children }) {
   );
 }
 
-export default function CampaignsAnalytics({ params, windowLabel }) {
+export default function CampaignsAnalytics({ params, windowLabel, showResults = true }) {
   const { data, loading, error } = useAnalytics('/dashboard/campaigns', params);
 
   if (loading && !data) return <SkeletonKpiGrid count={4} />;
@@ -145,7 +145,7 @@ export default function CampaignsAnalytics({ params, windowLabel }) {
           );
         })}
 
-        {data.reach && (
+        {showResults && data.reach && (
           <ChartCard title="Campaign results" sub="Totals from all recorded campaigns">
             <div style={{ display: 'grid', gap: 7, fontSize: 13 }}>
               {[
