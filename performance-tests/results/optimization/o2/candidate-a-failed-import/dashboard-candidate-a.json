@@ -1,0 +1,83 @@
+{
+  "phase": "candidate-a",
+  "measuredRuns": 5,
+  "requests": {
+    "n": 5,
+    "p50": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "max": 0
+  },
+  "uniqueEndpoints": {
+    "n": 5,
+    "p50": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "max": 0
+  },
+  "duplicates": {
+    "n": 5,
+    "p50": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "max": 0
+  },
+  "responseBytes": {
+    "n": 5,
+    "p50": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "max": 0
+  },
+  "transferBytes": {
+    "n": 5,
+    "p50": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "max": 0
+  },
+  "completionMs": {
+    "n": 5,
+    "p50": null,
+    "p90": null,
+    "p95": null,
+    "p99": null,
+    "max": null
+  },
+  "totalDbOperations": {
+    "n": 5,
+    "p50": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "max": 0
+  },
+  "errors": [
+    "ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "Uncaught: ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "Uncaught: ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "Uncaught: ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "Uncaught: ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)",
+    "Uncaught: ReferenceError: useRef is not defined\n    at uS (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:75:11161)\n    at eu (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:38:17018)\n    at Bx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:44058)\n    at Mx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39790)\n    at Ay (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39718)\n    at Nl (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:39570)\n    at rd (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:35934)\n    at Lx (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:40:34883)\n    at C (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1535)\n    at MessagePort.Y (http://127.0.0.1:58609/assets/index-lZrRFm-4.js:25:1894)"
+  ],
+  "apiErrors": [],
+  "dom": {
+    "url": "/",
+    "headings": [],
+    "stats": [],
+    "nav": [],
+    "selects": [],
+    "charts": 0,
+    "alerts": [],
+    "notification": null
+  }
+}

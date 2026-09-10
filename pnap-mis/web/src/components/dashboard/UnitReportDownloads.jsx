@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, errorMessage } from '../../api/client';
 import { FileTextIcon, WalletIcon } from '../icons';
+import { useUnit } from '../../context/UnitContext';
 
 // Province / District / Area / Basic Unit reports.
 //
@@ -58,9 +59,9 @@ function downloadAuthed(path, filename) {
 
 export default function UnitReportDownloads({ scope, from, to, accessScope }) {
   const locked = Boolean(accessScope?.unitId);
+  const { provinces = [] } = useUnit() || {};
   const [sel, setSel] = useState(EMPTY);
   const [target, setTarget] = useState('CENTRAL');
-  const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [areas, setAreas] = useState([]);
   const [units, setUnits] = useState([]);
@@ -81,9 +82,6 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
   // ── Cascading option lists ───────────────────────────────────────
   // Each level's list is fetched for its PARENT, so a district list is
   // that province's districts and nothing else.
-  useEffect(() => {
-    api.get('/org/provinces').then((r) => setProvinces(r.data.data || [])).catch(() => setProvinces([]));
-  }, []);
   useEffect(() => {
     if (!sel.provinceId) { setDistricts([]); return; }
     api.get('/org/districts', { params: { provinceId: sel.provinceId } })

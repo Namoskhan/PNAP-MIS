@@ -12,7 +12,7 @@ import MembershipAnalytics from '../MembershipAnalytics';
 import MeetingsAnalytics from '../MeetingsAnalytics';
 import CampaignsAnalytics from '../CampaignsAnalytics';
 import ReportsAnalytics from '../ReportsAnalytics';
-import { InactiveUnitsTable, InactiveMembersTable } from '../InactiveTables';
+import { InactiveUnitsTable } from '../InactiveTables';
 
 // ─── Command Centre ──────────────────────────────────────────────────
 //
@@ -133,6 +133,18 @@ export default function CommandCenter({ accessScope = null }) {
   const summary = useAnalytics('/dashboard/summary', params, { poll: 60000 });
   const scopeInfo = useAnalytics('/dashboard/scope', params);
   const org = useAnalytics('/dashboard/org-breakdown', params);
+  const paramsKey = JSON.stringify(params);
+  const [secondaryKey, setSecondaryKey] = useState(null);
+  const criticalSettled = [summary, scopeInfo, org]
+    .every((request) => !request.loading && (request.data !== null || request.error));
+
+  // Keep the first screen's three snapshot consumers ahead of the independent
+  // detail widgets. The key prevents a render with stale completion state from
+  // launching detail requests when the user changes scope or filters.
+  useEffect(() => {
+    if (criticalSettled) setSecondaryKey(paramsKey);
+  }, [criticalSettled, paramsKey]);
+  const secondaryReady = secondaryKey === paramsKey;
 
   const drillTo = useCallback((level, id) => {
     if (lockedScope) return;
@@ -256,7 +268,9 @@ export default function CommandCenter({ accessScope = null }) {
         title="New and active members"
         meta={s ? `${num(s.membership.newMembers)} new` : null}
       >
-        <MembershipAnalytics params={params} windowLabel={windowLabel} byStatus={s?.membership.byStatus} />
+        {secondaryReady
+          ? <MembershipAnalytics params={params} windowLabel={windowLabel} byStatus={s?.membership.byStatus} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 4 — Work ── */}
@@ -265,7 +279,9 @@ export default function CommandCenter({ accessScope = null }) {
         title="Campaigns"
         meta={s ? `${num(s.campaigns.running)} running` : null}
       >
-        <CampaignsAnalytics params={params} windowLabel={windowLabel} showResults={!isSuper} />
+        {secondaryReady
+          ? <CampaignsAnalytics params={params} windowLabel={windowLabel} showResults={!isSuper} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 5 — Governance ── */}
@@ -275,7 +291,9 @@ export default function CommandCenter({ accessScope = null }) {
         lead="See planned and completed meetings by level, group and year."
         meta={s ? `${num(s.meetings.conducted)} of ${num(s.meetings.total)} held` : null}
       >
-        <MeetingsAnalytics params={params} windowLabel={windowLabel} />
+        {secondaryReady
+          ? <MeetingsAnalytics params={params} windowLabel={windowLabel} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 6 — Reports ── */}
@@ -284,18 +302,19 @@ export default function CommandCenter({ accessScope = null }) {
         title="Reports"
         meta={s ? `${num(s.reports.outstanding)} not submitted` : null}
       >
-        <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} accessScope={accessScope} />
+        {secondaryReady
+          ? <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} accessScope={accessScope} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 7 — Attention ── */}
       <Act
         n="7"
         title="Needs attention"
-        lead="See inactive units, members and the officers in charge."
+        lead="See inactive units and the officers in charge."
       >
         <div style={{ display: 'grid', gap: 16 }}>
-          <InactiveUnitsTable params={params} />
-          <InactiveMembersTable params={params} />
+          {secondaryReady ? <InactiveUnitsTable params={params} /> : <SkeletonCard lines={4} />}
         </div>
       </Act>
     </div>

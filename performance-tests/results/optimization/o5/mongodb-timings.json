@@ -1,0 +1,273 @@
+{
+  "note": "executionStats commands are diagnostic replays. Summed execution time is descriptive, not wall time, because application operations run in parallel.",
+  "membership": {
+    "before": [
+      {
+        "type": "find",
+        "collection": "users",
+        "executionTimeMs": 2,
+        "docsExamined": 1,
+        "keysExamined": 1,
+        "returned": 1
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "executionTimeMs": 8,
+        "docsExamined": 384,
+        "keysExamined": 0,
+        "returned": 1
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "executionTimeMs": 4,
+        "docsExamined": 384,
+        "keysExamined": 0,
+        "returned": null
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "executionTimeMs": 4,
+        "docsExamined": 384,
+        "keysExamined": 0,
+        "returned": 1
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "executionTimeMs": 0,
+        "docsExamined": 3,
+        "keysExamined": 0,
+        "returned": 3
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "executionTimeMs": 0,
+        "docsExamined": 9,
+        "keysExamined": 0,
+        "returned": 9
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "executionTimeMs": 0,
+        "docsExamined": 24,
+        "keysExamined": 0,
+        "returned": 24
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "executionTimeMs": 0,
+        "docsExamined": 48,
+        "keysExamined": 0,
+        "returned": 48
+      }
+    ],
+    "after": [
+      {
+        "type": "find",
+        "collection": "users",
+        "executionTimeMs": 0,
+        "docsExamined": 1,
+        "keysExamined": 1,
+        "returned": 1
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "executionTimeMs": 4,
+        "docsExamined": 384,
+        "keysExamined": 0,
+        "returned": null
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "executionTimeMs": 0,
+        "docsExamined": 3,
+        "keysExamined": 0,
+        "returned": 3
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "executionTimeMs": 0,
+        "docsExamined": 48,
+        "keysExamined": 0,
+        "returned": 48
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "executionTimeMs": 0,
+        "docsExamined": 9,
+        "keysExamined": 0,
+        "returned": 9
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "executionTimeMs": 0,
+        "docsExamined": 24,
+        "keysExamined": 0,
+        "returned": 24
+      }
+    ],
+    "afterApiMs": 106.63130000000001
+  },
+  "inactiveUnits": {
+    "before": [
+      {
+        "type": "find",
+        "collection": "users",
+        "executionTimeMs": 0,
+        "docsExamined": 1,
+        "keysExamined": 1,
+        "returned": 1
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "executionTimeMs": 0,
+        "docsExamined": 3,
+        "keysExamined": 0,
+        "returned": 3
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "executionTimeMs": 0,
+        "docsExamined": 9,
+        "keysExamined": 0,
+        "returned": 9
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "executionTimeMs": 0,
+        "docsExamined": 24,
+        "keysExamined": 0,
+        "returned": 24
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "executionTimeMs": 0,
+        "docsExamined": 48,
+        "keysExamined": 0,
+        "returned": 48
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 74,
+        "docsExamined": 139,
+        "keysExamined": 139,
+        "returned": null
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 35,
+        "docsExamined": 73,
+        "keysExamined": 105,
+        "returned": null
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 11,
+        "docsExamined": 43,
+        "keysExamined": 43,
+        "returned": null
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 5,
+        "docsExamined": 7,
+        "keysExamined": 11,
+        "returned": null
+      }
+    ],
+    "after": [
+      {
+        "type": "find",
+        "collection": "users",
+        "executionTimeMs": 0,
+        "docsExamined": 1,
+        "keysExamined": 1,
+        "returned": 1
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "executionTimeMs": 0,
+        "docsExamined": 3,
+        "keysExamined": 0,
+        "returned": 3
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "executionTimeMs": 0,
+        "docsExamined": 9,
+        "keysExamined": 0,
+        "returned": 9
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "executionTimeMs": 0,
+        "docsExamined": 24,
+        "keysExamined": 0,
+        "returned": 24
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "executionTimeMs": 0,
+        "docsExamined": 48,
+        "keysExamined": 0,
+        "returned": 48
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 62,
+        "docsExamined": 139,
+        "keysExamined": 139,
+        "returned": null
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 36,
+        "docsExamined": 73,
+        "keysExamined": 105,
+        "returned": null
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 13,
+        "docsExamined": 43,
+        "keysExamined": 43,
+        "returned": null
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "executionTimeMs": 5,
+        "docsExamined": 7,
+        "keysExamined": 11,
+        "returned": null
+      }
+    ],
+    "afterApiMs": 58.440900000000056
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "createdAt_-1",
+  "key": {
+    "createdAt": {
+      "$numberInt": "-1"
+    }
+  },
+  "durationMs": {
+    "$numberDouble": "115.24150000000009"
+  },
+  "createdAt": {
+    "$date": {
+      "$numberLong": "1788946939702"
+    }
+  },
+  "database": "pnap_mis"
+}

@@ -1,0 +1,358 @@
+{
+  "phase": "candidate-a",
+  "measuredRuns": 5,
+  "requests": {
+    "n": 5,
+    "p50": 13,
+    "p90": 13,
+    "p95": 13,
+    "p99": 13,
+    "max": 13
+  },
+  "uniqueEndpoints": {
+    "n": 5,
+    "p50": 13,
+    "p90": 13,
+    "p95": 13,
+    "p99": 13,
+    "max": 13
+  },
+  "duplicates": {
+    "n": 5,
+    "p50": 0,
+    "p90": 0,
+    "p95": 0,
+    "p99": 0,
+    "max": 0
+  },
+  "responseBytes": {
+    "n": 5,
+    "p50": 28058,
+    "p90": 28058,
+    "p95": 28058,
+    "p99": 28058,
+    "max": 28058
+  },
+  "transferBytes": {
+    "n": 5,
+    "p50": 36033,
+    "p90": 36033,
+    "p95": 36033,
+    "p99": 36033,
+    "max": 36033
+  },
+  "completionMs": {
+    "n": 5,
+    "p50": 1824.281000001065,
+    "p90": 2797.9647999993176,
+    "p95": 2980.5103999984567,
+    "p99": 3126.546879997768,
+    "max": 3163.055999997596
+  },
+  "totalDbOperations": {
+    "n": 5,
+    "p50": 93,
+    "p90": 93.6,
+    "p95": 93.8,
+    "p99": 93.96,
+    "max": 94
+  },
+  "errors": [],
+  "apiErrors": [],
+  "dom": {
+    "url": "/",
+    "headings": [
+      "Command Center",
+      "Filters",
+      "Members and units",
+      "Province comparison",
+      "New and active members",
+      "Members by status",
+      "New members each month",
+      "Members by province",
+      "New members by province",
+      "Active members by province",
+      "Inactive members by province",
+      "Compare members by province",
+      "Campaigns",
+      "Campaigns each month",
+      "Campaign status",
+      "Campaigns by province",
+      "Campaigns by district",
+      "Campaigns by area",
+      "Campaigns by basic unit",
+      "Meetings",
+      "Meetings each month",
+      "Meeting status",
+      "Completed meetings by year",
+      "Completed meetings by year and group",
+      "Meetings by year, level and group",
+      "Meetings by level and group",
+      "Reports",
+      "Report status by province",
+      "Reports submitted (%)",
+      "Unit reports",
+      "Needs attention",
+      "Inactive units — detail",
+      "Inactive members — details"
+    ],
+    "stats": [
+      "384Total members384 joined in the last 365 days",
+      "48Basic units96%46 active · 2 inactive",
+      "24Area units100%24 active · 0 inactive",
+      "9District units89%8 active · 1 inactive",
+      "3Provinces67%2 active · 1 inactive"
+    ],
+    "nav": [
+      {
+        "text": "Dashboard",
+        "href": "/"
+      },
+      {
+        "text": "Central Admins",
+        "href": "/admin/users?role=CENTRAL_ADMIN"
+      },
+      {
+        "text": "Manage Units",
+        "href": "/admin/manage-org"
+      },
+      {
+        "text": "All Members",
+        "href": "/members"
+      },
+      {
+        "text": "Pending Role Approvals",
+        "href": "/admin/pending-approvals"
+      },
+      {
+        "text": "Finance Overview",
+        "href": "/admin/finance-overview"
+      },
+      {
+        "text": "Role Management",
+        "href": "/admin/roles"
+      },
+      {
+        "text": "All Users & Credentials",
+        "href": "/admin/users"
+      },
+      {
+        "text": "Audit Log",
+        "href": "/admin/audit"
+      },
+      {
+        "text": "Notifications",
+        "href": "/notifications"
+      },
+      {
+        "text": "Announcements",
+        "href": "/announcements"
+      }
+    ],
+    "selects": [
+      {
+        "label": "Date range",
+        "disabled": false,
+        "options": [
+          {
+            "value": "30",
+            "text": "Last 30 days"
+          },
+          {
+            "value": "60",
+            "text": "Last 60 days"
+          },
+          {
+            "value": "90",
+            "text": "Last 90 days"
+          },
+          {
+            "value": "180",
+            "text": "Last 6 months"
+          },
+          {
+            "value": "365",
+            "text": "Last 12 months"
+          }
+        ]
+      },
+      {
+        "label": "Province",
+        "disabled": false,
+        "options": [
+          {
+            "value": "",
+            "text": "All provinces"
+          },
+          {
+            "value": "6a75a3f0ba1fbef74f88b636",
+            "text": "Balochistan"
+          },
+          {
+            "value": "6a75a3abba1fbef74f88b616",
+            "text": "KPK"
+          },
+          {
+            "value": "6a9071b6267b3d1386043f88",
+            "text": "punjab"
+          }
+        ]
+      },
+      {
+        "label": "District",
+        "disabled": true,
+        "options": [
+          {
+            "value": "",
+            "text": "All districts"
+          }
+        ]
+      },
+      {
+        "label": "Area",
+        "disabled": true,
+        "options": [
+          {
+            "value": "",
+            "text": "All areas"
+          }
+        ]
+      },
+      {
+        "label": "Basic Unit",
+        "disabled": true,
+        "options": [
+          {
+            "value": "",
+            "text": "All basic units"
+          }
+        ]
+      },
+      {
+        "label": "Member status",
+        "disabled": false,
+        "options": [
+          {
+            "value": "",
+            "text": "All member statuses"
+          },
+          {
+            "value": "ACTIVE",
+            "text": "active"
+          },
+          {
+            "value": "PENDING_APPROVAL",
+            "text": "pending approval"
+          },
+          {
+            "value": "INACTIVE",
+            "text": "inactive"
+          },
+          {
+            "value": "SUSPENDED",
+            "text": "suspended"
+          },
+          {
+            "value": "REJECTED",
+            "text": "rejected"
+          },
+          {
+            "value": "EXPELLED",
+            "text": "expelled"
+          },
+          {
+            "value": "DECEASED",
+            "text": "deceased"
+          }
+        ]
+      },
+      {
+        "label": "Unit activity",
+        "disabled": false,
+        "options": [
+          {
+            "value": "",
+            "text": "Inactive units"
+          },
+          {
+            "value": "ACTIVE",
+            "text": "Active units"
+          }
+        ]
+      },
+      {
+        "label": "Years to show",
+        "disabled": false,
+        "options": [
+          {
+            "value": "3",
+            "text": "3 years"
+          },
+          {
+            "value": "5",
+            "text": "5 years"
+          },
+          {
+            "value": "10",
+            "text": "10 years"
+          }
+        ]
+      },
+      {
+        "label": "Select province",
+        "disabled": false,
+        "options": [
+          {
+            "value": "",
+            "text": "All provinces (Central)"
+          },
+          {
+            "value": "6a75a3f0ba1fbef74f88b636",
+            "text": "Balochistan"
+          },
+          {
+            "value": "6a75a3abba1fbef74f88b616",
+            "text": "KPK"
+          },
+          {
+            "value": "6a9071b6267b3d1386043f88",
+            "text": "punjab"
+          }
+        ]
+      },
+      {
+        "label": "Select district",
+        "disabled": true,
+        "options": [
+          {
+            "value": "",
+            "text": "All districts"
+          }
+        ]
+      },
+      {
+        "label": "Select area",
+        "disabled": true,
+        "options": [
+          {
+            "value": "",
+            "text": "All areas"
+          }
+        ]
+      },
+      {
+        "label": "Select basic unit",
+        "disabled": true,
+        "options": [
+          {
+            "value": "",
+            "text": "All basic units"
+          }
+        ]
+      }
+    ],
+    "charts": 41,
+    "alerts": [],
+    "notification": null
+  }
+}

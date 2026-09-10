@@ -1,0 +1,237 @@
+{
+  "label": "O2 LOCAL PRE-OPTIMIZATION BASELINE",
+  "createdAt": "2026-09-09T10:01:10.228Z",
+  "from": "2025-09-09T10:01:10.183Z",
+  "vus": 1,
+  "iterations": 20,
+  "warmups": 2,
+  "networkRuns": 5,
+  "ops": [
+    {
+      "name": "summary",
+      "url": "/api/dashboard/summary?days=365&from=2025-09-09T10:01:10.183Z"
+    },
+    {
+      "name": "scope",
+      "url": "/api/dashboard/scope?days=365&from=2025-09-09T10:01:10.183Z"
+    },
+    {
+      "name": "org-breakdown",
+      "url": "/api/dashboard/org-breakdown?days=365&from=2025-09-09T10:01:10.183Z"
+    },
+    {
+      "name": "membership",
+      "url": "/api/dashboard/membership?days=365&from=2025-09-09T10:01:10.183Z"
+    },
+    {
+      "name": "campaigns",
+      "url": "/api/dashboard/campaigns?days=365&from=2025-09-09T10:01:10.183Z"
+    },
+    {
+      "name": "meetings",
+      "url": "/api/dashboard/meetings?days=365&from=2025-09-09T10:01:10.183Z&yearBasis=CALENDAR&years=5"
+    },
+    {
+      "name": "reports",
+      "url": "/api/dashboard/reports?days=365&from=2025-09-09T10:01:10.183Z"
+    },
+    {
+      "name": "inactive-units",
+      "url": "/api/dashboard/inactive-units?days=365&from=2025-09-09T10:01:10.183Z&level=BASIC_UNIT&page=1&limit=10"
+    },
+    {
+      "name": "inactive-members",
+      "url": "/api/dashboard/inactive-members?days=365&from=2025-09-09T10:01:10.183Z&page=1&limit=10"
+    },
+    {
+      "name": "provinces",
+      "url": "/api/org/provinces"
+    },
+    {
+      "name": "unread-count",
+      "url": "/api/notifications/unread-count"
+    },
+    {
+      "name": "auth-me",
+      "url": "/api/auth/me"
+    }
+  ],
+  "cases": [
+    {
+      "level": "CENTRAL",
+      "userId": "6a85918523a81a273fa7d380",
+      "role": "CHAIRMAN",
+      "unitId": "6a75a23169a71f7105a7e5cc"
+    },
+    {
+      "level": "PROVINCE",
+      "userId": "6a79b10c8d2ed95050b4d786",
+      "role": "FINANCE_SECRETARY",
+      "unitId": "6a79afca8d2ed95050b4d5b5"
+    },
+    {
+      "level": "DISTRICT",
+      "userId": "6aa12440f4bf886a230f16ae",
+      "role": "SECRETARY",
+      "unitId": "6a75a448ba1fbef74f88b742"
+    },
+    {
+      "level": "AREA",
+      "userId": "6a7f464ccb3a00ea6190cb94",
+      "role": "SECRETARY",
+      "unitId": "6a75a50bba1fbef74f88b883"
+    },
+    {
+      "level": "BASIC_UNIT",
+      "userId": "6a834bb52bc1d5a7d8ffeaf3",
+      "role": "SENIOR_MAWIN",
+      "unitId": "6a75aa4cba1fbef74f88bc7a"
+    },
+    {
+      "level": "CENTRAL_ADMIN",
+      "role": "CENTRAL_ADMIN",
+      "userId": "6a83fca13b82215b93b9af00"
+    },
+    {
+      "level": "MEMBER_PERSONA",
+      "role": "MEMBER",
+      "userId": "6a76efe35ea5b34b688928d6"
+    }
+  ],
+  "beforeFingerprintHash": "214f3070f83e8732d27b99405fe42bf8f83a47b7adb15da1bd8305d9b750a4ad",
+  "o1Hashes": [
+    {
+      "path": "performance-tests\\optimization\\o1\\before-run.log",
+      "hash": "1fe2ffc7a7c0a15543b36d010d0f0396204d0e011d660d668c5954f514042a42"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\check-province-regression.cjs",
+      "hash": "4b8494ab3be9374a97613b462d58b38778f35eacbbb6b56962a308610583fe51"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\evidence-manifest.json",
+      "hash": "850931a18745479bb39b60641c9df322820f1d50894aa73ed440fd042c8b93e6"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\finish-o1.cjs",
+      "hash": "2b9495c2d5d8b293dcea69c1343cc9d42ceffd88eea4e5e65d11bdd106b3a3d3"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\O1-MONGODB-QUERY-INDEX-OPTIMIZATION-REPORT.md",
+      "hash": "5549d4db933921f65a584e9bee1d000e14b17e97948a487ac4a637a0be1aa969"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\recovered\\historical-baseline-summary.json",
+      "hash": "f55efc2b08a37c3b25e42b6b47b35bcd81118267a2b6c1d1789067b919b369d0"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\recovered\\historical-index-proposals.md",
+      "hash": "c82194fec54f0f2873e0b7c22bc6230e3b9ca1e42d7fa88cbebed04c5567f700"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\recovered\\historical-measurement-output.txt",
+      "hash": "ccf03b4fe59a7394fc9ec00311052b1d1072000717fa2baa6b76be7aef514502"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\recovered\\historical-runner.cjs.txt",
+      "hash": "d78eb18db2ff1d0a45899b2fdbba57a207331dae0053315153dc04c3981c4ab5"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\resume-comparison.json",
+      "hash": "7161b1371943e810ec98b5665ad76cb4737e1285b84490538df15fc4579a5e09"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\resume-final-verification.json",
+      "hash": "a92254dc61fa2db0f2ab044f9de6515142e165cb6e9e6a612db46b1ebef613af"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\review-index.cjs",
+      "hash": "aad2821abb96d25c336561a0a2a486eb2db7ba6a4d3cb56f61a827deebc4e019"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validate-one-index.cjs",
+      "hash": "3f770f370c1df1706363514dbd0149f83058613ba0c60491c23a80a65825006c"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\benchmark-after-build.json",
+      "hash": "7a4125d3ea3ba0323b8f89d6128d96285b3694f60c799277e62839ff49ee2717"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\build.json",
+      "hash": "4fe1d7b5a2fcd55172e2c2742d47159b1346b31d47634815d20fb67079b5d2fb"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\commands.json",
+      "hash": "0c07d7020b2ab85604d81d32b2a38b6c8f9c25d2c71eb4a044c92f31491ddd19"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\decision.json",
+      "hash": "11e504608338606065e411fa5156ba104048f820f39f71f2d7d624a893f2145d"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\explain-after-build.json",
+      "hash": "ce0fb8c3b00b33af64a6b1039134397e05a3a15906dafba3b7ef68828a517121"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\functional-prebuild.json",
+      "hash": "ca2b9913c8a4d26962532472a63b82a373ccb22120116833335dadf910419c3f"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\postbuild-integrity.json",
+      "hash": "5e08cef25507c4991ad3a834ceb21331dc08920c563d91cab740468a96e6c18c"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\global\\prebuild-integrity.json",
+      "hash": "05d343b7d13efdaa2e6d0c23f7fcb83dd2be8ee5771c328a42a27f65f8197f71"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\benchmark-after-build.json",
+      "hash": "b38585557c28f5b24d851718f10c970c50a8ab0608cd5718424799c8e577e6aa"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\build.json",
+      "hash": "dcaea9ef56bc34dd8a10664f3e394bc892a98972edbbf19158b763e67634e240"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\commands.json",
+      "hash": "8b2c5917ce65ce4df59040adcf30ae60d2ca7bdb433c1d3fbe3a4031a0ff9d33"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\decision.json",
+      "hash": "62928b732b7abb6c5feff0a7c90aa1a1ae4782605cb39ff0a8734b5129b8e145"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\explain-after-build.json",
+      "hash": "59d453d71e0766bad3f848a24ab74d4e92a64ec6ccf0ea6d86f82056180e5096"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\functional-prebuild.json",
+      "hash": "ca2b9913c8a4d26962532472a63b82a373ccb22120116833335dadf910419c3f"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\postbuild-integrity.json",
+      "hash": "c08356c98fab7ae3984bc1aaedcd1da2ac750f03801d0de4034e8df6aad96c74"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\prebuild-integrity.json",
+      "hash": "578b1da6abc6e416ca8b064e6e0c4033aa36f40f33d5df885d5a4e51e7809454"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation\\province\\visibility-check.json",
+      "hash": "2a58b195f33a589553e7fd26c8778166f4f61a0c8c083c211f8cbb934b07746c"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation-global.log",
+      "hash": "9d8a136f254a7aae6be71b5de0b76e8bc174d0f66ab4cfa3083ac267e66e90c3"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\validation-province.log",
+      "hash": "4d09d834f9056a5891d05d5116f5e5698c6b63c93eb11e62bd33e4266722fac8"
+    },
+    {
+      "path": "performance-tests\\optimization\\o1\\visibility-check.log",
+      "hash": "ea11109cdfe712c460864ccd83b11a9f3c994c3b7eeb72b855850483399ff60a"
+    }
+  ],
+  "methodology": "Existing active identities; unchanged signToken/authenticate. Cold analytics cache via existing invalidation before each independent API request and each browser navigation, excluded from timing. Production Vite build, headless Chrome, browser HTTP cache disabled, 1440x1000, fresh session state per navigation. No startup index sync/backfills. Network completion is first API request to last API response; 1-second idle is detection only and not included."
+}

@@ -1,0 +1,6 @@
+{
+  "method": "Node monitorEventLoopDelay; current interleaved control is authoritative",
+  "group3P95Ms": { "before": 31.493324, "after": 19.074252 },
+  "fullFanoutP95Ms": { "before": 98.736537, "afterCoalescing": 47.815065 },
+  "stagingP95Ms": { "simultaneous": 83.722239, "staged": 34.198322 }
+}

@@ -1,0 +1,503 @@
+﻿{
+  "verifiedAt": "2026-09-09T09:39:50.361Z",
+  "target": "127.0.0.1:27017/pnap_mis",
+  "dbPath": "D:\\MongoDB\\data",
+  "net": {
+    "bindIp": "127.0.0.1",
+    "port": 27017
+  },
+  "stats": {
+    "db": "pnap_mis",
+    "collections": 40,
+    "views": 0,
+    "objects": 4255,
+    "avgObjSize": 401.8016451233843,
+    "dataSize": 1709666,
+    "storageSize": 1490944,
+    "indexes": 213,
+    "indexSize": 6299648,
+    "totalSize": 7790592,
+    "scaleFactor": 1,
+    "fsUsedSize": 80020971520,
+    "fsTotalSize": 151201509376,
+    "ok": 1
+  },
+  "existingLog": {
+    "path": "D:\\Project\\PNAP-MIS\\performance-tests\\optimization\\o1\\before-run.log",
+    "bytes": 71866,
+    "sha256": "403bde83bd372076220763fc3ae2e05f29a5703382e8841d4bebbaff23f49dc3",
+    "completed": true
+  },
+  "collections": [
+    {
+      "collection": "responsibilities",
+      "previousCount": 4,
+      "count": 4,
+      "previousDataSize": 1363,
+      "dataSize": 1363,
+      "countAndSizeMatch": true,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "assignedToMemberId": 1
+          },
+          "name": "assignedToMemberId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "templateId": 1,
+            "sourceRef.id": 1
+          },
+          "name": "templateId_1_sourceRef.id_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "templateId": {
+              "$exists": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "members",
+      "previousCount": 384,
+      "count": 384,
+      "previousDataSize": 277938,
+      "dataSize": 277938,
+      "countAndSizeMatch": true,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "memberId": 1
+          },
+          "name": "memberId_1",
+          "background": true,
+          "unique": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "cnic": 1
+          },
+          "name": "cnic_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "username": 1
+          },
+          "name": "username_1",
+          "background": true,
+          "unique": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1,
+            "lastActivityAt": -1
+          },
+          "name": "provinceId_1_lastActivityAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1,
+            "lastActivityAt": -1
+          },
+          "name": "status_1_lastActivityAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "email": 1
+          },
+          "name": "email_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "email": {
+              "$type": "string"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "meetings",
+      "previousCount": 17,
+      "count": 17,
+      "previousDataSize": 18884,
+      "dataSize": 18884,
+      "countAndSizeMatch": true,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "type": 1
+          },
+          "name": "type_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "body": 1
+          },
+          "name": "body_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "typeCode": 1
+          },
+          "name": "typeCode_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "roleassignments",
+      "previousCount": 325,
+      "count": 325,
+      "previousDataSize": 168775,
+      "dataSize": 168775,
+      "countAndSizeMatch": true,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "memberId": 1
+          },
+          "name": "memberId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1,
+            "unitId": 1,
+            "roleCode": 1,
+            "state": 1,
+            "endedAt": 1
+          },
+          "name": "unitLevel_1_unitId_1_roleCode_1_state_1_endedAt_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "activities",
+      "previousCount": 3,
+      "count": 3,
+      "previousDataSize": 2875,
+      "dataSize": 2875,
+      "countAndSizeMatch": true,
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "type": 1
+          },
+          "name": "type_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "body": 1
+          },
+          "name": "body_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "typeCode": 1
+          },
+          "name": "typeCode_1",
+          "background": true
+        }
+      ]
+    }
+  ],
+  "note": "Count and size agreement is not a content checksum. This does not recreate or replace the O1 baseline."
+}

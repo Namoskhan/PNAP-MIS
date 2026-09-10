@@ -1,0 +1,241 @@
+{
+  "checks": [
+    {
+      "name": "members-list",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "7f7600b8670665a02f612c1151231d64a0e9d627fb094c7fcb0ffadaee679125",
+      "shapeHash": "b42eb49baf304a495c89d69bcfc0ef23f8d2f4e01aa610215ca6d3297edb3bdb",
+      "recordCount": {
+        "$numberInt": "20"
+      }
+    },
+    {
+      "name": "member-first-page",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "362645823693ba02fdd4a5ab5e88fcadc0d66f38f7056aad1ef04580f107d6bc",
+      "shapeHash": "b42eb49baf304a495c89d69bcfc0ef23f8d2f4e01aa610215ca6d3297edb3bdb",
+      "recordCount": {
+        "$numberInt": "25"
+      }
+    },
+    {
+      "name": "member-deep-page",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "ae910a0cfe1a4edf017dcbe345b1711ef5ab26e544bb7e8c8f7604e6fbee1415",
+      "shapeHash": "14518d905e91efb02f5346937f0037203dba867e3dc39388b06a10343eec4b03",
+      "recordCount": {
+        "$numberInt": "25"
+      }
+    },
+    {
+      "name": "member-search",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "362645823693ba02fdd4a5ab5e88fcadc0d66f38f7056aad1ef04580f107d6bc",
+      "shapeHash": "b42eb49baf304a495c89d69bcfc0ef23f8d2f4e01aa610215ca6d3297edb3bdb",
+      "recordCount": {
+        "$numberInt": "25"
+      }
+    },
+    {
+      "name": "dashboard-summary",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "61e1ed55fcb166f6c99b785093e772e14bf821f887ae5195c799d0b5dd24e96e",
+      "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+      "recordCount": null
+    },
+    {
+      "name": "dashboard-org-breakdown",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+      "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+      "recordCount": null
+    },
+    {
+      "name": "dashboard-membership",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+      "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+      "recordCount": null
+    },
+    {
+      "name": "meetings",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "a742a87321df820b7249fc895e402b5bed6eae12e9deb5a2b9626c9e37679230",
+      "shapeHash": "ee72ca5b91328d1dfc07bab16a66b9a6c16eb72d786090efa480fa11e3095b53",
+      "recordCount": {
+        "$numberInt": "17"
+      }
+    },
+    {
+      "name": "activities",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "74bed0b4de98638eebce783f26aae4b63436f25fb7de3174930301bc3201b8b0",
+      "shapeHash": "d93ec333c741dbb130e9174494f55168cb611704ec43cada6ad3ccda046d95f0",
+      "recordCount": {
+        "$numberInt": "3"
+      }
+    },
+    {
+      "name": "responsibilities",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "c01cd5c58bbf711dd9db6b25c09e56ad5a3d377f6f826db90b56865b20d60d5f",
+      "shapeHash": "3fbfac1689547cb92eaa77bf2608cf9adf922609754cfc0c37515cd23639345e",
+      "recordCount": {
+        "$numberInt": "4"
+      }
+    },
+    {
+      "name": "single-member",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "61a596745e674aed8a52d9c61b40b2ccd61526b20ed32a8dd46beb7986cdb0ad",
+      "shapeHash": "c1ce17d511076fcb68b495103617cf1a495d1711dad931777f2f3de6d2434b3f",
+      "recordCount": null
+    },
+    {
+      "name": "dashboard-province-breakdown",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "4cd42d86ecde5f58f71d0a72ffbd28da6be75bba68eb6af3d1f9452d561fd68f",
+      "shapeHash": "16f0c3a12ca22573e860177aa594a10d6e99757bc677b85c4eebeeadf6b0ffcf",
+      "recordCount": {
+        "$numberInt": "3"
+      }
+    },
+    {
+      "name": "members-province",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "f1f10ca650257bb1c6b0b4f11f92cd2b1df9fa561057fa875c4f1faf24cfca92",
+      "shapeHash": "c97ee15099beca66e54eadf815e236113c5eca15db4dd281861dd2f0f313c8c9",
+      "recordCount": {
+        "$numberInt": "25"
+      }
+    },
+    {
+      "name": "meetings-unit",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "77e8ded0613f926bbff371e01e9c666412d72c404affe1d0ff12f87a334618d2",
+      "shapeHash": "2fde0d0e62fda273581e29170026c112e3745186c532201013184a135231d57d",
+      "recordCount": {
+        "$numberInt": "2"
+      }
+    },
+    {
+      "name": "activities-unit",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "45976dce4240e0d24e40c77325326511550e1c88d9aba6460774e2c629c2f519",
+      "shapeHash": "1c9d42b0d3b764d12fdaa35310c630fa13f43b1498f74f4f4751b845ab9d8cab",
+      "recordCount": {
+        "$numberInt": "1"
+      }
+    },
+    {
+      "name": "responsibilities-unit",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "2ddf9d2ac192b74b0cccec841581d5d17592803f342833995c59bc6dc524345c",
+      "shapeHash": "fe0323c43068de4dcfcdcffad0f217376c3ee873b99d0ac0390452b08209ac9e",
+      "recordCount": {
+        "$numberInt": "1"
+      }
+    }
+  ],
+  "unauthenticated": [
+    {
+      "url": "/api/members?scope=all",
+      "status": {
+        "$numberInt": "401"
+      },
+      "responseHash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60",
+      "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6",
+      "recordCount": null
+    },
+    {
+      "url": "/api/dashboard/summary",
+      "status": {
+        "$numberInt": "401"
+      },
+      "responseHash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60",
+      "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6",
+      "recordCount": null
+    },
+    {
+      "url": "/api/meetings",
+      "status": {
+        "$numberInt": "401"
+      },
+      "responseHash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60",
+      "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6",
+      "recordCount": null
+    },
+    {
+      "url": "/api/activities",
+      "status": {
+        "$numberInt": "401"
+      },
+      "responseHash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60",
+      "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6",
+      "recordCount": null
+    },
+    {
+      "url": "/api/responsibilities",
+      "status": {
+        "$numberInt": "401"
+      },
+      "responseHash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60",
+      "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6",
+      "recordCount": null
+    }
+  ],
+  "scoped": [
+    {
+      "url": "/api/members?scope=all",
+      "status": {
+        "$numberInt": "200"
+      },
+      "responseHash": "55aa63f5d8f4e77efd28a1e5baaaf318e1385a3fd4d03030d4817095db11dea3",
+      "shapeHash": "32d17dca10c3061145c167c9686d81411c44903daad8ca8a031e9866790de952",
+      "recordCount": {
+        "$numberInt": "16"
+      }
+    },
+    {
+      "url": "/api/dashboard/summary",
+      "status": {
+        "$numberInt": "403"
+      },
+      "responseHash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+      "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6",
+      "recordCount": null
+    }
+  ]
+}

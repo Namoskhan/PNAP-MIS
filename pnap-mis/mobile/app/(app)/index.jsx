@@ -66,7 +66,12 @@ export default function DashboardScreen() {
 
   // 1. Executive / Super Admin view
   if (isSuperOrExecutive) {
-    return <CommandCenter accessScope={user?.dashboardScope} />;
+    return (
+      <CommandCenter
+        key={`${user?.roles?.join(',')}:${user?.dashboardScope?.unitId || 'central'}`}
+        accessScope={user?.dashboardScope}
+      />
+    );
   }
 
   // 2. Member Portal for Pure Members

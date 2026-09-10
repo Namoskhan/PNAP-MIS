@@ -1,0 +1,288 @@
+{
+  "summary": [
+    {
+      "type": "find",
+      "collection": "users",
+      "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49",
+      "executionTimeMs": 3,
+      "totalDocsExamined": 1,
+      "totalKeysExamined": 1
+    },
+    {
+      "type": "aggregate",
+      "collection": "members",
+      "signature": "449d990af8d1a1207a17342f208e739e8f742c31f466e70adfcc13a995e0a670",
+      "executionTimeMs": 6,
+      "totalDocsExamined": 384,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "members",
+      "signature": "85fcf4654c9d4ca615909187b2c0039759fe29a5c08af06f256f35f36e9b6cc1",
+      "executionTimeMs": 3,
+      "totalDocsExamined": 384,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "meetings",
+      "signature": "8a72f2da2bc0849c72f3bd240cff268d2c951d6c73ab23bd5534f6920d0f65ac",
+      "executionTimeMs": 1,
+      "totalDocsExamined": 17,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "activities",
+      "signature": "f680ab36e426d2924f01f0e2ffaf208b3e7985c47fc1b0863f0aac1ae081e4e1",
+      "executionTimeMs": 6,
+      "totalDocsExamined": 1,
+      "totalKeysExamined": 1
+    },
+    {
+      "type": "find",
+      "collection": "provinces",
+      "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7",
+      "executionTimeMs": 1,
+      "totalDocsExamined": 3,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "districts",
+      "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 9,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "areas",
+      "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 24,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "basicunits",
+      "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 48,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "members",
+      "signature": "7fa0ea7bd5b494eaadc6ac2542ad173cee0bf32a01e04ad3468416b3361ecea3",
+      "executionTimeMs": 1,
+      "totalDocsExamined": 384,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "meetings",
+      "signature": "0270272a50e2daf7770a893b4f250e7391b9a5e9c4a6fe8fee39e1ebc64e98c3",
+      "executionTimeMs": 4,
+      "totalDocsExamined": 5,
+      "totalKeysExamined": 5
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553",
+      "executionTimeMs": 87,
+      "totalDocsExamined": 139,
+      "totalKeysExamined": 139
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49",
+      "executionTimeMs": 47,
+      "totalDocsExamined": 73,
+      "totalKeysExamined": 105
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e",
+      "executionTimeMs": 20,
+      "totalDocsExamined": 43,
+      "totalKeysExamined": 43
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563",
+      "executionTimeMs": 7,
+      "totalDocsExamined": 7,
+      "totalKeysExamined": 11
+    }
+  ],
+  "org-breakdown": [
+    {
+      "type": "find",
+      "collection": "users",
+      "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 1,
+      "totalKeysExamined": 1
+    },
+    {
+      "type": "find",
+      "collection": "provinces",
+      "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 3,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "districts",
+      "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 9,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "areas",
+      "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 24,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "basicunits",
+      "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 48,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553",
+      "executionTimeMs": 90,
+      "totalDocsExamined": 139,
+      "totalKeysExamined": 139
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49",
+      "executionTimeMs": 64,
+      "totalDocsExamined": 73,
+      "totalKeysExamined": 105
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e",
+      "executionTimeMs": 16,
+      "totalDocsExamined": 43,
+      "totalKeysExamined": 43
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563",
+      "executionTimeMs": 6,
+      "totalDocsExamined": 7,
+      "totalKeysExamined": 11
+    },
+    {
+      "type": "aggregate",
+      "collection": "members",
+      "signature": "9591cd02782a487ff7783794f4ed6d70e942312ef0064a09ca025a91479fe820",
+      "executionTimeMs": 2,
+      "totalDocsExamined": 384,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "activitylogs",
+      "signature": "392c7ca58aac4546a1f91b265555ae5919a7cca50ac7b60ead3eceef128536eb",
+      "executionTimeMs": 11,
+      "totalDocsExamined": 1761,
+      "totalKeysExamined": 1761
+    }
+  ],
+  "inactive-units": [
+    {
+      "type": "find",
+      "collection": "users",
+      "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 1,
+      "totalKeysExamined": 1
+    },
+    {
+      "type": "find",
+      "collection": "provinces",
+      "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 3,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "districts",
+      "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 9,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "areas",
+      "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 24,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "find",
+      "collection": "basicunits",
+      "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2",
+      "executionTimeMs": 0,
+      "totalDocsExamined": 48,
+      "totalKeysExamined": 0
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553",
+      "executionTimeMs": 81,
+      "totalDocsExamined": 139,
+      "totalKeysExamined": 139
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49",
+      "executionTimeMs": 46,
+      "totalDocsExamined": 73,
+      "totalKeysExamined": 105
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e",
+      "executionTimeMs": 16,
+      "totalDocsExamined": 43,
+      "totalKeysExamined": 43
+    },
+    {
+      "type": "aggregate",
+      "collection": "roleassignments",
+      "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563",
+      "executionTimeMs": 5,
+      "totalDocsExamined": 7,
+      "totalKeysExamined": 11
+    }
+  ]
+}

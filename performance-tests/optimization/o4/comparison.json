@@ -1,0 +1,14 @@
+{
+  "coldGroup3": {
+    "control": { "p50Ms": 183.9528, "p95Ms": 297.66487, "snapshotBuilds": 3, "dbOperations": 35, "officeBearerAggregations": 12, "eventLoopP95Ms": 31.493324, "nodeCpuMeanPct": 76.085614 },
+    "coalesced": { "p50Ms": 133.0693, "p95Ms": 180.56024, "snapshotBuilds": 1, "dbOperations": 19, "officeBearerAggregations": 4, "eventLoopP95Ms": 19.074252, "nodeCpuMeanPct": 47.822535 }
+  },
+  "coldFullDashboard": {
+    "control": { "p50Ms": 234.3717, "p95Ms": 338.92165, "snapshotBuildsMedian": 3, "dbOperationsMedian": 74, "officeBearerAggregationsMedian": 12, "eventLoopP95Ms": 98.736537, "nodeCpuMeanPct": 97.103167 },
+    "coalesced": { "p50Ms": 179.7063, "p95Ms": 240.18231, "snapshotBuilds": 1, "dbOperations": 58, "officeBearerAggregations": 4, "eventLoopP95Ms": 47.815065, "nodeCpuMeanPct": 86.521002 }
+  },
+  "staging": {
+    "simultaneous": { "primaryP50Ms": 227.9271, "primaryP95Ms": 433.52767, "fullP50Ms": 230.24, "fullP95Ms": 438.57943, "peakConcurrency": 9, "eventLoopP95Ms": 83.722239, "nodeCpuMeanPct": 105.469657 },
+    "staged": { "primaryP50Ms": 133.0153, "primaryP95Ms": 207.5694, "fullP50Ms": 224.801, "fullP95Ms": 330.51039, "peakConcurrency": 6, "eventLoopP95Ms": 34.198322, "nodeCpuMeanPct": 79.098209 }
+  }
+}

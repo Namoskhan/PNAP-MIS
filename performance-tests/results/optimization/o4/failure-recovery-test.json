@@ -1,0 +1,26 @@
+{
+  "statuses": [
+    500,
+    500,
+    500
+  ],
+  "sameFailure": true,
+  "afterFailureInFlight": 0,
+  "healthyStatus": 200,
+  "afterHealthyInFlight": 0,
+  "events": [
+    {
+      "key": "org|2025-09-09T13:09:03.542Z|now|||||",
+      "startedAt": 3824.5571,
+      "endedAt": 3856.7353,
+      "outcome": "rejected"
+    },
+    {
+      "key": "org|2025-09-09T13:09:03.542Z|now|||||",
+      "startedAt": 3929.7043,
+      "endedAt": 4080.3476,
+      "outcome": "fulfilled"
+    }
+  ],
+  "passed": true
+}

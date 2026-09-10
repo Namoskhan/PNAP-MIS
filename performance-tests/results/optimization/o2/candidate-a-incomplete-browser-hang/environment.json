@@ -1,0 +1,25 @@
+{
+  "backend": "http://127.0.0.1:51381",
+  "frontend": "http://127.0.0.1:51381/",
+  "build": "Vite production build served by unchanged Express app",
+  "database": "127.0.0.1:27017/pnap_mis",
+  "dbPath": "D:\\MongoDB\\data",
+  "nodeEnv": "development",
+  "node": "v24.11.0",
+  "dbStats": {
+    "db": "pnap_mis",
+    "collections": 40,
+    "views": 0,
+    "objects": 4255,
+    "avgObjSize": 401.8016451233843,
+    "dataSize": 1709666,
+    "storageSize": 1490944,
+    "indexes": 213,
+    "indexSize": 6299648,
+    "totalSize": 7790592,
+    "scaleFactor": 1,
+    "fsUsedSize": 81385766912,
+    "fsTotalSize": 151201509376,
+    "ok": 1
+  }
+}

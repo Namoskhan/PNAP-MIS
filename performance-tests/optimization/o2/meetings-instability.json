@@ -1,0 +1,1050 @@
+{
+  "a": {
+    "data": {
+      "bodiesPresent": [
+        "COMMITTEE",
+        "EXECUTIVE",
+        "GENERAL_BODY",
+        "JIRGA"
+      ],
+      "byState": {
+        "CANCELLED": 0,
+        "DRAFT": 0,
+        "FINALIZED": 12,
+        "IN_PROGRESS": 0,
+        "PENDING_REPORT": 0,
+        "SCHEDULED": 5
+      },
+      "byTier": [
+        {
+          "body": "EXECUTIVE",
+          "conducted": 4,
+          "level": "AREA",
+          "scheduled": 0,
+          "total": 4
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "level": "BASIC_UNIT",
+          "scheduled": 1,
+          "total": 3
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "level": "PROVINCE",
+          "scheduled": 0,
+          "total": 2
+        },
+        {
+          "body": "GENERAL_BODY",
+          "conducted": 1,
+          "level": "AREA",
+          "scheduled": 1,
+          "total": 2
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 1,
+          "level": "PROVINCE",
+          "scheduled": 1,
+          "total": 2
+        },
+        {
+          "body": "COMMITTEE",
+          "conducted": 2,
+          "level": "BASIC_UNIT",
+          "scheduled": 0,
+          "total": 2
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 0,
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 0,
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1
+        }
+      ],
+      "congressConfigured": true,
+      "jirgaTracked": false,
+      "tiersPresent": [
+        "PROVINCE",
+        "DISTRICT",
+        "AREA",
+        "BASIC_UNIT"
+      ],
+      "totals": {
+        "conducted": 12,
+        "overdueReports": 5,
+        "scheduled": 5,
+        "total": 17
+      },
+      "trend": [
+        {
+          "conducted": 0,
+          "label": "Oct",
+          "month": "2025-10",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Nov",
+          "month": "2025-11",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Dec",
+          "month": "2025-12",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Jan",
+          "month": "2026-01",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Feb",
+          "month": "2026-02",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Mar",
+          "month": "2026-03",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Apr",
+          "month": "2026-04",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "May",
+          "month": "2026-05",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Jun",
+          "month": "2026-06",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Jul",
+          "month": "2026-07",
+          "total": 0
+        },
+        {
+          "conducted": 11,
+          "label": "Aug",
+          "month": "2026-08",
+          "total": 16
+        },
+        {
+          "conducted": 1,
+          "label": "Sep",
+          "month": "2026-09",
+          "total": 1
+        }
+      ],
+      "unassignedMeetings": 0,
+      "yearBasis": "CALENDAR",
+      "yearBasisLabel": "Calendar year",
+      "yearly": [
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2022",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2022
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2023",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2023
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2024",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2024
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2025",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2025
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 2,
+              "scheduled": 0,
+              "total": 2
+            },
+            "EXECUTIVE": {
+              "conducted": 8,
+              "scheduled": 2,
+              "total": 10
+            },
+            "GENERAL_BODY": {
+              "conducted": 1,
+              "scheduled": 1,
+              "total": 2
+            },
+            "JIRGA": {
+              "conducted": 1,
+              "scheduled": 2,
+              "total": 3
+            }
+          },
+          "conducted": 12,
+          "label": "2026",
+          "scheduled": 5,
+          "tiers": {
+            "AREA": {
+              "conducted": 5,
+              "scheduled": 1,
+              "total": 6
+            },
+            "BASIC_UNIT": {
+              "conducted": 4,
+              "scheduled": 1,
+              "total": 5
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 2,
+              "total": 2
+            },
+            "PROVINCE": {
+              "conducted": 3,
+              "scheduled": 1,
+              "total": 4
+            }
+          },
+          "total": 17,
+          "year": 2026
+        }
+      ],
+      "yearlyMatrix": [
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "label": "2026",
+          "level": "PROVINCE",
+          "scheduled": 0,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 1,
+          "label": "2026",
+          "level": "PROVINCE",
+          "scheduled": 1,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 0,
+          "label": "2026",
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1,
+          "year": 2026
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 0,
+          "label": "2026",
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1,
+          "year": 2026
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 4,
+          "label": "2026",
+          "level": "AREA",
+          "scheduled": 0,
+          "total": 4,
+          "year": 2026
+        },
+        {
+          "body": "GENERAL_BODY",
+          "conducted": 1,
+          "label": "2026",
+          "level": "AREA",
+          "scheduled": 1,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "COMMITTEE",
+          "conducted": 2,
+          "label": "2026",
+          "level": "BASIC_UNIT",
+          "scheduled": 0,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "label": "2026",
+          "level": "BASIC_UNIT",
+          "scheduled": 1,
+          "total": 3,
+          "year": 2026
+        }
+      ]
+    },
+    "success": true
+  },
+  "b": {
+    "data": {
+      "bodiesPresent": [
+        "COMMITTEE",
+        "EXECUTIVE",
+        "GENERAL_BODY",
+        "JIRGA"
+      ],
+      "byState": {
+        "CANCELLED": 0,
+        "DRAFT": 0,
+        "FINALIZED": 12,
+        "IN_PROGRESS": 0,
+        "PENDING_REPORT": 0,
+        "SCHEDULED": 5
+      },
+      "byTier": [
+        {
+          "body": "EXECUTIVE",
+          "conducted": 4,
+          "level": "AREA",
+          "scheduled": 0,
+          "total": 4
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "level": "BASIC_UNIT",
+          "scheduled": 1,
+          "total": 3
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "level": "PROVINCE",
+          "scheduled": 0,
+          "total": 2
+        },
+        {
+          "body": "GENERAL_BODY",
+          "conducted": 1,
+          "level": "AREA",
+          "scheduled": 1,
+          "total": 2
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 1,
+          "level": "PROVINCE",
+          "scheduled": 1,
+          "total": 2
+        },
+        {
+          "body": "COMMITTEE",
+          "conducted": 2,
+          "level": "BASIC_UNIT",
+          "scheduled": 0,
+          "total": 2
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 0,
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 0,
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1
+        }
+      ],
+      "congressConfigured": true,
+      "jirgaTracked": false,
+      "tiersPresent": [
+        "PROVINCE",
+        "DISTRICT",
+        "AREA",
+        "BASIC_UNIT"
+      ],
+      "totals": {
+        "conducted": 12,
+        "overdueReports": 5,
+        "scheduled": 5,
+        "total": 17
+      },
+      "trend": [
+        {
+          "conducted": 0,
+          "label": "Oct",
+          "month": "2025-10",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Nov",
+          "month": "2025-11",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Dec",
+          "month": "2025-12",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Jan",
+          "month": "2026-01",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Feb",
+          "month": "2026-02",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Mar",
+          "month": "2026-03",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Apr",
+          "month": "2026-04",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "May",
+          "month": "2026-05",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Jun",
+          "month": "2026-06",
+          "total": 0
+        },
+        {
+          "conducted": 0,
+          "label": "Jul",
+          "month": "2026-07",
+          "total": 0
+        },
+        {
+          "conducted": 11,
+          "label": "Aug",
+          "month": "2026-08",
+          "total": 16
+        },
+        {
+          "conducted": 1,
+          "label": "Sep",
+          "month": "2026-09",
+          "total": 1
+        }
+      ],
+      "unassignedMeetings": 0,
+      "yearBasis": "CALENDAR",
+      "yearBasisLabel": "Calendar year",
+      "yearly": [
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2022",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2022
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2023",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2023
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2024",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2024
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "EXECUTIVE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "GENERAL_BODY": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "JIRGA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "conducted": 0,
+          "label": "2025",
+          "scheduled": 0,
+          "tiers": {
+            "AREA": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "BASIC_UNIT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "PROVINCE": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            }
+          },
+          "total": 0,
+          "year": 2025
+        },
+        {
+          "bodies": {
+            "COMMITTEE": {
+              "conducted": 2,
+              "scheduled": 0,
+              "total": 2
+            },
+            "EXECUTIVE": {
+              "conducted": 8,
+              "scheduled": 2,
+              "total": 10
+            },
+            "GENERAL_BODY": {
+              "conducted": 1,
+              "scheduled": 1,
+              "total": 2
+            },
+            "JIRGA": {
+              "conducted": 1,
+              "scheduled": 2,
+              "total": 3
+            }
+          },
+          "conducted": 12,
+          "label": "2026",
+          "scheduled": 5,
+          "tiers": {
+            "AREA": {
+              "conducted": 5,
+              "scheduled": 1,
+              "total": 6
+            },
+            "BASIC_UNIT": {
+              "conducted": 4,
+              "scheduled": 1,
+              "total": 5
+            },
+            "CENTRAL": {
+              "conducted": 0,
+              "scheduled": 0,
+              "total": 0
+            },
+            "DISTRICT": {
+              "conducted": 0,
+              "scheduled": 2,
+              "total": 2
+            },
+            "PROVINCE": {
+              "conducted": 3,
+              "scheduled": 1,
+              "total": 4
+            }
+          },
+          "total": 17,
+          "year": 2026
+        }
+      ],
+      "yearlyMatrix": [
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "label": "2026",
+          "level": "PROVINCE",
+          "scheduled": 0,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 1,
+          "label": "2026",
+          "level": "PROVINCE",
+          "scheduled": 1,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 0,
+          "label": "2026",
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1,
+          "year": 2026
+        },
+        {
+          "body": "JIRGA",
+          "conducted": 0,
+          "label": "2026",
+          "level": "DISTRICT",
+          "scheduled": 1,
+          "total": 1,
+          "year": 2026
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 4,
+          "label": "2026",
+          "level": "AREA",
+          "scheduled": 0,
+          "total": 4,
+          "year": 2026
+        },
+        {
+          "body": "GENERAL_BODY",
+          "conducted": 1,
+          "label": "2026",
+          "level": "AREA",
+          "scheduled": 1,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "COMMITTEE",
+          "conducted": 2,
+          "label": "2026",
+          "level": "BASIC_UNIT",
+          "scheduled": 0,
+          "total": 2,
+          "year": 2026
+        },
+        {
+          "body": "EXECUTIVE",
+          "conducted": 2,
+          "label": "2026",
+          "level": "BASIC_UNIT",
+          "scheduled": 1,
+          "total": 3,
+          "year": 2026
+        }
+      ]
+    },
+    "success": true
+  }
+}

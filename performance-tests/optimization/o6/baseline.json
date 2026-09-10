@@ -1,0 +1,1 @@
+{"label":"O6 LOCAL PRE-OPTIMIZATION BASELINE","snapshot":{"p50Ms":108.90615,"p95Ms":189.651135,"p99Ms":380.746656,"dbOperations":9,"roleAggregations":4,"eventLoopP95Ms":17.651301,"nodeCpuMeanPct":42.782725},"group3":{"p50Ms":151.7484,"p95Ms":245.60011,"dbOperations":19},"dashboard":{"p50Ms":262.6592,"p95Ms":344.76245,"dbOperations":56,"bytes":23135}}

@@ -1,0 +1,5 @@
+{
+  "group3": { "processCpuMeanPct": { "before": 76.085614, "after": 47.822535 }, "hostCpuMeanPct": { "before": 66.016119, "after": 36.281251 } },
+  "fullFanout": { "processCpuMeanPct": { "before": 97.103167, "after": 86.521002 }, "hostCpuMeanPct": { "before": 62.485244, "after": 48.863799 } },
+  "staging": { "processCpuMeanPct": { "simultaneous": 105.469657, "staged": 79.098209 }, "hostCpuMeanPct": { "simultaneous": 51.129396, "staged": 44.45994 } }
+}

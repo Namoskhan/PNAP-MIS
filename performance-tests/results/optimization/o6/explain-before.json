@@ -1,0 +1,324 @@
+{
+  "rows": [
+    {
+      "level": "BASIC_UNIT",
+      "executionTimeMs": 61,
+      "nReturned": 46,
+      "totalDocsExamined": 139,
+      "totalKeysExamined": 139,
+      "winningStages": [
+        "PROJECTION_SIMPLE",
+        "FETCH",
+        "IXSCAN"
+      ],
+      "hasCollscan": false,
+      "hasIxscan": true,
+      "hasSort": false,
+      "sourceMatch": {
+        "unitLevel": "BASIC_UNIT",
+        "roleCode": {
+          "$in": [
+            "SECRETARY",
+            "SENIOR_MAWIN",
+            "FINANCE_SECRETARY"
+          ]
+        },
+        "state": "APPROVED",
+        "endedAt": {
+          "$exists": false
+        }
+      },
+      "lookup": {
+        "from": "members",
+        "let": {
+          "mid": "$memberId"
+        },
+        "pipeline": [
+          {
+            "$match": {
+              "$expr": {
+                "$eq": [
+                  "$_id",
+                  "$$mid"
+                ]
+              }
+            }
+          },
+          {
+            "$project": {
+              "fullName": 1,
+              "memberId": 1,
+              "phone": 1,
+              "lastActivityAt": 1
+            }
+          }
+        ],
+        "as": "member"
+      },
+      "lookupJoinedFields": [
+        "fullName",
+        "memberId",
+        "phone",
+        "lastActivityAt"
+      ],
+      "group": {
+        "_id": "$unitId",
+        "lastActivityAt": {
+          "$max": "$member.lastActivityAt"
+        },
+        "officers": {
+          "$push": {
+            "roleCode": "$roleCode",
+            "memberId": "$member._id",
+            "memberCode": "$member.memberId",
+            "fullName": "$member.fullName",
+            "phone": "$member.phone",
+            "lastActivityAt": "$member.lastActivityAt"
+          }
+        }
+      }
+    },
+    {
+      "level": "AREA",
+      "executionTimeMs": 42,
+      "nReturned": 24,
+      "totalDocsExamined": 73,
+      "totalKeysExamined": 105,
+      "winningStages": [
+        "PROJECTION_SIMPLE",
+        "FETCH",
+        "IXSCAN"
+      ],
+      "hasCollscan": false,
+      "hasIxscan": true,
+      "hasSort": false,
+      "sourceMatch": {
+        "unitLevel": "AREA",
+        "roleCode": {
+          "$in": [
+            "SECRETARY",
+            "SENIOR_MAWIN",
+            "FINANCE_SECRETARY"
+          ]
+        },
+        "state": "APPROVED",
+        "endedAt": {
+          "$exists": false
+        }
+      },
+      "lookup": {
+        "from": "members",
+        "let": {
+          "mid": "$memberId"
+        },
+        "pipeline": [
+          {
+            "$match": {
+              "$expr": {
+                "$eq": [
+                  "$_id",
+                  "$$mid"
+                ]
+              }
+            }
+          },
+          {
+            "$project": {
+              "fullName": 1,
+              "memberId": 1,
+              "phone": 1,
+              "lastActivityAt": 1
+            }
+          }
+        ],
+        "as": "member"
+      },
+      "lookupJoinedFields": [
+        "fullName",
+        "memberId",
+        "phone",
+        "lastActivityAt"
+      ],
+      "group": {
+        "_id": "$unitId",
+        "lastActivityAt": {
+          "$max": "$member.lastActivityAt"
+        },
+        "officers": {
+          "$push": {
+            "roleCode": "$roleCode",
+            "memberId": "$member._id",
+            "memberCode": "$member.memberId",
+            "fullName": "$member.fullName",
+            "phone": "$member.phone",
+            "lastActivityAt": "$member.lastActivityAt"
+          }
+        }
+      }
+    },
+    {
+      "level": "DISTRICT",
+      "executionTimeMs": 12,
+      "nReturned": 8,
+      "totalDocsExamined": 43,
+      "totalKeysExamined": 43,
+      "winningStages": [
+        "PROJECTION_SIMPLE",
+        "FETCH",
+        "IXSCAN"
+      ],
+      "hasCollscan": false,
+      "hasIxscan": true,
+      "hasSort": false,
+      "sourceMatch": {
+        "unitLevel": "DISTRICT",
+        "roleCode": {
+          "$in": [
+            "SECRETARY",
+            "SENIOR_MAWIN",
+            "FINANCE_SECRETARY"
+          ]
+        },
+        "state": "APPROVED",
+        "endedAt": {
+          "$exists": false
+        }
+      },
+      "lookup": {
+        "from": "members",
+        "let": {
+          "mid": "$memberId"
+        },
+        "pipeline": [
+          {
+            "$match": {
+              "$expr": {
+                "$eq": [
+                  "$_id",
+                  "$$mid"
+                ]
+              }
+            }
+          },
+          {
+            "$project": {
+              "fullName": 1,
+              "memberId": 1,
+              "phone": 1,
+              "lastActivityAt": 1
+            }
+          }
+        ],
+        "as": "member"
+      },
+      "lookupJoinedFields": [
+        "fullName",
+        "memberId",
+        "phone",
+        "lastActivityAt"
+      ],
+      "group": {
+        "_id": "$unitId",
+        "lastActivityAt": {
+          "$max": "$member.lastActivityAt"
+        },
+        "officers": {
+          "$push": {
+            "roleCode": "$roleCode",
+            "memberId": "$member._id",
+            "memberCode": "$member.memberId",
+            "fullName": "$member.fullName",
+            "phone": "$member.phone",
+            "lastActivityAt": "$member.lastActivityAt"
+          }
+        }
+      }
+    },
+    {
+      "level": "PROVINCE",
+      "executionTimeMs": 4,
+      "nReturned": 2,
+      "totalDocsExamined": 7,
+      "totalKeysExamined": 11,
+      "winningStages": [
+        "PROJECTION_SIMPLE",
+        "FETCH",
+        "IXSCAN"
+      ],
+      "hasCollscan": false,
+      "hasIxscan": true,
+      "hasSort": false,
+      "sourceMatch": {
+        "unitLevel": "PROVINCE",
+        "roleCode": {
+          "$in": [
+            "PRESIDENT",
+            "GENERAL_SECRETARY",
+            "FINANCE_SECRETARY"
+          ]
+        },
+        "state": "APPROVED",
+        "endedAt": {
+          "$exists": false
+        }
+      },
+      "lookup": {
+        "from": "members",
+        "let": {
+          "mid": "$memberId"
+        },
+        "pipeline": [
+          {
+            "$match": {
+              "$expr": {
+                "$eq": [
+                  "$_id",
+                  "$$mid"
+                ]
+              }
+            }
+          },
+          {
+            "$project": {
+              "fullName": 1,
+              "memberId": 1,
+              "phone": 1,
+              "lastActivityAt": 1
+            }
+          }
+        ],
+        "as": "member"
+      },
+      "lookupJoinedFields": [
+        "fullName",
+        "memberId",
+        "phone",
+        "lastActivityAt"
+      ],
+      "group": {
+        "_id": "$unitId",
+        "lastActivityAt": {
+          "$max": "$member.lastActivityAt"
+        },
+        "officers": {
+          "$push": {
+            "roleCode": "$roleCode",
+            "memberId": "$member._id",
+            "memberCode": "$member.memberId",
+            "fullName": "$member.fullName",
+            "phone": "$member.phone",
+            "lastActivityAt": "$member.lastActivityAt"
+          }
+        }
+      }
+    }
+  ],
+  "collectionCounts": {
+    "roleassignments": 325,
+    "members": 384,
+    "provinces": 3,
+    "districts": 9,
+    "areas": 24,
+    "basicunits": 48
+  }
+}

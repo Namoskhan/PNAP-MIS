@@ -1,0 +1,3 @@
+const {start,normalize,save}=require('./harness.cjs');
+(async()=>{const h=await start();try{const c=require('./benchmark-config.json');const op=c.ops.find(x=>x.name==='meetings');const a=normalize((await h.request(op.url)).body);let b; for(let i=0;i<30;i++){b=normalize((await h.request(op.url)).body);if(JSON.stringify(a)!==JSON.stringify(b))break;}save(__dirname+'/meetings-instability-repeat.json',{a,b});function diff(a,b,p=''){if(JSON.stringify(a)===JSON.stringify(b))return;if(a&&b&&typeof a==='object'&&typeof b==='object'){for(const k of new Set([...Object.keys(a),...Object.keys(b)]))diff(a[k],b[k],p+'.'+k);}else console.log(p,JSON.stringify(a),JSON.stringify(b));}diff(a,b);}finally{await h.close();}})();
+

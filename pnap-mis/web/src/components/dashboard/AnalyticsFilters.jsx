@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
+import { useUnit } from '../../context/UnitContext';
 
 // Filter bar for the executive dashboard.
 //
@@ -27,14 +28,10 @@ const MEMBER_STATUSES = [
 ];
 
 export default function AnalyticsFilters({ scope, filters, onScope, onFilters, busy, lockScope = false }) {
-  const [provinces, setProvinces] = useState([]);
+  const { provinces = [] } = useUnit() || {};
   const [districts, setDistricts] = useState([]);
   const [areas, setAreas] = useState([]);
   const [units, setUnits] = useState([]);
-
-  useEffect(() => {
-    api.get('/org/provinces').then((r) => setProvinces(r.data.data || [])).catch(() => {});
-  }, []);
 
   // Each level's option list follows the level above it. An empty
   // parent clears the list rather than leaving stale options that

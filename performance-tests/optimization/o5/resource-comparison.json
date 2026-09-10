@@ -1,0 +1,1 @@
+{"membership":{"nodeCpuMeanPct":{"before":133.665593,"after":149.304307},"hostCpuMeanPct":{"before":41.48263,"after":22.406263}},"stagedDashboard":{"nodeCpuMeanPct":{"before":82.808442,"after":86.917},"hostCpuMeanPct":{"before":38.941207,"after":34.129322}},"note":"Short isolated request CPU percentages are timer-sensitive; all regressions are reported."}

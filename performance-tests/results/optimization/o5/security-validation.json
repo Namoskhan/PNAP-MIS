@@ -1,0 +1,123 @@
+{
+  "passed": true,
+  "databaseUnchanged": true,
+  "failures": [],
+  "rows": [
+    {
+      "persona": "unauthenticated",
+      "endpoint": "membership",
+      "status": 401
+    },
+    {
+      "persona": "unauthenticated",
+      "endpoint": "inactive-units",
+      "status": 401
+    },
+    {
+      "persona": "CENTRAL",
+      "endpoint": "membership",
+      "status": 200,
+      "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "CENTRAL",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "PROVINCE",
+      "endpoint": "membership",
+      "status": 200,
+      "hash": "4ce11b9950bd4b2723ae52044427762501887ab719f863ce5d4047ed40f8dd0c",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "PROVINCE",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "DISTRICT",
+      "endpoint": "membership",
+      "status": 200,
+      "hash": "e5a795dbaf161a0067516164e1835b00c1100766f65522fe9ec3b16f323d6b5f",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "DISTRICT",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "AREA",
+      "endpoint": "membership",
+      "status": 200,
+      "hash": "7cb8c182502a230ee1484878f9687ba21862e4cb87b2e92a8bfbf245290d8dd8",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "AREA",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "BASIC_UNIT",
+      "endpoint": "membership",
+      "status": 200,
+      "hash": "96108628d7e943e14d8057f68c7002ee2ef2586a2953efbdec2f9ca3c2eba187",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "BASIC_UNIT",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "CENTRAL_ADMIN",
+      "endpoint": "membership",
+      "status": 200,
+      "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "CENTRAL_ADMIN",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "MEMBER_PERSONA",
+      "endpoint": "membership",
+      "status": 403,
+      "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "MEMBER_PERSONA",
+      "endpoint": "inactive-units",
+      "status": 403,
+      "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+      "tamperedEqual": null
+    }
+  ]
+}

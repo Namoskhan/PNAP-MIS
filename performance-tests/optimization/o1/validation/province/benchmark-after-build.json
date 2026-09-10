@@ -1,0 +1,2480 @@
+{
+  "candidate": "province",
+  "name": "provinceId_1_createdAt_-1",
+  "key": {
+    "provinceId": {
+      "$numberInt": "1"
+    },
+    "createdAt": {
+      "$numberInt": "-1"
+    }
+  },
+  "targets": [
+    "members-province"
+  ],
+  "capturedAt": {
+    "$date": {
+      "$numberLong": "1788947064975"
+    }
+  },
+  "baselineSource": "recovered/historical-baseline-summary.json",
+  "iterations": {
+    "$numberInt": "20"
+  },
+  "warmups": {
+    "$numberInt": "2"
+  },
+  "vus": {
+    "$numberInt": "1"
+  },
+  "decision": "PENDING_REVIEW",
+  "results": [
+    {
+      "name": "members-list",
+      "url": "/api/members?scope=all",
+      "samples": [
+        {
+          "$numberDouble": "45.57459999999992"
+        },
+        {
+          "$numberDouble": "27.596199999999953"
+        },
+        {
+          "$numberDouble": "23.491399999999885"
+        },
+        {
+          "$numberDouble": "23.811899999999696"
+        },
+        {
+          "$numberDouble": "23.67540000000008"
+        },
+        {
+          "$numberDouble": "26.66870000000017"
+        },
+        {
+          "$numberDouble": "28.077800000000025"
+        },
+        {
+          "$numberDouble": "32.244299999999384"
+        },
+        {
+          "$numberDouble": "30.782500000000255"
+        },
+        {
+          "$numberDouble": "26.866299999999683"
+        },
+        {
+          "$numberDouble": "27.141499999999724"
+        },
+        {
+          "$numberDouble": "29.800000000000182"
+        },
+        {
+          "$numberDouble": "28.462499999999636"
+        },
+        {
+          "$numberDouble": "26.9316000000008"
+        },
+        {
+          "$numberDouble": "19.907200000000557"
+        },
+        {
+          "$numberDouble": "26.96270000000004"
+        },
+        {
+          "$numberDouble": "32.69850000000042"
+        },
+        {
+          "$numberDouble": "28.254100000000108"
+        },
+        {
+          "$numberDouble": "25.99079999999958"
+        },
+        {
+          "$numberDouble": "24.61539999999968"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "27.052099999999882"
+      },
+      "p90": {
+        "$numberDouble": "32.28971999999949"
+      },
+      "p95": {
+        "$numberDouble": "33.34230500000041"
+      },
+      "p99": {
+        "$numberDouble": "43.128141"
+      },
+      "max": {
+        "$numberDouble": "45.57459999999992"
+      },
+      "historicalP95": {
+        "$numberDouble": "32.66"
+      },
+      "changePct": {
+        "$numberDouble": "2.089115125537089"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "member-first-page",
+      "url": "/api/members?scope=all&page=1&limit=25",
+      "samples": [
+        {
+          "$numberDouble": "28.733900000000176"
+        },
+        {
+          "$numberDouble": "32.46180000000004"
+        },
+        {
+          "$numberDouble": "31.097399999999652"
+        },
+        {
+          "$numberDouble": "29.8108000000002"
+        },
+        {
+          "$numberDouble": "24.700299999999515"
+        },
+        {
+          "$numberDouble": "22.1887999999999"
+        },
+        {
+          "$numberDouble": "23.52430000000004"
+        },
+        {
+          "$numberDouble": "26.66569999999956"
+        },
+        {
+          "$numberDouble": "24.04529999999977"
+        },
+        {
+          "$numberDouble": "22.278300000000854"
+        },
+        {
+          "$numberDouble": "27.412199999999757"
+        },
+        {
+          "$numberDouble": "22.777000000000044"
+        },
+        {
+          "$numberDouble": "27.32510000000002"
+        },
+        {
+          "$numberDouble": "26.116399999999885"
+        },
+        {
+          "$numberDouble": "23.357200000000375"
+        },
+        {
+          "$numberDouble": "31.620100000000093"
+        },
+        {
+          "$numberDouble": "31.088700000000244"
+        },
+        {
+          "$numberDouble": "31.998999999999796"
+        },
+        {
+          "$numberDouble": "29.556899999999587"
+        },
+        {
+          "$numberDouble": "27.416400000000067"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "27.36864999999989"
+      },
+      "p90": {
+        "$numberDouble": "31.657990000000066"
+      },
+      "p95": {
+        "$numberDouble": "32.02213999999981"
+      },
+      "p99": {
+        "$numberDouble": "32.373867999999995"
+      },
+      "max": {
+        "$numberDouble": "32.46180000000004"
+      },
+      "historicalP95": {
+        "$numberDouble": "34.78"
+      },
+      "changePct": {
+        "$numberDouble": "-7.92944220816617"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "member-deep-page",
+      "url": "/api/members?scope=all&page=15&limit=25",
+      "samples": [
+        {
+          "$numberDouble": "27.683799999999792"
+        },
+        {
+          "$numberDouble": "25.42330000000038"
+        },
+        {
+          "$numberDouble": "22.939399999999296"
+        },
+        {
+          "$numberDouble": "25.31790000000001"
+        },
+        {
+          "$numberDouble": "24.25799999999981"
+        },
+        {
+          "$numberDouble": "28.491899999999987"
+        },
+        {
+          "$numberDouble": "33.8090000000002"
+        },
+        {
+          "$numberDouble": "27.637100000000828"
+        },
+        {
+          "$numberDouble": "25.088999999999942"
+        },
+        {
+          "$numberDouble": "23.089600000000246"
+        },
+        {
+          "$numberDouble": "23.837499999999636"
+        },
+        {
+          "$numberDouble": "28.1878999999999"
+        },
+        {
+          "$numberDouble": "24.093700000000354"
+        },
+        {
+          "$numberDouble": "27.611300000000483"
+        },
+        {
+          "$numberDouble": "27.68960000000061"
+        },
+        {
+          "$numberDouble": "24.94499999999971"
+        },
+        {
+          "$numberDouble": "18.777999999999338"
+        },
+        {
+          "$numberDouble": "21.29650000000038"
+        },
+        {
+          "$numberDouble": "26.933199999999488"
+        },
+        {
+          "$numberDouble": "25.809000000000196"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "25.370600000000195"
+      },
+      "p90": {
+        "$numberDouble": "28.21829999999991"
+      },
+      "p95": {
+        "$numberDouble": "28.757755"
+      },
+      "p99": {
+        "$numberDouble": "32.79875100000015"
+      },
+      "max": {
+        "$numberDouble": "33.8090000000002"
+      },
+      "historicalP95": {
+        "$numberDouble": "30.32"
+      },
+      "changePct": {
+        "$numberDouble": "-5.152523087071248"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "member-search",
+      "url": "/api/members?q=a&page=1&limit=25",
+      "samples": [
+        {
+          "$numberDouble": "20.907000000000153"
+        },
+        {
+          "$numberDouble": "22.938500000000204"
+        },
+        {
+          "$numberDouble": "28.086599999999635"
+        },
+        {
+          "$numberDouble": "29.11700000000019"
+        },
+        {
+          "$numberDouble": "25.352499999999964"
+        },
+        {
+          "$numberDouble": "19.904599999999846"
+        },
+        {
+          "$numberDouble": "19.40399999999954"
+        },
+        {
+          "$numberDouble": "23.554300000000694"
+        },
+        {
+          "$numberDouble": "24.0592000000006"
+        },
+        {
+          "$numberDouble": "24.751400000000103"
+        },
+        {
+          "$numberDouble": "24.21810000000005"
+        },
+        {
+          "$numberDouble": "28.164099999999962"
+        },
+        {
+          "$numberDouble": "25.356299999999464"
+        },
+        {
+          "$numberDouble": "25.27769999999964"
+        },
+        {
+          "$numberDouble": "21.047899999999572"
+        },
+        {
+          "$numberDouble": "21.91820000000007"
+        },
+        {
+          "$numberDouble": "26.592200000000048"
+        },
+        {
+          "$numberDouble": "23.00879999999961"
+        },
+        {
+          "$numberDouble": "22.700199999999313"
+        },
+        {
+          "$numberDouble": "24.68710000000101"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "24.138650000000325"
+      },
+      "p90": {
+        "$numberDouble": "28.094349999999668"
+      },
+      "p95": {
+        "$numberDouble": "28.211744999999976"
+      },
+      "p99": {
+        "$numberDouble": "28.935949000000146"
+      },
+      "max": {
+        "$numberDouble": "29.11700000000019"
+      },
+      "historicalP95": {
+        "$numberDouble": "27.58"
+      },
+      "changePct": {
+        "$numberDouble": "2.2905910079767056"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "dashboard-summary",
+      "url": "/api/dashboard/summary?days=365&from=2025-09-09T05:56:29.192Z",
+      "samples": [
+        {
+          "$numberDouble": "92.62339999999858"
+        },
+        {
+          "$numberDouble": "209.11679999999978"
+        },
+        {
+          "$numberDouble": "103.39990000000034"
+        },
+        {
+          "$numberDouble": "92.3169999999991"
+        },
+        {
+          "$numberDouble": "117.31450000000041"
+        },
+        {
+          "$numberDouble": "89.09029999999984"
+        },
+        {
+          "$numberDouble": "87.94430000000102"
+        },
+        {
+          "$numberDouble": "147.2446"
+        },
+        {
+          "$numberDouble": "134.2614999999987"
+        },
+        {
+          "$numberDouble": "118.7411000000011"
+        },
+        {
+          "$numberDouble": "116.49250000000029"
+        },
+        {
+          "$numberDouble": "110.72099999999955"
+        },
+        {
+          "$numberDouble": "124.35619999999835"
+        },
+        {
+          "$numberDouble": "99.59329999999864"
+        },
+        {
+          "$numberDouble": "108.41250000000036"
+        },
+        {
+          "$numberDouble": "107.04179999999906"
+        },
+        {
+          "$numberDouble": "102.59630000000107"
+        },
+        {
+          "$numberDouble": "88.72559999999976"
+        },
+        {
+          "$numberDouble": "141.36099999999897"
+        },
+        {
+          "$numberDouble": "141.76980000000003"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "109.56674999999996"
+      },
+      "p90": {
+        "$numberDouble": "142.31728000000004"
+      },
+      "p95": {
+        "$numberDouble": "150.33821000000003"
+      },
+      "p99": {
+        "$numberDouble": "197.36108199999975"
+      },
+      "max": {
+        "$numberDouble": "209.11679999999978"
+      },
+      "historicalP95": {
+        "$numberInt": "109"
+      },
+      "changePct": {
+        "$numberDouble": "37.924963302752325"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "dashboard-org-breakdown",
+      "url": "/api/dashboard/org-breakdown?days=365&from=2025-09-09T05:56:29.192Z",
+      "samples": [
+        {
+          "$numberDouble": "111.4922000000006"
+        },
+        {
+          "$numberDouble": "137.51550000000134"
+        },
+        {
+          "$numberDouble": "107.88780000000042"
+        },
+        {
+          "$numberDouble": "110.20459999999912"
+        },
+        {
+          "$numberDouble": "93.59460000000036"
+        },
+        {
+          "$numberDouble": "107.60959999999977"
+        },
+        {
+          "$numberDouble": "104.78230000000076"
+        },
+        {
+          "$numberDouble": "105.7586999999985"
+        },
+        {
+          "$numberDouble": "104.84180000000015"
+        },
+        {
+          "$numberDouble": "99.1929999999993"
+        },
+        {
+          "$numberDouble": "99.49279999999999"
+        },
+        {
+          "$numberDouble": "113.16749999999956"
+        },
+        {
+          "$numberDouble": "97.34920000000056"
+        },
+        {
+          "$numberDouble": "87.55439999999908"
+        },
+        {
+          "$numberDouble": "93.8174999999992"
+        },
+        {
+          "$numberDouble": "98.61759999999958"
+        },
+        {
+          "$numberDouble": "89.6327999999994"
+        },
+        {
+          "$numberDouble": "94.89509999999973"
+        },
+        {
+          "$numberDouble": "91.4380000000001"
+        },
+        {
+          "$numberDouble": "95.44820000000072"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "99.34289999999964"
+      },
+      "p90": {
+        "$numberDouble": "111.6597300000005"
+      },
+      "p95": {
+        "$numberDouble": "114.38489999999967"
+      },
+      "p99": {
+        "$numberDouble": "132.88938000000098"
+      },
+      "max": {
+        "$numberDouble": "137.51550000000134"
+      },
+      "historicalP95": {
+        "$numberDouble": "157.7"
+      },
+      "changePct": {
+        "$numberDouble": "-27.46677235256837"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "dashboard-membership",
+      "url": "/api/dashboard/membership?days=365&from=2025-09-09T05:56:29.192Z",
+      "samples": [
+        {
+          "$numberDouble": "119.68869999999879"
+        },
+        {
+          "$numberDouble": "110.14679999999862"
+        },
+        {
+          "$numberDouble": "87.81710000000021"
+        },
+        {
+          "$numberDouble": "97.66809999999896"
+        },
+        {
+          "$numberDouble": "88.98370000000068"
+        },
+        {
+          "$numberDouble": "91.39019999999982"
+        },
+        {
+          "$numberDouble": "94.85210000000006"
+        },
+        {
+          "$numberDouble": "90.37880000000041"
+        },
+        {
+          "$numberDouble": "100.56289999999899"
+        },
+        {
+          "$numberDouble": "93.36669999999867"
+        },
+        {
+          "$numberDouble": "116.37669999999889"
+        },
+        {
+          "$numberDouble": "95.3125"
+        },
+        {
+          "$numberDouble": "89.69340000000011"
+        },
+        {
+          "$numberDouble": "92.29609999999957"
+        },
+        {
+          "$numberDouble": "84.26950000000033"
+        },
+        {
+          "$numberDouble": "89.25970000000052"
+        },
+        {
+          "$numberDouble": "85.02369999999974"
+        },
+        {
+          "$numberDouble": "88.07320000000072"
+        },
+        {
+          "$numberDouble": "87.0018"
+        },
+        {
+          "$numberDouble": "88.53609999999935"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "90.88450000000012"
+      },
+      "p90": {
+        "$numberDouble": "110.76978999999865"
+      },
+      "p95": {
+        "$numberDouble": "116.54229999999889"
+      },
+      "p99": {
+        "$numberDouble": "119.05941999999881"
+      },
+      "max": {
+        "$numberDouble": "119.68869999999879"
+      },
+      "historicalP95": {
+        "$numberDouble": "132.51"
+      },
+      "changePct": {
+        "$numberDouble": "-12.050184891707117"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "meetings",
+      "url": "/api/meetings",
+      "samples": [
+        {
+          "$numberDouble": "19.878099999999904"
+        },
+        {
+          "$numberDouble": "26.38930000000073"
+        },
+        {
+          "$numberDouble": "26.33889999999883"
+        },
+        {
+          "$numberDouble": "22.321599999999307"
+        },
+        {
+          "$numberDouble": "23.870499999999083"
+        },
+        {
+          "$numberDouble": "18.598900000000867"
+        },
+        {
+          "$numberDouble": "17.554000000000087"
+        },
+        {
+          "$numberDouble": "21.168400000000474"
+        },
+        {
+          "$numberDouble": "19.03360000000066"
+        },
+        {
+          "$numberDouble": "17.087499999999636"
+        },
+        {
+          "$numberDouble": "18.06239999999889"
+        },
+        {
+          "$numberDouble": "17.570200000000114"
+        },
+        {
+          "$numberDouble": "18.641300000001138"
+        },
+        {
+          "$numberDouble": "17.86909999999989"
+        },
+        {
+          "$numberDouble": "21.26629999999932"
+        },
+        {
+          "$numberDouble": "18.070599999999104"
+        },
+        {
+          "$numberDouble": "18.541300000000774"
+        },
+        {
+          "$numberDouble": "21.714200000000346"
+        },
+        {
+          "$numberDouble": "20.521999999999025"
+        },
+        {
+          "$numberDouble": "22.03609999999935"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "19.455850000000282"
+      },
+      "p90": {
+        "$numberDouble": "24.11733999999906"
+      },
+      "p95": {
+        "$numberDouble": "26.341419999998926"
+      },
+      "p99": {
+        "$numberDouble": "26.37972400000037"
+      },
+      "max": {
+        "$numberDouble": "26.38930000000073"
+      },
+      "historicalP95": {
+        "$numberDouble": "27.54"
+      },
+      "changePct": {
+        "$numberDouble": "-4.352142338420739"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "activities",
+      "url": "/api/activities",
+      "samples": [
+        {
+          "$numberDouble": "12.1200000000008"
+        },
+        {
+          "$numberDouble": "12.106999999999971"
+        },
+        {
+          "$numberDouble": "12.864600000000792"
+        },
+        {
+          "$numberDouble": "10.670200000000477"
+        },
+        {
+          "$numberDouble": "11.682099999999991"
+        },
+        {
+          "$numberDouble": "11.645200000000841"
+        },
+        {
+          "$numberDouble": "9.64980000000105"
+        },
+        {
+          "$numberDouble": "14.042899999998554"
+        },
+        {
+          "$numberDouble": "15.135700000000725"
+        },
+        {
+          "$numberDouble": "14.825399999999718"
+        },
+        {
+          "$numberDouble": "14.375500000000102"
+        },
+        {
+          "$numberDouble": "13.10570000000007"
+        },
+        {
+          "$numberDouble": "9.994999999998981"
+        },
+        {
+          "$numberDouble": "13.5554000000011"
+        },
+        {
+          "$numberDouble": "13.318499999999403"
+        },
+        {
+          "$numberDouble": "12.461699999999837"
+        },
+        {
+          "$numberDouble": "10.294299999999566"
+        },
+        {
+          "$numberDouble": "12.699599999999919"
+        },
+        {
+          "$numberDouble": "12.6208000000006"
+        },
+        {
+          "$numberDouble": "10.501699999998891"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "12.541250000000218"
+      },
+      "p90": {
+        "$numberDouble": "14.420490000000065"
+      },
+      "p95": {
+        "$numberDouble": "14.840914999999768"
+      },
+      "p99": {
+        "$numberDouble": "15.076743000000533"
+      },
+      "max": {
+        "$numberDouble": "15.135700000000725"
+      },
+      "historicalP95": {
+        "$numberDouble": "15.6"
+      },
+      "changePct": {
+        "$numberDouble": "-4.865929487180976"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "responsibilities",
+      "url": "/api/responsibilities",
+      "samples": [
+        {
+          "$numberDouble": "16.465400000000955"
+        },
+        {
+          "$numberDouble": "18.111000000000786"
+        },
+        {
+          "$numberDouble": "20.383599999999205"
+        },
+        {
+          "$numberDouble": "19.0591000000004"
+        },
+        {
+          "$numberDouble": "18.75760000000082"
+        },
+        {
+          "$numberDouble": "20.554000000000087"
+        },
+        {
+          "$numberDouble": "19.47700000000077"
+        },
+        {
+          "$numberDouble": "20.670200000000477"
+        },
+        {
+          "$numberDouble": "24.247000000001208"
+        },
+        {
+          "$numberDouble": "22.182800000000498"
+        },
+        {
+          "$numberDouble": "18.416800000000876"
+        },
+        {
+          "$numberDouble": "16.073700000000827"
+        },
+        {
+          "$numberDouble": "18.20389999999861"
+        },
+        {
+          "$numberDouble": "18.686799999999494"
+        },
+        {
+          "$numberDouble": "18.38969999999972"
+        },
+        {
+          "$numberDouble": "16.935299999999188"
+        },
+        {
+          "$numberDouble": "18.32250000000022"
+        },
+        {
+          "$numberDouble": "18.634400000000824"
+        },
+        {
+          "$numberDouble": "19.577699999998003"
+        },
+        {
+          "$numberDouble": "21.89770000000135"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "18.722200000000157"
+      },
+      "p90": {
+        "$numberDouble": "21.926210000001266"
+      },
+      "p95": {
+        "$numberDouble": "22.286010000000534"
+      },
+      "p99": {
+        "$numberDouble": "23.85480200000107"
+      },
+      "max": {
+        "$numberDouble": "24.247000000001208"
+      },
+      "historicalP95": {
+        "$numberDouble": "37.1"
+      },
+      "changePct": {
+        "$numberDouble": "-39.929892183286974"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "single-member",
+      "url": "/api/members/6a7df77fc6ed35561a1b9278",
+      "samples": [
+        {
+          "$numberDouble": "9.506499999999505"
+        },
+        {
+          "$numberDouble": "9.385699999998906"
+        },
+        {
+          "$numberDouble": "9.674399999999878"
+        },
+        {
+          "$numberDouble": "8.984200000002602"
+        },
+        {
+          "$numberDouble": "11.109499999998661"
+        },
+        {
+          "$numberDouble": "12.585699999999633"
+        },
+        {
+          "$numberDouble": "10.930799999998271"
+        },
+        {
+          "$numberDouble": "10.23149999999805"
+        },
+        {
+          "$numberDouble": "9.363100000002305"
+        },
+        {
+          "$numberDouble": "8.544499999999971"
+        },
+        {
+          "$numberDouble": "10.91729999999734"
+        },
+        {
+          "$numberDouble": "8.571300000003248"
+        },
+        {
+          "$numberDouble": "11.191999999999098"
+        },
+        {
+          "$numberDouble": "10.926400000000285"
+        },
+        {
+          "$numberDouble": "8.846600000000763"
+        },
+        {
+          "$numberDouble": "10.536400000000867"
+        },
+        {
+          "$numberDouble": "8.349999999998545"
+        },
+        {
+          "$numberDouble": "10.015699999999924"
+        },
+        {
+          "$numberDouble": "10.695199999998295"
+        },
+        {
+          "$numberDouble": "8.529900000001362"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "9.845049999999901"
+      },
+      "p90": {
+        "$numberDouble": "11.117749999998704"
+      },
+      "p95": {
+        "$numberDouble": "11.261684999999126"
+      },
+      "p99": {
+        "$numberDouble": "12.32089699999953"
+      },
+      "max": {
+        "$numberDouble": "12.585699999999633"
+      },
+      "historicalP95": {
+        "$numberDouble": "13.01"
+      },
+      "changePct": {
+        "$numberDouble": "-13.438239815533237"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "dashboard-province-breakdown",
+      "url": "/api/dashboard/province-breakdown?days=365&from=2025-09-09T05:56:29.192Z",
+      "samples": [
+        {
+          "$numberDouble": "97.55209999999715"
+        },
+        {
+          "$numberDouble": "96.51470000000336"
+        },
+        {
+          "$numberDouble": "82.99539999999979"
+        },
+        {
+          "$numberDouble": "88.11539999999877"
+        },
+        {
+          "$numberDouble": "90.03980000000229"
+        },
+        {
+          "$numberDouble": "94.82640000000174"
+        },
+        {
+          "$numberDouble": "87.55340000000069"
+        },
+        {
+          "$numberDouble": "93.67220000000088"
+        },
+        {
+          "$numberDouble": "92.01980000000185"
+        },
+        {
+          "$numberDouble": "98.93149999999878"
+        },
+        {
+          "$numberDouble": "97.79339999999866"
+        },
+        {
+          "$numberDouble": "91.58550000000105"
+        },
+        {
+          "$numberDouble": "97.17280000000028"
+        },
+        {
+          "$numberDouble": "92.08100000000195"
+        },
+        {
+          "$numberDouble": "108.17180000000008"
+        },
+        {
+          "$numberDouble": "85.43209999999817"
+        },
+        {
+          "$numberDouble": "95.1169000000009"
+        },
+        {
+          "$numberDouble": "98.62089999999807"
+        },
+        {
+          "$numberDouble": "94.01780000000144"
+        },
+        {
+          "$numberDouble": "92.94780000000173"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "93.84500000000116"
+      },
+      "p90": {
+        "$numberDouble": "98.65195999999814"
+      },
+      "p95": {
+        "$numberDouble": "99.39351499999884"
+      },
+      "p99": {
+        "$numberDouble": "106.41614299999982"
+      },
+      "max": {
+        "$numberDouble": "108.17180000000008"
+      },
+      "historicalP95": {
+        "$numberDouble": "113.47"
+      },
+      "changePct": {
+        "$numberDouble": "-12.405468405747033"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "members-province",
+      "url": "/api/members?provinceId=6a75a3f0ba1fbef74f88b636&page=1&limit=25",
+      "samples": [
+        {
+          "$numberDouble": "18.275900000000547"
+        },
+        {
+          "$numberDouble": "16.055700000000797"
+        },
+        {
+          "$numberDouble": "15.402999999998428"
+        },
+        {
+          "$numberDouble": "17.05749999999898"
+        },
+        {
+          "$numberDouble": "22.494799999996758"
+        },
+        {
+          "$numberDouble": "19.868999999998778"
+        },
+        {
+          "$numberDouble": "17.383999999998196"
+        },
+        {
+          "$numberDouble": "15.94510000000082"
+        },
+        {
+          "$numberDouble": "17.47940000000017"
+        },
+        {
+          "$numberDouble": "21.156800000000658"
+        },
+        {
+          "$numberDouble": "19.471799999999348"
+        },
+        {
+          "$numberDouble": "15.769800000001851"
+        },
+        {
+          "$numberDouble": "19.330900000000838"
+        },
+        {
+          "$numberDouble": "17.517100000000937"
+        },
+        {
+          "$numberDouble": "17.98479999999836"
+        },
+        {
+          "$numberDouble": "20.05439999999726"
+        },
+        {
+          "$numberDouble": "17.27479999999923"
+        },
+        {
+          "$numberDouble": "16.539600000000064"
+        },
+        {
+          "$numberDouble": "17.87420000000202"
+        },
+        {
+          "$numberDouble": "16.007700000001932"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "17.498250000000553"
+      },
+      "p90": {
+        "$numberDouble": "20.1646399999976"
+      },
+      "p95": {
+        "$numberDouble": "21.223700000000463"
+      },
+      "p99": {
+        "$numberDouble": "22.240579999997497"
+      },
+      "max": {
+        "$numberDouble": "22.494799999996758"
+      },
+      "historicalP95": {
+        "$numberDouble": "25.95"
+      },
+      "changePct": {
+        "$numberDouble": "-18.213102119458714"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "meetings-unit",
+      "url": "/api/meetings?unitLevel=PROVINCE&unitId=6a75a3abba1fbef74f88b616",
+      "samples": [
+        {
+          "$numberDouble": "9.707699999999022"
+        },
+        {
+          "$numberDouble": "9.670600000001286"
+        },
+        {
+          "$numberDouble": "9.550900000002002"
+        },
+        {
+          "$numberDouble": "8.09939999999915"
+        },
+        {
+          "$numberDouble": "9.442999999999302"
+        },
+        {
+          "$numberDouble": "8.469300000000658"
+        },
+        {
+          "$numberDouble": "10.447400000000926"
+        },
+        {
+          "$numberDouble": "9.130700000001525"
+        },
+        {
+          "$numberDouble": "10.301400000000285"
+        },
+        {
+          "$numberDouble": "9.748899999998685"
+        },
+        {
+          "$numberDouble": "8.24409999999989"
+        },
+        {
+          "$numberDouble": "9.875199999998586"
+        },
+        {
+          "$numberDouble": "8.292599999997037"
+        },
+        {
+          "$numberDouble": "9.747900000002119"
+        },
+        {
+          "$numberDouble": "9.100800000000163"
+        },
+        {
+          "$numberDouble": "11.141499999997905"
+        },
+        {
+          "$numberDouble": "10.675899999998364"
+        },
+        {
+          "$numberDouble": "14.765400000000227"
+        },
+        {
+          "$numberDouble": "8.1150000000016"
+        },
+        {
+          "$numberDouble": "9.591300000000047"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "9.630950000000666"
+      },
+      "p90": {
+        "$numberDouble": "10.72245999999832"
+      },
+      "p95": {
+        "$numberDouble": "11.322694999998022"
+      },
+      "p99": {
+        "$numberDouble": "14.076858999999782"
+      },
+      "max": {
+        "$numberDouble": "14.765400000000227"
+      },
+      "historicalP95": {
+        "$numberDouble": "11.24"
+      },
+      "changePct": {
+        "$numberDouble": "0.7357206405518069"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "activities-unit",
+      "url": "/api/activities?unitLevel=AREA&unitId=6a75a663ba1fbef74f88ba57",
+      "samples": [
+        {
+          "$numberDouble": "10.293900000000576"
+        },
+        {
+          "$numberDouble": "8.534799999997631"
+        },
+        {
+          "$numberDouble": "10.535499999998137"
+        },
+        {
+          "$numberDouble": "10.952000000001135"
+        },
+        {
+          "$numberDouble": "11.200700000001234"
+        },
+        {
+          "$numberDouble": "11.00539999999819"
+        },
+        {
+          "$numberDouble": "8.644500000002154"
+        },
+        {
+          "$numberDouble": "11.454200000000128"
+        },
+        {
+          "$numberDouble": "10.631400000002031"
+        },
+        {
+          "$numberDouble": "9.280399999999645"
+        },
+        {
+          "$numberDouble": "10.411499999998341"
+        },
+        {
+          "$numberDouble": "10.358499999998457"
+        },
+        {
+          "$numberDouble": "9.125100000001112"
+        },
+        {
+          "$numberDouble": "9.981999999999971"
+        },
+        {
+          "$numberDouble": "8.997699999999895"
+        },
+        {
+          "$numberDouble": "10.204699999998411"
+        },
+        {
+          "$numberDouble": "10.938099999999395"
+        },
+        {
+          "$numberDouble": "10.511200000000827"
+        },
+        {
+          "$numberDouble": "9.94840000000113"
+        },
+        {
+          "$numberDouble": "9.15849999999773"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "10.326199999999517"
+      },
+      "p90": {
+        "$numberDouble": "11.024929999998495"
+      },
+      "p95": {
+        "$numberDouble": "11.213375000001179"
+      },
+      "p99": {
+        "$numberDouble": "11.406035000000339"
+      },
+      "max": {
+        "$numberDouble": "11.454200000000128"
+      },
+      "historicalP95": {
+        "$numberDouble": "10.92"
+      },
+      "changePct": {
+        "$numberDouble": "2.6865842490950476"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    },
+    {
+      "name": "responsibilities-unit",
+      "url": "/api/responsibilities?unitLevel=DISTRICT&unitId=6a75a46aba1fbef74f88b75d",
+      "samples": [
+        {
+          "$numberDouble": "15.24829999999929"
+        },
+        {
+          "$numberDouble": "15.53059999999823"
+        },
+        {
+          "$numberDouble": "16.492600000001403"
+        },
+        {
+          "$numberDouble": "14.084899999998015"
+        },
+        {
+          "$numberDouble": "14.542199999999866"
+        },
+        {
+          "$numberDouble": "14.359700000000885"
+        },
+        {
+          "$numberDouble": "16.58510000000024"
+        },
+        {
+          "$numberDouble": "14.329700000002049"
+        },
+        {
+          "$numberDouble": "12.47820000000138"
+        },
+        {
+          "$numberDouble": "14.999400000000605"
+        },
+        {
+          "$numberDouble": "15.180000000000291"
+        },
+        {
+          "$numberDouble": "14.431700000001001"
+        },
+        {
+          "$numberDouble": "16.717599999999948"
+        },
+        {
+          "$numberDouble": "14.377099999997881"
+        },
+        {
+          "$numberDouble": "14.477699999999459"
+        },
+        {
+          "$numberDouble": "15.154699999999139"
+        },
+        {
+          "$numberDouble": "16.46860000000015"
+        },
+        {
+          "$numberDouble": "14.634899999997288"
+        },
+        {
+          "$numberDouble": "12.703600000000733"
+        },
+        {
+          "$numberDouble": "15.757300000001123"
+        }
+      ],
+      "statuses": [
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        },
+        {
+          "$numberInt": "200"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "14.817149999998946"
+      },
+      "p90": {
+        "$numberDouble": "16.501850000001287"
+      },
+      "p95": {
+        "$numberDouble": "16.591725000000224"
+      },
+      "p99": {
+        "$numberDouble": "16.692425000000004"
+      },
+      "max": {
+        "$numberDouble": "16.717599999999948"
+      },
+      "historicalP95": {
+        "$numberDouble": "19.12"
+      },
+      "changePct": {
+        "$numberDouble": "-13.223195606693395"
+      },
+      "errorRate": {
+        "$numberInt": "0"
+      }
+    }
+  ],
+  "mismatches": [],
+  "dataUnchanged": true,
+  "authorizationUnchanged": true,
+  "indexBytes": {
+    "$numberInt": "20480"
+  },
+  "memberIndexBytes": {
+    "$numberInt": "421888"
+  },
+  "writeCostImpact": "NOT MEASURED",
+  "limitations": [
+    "P50/P95 were printed to two decimal places.",
+    "Original raw sample arrays, full 135 explain documents, 23 functional hashes and full 40-collection index/stat inventory are not intact.",
+    "Historical source output includes selected, sometimes truncated explain summaries; it is not the missing raw explain file."
+  ]
+}

@@ -1,0 +1,1 @@
+{"method":"executionStats diagnostic replay; values are not parallel application wall time","membership":{"beforeAggregateExecutionMs":[8,4,4],"afterAggregateExecutionMs":[4],"memberDocsExaminedBefore":1152,"memberDocsExaminedAfter":384},"inactiveUnits":{"baselineRoleAssignmentExecutionMs":[74,35,11,5],"queryShapeChanged":false}}
