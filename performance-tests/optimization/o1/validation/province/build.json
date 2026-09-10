@@ -1,0 +1,20 @@
+{
+  "name": "provinceId_1_createdAt_-1",
+  "key": {
+    "provinceId": {
+      "$numberInt": "1"
+    },
+    "createdAt": {
+      "$numberInt": "-1"
+    }
+  },
+  "durationMs": {
+    "$numberDouble": "37.110099999999875"
+  },
+  "createdAt": {
+    "$date": {
+      "$numberLong": "1788947049231"
+    }
+  },
+  "database": "pnap_mis"
+}

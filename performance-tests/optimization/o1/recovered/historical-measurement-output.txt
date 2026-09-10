@@ -1,0 +1,57 @@
+members-list p50 21.15 p95 32.66
+member-first-page p50 24.29 p95 34.78
+member-deep-page p50 24.42 p95 30.32
+member-search p50 22.12 p95 27.58
+dashboard-summary p50 85.32 p95 109.00
+dashboard-org-breakdown p50 107.58 p95 157.70
+dashboard-membership p50 95.11 p95 132.51
+meetings p50 21.70 p95 27.54
+activities p50 12.47 p95 15.60
+responsibilities p50 23.76 p95 37.10
+single-member p50 10.78 p95 13.01
+dashboard-province-breakdown p50 96.01 p95 113.47
+members-province p50 21.78 p95 25.95
+meetings-unit p50 9.03 p95 11.24
+activities-unit p50 9.29 p95 10.92
+responsibilities-unit p50 17.95 p95 19.12
+members-list:1 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 3 {"aggregate":"members","pipeline":[{"$match":{}},{"$group":{"_id":1,"n":{"$sum":1}}}],"cursor":{}}
+members-list:2 members ["PROJECTION_SIMPLE","SORT","COLLSCAN"] docs 384 keys 0 returned 20 ms 1 {"find":"members","filter":{},"sort":{"createdAt":-1},"projection":{"passwordHash":0},"skip":0,"limit":20}
+member-first-page:1 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 1 {"aggregate":"members","pipeline":[{"$match":{}},{"$group":{"_id":1,"n":{"$sum":1}}}],"cursor":{}}
+member-first-page:2 members ["PROJECTION_SIMPLE","SORT","COLLSCAN"] docs 384 keys 0 returned 25 ms 1 {"find":"members","filter":{},"sort":{"createdAt":-1},"projection":{"passwordHash":0},"skip":0,"limit":25}
+member-deep-page:1 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 1 {"aggregate":"members","pipeline":[{"$match":{}},{"$group":{"_id":1,"n":{"$sum":1}}}],"cursor":{}}
+member-deep-page:2 members ["PROJECTION_SIMPLE","SKIP","SORT","COLLSCAN"] docs 384 keys 0 returned 25 ms 2 {"find":"members","filter":{},"sort":{"createdAt":-1},"projection":{"passwordHash":0},"skip":350,"limit":25}
+member-search:1 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 4 {"aggregate":"members","pipeline":[{"$match":{"$or":[{"fullName":{"pattern":"a","options":"i"}},{"cnic":{"pattern":"a","options":"i"}},{"phone":{"pattern":"a","options":"i"}},{"memberId":{"pattern":"a
+member-search:2 members ["SUBPLAN","PROJECTION_SIMPLE","SORT","COLLSCAN"] docs 384 keys 0 returned 25 ms 3 {"find":"members","filter":{"$or":[{"fullName":{"pattern":"a","options":"i"}},{"cnic":{"pattern":"a","options":"i"}},{"phone":{"pattern":"a","options":"i"}},{"memberId":{"pattern":"a","options":"i"}}]
+dashboard-summary:1 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 1 {"aggregate":"members","pipeline":[{"$group":{"_id":"$status","count":{"$sum":1}}}],"cursor":{}}
+dashboard-summary:2 meetings ["GROUP","COLLSCAN"] docs 17 keys 0 returned 2 ms 2 {"aggregate":"meetings","pipeline":[{"$match":{"startAt":{"$gte":"2025-09-09T05:56:29.192Z"}}},{"$group":{"_id":"$state","count":{"$sum":1}}}],"cursor":{}}
+dashboard-summary:4 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 1 {"aggregate":"members","pipeline":[{"$match":{}},{"$group":{"_id":1,"n":{"$sum":1}}}],"cursor":{}}
+dashboard-summary:5 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 2 {"aggregate":"members","pipeline":[{"$match":{"lastActivityAt":{"$gte":"2025-09-09T05:56:29.192Z"}}},{"$group":{"_id":1,"n":{"$sum":1}}}],"cursor":{}}
+dashboard-summary:6 provinces ["PROJECTION_SIMPLE","COLLSCAN"] docs 3 keys 0 returned 3 ms 0 {"find":"provinces","filter":{"isActive":true},"projection":{"name":1,"code":1}}
+dashboard-summary:7 districts ["PROJECTION_SIMPLE","COLLSCAN"] docs 9 keys 0 returned 9 ms 0 {"find":"districts","filter":{"isActive":true},"projection":{"name":1,"code":1,"provinceId":1}}
+dashboard-summary:8 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 2 {"aggregate":"members","pipeline":[{"$match":{"createdAt":{"$gte":"2025-09-09T05:56:29.192Z"}}},{"$group":{"_id":1,"n":{"$sum":1}}}],"cursor":{}}
+dashboard-summary:9 basicunits ["PROJECTION_SIMPLE","COLLSCAN"] docs 48 keys 0 returned 48 ms 0 {"find":"basicunits","filter":{"isActive":true},"projection":{"name":1,"areaId":1,"districtId":1,"provinceId":1}}
+dashboard-summary:11 areas ["PROJECTION_SIMPLE","COLLSCAN"] docs 24 keys 0 returned 24 ms 0 {"find":"areas","filter":{"isActive":true},"projection":{"name":1,"districtId":1,"provinceId":1}}
+dashboard-org-breakdown:1 provinces ["PROJECTION_SIMPLE","COLLSCAN"] docs 3 keys 0 returned 3 ms 0 {"find":"provinces","filter":{"isActive":true},"projection":{"name":1,"code":1}}
+dashboard-org-breakdown:2 districts ["PROJECTION_SIMPLE","COLLSCAN"] docs 9 keys 0 returned 9 ms 0 {"find":"districts","filter":{"isActive":true},"projection":{"name":1,"code":1,"provinceId":1}}
+dashboard-org-breakdown:3 areas ["PROJECTION_SIMPLE","COLLSCAN"] docs 24 keys 0 returned 24 ms 0 {"find":"areas","filter":{"isActive":true},"projection":{"name":1,"districtId":1,"provinceId":1}}
+dashboard-org-breakdown:4 basicunits ["PROJECTION_SIMPLE","COLLSCAN"] docs 48 keys 0 returned 48 ms 0 {"find":"basicunits","filter":{"isActive":true},"projection":{"name":1,"areaId":1,"districtId":1,"provinceId":1}}
+dashboard-org-breakdown:9 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 2 ms 2 {"aggregate":"members","pipeline":[{"$group":{"_id":"$provinceId","total":{"$sum":1},"active":{"$sum":{"$cond":[{"$and":[{"$ne":["$lastActivityAt",null]},{"$gte":["$lastActivityAt","2025-09-09T05:56:2
+dashboard-membership:1 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 4 {"aggregate":"members","pipeline":[{"$group":{"_id":null,"total":{"$sum":1},"active":{"$sum":{"$cond":[{"$and":[{"$ne":["$lastActivityAt",null]},{"$gte":["$lastActivityAt","2025-09-09T05:56:29.192Z"]}
+dashboard-membership:2 members ["PROJECTION_SIMPLE","COLLSCAN"] docs 384 keys 0 returned 384 ms 9 {"aggregate":"members","pipeline":[{"$facet":{"PROVINCE":[{"$group":{"_id":"$provinceId","total":{"$sum":1},"active":{"$sum":{"$cond":[{"$and":[{"$ne":["$lastActivityAt",null]},{"$gte":["$lastActivity
+dashboard-membership:3 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 1 ms 6 {"aggregate":"members","pipeline":[{"$group":{"_id":{"$dateToString":{"format":"%Y-%m","date":"$createdAt"}},"newMembers":{"$sum":1}}}],"cursor":{}}
+dashboard-membership:4 provinces ["PROJECTION_SIMPLE","COLLSCAN"] docs 3 keys 0 returned 3 ms 0 {"find":"provinces","filter":{"isActive":true},"projection":{"name":1,"code":1}}
+dashboard-membership:5 districts ["PROJECTION_SIMPLE","COLLSCAN"] docs 9 keys 0 returned 9 ms 0 {"find":"districts","filter":{"isActive":true},"projection":{"name":1,"code":1,"provinceId":1}}
+dashboard-membership:6 areas ["PROJECTION_SIMPLE","COLLSCAN"] docs 24 keys 0 returned 24 ms 0 {"find":"areas","filter":{"isActive":true},"projection":{"name":1,"districtId":1,"provinceId":1}}
+dashboard-membership:7 basicunits ["PROJECTION_SIMPLE","COLLSCAN"] docs 48 keys 0 returned 48 ms 0 {"find":"basicunits","filter":{"isActive":true},"projection":{"name":1,"areaId":1,"districtId":1,"provinceId":1}}
+meetings:1 meetings ["SORT","COLLSCAN"] docs 17 keys 0 returned 17 ms 0 {"find":"meetings","filter":{},"sort":{"startAt":-1},"limit":200}
+activities:1 activities ["SORT","COLLSCAN"] docs 3 keys 0 returned 3 ms 0 {"find":"activities","filter":{},"sort":{"startAt":-1},"limit":200}
+responsibilities:1 responsibilities ["SORT","COLLSCAN"] docs 4 keys 0 returned 4 ms 0 {"find":"responsibilities","filter":{},"sort":{"dueDate":1,"createdAt":-1},"limit":500}
+dashboard-province-breakdown:1 provinces ["PROJECTION_SIMPLE","COLLSCAN"] docs 3 keys 0 returned 3 ms 0 {"find":"provinces","filter":{"isActive":true},"projection":{"name":1,"code":1}}
+dashboard-province-breakdown:2 districts ["PROJECTION_SIMPLE","COLLSCAN"] docs 9 keys 0 returned 9 ms 0 {"find":"districts","filter":{"isActive":true},"projection":{"name":1,"code":1,"provinceId":1}}
+dashboard-province-breakdown:3 areas ["PROJECTION_SIMPLE","COLLSCAN"] docs 24 keys 0 returned 24 ms 0 {"find":"areas","filter":{"isActive":true},"projection":{"name":1,"districtId":1,"provinceId":1}}
+dashboard-province-breakdown:4 basicunits ["PROJECTION_SIMPLE","COLLSCAN"] docs 48 keys 0 returned 48 ms 1 {"find":"basicunits","filter":{"isActive":true},"projection":{"name":1,"areaId":1,"districtId":1,"provinceId":1}}
+dashboard-province-breakdown:9 members ["GROUP","COLLSCAN"] docs 384 keys 0 returned 2 ms 4 {"aggregate":"members","pipeline":[{"$group":{"_id":"$provinceId","total":{"$sum":1},"active":{"$sum":{"$cond":[{"$and":[{"$ne":["$lastActivityAt",null]},{"$gte":["$lastActivityAt","2025-09-09T05:56:2
+members-province:2 members ["PROJECTION_SIMPLE","SORT","FETCH","IXSCAN"] docs 192 keys 192 returned 25 ms 4 {"find":"members","filter":{"provinceId":"6a75a3f0ba1fbef74f88b636"},"sort":{"createdAt":-1},"projection":{"passwordHash":0},"skip":0,"limit":25}
+meetings-unit:1 meetings ["SORT","FETCH","IXSCAN"] docs 2 keys 2 returned 2 ms 1 {"find":"meetings","filter":{"unitLevel":"PROVINCE","unitId":"6a75a3abba1fbef74f88b616"},"sort":{"startAt":-1},"limit":200}
+activities-unit:1 activities ["SORT","FETCH","IXSCAN"] docs 1 keys 1 returned 1 ms 1 {"find":"activities","filter":{"unitLevel":"AREA","unitId":"6a75a663ba1fbef74f88ba57"},"sort":{"startAt":-1},"limit":200}
+responsibilities-unit:1 responsibilities ["SORT","FETCH","IXSCAN"] docs 1 keys 1 returned 1 ms 2 {"find":"responsibilities","filter":{"unitLevel":"DISTRICT","unitId":"6a75a46aba1fbef74f88b75d"},"sort":{"dueDate":1,"createdAt":-1},"limit":500}

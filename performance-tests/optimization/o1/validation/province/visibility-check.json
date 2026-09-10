@@ -1,0 +1,661 @@
+{
+  "label": "Focused within-candidate visibility sensitivity check; historical O1 baseline preserved",
+  "name": "provinceId_1_createdAt_-1",
+  "results": [
+    {
+      "block": {
+        "$numberInt": "0"
+      },
+      "hidden": false,
+      "name": "dashboard-summary",
+      "samples": [
+        {
+          "$numberDouble": "135.65920000000006"
+        },
+        {
+          "$numberDouble": "113.31320000000005"
+        },
+        {
+          "$numberDouble": "112.37699999999995"
+        },
+        {
+          "$numberDouble": "99.26879999999983"
+        },
+        {
+          "$numberDouble": "112.73169999999982"
+        },
+        {
+          "$numberDouble": "121.26590000000033"
+        },
+        {
+          "$numberDouble": "121.97889999999961"
+        },
+        {
+          "$numberDouble": "119.78409999999985"
+        },
+        {
+          "$numberDouble": "109.90000000000055"
+        },
+        {
+          "$numberDouble": "123.77379999999994"
+        },
+        {
+          "$numberDouble": "111.79180000000088"
+        },
+        {
+          "$numberDouble": "129.79530000000068"
+        },
+        {
+          "$numberDouble": "138.9873000000007"
+        },
+        {
+          "$numberDouble": "166.4322000000002"
+        },
+        {
+          "$numberDouble": "113.47190000000046"
+        },
+        {
+          "$numberDouble": "100.40039999999954"
+        },
+        {
+          "$numberDouble": "101.35059999999976"
+        },
+        {
+          "$numberDouble": "117.69989999999962"
+        },
+        {
+          "$numberDouble": "119.26329999999962"
+        },
+        {
+          "$numberDouble": "118.60779999999977"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "118.1538499999997"
+      },
+      "p95": {
+        "$numberDouble": "140.35954500000068"
+      }
+    },
+    {
+      "block": {
+        "$numberInt": "0"
+      },
+      "hidden": false,
+      "name": "members-province",
+      "samples": [
+        {
+          "$numberDouble": "35.11920000000009"
+        },
+        {
+          "$numberDouble": "36.78189999999995"
+        },
+        {
+          "$numberDouble": "36.25500000000011"
+        },
+        {
+          "$numberDouble": "31.031299999999646"
+        },
+        {
+          "$numberDouble": "43.117199999999684"
+        },
+        {
+          "$numberDouble": "31.631499999999505"
+        },
+        {
+          "$numberDouble": "27.336499999999432"
+        },
+        {
+          "$numberDouble": "23.15599999999995"
+        },
+        {
+          "$numberDouble": "22.949899999999616"
+        },
+        {
+          "$numberDouble": "22.720299999999952"
+        },
+        {
+          "$numberDouble": "29.42910000000029"
+        },
+        {
+          "$numberDouble": "26.35869999999977"
+        },
+        {
+          "$numberDouble": "26.587999999999738"
+        },
+        {
+          "$numberDouble": "24.683600000000297"
+        },
+        {
+          "$numberDouble": "29.489800000000287"
+        },
+        {
+          "$numberDouble": "26.95430000000033"
+        },
+        {
+          "$numberDouble": "26.899499999999534"
+        },
+        {
+          "$numberDouble": "25.480599999999868"
+        },
+        {
+          "$numberDouble": "23.86920000000009"
+        },
+        {
+          "$numberDouble": "22.688900000000103"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "26.926899999999932"
+      },
+      "p95": {
+        "$numberDouble": "37.09866499999994"
+      }
+    },
+    {
+      "block": {
+        "$numberInt": "1"
+      },
+      "hidden": true,
+      "name": "dashboard-summary",
+      "samples": [
+        {
+          "$numberDouble": "102.41309999999976"
+        },
+        {
+          "$numberDouble": "93.46370000000024"
+        },
+        {
+          "$numberDouble": "96.51159999999982"
+        },
+        {
+          "$numberDouble": "113.5586000000003"
+        },
+        {
+          "$numberDouble": "114.58340000000044"
+        },
+        {
+          "$numberDouble": "110.2435000000005"
+        },
+        {
+          "$numberDouble": "110.73880000000008"
+        },
+        {
+          "$numberDouble": "108.16830000000027"
+        },
+        {
+          "$numberDouble": "86.95520000000033"
+        },
+        {
+          "$numberDouble": "105.89769999999953"
+        },
+        {
+          "$numberDouble": "88.35919999999987"
+        },
+        {
+          "$numberDouble": "101.13630000000012"
+        },
+        {
+          "$numberDouble": "89.06550000000061"
+        },
+        {
+          "$numberDouble": "162.3059000000003"
+        },
+        {
+          "$numberDouble": "122.42590000000018"
+        },
+        {
+          "$numberDouble": "102.99549999999999"
+        },
+        {
+          "$numberDouble": "129.03880000000026"
+        },
+        {
+          "$numberDouble": "132.84860000000117"
+        },
+        {
+          "$numberDouble": "101.04089999999997"
+        },
+        {
+          "$numberDouble": "183.72659999999996"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "107.0329999999999"
+      },
+      "p95": {
+        "$numberDouble": "163.3769350000003"
+      }
+    },
+    {
+      "block": {
+        "$numberInt": "1"
+      },
+      "hidden": true,
+      "name": "members-province",
+      "samples": [
+        {
+          "$numberDouble": "21.983400000000984"
+        },
+        {
+          "$numberDouble": "32.695299999999406"
+        },
+        {
+          "$numberDouble": "26.61290000000008"
+        },
+        {
+          "$numberDouble": "30.69080000000031"
+        },
+        {
+          "$numberDouble": "24.302599999999074"
+        },
+        {
+          "$numberDouble": "23.699899999999616"
+        },
+        {
+          "$numberDouble": "23.848700000000463"
+        },
+        {
+          "$numberDouble": "25.339099999999235"
+        },
+        {
+          "$numberDouble": "24.13969999999972"
+        },
+        {
+          "$numberDouble": "26.766999999999825"
+        },
+        {
+          "$numberDouble": "25.717900000001464"
+        },
+        {
+          "$numberDouble": "25.88709999999992"
+        },
+        {
+          "$numberDouble": "27.94130000000041"
+        },
+        {
+          "$numberDouble": "28.149199999999837"
+        },
+        {
+          "$numberDouble": "30.171000000000276"
+        },
+        {
+          "$numberDouble": "30.02690000000075"
+        },
+        {
+          "$numberDouble": "27.843800000000556"
+        },
+        {
+          "$numberDouble": "24.782900000000154"
+        },
+        {
+          "$numberDouble": "24.5596000000005"
+        },
+        {
+          "$numberDouble": "24.761999999998807"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "25.80250000000069"
+      },
+      "p95": {
+        "$numberDouble": "30.791025000000264"
+      }
+    },
+    {
+      "block": {
+        "$numberInt": "2"
+      },
+      "hidden": true,
+      "name": "dashboard-summary",
+      "samples": [
+        {
+          "$numberDouble": "96.16840000000047"
+        },
+        {
+          "$numberDouble": "90.04880000000048"
+        },
+        {
+          "$numberDouble": "110.40899999999965"
+        },
+        {
+          "$numberDouble": "127.6888999999992"
+        },
+        {
+          "$numberDouble": "110.65940000000046"
+        },
+        {
+          "$numberDouble": "104.3174999999992"
+        },
+        {
+          "$numberDouble": "106.3773999999994"
+        },
+        {
+          "$numberDouble": "111.04709999999977"
+        },
+        {
+          "$numberDouble": "108.13610000000153"
+        },
+        {
+          "$numberDouble": "103.4974000000002"
+        },
+        {
+          "$numberDouble": "87.69460000000072"
+        },
+        {
+          "$numberDouble": "98.60479999999916"
+        },
+        {
+          "$numberDouble": "108.3153999999995"
+        },
+        {
+          "$numberDouble": "94.6304999999993"
+        },
+        {
+          "$numberDouble": "110.60390000000007"
+        },
+        {
+          "$numberDouble": "107.0023999999994"
+        },
+        {
+          "$numberDouble": "114.4385999999995"
+        },
+        {
+          "$numberDouble": "89.70099999999911"
+        },
+        {
+          "$numberDouble": "92.55869999999959"
+        },
+        {
+          "$numberDouble": "108.1888999999992"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "106.6898999999994"
+      },
+      "p95": {
+        "$numberDouble": "115.1011149999995"
+      }
+    },
+    {
+      "block": {
+        "$numberInt": "2"
+      },
+      "hidden": true,
+      "name": "members-province",
+      "samples": [
+        {
+          "$numberDouble": "22.204499999999825"
+        },
+        {
+          "$numberDouble": "28.754899999999907"
+        },
+        {
+          "$numberDouble": "19.554200000000492"
+        },
+        {
+          "$numberDouble": "19.63470000000052"
+        },
+        {
+          "$numberDouble": "19.947399999999107"
+        },
+        {
+          "$numberDouble": "19.316000000000713"
+        },
+        {
+          "$numberDouble": "19.012899999999718"
+        },
+        {
+          "$numberDouble": "18.60109999999986"
+        },
+        {
+          "$numberDouble": "20.327499999999418"
+        },
+        {
+          "$numberDouble": "22.48819999999978"
+        },
+        {
+          "$numberDouble": "18.913700000000972"
+        },
+        {
+          "$numberDouble": "18.728900000000067"
+        },
+        {
+          "$numberDouble": "19.27969999999914"
+        },
+        {
+          "$numberDouble": "20.347999999999956"
+        },
+        {
+          "$numberDouble": "21.927200000000084"
+        },
+        {
+          "$numberDouble": "20.02759999999944"
+        },
+        {
+          "$numberDouble": "24.05029999999897"
+        },
+        {
+          "$numberDouble": "23.017100000000937"
+        },
+        {
+          "$numberDouble": "18.528700000000754"
+        },
+        {
+          "$numberDouble": "20.4958000000006"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "19.987499999999272"
+      },
+      "p95": {
+        "$numberDouble": "24.28552999999902"
+      }
+    },
+    {
+      "block": {
+        "$numberInt": "3"
+      },
+      "hidden": false,
+      "name": "dashboard-summary",
+      "samples": [
+        {
+          "$numberDouble": "104.91489999999976"
+        },
+        {
+          "$numberDouble": "89.0572000000011"
+        },
+        {
+          "$numberDouble": "106.14700000000084"
+        },
+        {
+          "$numberDouble": "92.1814000000013"
+        },
+        {
+          "$numberDouble": "88.45950000000084"
+        },
+        {
+          "$numberDouble": "101.0077999999994"
+        },
+        {
+          "$numberDouble": "94.80349999999999"
+        },
+        {
+          "$numberDouble": "116.71700000000055"
+        },
+        {
+          "$numberDouble": "114.14120000000003"
+        },
+        {
+          "$numberDouble": "102.90060000000085"
+        },
+        {
+          "$numberDouble": "98.66709999999875"
+        },
+        {
+          "$numberDouble": "89.64609999999993"
+        },
+        {
+          "$numberDouble": "87.28579999999965"
+        },
+        {
+          "$numberDouble": "97.53340000000026"
+        },
+        {
+          "$numberDouble": "107.0546000000013"
+        },
+        {
+          "$numberDouble": "108.0661999999993"
+        },
+        {
+          "$numberDouble": "84.6193000000003"
+        },
+        {
+          "$numberDouble": "96.24070000000029"
+        },
+        {
+          "$numberDouble": "94.33439999999973"
+        },
+        {
+          "$numberDouble": "85.5114999999987"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "96.88705000000027"
+      },
+      "p95": {
+        "$numberDouble": "114.26999000000005"
+      }
+    },
+    {
+      "block": {
+        "$numberInt": "3"
+      },
+      "hidden": false,
+      "name": "members-province",
+      "samples": [
+        {
+          "$numberDouble": "29.50720000000001"
+        },
+        {
+          "$numberDouble": "15.612100000000282"
+        },
+        {
+          "$numberDouble": "15.895500000000538"
+        },
+        {
+          "$numberDouble": "16.012500000000728"
+        },
+        {
+          "$numberDouble": "16.61499999999978"
+        },
+        {
+          "$numberDouble": "22.874100000000908"
+        },
+        {
+          "$numberDouble": "18.839099999999235"
+        },
+        {
+          "$numberDouble": "16.339099999999235"
+        },
+        {
+          "$numberDouble": "16.325800000000527"
+        },
+        {
+          "$numberDouble": "16.04650000000038"
+        },
+        {
+          "$numberDouble": "17.14099999999962"
+        },
+        {
+          "$numberDouble": "18.24330000000009"
+        },
+        {
+          "$numberDouble": "16.362499999999272"
+        },
+        {
+          "$numberDouble": "16.102999999999156"
+        },
+        {
+          "$numberDouble": "18.63709999999992"
+        },
+        {
+          "$numberDouble": "17.73029999999926"
+        },
+        {
+          "$numberDouble": "16.383899999998903"
+        },
+        {
+          "$numberDouble": "17.33809999999903"
+        },
+        {
+          "$numberDouble": "14.493900000001304"
+        },
+        {
+          "$numberDouble": "23.167600000000675"
+        }
+      ],
+      "p50": {
+        "$numberDouble": "16.499449999999342"
+      },
+      "p95": {
+        "$numberDouble": "23.484580000000648"
+      }
+    }
+  ],
+  "pooled": [
+    {
+      "name": "members-province",
+      "hidden": false,
+      "n": {
+        "$numberInt": "40"
+      },
+      "p50": {
+        "$numberDouble": "22.912000000000262"
+      },
+      "p95": {
+        "$numberDouble": "36.2813450000001"
+      }
+    },
+    {
+      "name": "members-province",
+      "hidden": true,
+      "n": {
+        "$numberInt": "40"
+      },
+      "p50": {
+        "$numberDouble": "23.77430000000004"
+      },
+      "p95": {
+        "$numberDouble": "30.196990000000277"
+      }
+    },
+    {
+      "name": "dashboard-summary",
+      "hidden": false,
+      "n": {
+        "$numberInt": "40"
+      },
+      "p50": {
+        "$numberDouble": "107.5604000000003"
+      },
+      "p95": {
+        "$numberDouble": "135.82560500000008"
+      }
+    },
+    {
+      "name": "dashboard-summary",
+      "hidden": true,
+      "n": {
+        "$numberInt": "40"
+      },
+      "p50": {
+        "$numberDouble": "106.6898999999994"
+      },
+      "p95": {
+        "$numberDouble": "134.32146500000104"
+      }
+    }
+  ],
+  "limitations": "40 measured requests per state per endpoint, same process; hide/unhide and two warmups excluded from timing. No write-cost test."
+}

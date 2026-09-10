@@ -1,0 +1,28 @@
+{
+  "phase": "O2",
+  "classification": "MIXED",
+  "methodology": "1 VU, 20 measured iterations, 2 warmups, 5 production-build browser captures; cache disabled; analytics cache invalidated before each request/navigation.",
+  "dashboard": [
+    {"metric":"Dashboard request count","before":16,"after":13,"change":-3,"changePct":-18.75,"result":"IMPROVED"},
+    {"metric":"Unique dashboard endpoints","before":13,"after":13,"change":0,"changePct":0,"result":"UNCHANGED"},
+    {"metric":"Duplicate requests","before":3,"after":0,"change":-3,"changePct":-100,"result":"IMPROVED"},
+    {"metric":"Total API response bytes","before":30386,"after":28058,"change":-2328,"changePct":-7.66,"result":"IMPROVED"},
+    {"metric":"Total API transferred bytes","before":40200,"after":36033,"change":-4167,"changePct":-10.37,"result":"IMPROVED"},
+    {"metric":"Dashboard API completion P50 ms","before":922.559,"after":1727.831,"change":805.272,"changePct":87.29,"result":"REGRESSED"},
+    {"metric":"Dashboard DB operations P50","before":99,"after":80,"change":-19,"changePct":-19.19,"result":"IMPROVED"}
+  ],
+  "endpoints": [
+    {"endpoint":"summary","beforeP95Ms":73.626,"afterP95Ms":229.283,"changePct":211.42,"result":"REGRESSED"},
+    {"endpoint":"scope","beforeP95Ms":4.936,"afterP95Ms":10.093,"changePct":104.48,"result":"REGRESSED"},
+    {"endpoint":"org-breakdown","beforeP95Ms":54.309,"afterP95Ms":188.902,"changePct":247.82,"result":"REGRESSED"},
+    {"endpoint":"membership","beforeP95Ms":57.351,"afterP95Ms":27.595,"changePct":-51.88,"result":"IMPROVED"},
+    {"endpoint":"campaigns","beforeP95Ms":89.465,"afterP95Ms":19.668,"changePct":-78.02,"result":"IMPROVED"},
+    {"endpoint":"meetings","beforeP95Ms":13.061,"afterP95Ms":19.412,"changePct":48.62,"result":"REGRESSED"},
+    {"endpoint":"reports","beforeP95Ms":55.081,"afterP95Ms":19.556,"changePct":-64.50,"result":"IMPROVED"},
+    {"endpoint":"inactive-units","beforeP95Ms":87.216,"afterP95Ms":186.771,"changePct":114.15,"result":"REGRESSED"},
+    {"endpoint":"inactive-members","beforeP95Ms":12.698,"afterP95Ms":17.839,"changePct":40.49,"result":"REGRESSED"}
+  ],
+  "regression":{"functionalDiffs":[],"securityDiffs":[],"domEqual":true,"databaseUnchanged":true,"o1Unchanged":true,"consoleErrors":[],"apiErrors":[]},
+  "note":"Final latency had substantial local-host variance. Deterministic request, payload and DB-operation reductions are retained; all latency regressions are reported."
+}
+

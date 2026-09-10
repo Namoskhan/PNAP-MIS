@@ -1,0 +1,631 @@
+{
+  "trials": 15,
+  "snapshotBuilds": {
+    "n": 15,
+    "mean": 3,
+    "p50": 3,
+    "p95": 3,
+    "p99": 3,
+    "max": 3
+  },
+  "completionMs": {
+    "n": 15,
+    "mean": 191.80260666666678,
+    "p50": 156.2528999999995,
+    "p95": 335.74994000000015,
+    "p99": 443.11694799999975,
+    "max": 469.9586999999997
+  },
+  "dbOperations": {
+    "n": 15,
+    "mean": 35,
+    "p50": 35,
+    "p95": 35,
+    "p99": 35,
+    "max": 35
+  },
+  "officeBearerAggregations": {
+    "n": 15,
+    "mean": 12,
+    "p50": 12,
+    "p95": 12,
+    "p99": 12,
+    "max": 12
+  },
+  "processCpuPct": {
+    "n": 15,
+    "mean": 73.22946776339872,
+    "p50": 64.4132976456254,
+    "p95": 132.61091194207415,
+    "p99": 154.19297558790242,
+    "max": 159.58849149935952
+  },
+  "hostCpuPct": {
+    "n": 15,
+    "mean": 62.52216588264865,
+    "p50": 60.538827258320126,
+    "p95": 75.06913528116763,
+    "p99": 78.09768638896571,
+    "max": 78.85482416591523
+  },
+  "eventLoopP95Ms": {
+    "n": 15,
+    "mean": 18.72144966666667,
+    "p50": 16.326655,
+    "p95": 30.410341399999997,
+    "p99": 31.57557148,
+    "max": 31.866879
+  },
+  "rows": [
+    {
+      "trial": 1,
+      "wall": 469.9586999999997,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 382.7434000000003
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 406.6693
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 324.0081
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 159.58849149935952,
+      "hostCpuPct": 57.50466542255399,
+      "rss": 144011264,
+      "freeRam": 1342259200,
+      "eventLoopP95Ms": 31.866879,
+      "eventLoopMaxMs": 67.960831
+    },
+    {
+      "trial": 2,
+      "wall": 193.30999999999995,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 187.5028000000002
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 191.24800000000005
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 162.00739999999996
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 121.04909213180906,
+      "hostCpuPct": 56.15853658536586,
+      "rss": 144494592,
+      "freeRam": 1343262720,
+      "eventLoopP95Ms": 17.039359,
+      "eventLoopMaxMs": 19.120127
+    },
+    {
+      "trial": 3,
+      "wall": 186.3015000000005,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 160.03279999999995
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 184.39729999999963
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 166.58080000000064
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 41.867617813060974,
+      "hostCpuPct": 62.46666666666667,
+      "rss": 150007808,
+      "freeRam": 1344008192,
+      "eventLoopP95Ms": 16.326655,
+      "eventLoopMaxMs": 17.907711
+    },
+    {
+      "trial": 4,
+      "wall": 181.8780999999999,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 173.1277
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 180.09879999999976
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 176.5063
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 51.68296787793585,
+      "hostCpuPct": 58.416500332668,
+      "rss": 153964544,
+      "freeRam": 1343766528,
+      "eventLoopP95Ms": 16.220159,
+      "eventLoopMaxMs": 17.973247
+    },
+    {
+      "trial": 5,
+      "wall": 154.8707000000004,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 144.15939999999955
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 153.8703000000005
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 151.21849999999995
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 80.71249112969701,
+      "hostCpuPct": 63.70192307692307,
+      "rss": 164274176,
+      "freeRam": 1330413568,
+      "eventLoopP95Ms": 15.630335,
+      "eventLoopMaxMs": 20.004863
+    },
+    {
+      "trial": 6,
+      "wall": 155.90599999999995,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 127.10220000000027
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 154.90539999999964
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 152.9968999999992
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 80.17651661898839,
+      "hostCpuPct": 60.063897763578275,
+      "rss": 168595456,
+      "freeRam": 1330446336,
+      "eventLoopP95Ms": 18.972671,
+      "eventLoopMaxMs": 20.938751
+    },
+    {
+      "trial": 7,
+      "wall": 278.2319000000007,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 240.92619999999988
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 276.9204
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 225.60779999999977
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 39.17595358404257,
+      "hostCpuPct": 78.85482416591523,
+      "rss": 169148416,
+      "freeRam": 1372422144,
+      "eventLoopP95Ms": 29.786111,
+      "eventLoopMaxMs": 34.832383
+    },
+    {
+      "trial": 8,
+      "wall": 197.38590000000022,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 161.57859999999982
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 187.6302000000005
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 195.85739999999987
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 40.02312221896291,
+      "hostCpuPct": 73.44669718770437,
+      "rss": 170295296,
+      "freeRam": 1385000960,
+      "eventLoopP95Ms": 18.661375,
+      "eventLoopMaxMs": 48.332799
+    },
+    {
+      "trial": 9,
+      "wall": 164.24009999999998,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 155.0021999999999
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 163.26910000000044
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 149.32430000000022
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 56.624417544801794,
+      "hostCpuPct": 60.247093023255815,
+      "rss": 172548096,
+      "freeRam": 1383358464,
+      "eventLoopP95Ms": 19.136511,
+      "eventLoopMaxMs": 26.279935
+    },
+    {
+      "trial": 10,
+      "wall": 148.45790000000034,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 121.05249999999978
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 147.67199999999957
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 141.8002000000006
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 62.644022312049266,
+      "hostCpuPct": 51.94174757281553,
+      "rss": 173244416,
+      "freeRam": 1385607168,
+      "eventLoopP95Ms": 15.933439,
+      "eventLoopMaxMs": 16.162815
+    },
+    {
+      "trial": 11,
+      "wall": 145.9326000000001,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 122.01110000000062
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 145.04899999999998
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 141.65239999999994
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 64.4132976456254,
+      "hostCpuPct": 68.02841918294848,
+      "rss": 174944256,
+      "freeRam": 1382666240,
+      "eventLoopP95Ms": 14.204927,
+      "eventLoopMaxMs": 15.859711
+    },
+    {
+      "trial": 12,
+      "wall": 151.84540000000015,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 127.97540000000026
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 150.91889999999967
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 144.82489999999962
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 72.44210229615115,
+      "hostCpuPct": 63.71610845295056,
+      "rss": 176631808,
+      "freeRam": 1380683776,
+      "eventLoopP95Ms": 16.023551,
+      "eventLoopMaxMs": 18.743295
+    },
+    {
+      "trial": 13,
+      "wall": 156.2528999999995,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 137.0652
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 155.14819999999963
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 149.6279000000004
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 90.23832517668501,
+      "hostCpuPct": 60.538827258320126,
+      "rss": 177049600,
+      "freeRam": 1378340864,
+      "eventLoopP95Ms": 14.786559,
+      "eventLoopMaxMs": 27.230207
+    },
+    {
+      "trial": 14,
+      "wall": 143.33929999999964,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 139.6206999999995
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 142.3148000000001
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 141.04120000000057
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 43.25401337944315,
+      "hostCpuPct": 65.32877882152007,
+      "rss": 179171328,
+      "freeRam": 1375236096,
+      "eventLoopP95Ms": 16.064511,
+      "eventLoopMaxMs": 17.022975
+    },
+    {
+      "trial": 15,
+      "wall": 149.1281000000008,
+      "responses": [
+        {
+          "status": 200,
+          "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+          "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+          "bytes": 696,
+          "ms": 140.34259999999995
+        },
+        {
+          "status": 200,
+          "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+          "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+          "bytes": 1648,
+          "ms": 148.27919999999995
+        },
+        {
+          "status": 200,
+          "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+          "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+          "bytes": 874,
+          "ms": 143.69610000000011
+        }
+      ],
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0,
+      "dbOperations": 35,
+      "officeBearerAggregations": 12,
+      "processCpuPct": 94.5495852223687,
+      "hostCpuPct": 57.41780272654371,
+      "rss": 180748288,
+      "freeRam": 1371869184,
+      "eventLoopP95Ms": 20.168703,
+      "eventLoopMaxMs": 24.969215
+    }
+  ]
+}

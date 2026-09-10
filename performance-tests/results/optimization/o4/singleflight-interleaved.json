@@ -1,0 +1,3977 @@
+{
+  "group3": {
+    "control": {
+      "completionMs": {
+        "n": 15,
+        "mean": 201.98024000000012,
+        "p50": 183.95280000000002,
+        "p95": 297.6648699999996,
+        "p99": 439.75137399999994,
+        "max": 475.27300000000014
+      },
+      "snapshotBuilds": {
+        "n": 15,
+        "mean": 3,
+        "p50": 3,
+        "p95": 3,
+        "p99": 3,
+        "max": 3
+      },
+      "dbOperations": {
+        "n": 15,
+        "mean": 35,
+        "p50": 35,
+        "p95": 35,
+        "p99": 35,
+        "max": 35
+      },
+      "officeBearerAggregations": {
+        "n": 15,
+        "mean": 12,
+        "p50": 12,
+        "p95": 12,
+        "p99": 12,
+        "max": 12
+      },
+      "processCpuPct": {
+        "n": 15,
+        "mean": 76.08561356603069,
+        "p50": 67.63418715806719,
+        "p95": 140.33936905420046,
+        "p99": 151.61791768036346,
+        "max": 154.4375548369042
+      },
+      "hostCpuPct": {
+        "n": 15,
+        "mean": 66.01611930574104,
+        "p50": 65.18305814788226,
+        "p95": 81.26999831117246,
+        "p99": 81.33061525184141,
+        "max": 81.34576948700865
+      },
+      "eventLoopP95Ms": {
+        "n": 15,
+        "mean": 19.93222726666667,
+        "p50": 16.375807,
+        "p95": 31.493323799999963,
+        "p99": 50.338855959999975,
+        "max": 55.050239
+      },
+      "inFlightRemaining": 0
+    },
+    "coalesced": {
+      "completionMs": {
+        "n": 15,
+        "mean": 140.2562666666667,
+        "p50": 133.0693000000001,
+        "p95": 180.5602399999999,
+        "p99": 200.2934080000001,
+        "max": 205.22670000000016
+      },
+      "snapshotBuilds": {
+        "n": 15,
+        "mean": 1,
+        "p50": 1,
+        "p95": 1,
+        "p99": 1,
+        "max": 1
+      },
+      "dbOperations": {
+        "n": 15,
+        "mean": 19,
+        "p50": 19,
+        "p95": 19,
+        "p99": 19,
+        "max": 19
+      },
+      "officeBearerAggregations": {
+        "n": 15,
+        "mean": 4,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4,
+        "max": 4
+      },
+      "processCpuPct": {
+        "n": 15,
+        "mean": 47.8225351592143,
+        "p50": 37.44080171112456,
+        "p95": 90.65954673677177,
+        "p99": 120.7268434871718,
+        "max": 128.24366767477184
+      },
+      "hostCpuPct": {
+        "n": 15,
+        "mean": 36.281251251737714,
+        "p50": 33.30365093499555,
+        "p95": 59.24199744914838,
+        "p99": 72.05559022718494,
+        "max": 75.25898842169408
+      },
+      "eventLoopP95Ms": {
+        "n": 15,
+        "mean": 16.487764333333335,
+        "p50": 16.056319,
+        "p95": 19.074251799999995,
+        "p99": 21.312961559999998,
+        "max": 21.872639
+      },
+      "inFlightRemaining": 0
+    }
+  },
+  "full": {
+    "control": {
+      "completionMs": {
+        "n": 15,
+        "mean": 254.73560666666623,
+        "p50": 234.3716999999997,
+        "p95": 338.92164999999926,
+        "p99": 360.82912999999877,
+        "max": 366.3059999999987
+      },
+      "snapshotBuilds": {
+        "n": 15,
+        "mean": 2.933333333333333,
+        "p50": 3,
+        "p95": 3,
+        "p99": 3,
+        "max": 3
+      },
+      "dbOperations": {
+        "n": 15,
+        "mean": 73.46666666666667,
+        "p50": 74,
+        "p95": 74,
+        "p99": 74,
+        "max": 74
+      },
+      "officeBearerAggregations": {
+        "n": 15,
+        "mean": 11.733333333333333,
+        "p50": 12,
+        "p95": 12,
+        "p99": 12,
+        "max": 12
+      },
+      "processCpuPct": {
+        "n": 15,
+        "mean": 97.10316727165669,
+        "p50": 99.84140576699333,
+        "p95": 136.32871769727424,
+        "p99": 139.87338060504106,
+        "max": 140.7595463319828
+      },
+      "hostCpuPct": {
+        "n": 15,
+        "mean": 62.48524428329483,
+        "p50": 59.577836411609496,
+        "p95": 84.10450763890998,
+        "p99": 84.61700347680748,
+        "max": 84.74512743628186
+      },
+      "eventLoopP95Ms": {
+        "n": 15,
+        "mean": 51.60086086666667,
+        "p50": 41.254911,
+        "p95": 98.73653659999988,
+        "p99": 156.79618971999994,
+        "max": 171.311103
+      },
+      "inFlightRemaining": 0
+    },
+    "coalesced": {
+      "completionMs": {
+        "n": 15,
+        "mean": 189.61691333333354,
+        "p50": 179.70629999999983,
+        "p95": 240.18231000000011,
+        "p99": 260.51014199999986,
+        "max": 265.59209999999985
+      },
+      "snapshotBuilds": {
+        "n": 15,
+        "mean": 1,
+        "p50": 1,
+        "p95": 1,
+        "p99": 1,
+        "max": 1
+      },
+      "dbOperations": {
+        "n": 15,
+        "mean": 58,
+        "p50": 58,
+        "p95": 58,
+        "p99": 58,
+        "max": 58
+      },
+      "officeBearerAggregations": {
+        "n": 15,
+        "mean": 4,
+        "p50": 4,
+        "p95": 4,
+        "p99": 4,
+        "max": 4
+      },
+      "processCpuPct": {
+        "n": 15,
+        "mean": 86.52100207247186,
+        "p50": 84.0506657413083,
+        "p95": 115.58250136889488,
+        "p99": 134.4170790367881,
+        "max": 139.1257234537614
+      },
+      "hostCpuPct": {
+        "n": 15,
+        "mean": 48.86379930709812,
+        "p50": 46.12625538020086,
+        "p95": 74.08499293103922,
+        "p99": 80.8148641144896,
+        "max": 82.49733191035219
+      },
+      "eventLoopP95Ms": {
+        "n": 15,
+        "mean": 36.14965659999999,
+        "p50": 35.127295,
+        "p95": 47.8150646,
+        "p99": 49.17297052,
+        "max": 49.512447
+      },
+      "inFlightRemaining": 0
+    }
+  },
+  "responseEquivalent": true,
+  "raw": {
+    "group3": {
+      "control": [
+        {
+          "wall": 475.27300000000014,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 396.12260000000015
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 426.06370000000015
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 420.4549000000002
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 154.4375548369042,
+          "hostCpuPct": 48.78740970072239,
+          "eventLoopP95Ms": 55.050239,
+          "eventLoopMaxMs": 66.191359
+        },
+        {
+          "wall": 209.98189999999977,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 164.4346999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 207.59790000000066
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 175.4966999999997
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 134.29728943304175,
+          "hostCpuPct": 57.426303854875286,
+          "eventLoopP95Ms": 18.874367,
+          "eventLoopMaxMs": 22.642687
+        },
+        {
+          "wall": 183.95280000000002,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 153.36479999999938
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 182.83500000000004
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 180.64340000000084
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 51.100064799231106,
+          "hostCpuPct": 73.27647476901208,
+          "eventLoopP95Ms": 17.448959,
+          "eventLoopMaxMs": 19.070975
+        },
+        {
+          "wall": 188.5619000000006,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 165.36120000000028
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 177.6765000000005
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 186.65800000000036
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 74.77650575222225,
+          "hostCpuPct": 60.49300466355763,
+          "eventLoopP95Ms": 21.397503,
+          "eventLoopMaxMs": 22.118399
+        },
+        {
+          "wall": 164.90309999999954,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 153.34529999999995
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 163.6310999999996
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 160.8094000000001
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 85.50476006818573,
+          "hostCpuPct": 60.063897763578275,
+          "eventLoopP95Ms": 18.464767,
+          "eventLoopMaxMs": 18.792447
+        },
+        {
+          "wall": 170.51020000000062,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 158.52959999999985
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 169.45389999999952
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 167.53939999999966
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 73.3093973263767,
+          "hostCpuPct": 65.18305814788226,
+          "eventLoopP95Ms": 16.056319,
+          "eventLoopMaxMs": 24.330239
+        },
+        {
+          "wall": 185.5581000000002,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 169.0582999999997
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 182.32720000000063
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 183.32150000000001
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 59.28062423575143,
+          "hostCpuPct": 69.77985323549034,
+          "eventLoopP95Ms": 16.334847,
+          "eventLoopMaxMs": 23.789567
+        },
+        {
+          "wall": 182.3656000000001,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 160.56860000000052
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 181.21810000000005
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 179.52479999999923
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 42.22287536684548,
+          "hostCpuPct": 60.05239030779306,
+          "eventLoopP95Ms": 16.375807,
+          "eventLoopMaxMs": 27.574271
+        },
+        {
+          "wall": 189.2520999999997,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 163.69550000000072
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 187.91480000000047
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 177.6797999999999
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 82.42973261591298,
+          "hostCpuPct": 81.23752495009981,
+          "eventLoopP95Ms": 19.513343,
+          "eventLoopMaxMs": 40.173567
+        },
+        {
+          "wall": 194.9976000000006,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 185.2480999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 193.65619999999944
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 190.45240000000013
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 80.51381145203813,
+          "hostCpuPct": 81.34576948700865,
+          "eventLoopP95Ms": 16.310271,
+          "eventLoopMaxMs": 35.028991
+        },
+        {
+          "wall": 221.54709999999977,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 164.71030000000064
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 167.90430000000015
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 220.09050000000025
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 49.19947045120433,
+          "hostCpuPct": 76.07466063348416,
+          "eventLoopP95Ms": 18.513919,
+          "eventLoopMaxMs": 30.212095
+        },
+        {
+          "wall": 161.16110000000026,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 150.24009999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 159.80040000000008
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 154.98149999999987
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 67.63418715806719,
+          "hostCpuPct": 68.14658210007048,
+          "eventLoopP95Ms": 15.966207,
+          "eventLoopMaxMs": 16.236543
+        },
+        {
+          "wall": 164.54410000000007,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 154.3779999999997
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 163.46690000000035
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 158.64509999999973
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 57.12754209965594,
+          "hostCpuPct": 66.37931034482759,
+          "eventLoopP95Ms": 16.269311,
+          "eventLoopMaxMs": 25.706495
+        },
+        {
+          "wall": 163.6343999999999,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 138.41979999999967
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 162.47369999999955
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 157.53109999999924
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 66.61191045403659,
+          "hostCpuPct": 63.70903277378097,
+          "eventLoopP95Ms": 16.105471,
+          "eventLoopMaxMs": 25.477119
+        },
+        {
+          "wall": 173.46060000000034,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 147.01610000000073
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 172.4421000000002
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 164.8083999999999
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 35,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 62.83847744098647,
+          "hostCpuPct": 58.28651685393258,
+          "eventLoopP95Ms": 16.302079,
+          "eventLoopMaxMs": 34.930687
+        }
+      ],
+      "coalesced": [
+        {
+          "wall": 169.98889999999983,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 163.39429999999948
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 166.8712999999998
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 157.72950000000037
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 128.24366767477184,
+          "hostCpuPct": 52.37757274662882,
+          "eventLoopP95Ms": 17.874943,
+          "eventLoopMaxMs": 25.559039
+        },
+        {
+          "wall": 149.7489000000005,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 142.2550000000001
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 147.4318999999996
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 137.21660000000065
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 62.77174657042535,
+          "hostCpuPct": 48.08510638297872,
+          "eventLoopP95Ms": 17.170431,
+          "eventLoopMaxMs": 18.169855
+        },
+        {
+          "wall": 133.52350000000024,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 125.8775999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 132.26190000000042
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 122.97059999999965
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 35.199796290540554,
+          "hostCpuPct": 33.30365093499555,
+          "eventLoopP95Ms": 15.155199,
+          "eventLoopMaxMs": 16.039935
+        },
+        {
+          "wall": 144.8652000000002,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 135.64439999999922
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 143.33170000000064
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 132.65190000000075
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 74.55206633477182,
+          "hostCpuPct": 32.50798722044728,
+          "eventLoopP95Ms": 16.195583,
+          "eventLoopMaxMs": 17.268735
+        },
+        {
+          "wall": 139.47819999999956,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 130.3765000000003
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 138.3125
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 127.20820000000003
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 45.16834888893045,
+          "hostCpuPct": 37.410714285714285,
+          "eventLoopP95Ms": 16.023551,
+          "eventLoopMaxMs": 16.162815
+        },
+        {
+          "wall": 133.85690000000068,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 125.4971999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 132.4938000000002
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 122.98899999999958
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 35.112123469167265,
+          "hostCpuPct": 43.7225636523266,
+          "eventLoopP95Ms": 16.031743,
+          "eventLoopMaxMs": 19.283967
+        },
+        {
+          "wall": 120.53559999999925,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 112.84850000000006
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 119.45479999999952
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 109.97980000000007
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 25.718542903507508,
+          "hostCpuPct": 20.37962037962038,
+          "eventLoopP95Ms": 15.417343,
+          "eventLoopMaxMs": 17.367039
+        },
+        {
+          "wall": 131.79700000000048,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 123.85699999999997
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 130.70780000000013
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 121.28119999999944
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 47.800784539860366,
+          "hostCpuPct": 40.13738959764475,
+          "eventLoopP95Ms": 16.113663,
+          "eventLoopMaxMs": 17.760255
+        },
+        {
+          "wall": 127.02239999999983,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 119.3743000000004
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 125.42089999999916
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 116.4348
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 37.001347793775004,
+          "hostCpuPct": 33.754512635379065,
+          "eventLoopP95Ms": 16.474111,
+          "eventLoopMaxMs": 22.102015
+        },
+        {
+          "wall": 130.57920000000013,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 122.75640000000021
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 129.59529999999995
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 119.90769999999975
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 23.740381316473044,
+          "hostCpuPct": 26.268922528940337,
+          "eventLoopP95Ms": 16.056319,
+          "eventLoopMaxMs": 16.171007
+        },
+        {
+          "wall": 205.22670000000016,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 191.6945999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 203.6797999999999
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 188.6786000000002
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 68.70451067039517,
+          "hostCpuPct": 75.25898842169408,
+          "eventLoopP95Ms": 21.872639,
+          "eventLoopMaxMs": 23.330815
+        },
+        {
+          "wall": 130.29560000000038,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 120.91859999999997
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 128.98190000000068
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 118.38390000000072
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 36.07182437472935,
+          "hostCpuPct": 31.16883116883117,
+          "eventLoopP95Ms": 16.080895,
+          "eventLoopMaxMs": 16.121855
+        },
+        {
+          "wall": 133.0693000000001,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 123.67659999999978
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 131.9970000000003
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 121.10740000000078
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 47.3437524658204,
+          "hostCpuPct": 19.963369963369964,
+          "eventLoopP95Ms": 15.720447,
+          "eventLoopMaxMs": 16.056319
+        },
+        {
+          "wall": 125.53149999999914,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 117.12880000000041
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 124.33289999999943
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 114.65630000000056
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 37.44080171112456,
+          "hostCpuPct": 20.22022022022022,
+          "eventLoopP95Ms": 15.867903,
+          "eventLoopMaxMs": 16.048127
+        },
+        {
+          "wall": 128.32510000000002,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 119.45960000000014
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 127.2530999999999
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 116.96349999999984
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 19,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 12.468332383921773,
+          "hostCpuPct": 29.659318637274552,
+          "eventLoopP95Ms": 15.261695,
+          "eventLoopMaxMs": 21.446655
+        }
+      ]
+    },
+    "full": {
+      "control": [
+        {
+          "wall": 366.3059999999987,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 318.5694999999996
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 50.69419999999991
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 350.6367000000009
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 304.9214000000011
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 313.77909999999974
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 314.4883000000009
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 350.4971000000005
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 317.95830000000024
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 361.6038000000008
+            }
+          ],
+          "snapshotBuilds": 2,
+          "maxConcurrent": 2,
+          "inFlightRemaining": 0,
+          "dbOperations": 66,
+          "officeBearerAggregations": 8,
+          "processCpuPct": 128.03503082122643,
+          "hostCpuPct": 48.63557858376511,
+          "eventLoopP95Ms": 171.311103,
+          "eventLoopMaxMs": 171.311103
+        },
+        {
+          "wall": 321.8111000000008,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 278.52189999999973
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 97.62339999999858
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 284.4496999999992
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 260.59089999999924
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 227.02020000000084
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 228.58299999999872
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 232.52270000000135
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 317.9413999999997
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 272.7963
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 72.71346451380931,
+          "hostCpuPct": 83.82995629717918,
+          "eventLoopP95Ms": 56.688639,
+          "eventLoopMaxMs": 88.997887
+        },
+        {
+          "wall": 267.053899999999,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 219.83620000000155
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 84.72299999999996
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 239.95849999999882
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 162.64960000000065
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 195.0059000000001
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 166.60089999999946
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 169.0086999999985
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 262.7427000000007
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 191.1825000000008
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 134.429791139542,
+          "hostCpuPct": 67.87878787878789,
+          "eventLoopP95Ms": 45.514751,
+          "eventLoopMaxMs": 50.036735
+        },
+        {
+          "wall": 327.1854999999996,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 270.6201000000001
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 96.82550000000083
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 281.22710000000006
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 213.65869999999995
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 267.04249999999956
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 219.6866000000009
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 227.60919999999896
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 323.1700000000001
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 246.30010000000038
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 76.40925407757993,
+          "hostCpuPct": 84.74512743628186,
+          "eventLoopP95Ms": 67.633151,
+          "eventLoopMaxMs": 72.482815
+        },
+        {
+          "wall": 255.7552999999989,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 213.4538999999986
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 81.78589999999895
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 215.7618999999995
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 165.6795000000002
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 168.9422999999988
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 194.7518999999993
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 176.45620000000054
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 252.4911000000011
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 191.6810999999998
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 140.7595463319828,
+          "hostCpuPct": 58.7764705882353,
+          "eventLoopP95Ms": 44.957695,
+          "eventLoopMaxMs": 61.538303
+        },
+        {
+          "wall": 208.66460000000006,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 166.39559999999983
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 64.12299999999959
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 192.3083999999999
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 125.59200000000055
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 128.06570000000102
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 130.1178
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 150.16270000000077
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 205.44820000000072
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 147.69930000000022
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 82.4289314047519,
+          "hostCpuPct": 55.43288785589774,
+          "eventLoopP95Ms": 36.634623,
+          "eventLoopMaxMs": 46.202879
+        },
+        {
+          "wall": 233.91579999999885,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 199.6333999999988
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 73.2533999999996
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 226.04340000000047
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 146.90509999999995
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 151.89749999999913
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 152.39259999999922
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 180.1298999999999
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 230.6165000000001
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 177.05249999999978
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 100.46350011414414,
+          "hostCpuPct": 59.577836411609496,
+          "eventLoopP95Ms": 42.074111,
+          "eventLoopMaxMs": 57.409535
+        },
+        {
+          "wall": 244.53909999999996,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 190.65900000000147
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 75.3798999999999
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 210.10599999999977
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 131.20759999999973
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 134.40829999999914
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 135.26440000000002
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 136.8704000000016
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 241.16320000000087
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 152.54669999999896
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 70.33640019121688,
+          "hostCpuPct": 61.37965760322256,
+          "eventLoopP95Ms": 44.072959,
+          "eventLoopMaxMs": 54.951935
+        },
+        {
+          "wall": 243.9995999999992,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 188.95989999999983
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 64.9408999999996
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 197.81990000000042
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 130.67250000000058
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 135.53669999999875
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 136.54550000000017
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 137.85920000000078
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 241.55129999999917
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 153.15459999999985
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 102.45918435931895,
+          "hostCpuPct": 53.25413223140496,
+          "eventLoopP95Ms": 37.781503,
+          "eventLoopMaxMs": 57.049087
+        },
+        {
+          "wall": 229.1304999999993,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 192.00890000000072
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 68.78920000000107
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 209.23300000000017
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 126.4325000000008
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 131.8006000000005
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 134.60599999999977
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 137.14869999999974
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 224.90470000000096
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 150.46830000000045
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 89.03223272327368,
+          "hostCpuPct": 59.54521417239555,
+          "eventLoopP95Ms": 37.027839,
+          "eventLoopMaxMs": 50.036735
+        },
+        {
+          "wall": 234.3716999999997,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 210.83050000000003
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 65.27330000000075
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 220.1916999999994
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 134.19980000000032
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 150.26350000000093
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 151.39449999999852
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 153.04169999999976
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 231.8866999999991
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 171.1881999999987
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 99.84140576699333,
+          "hostCpuPct": 71.29337539432177,
+          "eventLoopP95Ms": 41.254911,
+          "eventLoopMaxMs": 59.998207
+        },
+        {
+          "wall": 212.6219000000001,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 165.6316999999999
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 63.44030000000021
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 190.75530000000072
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 118.87910000000011
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 123.66330000000016
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 124.7451000000001
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 126.46869999999944
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 210.1219999999994
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 133.6304
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 73.83999484530987,
+          "hostCpuPct": 60.1699716713881,
+          "eventLoopP95Ms": 37.093375,
+          "eventLoopMaxMs": 45.907967
+        },
+        {
+          "wall": 215.46119999999974,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 185.87790000000132
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 63.29989999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 193.58609999999862
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 120.9877000000015
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 126.1306999999997
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 128.30909999999858
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 145.38800000000083
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 213.1194000000014
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 163.01419999999962
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 109.06836126411636,
+          "hostCpuPct": 58.994860079954314,
+          "eventLoopP95Ms": 40.173567,
+          "eventLoopMaxMs": 54.820863
+        },
+        {
+          "wall": 229.30359999999928,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 193.54060000000027
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 63.44430000000102
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 205.5000999999993
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 124.14269999999851
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 129.1152000000002
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 130.28240000000005
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 132.3063000000002
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 226.74969999999848
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 142.91240000000107
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 68.03207625174682,
+          "hostCpuPct": 52.09903121636168,
+          "eventLoopP95Ms": 36.667391,
+          "eventLoopMaxMs": 51.052543
+        },
+        {
+          "wall": 230.91430000000037,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 196.60879999999997
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 64.78589999999895
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 211.3811999999998
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 124.0036
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 127.97440000000097
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 129.07150000000001
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 130.83729999999923
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 228.2497999999996
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 170.0634000000009
+            }
+          ],
+          "snapshotBuilds": 3,
+          "maxConcurrent": 3,
+          "inFlightRemaining": 0,
+          "dbOperations": 74,
+          "officeBearerAggregations": 12,
+          "processCpuPct": 108.69833526983803,
+          "hostCpuPct": 61.66577682861719,
+          "eventLoopP95Ms": 35.127295,
+          "eventLoopMaxMs": 58.523647
+        }
+      ],
+      "coalesced": [
+        {
+          "wall": 265.59209999999985,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 255.21409999999923
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 83.37109999999848
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 263.6490999999987
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 178.012999999999
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 182.8778000000002
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 155.28049999999894
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 160.79409999999916
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 248.42330000000038
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 178.25400000000081
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 82.45727188421648,
+          "hostCpuPct": 70.47970479704797,
+          "eventLoopP95Ms": 39.845887,
+          "eventLoopMaxMs": 49.348607
+        },
+        {
+          "wall": 207.59760000000097,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 198.98140000000058
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 92.96899999999914
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 205.03609999999935
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 122.08690000000024
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 145.38360000000102
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 125.53610000000117
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 128.8711000000003
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 192.97040000000015
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 140.5627999999997
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 105.49254904680929,
+          "hostCpuPct": 49.156355455568054,
+          "eventLoopP95Ms": 29.802495,
+          "eventLoopMaxMs": 46.956543
+        },
+        {
+          "wall": 194.6908999999996,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 183.8697000000011
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 73.22819999999956
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 192.9416999999994
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 107.65790000000015
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 110.2445000000007
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 126.38789999999972
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 112.07719999999972
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 178.82970000000023
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 120.88799999999901
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 88.34516662052533,
+          "hostCpuPct": 56.1928004881025,
+          "eventLoopP95Ms": 35.127295,
+          "eventLoopMaxMs": 37.683199
+        },
+        {
+          "wall": 211.08610000000044,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 202.65380000000005
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 96.5007999999998
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 209.01100000000042
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 152.95050000000083
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 155.02779999999984
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 155.57669999999962
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 168.22890000000007
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 197.3161
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 165.1288999999997
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 96.16928826673077,
+          "hostCpuPct": 68.95306859205776,
+          "eventLoopP95Ms": 49.512447,
+          "eventLoopMaxMs": 62.849023
+        },
+        {
+          "wall": 190.47520000000077,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 181.52989999999954
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 77.23400000000038
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 189.08859999999913
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 117.7544999999991
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 120.04089999999997
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 123.35069999999905
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 139.1203000000005
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 177.36030000000028
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 136.27620000000024
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 139.1257234537614,
+          "hostCpuPct": 46.36243386243386,
+          "eventLoopP95Ms": 39.714815,
+          "eventLoopMaxMs": 45.645823
+        },
+        {
+          "wall": 166.56620000000112,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 158.65600000000086
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 65.0069999999996
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 165.21239999999852
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 98.90210000000116
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 101.20809999999983
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 102.67100000000028
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 104.04199999999946
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 155.15579999999864
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 107.99539999999979
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 84.0506657413083,
+          "hostCpuPct": 38.212025316455694,
+          "eventLoopP95Ms": 35.258367,
+          "eventLoopMaxMs": 36.700159
+        },
+        {
+          "wall": 184.45899999999892,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 174.8837999999996
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 68.08950000000004
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 182.46959999999854
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 104.21489999999903
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 105.42669999999998
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 106.54939999999988
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 107.63620000000083
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 170.382599999999
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 110.29249999999956
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 75.89762494646551,
+          "hostCpuPct": 35.247093023255815,
+          "eventLoopP95Ms": 36.667391,
+          "eventLoopMaxMs": 37.912575
+        },
+        {
+          "wall": 173.52770000000055,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 164.1889999999985
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 62.53930000000037
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 171.88500000000022
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 99.40159999999923
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 103.0614000000005
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 104.23909999999887
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 106.2430000000004
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 159.92489999999998
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 109.97760000000017
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 90.47546875801356,
+          "hostCpuPct": 37.527272727272724,
+          "eventLoopP95Ms": 32.489471,
+          "eventLoopMaxMs": 38.436863
+        },
+        {
+          "wall": 179.70629999999983,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 171.40539999999964
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 71.42769999999837
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 178.3806999999997
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 109.08849999999984
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 112.16630000000077
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 113.03169999999955
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 114.58549999999923
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 167.6167000000005
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 117.52180000000044
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 86.2518453721434,
+          "hostCpuPct": 42.27212681638045,
+          "eventLoopP95Ms": 38.174719,
+          "eventLoopMaxMs": 41.517055
+        },
+        {
+          "wall": 171.67649999999958,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 162.38920000000144
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 61.865600000000995
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 170.29500000000007
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 98.17289999999957
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 101.14819999999963
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 101.75879999999961
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 102.83740000000034
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 158.65489999999954
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 105.91530000000057
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 72.8113632325917,
+          "hostCpuPct": 43.90243902439025,
+          "eventLoopP95Ms": 35.127295,
+          "eventLoopMaxMs": 36.995071
+        },
+        {
+          "wall": 162.2402000000002,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 153.78019999999924
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 57.77980000000025
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 160.8887999999988
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 92.54910000000018
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 94.86539999999877
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 97.12299999999959
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 98.99289999999928
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 150.28390000000036
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 104.18290000000161
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 77.04625610668617,
+          "hostCpuPct": 38.279400157853196,
+          "eventLoopP95Ms": 29.327359,
+          "eventLoopMaxMs": 36.110335
+        },
+        {
+          "wall": 229.29240000000027,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 220.8050000000003
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 95.01150000000052
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 227.7523000000001
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 159.97580000000016
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 162.67969999999877
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 163.60980000000018
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 165.45679999999993
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 216.14559999999983
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 169.4354000000003
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 67.59927498687259,
+          "hostCpuPct": 82.49733191035219,
+          "eventLoopP95Ms": 47.087615,
+          "eventLoopMaxMs": 68.288511
+        },
+        {
+          "wall": 171.22379999999976,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 163.0640000000003
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 62.93359999999848
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 169.97870000000148
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 102.7466000000004
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 106.28789999999935
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 107.25410000000011
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 109.51280000000042
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 159.65219999999863
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 113.85219999999936
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 64.24340541443429,
+          "hostCpuPct": 46.388682055100524,
+          "eventLoopP95Ms": 33.046527,
+          "eventLoopMaxMs": 42.958847
+        },
+        {
+          "wall": 175.84300000000076,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 166.86509999999907
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 61.51970000000074
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 174.6327000000001
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 97.3117999999995
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 100.20640000000094
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 100.82690000000002
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 101.90479999999843
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 163.58920000000035
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 105.95669999999882
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 70.51745022548494,
+          "hostCpuPct": 46.12625538020086,
+          "eventLoopP95Ms": 30.523391,
+          "eventLoopMaxMs": 38.567935
+        },
+        {
+          "wall": 160.27670000000035,
+          "responses": [
+            {
+              "name": "summary",
+              "status": 200,
+              "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+              "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+              "bytes": 696,
+              "ms": 151.9321
+            },
+            {
+              "name": "scope",
+              "status": 200,
+              "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+              "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+              "bytes": 128,
+              "ms": 58.05400000000009
+            },
+            {
+              "name": "org-breakdown",
+              "status": 200,
+              "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+              "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+              "bytes": 1648,
+              "ms": 158.89570000000094
+            },
+            {
+              "name": "membership",
+              "status": 200,
+              "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+              "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+              "bytes": 9670,
+              "ms": 87.92790000000059
+            },
+            {
+              "name": "campaigns",
+              "status": 200,
+              "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+              "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+              "bytes": 1510,
+              "ms": 91.4393
+            },
+            {
+              "name": "meetings",
+              "status": 200,
+              "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+              "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+              "bytes": 5376,
+              "ms": 92.79899999999907
+            },
+            {
+              "name": "reports",
+              "status": 200,
+              "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+              "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+              "bytes": 316,
+              "ms": 94.34549999999945
+            },
+            {
+              "name": "inactive-units",
+              "status": 200,
+              "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+              "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+              "bytes": 874,
+              "ms": 148.3107
+            },
+            {
+              "name": "inactive-members",
+              "status": 200,
+              "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+              "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+              "bytes": 2917,
+              "ms": 98.44880000000012
+            }
+          ],
+          "snapshotBuilds": 1,
+          "maxConcurrent": 1,
+          "inFlightRemaining": 0,
+          "dbOperations": 58,
+          "officeBearerAggregations": 4,
+          "processCpuPct": 97.33167703103425,
+          "hostCpuPct": 31.36,
+          "eventLoopP95Ms": 30.539775,
+          "eventLoopMaxMs": 33.308671
+        }
+      ]
+    }
+  }
+}

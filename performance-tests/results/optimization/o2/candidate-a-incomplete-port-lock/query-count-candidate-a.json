@@ -1,0 +1,4273 @@
+[
+  {
+    "name": "summary",
+    "url": "/api/dashboard/summary?days=365&from=2025-09-09T13:09:03.542Z",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$status",
+                "count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "449d990af8d1a1207a17342f208e739e8f742c31f466e70adfcc13a995e0a670"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$match": {}
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "f86a05de6f16abe69f0e3803377e05703b0e3167a4a6e6cb3b0ebf5439d6df23"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$state",
+                "count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "8a72f2da2bc0849c72f3bd240cff268d2c951d6c73ab23bd5534f6920d0f65ac"
+      },
+      {
+        "type": "aggregate",
+        "collection": "activities",
+        "command": {
+          "aggregate": "activities",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "CAMPAIGN",
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": null,
+                "total": {
+                  "$sum": 1
+                },
+                "completed": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "COMPLETED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                "upcoming": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$and": [
+                          {
+                            "$eq": [
+                              "$state",
+                              "PLANNED"
+                            ]
+                          },
+                          {
+                            "$gt": [
+                              "$startAt",
+                              {
+                                "$date": "2026-09-09T14:57:03.920Z"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                "running": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$and": [
+                          {
+                            "$eq": [
+                              "$state",
+                              "PLANNED"
+                            ]
+                          },
+                          {
+                            "$lte": [
+                              "$startAt",
+                              {
+                                "$date": "2026-09-09T14:57:03.920Z"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "7798aa7a4bc183b0174866cbe4b7cf624f666a6dcfa00ea69ae5466e220808ad"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "state": {
+                  "$in": [
+                    "SCHEDULED",
+                    "IN_PROGRESS",
+                    "PENDING_REPORT"
+                  ]
+                },
+                "endAt": {
+                  "$lt": {
+                    "$date": "2026-09-09T14:57:03.920Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "1ec9d2adf19f5b9b15a8168921b0e0df012d12234814dfaea32d018cd01fd898"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1
+          }
+        },
+        "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7"
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "command": {
+          "find": "districts",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$match": {
+                "lastActivityAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "85fcf4654c9d4ca615909187b2c0039759fe29a5c08af06f256f35f36e9b6cc1"
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "command": {
+          "find": "basicunits",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "areaId": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$match": {
+                "createdAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "7fa0ea7bd5b494eaadc6ac2542ad173cee0bf32a01e04ad3468416b3361ecea3"
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "command": {
+          "find": "areas",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "BASIC_UNIT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "AREA",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "DISTRICT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "PROVINCE",
+                "roleCode": {
+                  "$in": [
+                    "PRESIDENT",
+                    "GENERAL_SECRETARY",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563"
+      }
+    ],
+    "dbOperations": 16
+  },
+  {
+    "name": "scope",
+    "url": "/api/dashboard/scope?days=365&from=2025-09-09T13:09:03.542Z",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      }
+    ],
+    "dbOperations": 1
+  },
+  {
+    "name": "org-breakdown",
+    "url": "/api/dashboard/org-breakdown?days=365&from=2025-09-09T13:09:03.542Z",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1
+          }
+        },
+        "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7"
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "command": {
+          "find": "districts",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d"
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "command": {
+          "find": "areas",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b"
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "command": {
+          "find": "basicunits",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "areaId": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "BASIC_UNIT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "AREA",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "DISTRICT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "PROVINCE",
+                "roleCode": {
+                  "$in": [
+                    "PRESIDENT",
+                    "GENERAL_SECRETARY",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": "$provinceId",
+                "total": {
+                  "$sum": 1
+                },
+                "active": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$and": [
+                          {
+                            "$ne": [
+                              "$lastActivityAt",
+                              null
+                            ]
+                          },
+                          {
+                            "$gte": [
+                              "$lastActivityAt",
+                              {
+                                "$date": "2025-09-09T13:09:03.542Z"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "9591cd02782a487ff7783794f4ed6d70e942312ef0064a09ca025a91479fe820"
+      },
+      {
+        "type": "aggregate",
+        "collection": "activitylogs",
+        "command": {
+          "aggregate": "activitylogs",
+          "pipeline": [
+            {
+              "$match": {
+                "occurredAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                },
+                "category": {
+                  "$ne": "SYSTEM"
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$provinceId",
+                "events": {
+                  "$sum": 1
+                },
+                "lastActivityAt": {
+                  "$max": "$occurredAt"
+                }
+              }
+            }
+          ]
+        },
+        "signature": "392c7ca58aac4546a1f91b265555ae5919a7cca50ac7b60ead3eceef128536eb"
+      }
+    ],
+    "dbOperations": 11
+  },
+  {
+    "name": "membership",
+    "url": "/api/dashboard/membership?days=365&from=2025-09-09T13:09:03.542Z",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": null,
+                "total": {
+                  "$sum": 1
+                },
+                "active": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$and": [
+                          {
+                            "$ne": [
+                              "$lastActivityAt",
+                              null
+                            ]
+                          },
+                          {
+                            "$gte": [
+                              "$lastActivityAt",
+                              {
+                                "$date": "2025-09-09T13:09:03.542Z"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                "newMembers": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$and": [
+                          {
+                            "$gte": [
+                              "$createdAt",
+                              {
+                                "$date": "2025-09-09T13:09:03.542Z"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "6e1fefff2a60a0227ee70e37798db0ccba4be8a7a111e54e8afacf806f4e6e3c"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$facet": {
+                "PROVINCE": [
+                  {
+                    "$group": {
+                      "_id": "$provinceId",
+                      "total": {
+                        "$sum": 1
+                      },
+                      "active": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$ne": [
+                                    "$lastActivityAt",
+                                    null
+                                  ]
+                                },
+                                {
+                                  "$gte": [
+                                    "$lastActivityAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      },
+                      "newMembers": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$gte": [
+                                    "$createdAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ],
+                "DISTRICT": [
+                  {
+                    "$group": {
+                      "_id": "$districtId",
+                      "total": {
+                        "$sum": 1
+                      },
+                      "active": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$ne": [
+                                    "$lastActivityAt",
+                                    null
+                                  ]
+                                },
+                                {
+                                  "$gte": [
+                                    "$lastActivityAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      },
+                      "newMembers": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$gte": [
+                                    "$createdAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ],
+                "AREA": [
+                  {
+                    "$group": {
+                      "_id": "$areaId",
+                      "total": {
+                        "$sum": 1
+                      },
+                      "active": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$ne": [
+                                    "$lastActivityAt",
+                                    null
+                                  ]
+                                },
+                                {
+                                  "$gte": [
+                                    "$lastActivityAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      },
+                      "newMembers": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$gte": [
+                                    "$createdAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ],
+                "BASIC_UNIT": [
+                  {
+                    "$group": {
+                      "_id": "$basicUnitId",
+                      "total": {
+                        "$sum": 1
+                      },
+                      "active": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$ne": [
+                                    "$lastActivityAt",
+                                    null
+                                  ]
+                                },
+                                {
+                                  "$gte": [
+                                    "$lastActivityAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      },
+                      "newMembers": {
+                        "$sum": {
+                          "$cond": [
+                            {
+                              "$and": [
+                                {
+                                  "$gte": [
+                                    "$createdAt",
+                                    {
+                                      "$date": "2025-09-09T13:09:03.542Z"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            1,
+                            0
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "signature": "30335ec0510a49eebd872f4222a30ce3d95bd6110a9c46d812c53275c07e7363"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$group": {
+                "_id": {
+                  "$dateToString": {
+                    "format": "%Y-%m",
+                    "date": "$createdAt"
+                  }
+                },
+                "newMembers": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "1a625ce6ad102c10c246f1ec8c9282ebba26ad28a33dc3737f1004173ff0c2b3"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1
+          }
+        },
+        "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7"
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "command": {
+          "find": "districts",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d"
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "command": {
+          "find": "areas",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b"
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "command": {
+          "find": "basicunits",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "areaId": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "BASIC_UNIT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "AREA",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "DISTRICT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "PROVINCE",
+                "roleCode": {
+                  "$in": [
+                    "PRESIDENT",
+                    "GENERAL_SECRETARY",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563"
+      }
+    ],
+    "dbOperations": 12
+  },
+  {
+    "name": "campaigns",
+    "url": "/api/dashboard/campaigns?days=365&from=2025-09-09T13:09:03.542Z",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "activities",
+        "command": {
+          "aggregate": "activities",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "CAMPAIGN",
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "$switch": {
+                    "branches": [
+                      {
+                        "case": {
+                          "$eq": [
+                            "$state",
+                            "COMPLETED"
+                          ]
+                        },
+                        "then": "completed"
+                      },
+                      {
+                        "case": {
+                          "$eq": [
+                            "$state",
+                            "CANCELLED"
+                          ]
+                        },
+                        "then": "cancelled"
+                      },
+                      {
+                        "case": {
+                          "$gt": [
+                            "$startAt",
+                            {
+                              "$date": "2026-09-09T14:57:14.676Z"
+                            }
+                          ]
+                        },
+                        "then": "upcoming"
+                      }
+                    ],
+                    "default": "running"
+                  }
+                },
+                "count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "e8726312cd00291ae5954c0ed189429d628b91ff12ad8109729d9dda0fe6b5cb"
+      },
+      {
+        "type": "aggregate",
+        "collection": "activities",
+        "command": {
+          "aggregate": "activities",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "CAMPAIGN",
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$facet": {
+                "PROVINCE": [
+                  {
+                    "$group": {
+                      "_id": {
+                        "unit": "$provinceId",
+                        "stage": {
+                          "$switch": {
+                            "branches": [
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "COMPLETED"
+                                  ]
+                                },
+                                "then": "completed"
+                              },
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "CANCELLED"
+                                  ]
+                                },
+                                "then": "cancelled"
+                              },
+                              {
+                                "case": {
+                                  "$gt": [
+                                    "$startAt",
+                                    {
+                                      "$date": "2026-09-09T14:57:14.676Z"
+                                    }
+                                  ]
+                                },
+                                "then": "upcoming"
+                              }
+                            ],
+                            "default": "running"
+                          }
+                        }
+                      },
+                      "count": {
+                        "$sum": 1
+                      }
+                    }
+                  }
+                ],
+                "DISTRICT": [
+                  {
+                    "$group": {
+                      "_id": {
+                        "unit": "$districtId",
+                        "stage": {
+                          "$switch": {
+                            "branches": [
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "COMPLETED"
+                                  ]
+                                },
+                                "then": "completed"
+                              },
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "CANCELLED"
+                                  ]
+                                },
+                                "then": "cancelled"
+                              },
+                              {
+                                "case": {
+                                  "$gt": [
+                                    "$startAt",
+                                    {
+                                      "$date": "2026-09-09T14:57:14.676Z"
+                                    }
+                                  ]
+                                },
+                                "then": "upcoming"
+                              }
+                            ],
+                            "default": "running"
+                          }
+                        }
+                      },
+                      "count": {
+                        "$sum": 1
+                      }
+                    }
+                  }
+                ],
+                "AREA": [
+                  {
+                    "$group": {
+                      "_id": {
+                        "unit": "$areaId",
+                        "stage": {
+                          "$switch": {
+                            "branches": [
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "COMPLETED"
+                                  ]
+                                },
+                                "then": "completed"
+                              },
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "CANCELLED"
+                                  ]
+                                },
+                                "then": "cancelled"
+                              },
+                              {
+                                "case": {
+                                  "$gt": [
+                                    "$startAt",
+                                    {
+                                      "$date": "2026-09-09T14:57:14.676Z"
+                                    }
+                                  ]
+                                },
+                                "then": "upcoming"
+                              }
+                            ],
+                            "default": "running"
+                          }
+                        }
+                      },
+                      "count": {
+                        "$sum": 1
+                      }
+                    }
+                  }
+                ],
+                "BASIC_UNIT": [
+                  {
+                    "$group": {
+                      "_id": {
+                        "unit": "$basicUnitId",
+                        "stage": {
+                          "$switch": {
+                            "branches": [
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "COMPLETED"
+                                  ]
+                                },
+                                "then": "completed"
+                              },
+                              {
+                                "case": {
+                                  "$eq": [
+                                    "$state",
+                                    "CANCELLED"
+                                  ]
+                                },
+                                "then": "cancelled"
+                              },
+                              {
+                                "case": {
+                                  "$gt": [
+                                    "$startAt",
+                                    {
+                                      "$date": "2026-09-09T14:57:14.676Z"
+                                    }
+                                  ]
+                                },
+                                "then": "upcoming"
+                              }
+                            ],
+                            "default": "running"
+                          }
+                        }
+                      },
+                      "count": {
+                        "$sum": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "signature": "6b91dae9d1da94a60ffdd7b45f0b9c8a9c746d3d9eea26577b43fb9d27560002"
+      },
+      {
+        "type": "aggregate",
+        "collection": "activities",
+        "command": {
+          "aggregate": "activities",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "CAMPAIGN",
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                },
+                "campaign.peopleContacted": {
+                  "$exists": true,
+                  "$ne": null
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": null,
+                "peopleContacted": {
+                  "$sum": {
+                    "$ifNull": [
+                      "$campaign.peopleContacted",
+                      0
+                    ]
+                  }
+                },
+                "householdsVisited": {
+                  "$sum": {
+                    "$ifNull": [
+                      "$campaign.householdsVisited",
+                      0
+                    ]
+                  }
+                },
+                "expectedJoiners": {
+                  "$sum": {
+                    "$ifNull": [
+                      "$campaign.expectedJoiners",
+                      0
+                    ]
+                  }
+                },
+                "actualJoiners": {
+                  "$sum": {
+                    "$ifNull": [
+                      "$campaign.actualJoiners",
+                      0
+                    ]
+                  }
+                },
+                "volunteerHours": {
+                  "$sum": {
+                    "$ifNull": [
+                      "$campaign.volunteerHours",
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "4892902fae1f0d1bbee83e8666cda82e651a691500c6f7dd29b98c0118390978"
+      },
+      {
+        "type": "aggregate",
+        "collection": "activities",
+        "command": {
+          "aggregate": "activities",
+          "pipeline": [
+            {
+              "$match": {
+                "type": "CAMPAIGN",
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-30T19:00:00Z"
+                  },
+                  "$lte": {
+                    "$date": "2026-09-09T14:57:14.677Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "$dateToString": {
+                    "format": "%Y-%m",
+                    "date": "$startAt"
+                  }
+                },
+                "total": {
+                  "$sum": 1
+                },
+                "completed": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "COMPLETED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "387c4cd1e718b7c4a02d7db526f5e95621f9a1f2b92cc96c9e22ded3030e431b"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1
+          }
+        },
+        "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7"
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "command": {
+          "find": "districts",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d"
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "command": {
+          "find": "areas",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b"
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "command": {
+          "find": "basicunits",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "areaId": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "BASIC_UNIT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "AREA",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "DISTRICT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "PROVINCE",
+                "roleCode": {
+                  "$in": [
+                    "PRESIDENT",
+                    "GENERAL_SECRETARY",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563"
+      }
+    ],
+    "dbOperations": 13
+  },
+  {
+    "name": "meetings",
+    "url": "/api/dashboard/meetings?days=365&from=2025-09-09T13:09:03.542Z&yearBasis=CALENDAR&years=5",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": "$state",
+                "count": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "8a72f2da2bc0849c72f3bd240cff268d2c951d6c73ab23bd5534f6920d0f65ac"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "level": "$unitLevel",
+                  "body": {
+                    "$ifNull": [
+                      "$body",
+                      "EXECUTIVE"
+                    ]
+                  }
+                },
+                "total": {
+                  "$sum": 1
+                },
+                "conducted": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "FINALIZED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                "scheduled": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "SCHEDULED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "2d5cfe55cb4bb80740dc65e39399805f051c6c521051bab60ecc2e57ddef4174"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-30T19:00:00Z"
+                  },
+                  "$lte": {
+                    "$date": "2026-09-09T14:57:18.181Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "$dateToString": {
+                    "format": "%Y-%m",
+                    "date": "$startAt"
+                  }
+                },
+                "total": {
+                  "$sum": 1
+                },
+                "conducted": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "FINALIZED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ab62d24cf2a56f2470927ae8042ab2bff46bab680d27981e9cb470efc231d7af"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "startAt": {
+                  "$gte": {
+                    "$date": "2021-09-09T14:57:18.181Z"
+                  },
+                  "$lte": {
+                    "$date": "2026-09-09T14:57:18.181Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": {
+                  "year": {
+                    "$year": "$startAt"
+                  },
+                  "level": "$unitLevel",
+                  "body": {
+                    "$ifNull": [
+                      "$body",
+                      "EXECUTIVE"
+                    ]
+                  }
+                },
+                "total": {
+                  "$sum": 1
+                },
+                "conducted": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "FINALIZED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                "scheduled": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "SCHEDULED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "679b4c4ecc4802cae7a8614c8b3f3ff91b9ff94499c62c76a63f9c8fffac7693"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "state": {
+                  "$in": [
+                    "SCHEDULED",
+                    "IN_PROGRESS",
+                    "PENDING_REPORT"
+                  ]
+                },
+                "endAt": {
+                  "$lt": {
+                    "$date": "2026-09-09T14:57:18.181Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "b4ef8663eaf097f3df534d887e5fea6c922fcdd05273748cc7d43ae332a3011b"
+      }
+    ],
+    "dbOperations": 6
+  },
+  {
+    "name": "reports",
+    "url": "/api/dashboard/reports?days=365&from=2025-09-09T13:09:03.542Z",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "$or": [
+                  {
+                    "startAt": {
+                      "$gte": {
+                        "$date": "2025-09-09T13:09:03.542Z"
+                      }
+                    }
+                  },
+                  {
+                    "endAt": {
+                      "$lt": {
+                        "$date": "2026-09-09T14:57:18.633Z"
+                      }
+                    },
+                    "state": {
+                      "$in": [
+                        "SCHEDULED",
+                        "IN_PROGRESS",
+                        "PENDING_REPORT"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "$group": {
+                "_id": "$provinceId",
+                "filed": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$eq": [
+                          "$state",
+                          "FINALIZED"
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                },
+                "outstanding": {
+                  "$sum": {
+                    "$cond": [
+                      {
+                        "$and": [
+                          {
+                            "$in": [
+                              "$state",
+                              [
+                                "SCHEDULED",
+                                "IN_PROGRESS",
+                                "PENDING_REPORT"
+                              ]
+                            ]
+                          },
+                          {
+                            "$lt": [
+                              "$endAt",
+                              {
+                                "$date": "2026-09-09T14:57:18.633Z"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "0e68b54ee00128941031c577552fc6a666f16d03485b9046ce032a986a34e5a3"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "startAt": {
+                  "$gte": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                },
+                "state": "FINALIZED"
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "d3d77cef23dd157753aab03f5a0ea04d9248f68d8c5b0e004896d395b9ca7854"
+      },
+      {
+        "type": "aggregate",
+        "collection": "meetings",
+        "command": {
+          "aggregate": "meetings",
+          "pipeline": [
+            {
+              "$match": {
+                "state": {
+                  "$in": [
+                    "SCHEDULED",
+                    "IN_PROGRESS",
+                    "PENDING_REPORT"
+                  ]
+                },
+                "endAt": {
+                  "$lt": {
+                    "$date": "2026-09-09T14:57:18.633Z"
+                  }
+                }
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "5558327d1148c79ebdb78472043f2102d3d83c55feab549bbb56a6c9de02fee8"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1
+          }
+        },
+        "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7"
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "command": {
+          "find": "districts",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d"
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "command": {
+          "find": "areas",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b"
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "command": {
+          "find": "basicunits",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "areaId": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "BASIC_UNIT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "AREA",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "DISTRICT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "PROVINCE",
+                "roleCode": {
+                  "$in": [
+                    "PRESIDENT",
+                    "GENERAL_SECRETARY",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563"
+      }
+    ],
+    "dbOperations": 12
+  },
+  {
+    "name": "inactive-units",
+    "url": "/api/dashboard/inactive-units?days=365&from=2025-09-09T13:09:03.542Z&level=BASIC_UNIT&page=1&limit=10",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1
+          }
+        },
+        "signature": "823b93d795617ba2a5b1de97cb3cae2553845de285a7cf484b81e03b3bdedcf7"
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "command": {
+          "find": "districts",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "code": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "3c66613e5b3b20e216fa45a1526bf59d74a66ab9d553fe370a64ee39da4f8c0d"
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "command": {
+          "find": "areas",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "030a528886e6553c301e3cefd4b89edb7c9f8632937606ce32222c0ff501039b"
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "command": {
+          "find": "basicunits",
+          "filter": {
+            "isActive": true
+          },
+          "projection": {
+            "name": 1,
+            "areaId": 1,
+            "districtId": 1,
+            "provinceId": 1
+          }
+        },
+        "signature": "b2d7186d2f8eade255307db59d616d566c2b8ce003c0b8b0cb749b68690d43f2"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "BASIC_UNIT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "241ae4990f466b82e2395fa5dcf95fcfbadc8420140f3cc47a2202b4a08fa553"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "AREA",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "9f15aa0070f94d64ab26fcd0b96e593cdbeaf79eadf19fb564f6157f16a20c49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "DISTRICT",
+                "roleCode": {
+                  "$in": [
+                    "SECRETARY",
+                    "SENIOR_MAWIN",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ba18c2dfca9918f3f2975a1b53398891a78b8aa834e4d23aa4f239d6060db49e"
+      },
+      {
+        "type": "aggregate",
+        "collection": "roleassignments",
+        "command": {
+          "aggregate": "roleassignments",
+          "pipeline": [
+            {
+              "$match": {
+                "unitLevel": "PROVINCE",
+                "roleCode": {
+                  "$in": [
+                    "PRESIDENT",
+                    "GENERAL_SECRETARY",
+                    "FINANCE_SECRETARY"
+                  ]
+                },
+                "state": "APPROVED",
+                "endedAt": {
+                  "$exists": false
+                }
+              }
+            },
+            {
+              "$lookup": {
+                "from": "members",
+                "let": {
+                  "mid": "$memberId"
+                },
+                "pipeline": [
+                  {
+                    "$match": {
+                      "$expr": {
+                        "$eq": [
+                          "$_id",
+                          "$$mid"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "$project": {
+                      "fullName": 1,
+                      "memberId": 1,
+                      "phone": 1,
+                      "lastActivityAt": 1
+                    }
+                  }
+                ],
+                "as": "member"
+              }
+            },
+            {
+              "$unwind": {
+                "path": "$member",
+                "preserveNullAndEmptyArrays": false
+              }
+            },
+            {
+              "$group": {
+                "_id": "$unitId",
+                "lastActivityAt": {
+                  "$max": "$member.lastActivityAt"
+                },
+                "officers": {
+                  "$push": {
+                    "roleCode": "$roleCode",
+                    "memberId": "$member._id",
+                    "memberCode": "$member.memberId",
+                    "fullName": "$member.fullName",
+                    "phone": "$member.phone",
+                    "lastActivityAt": "$member.lastActivityAt"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "signature": "24bf2f74993f0e7069c3ea4da33152b57f20993c623bf8270495255ec1807563"
+      }
+    ],
+    "dbOperations": 9
+  },
+  {
+    "name": "inactive-members",
+    "url": "/api/dashboard/inactive-members?days=365&from=2025-09-09T13:09:03.542Z&page=1&limit=10",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "members",
+        "command": {
+          "aggregate": "members",
+          "pipeline": [
+            {
+              "$match": {
+                "$or": [
+                  {
+                    "lastActivityAt": null
+                  },
+                  {
+                    "lastActivityAt": {
+                      "$lt": {
+                        "$date": "2025-09-09T13:09:03.542Z"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "880b7080f0845f7096a8116535b155e278ce518d1a277e79e3854ea15538814f"
+      },
+      {
+        "type": "find",
+        "collection": "members",
+        "command": {
+          "find": "members",
+          "filter": {
+            "$or": [
+              {
+                "lastActivityAt": null
+              },
+              {
+                "lastActivityAt": {
+                  "$lt": {
+                    "$date": "2025-09-09T13:09:03.542Z"
+                  }
+                }
+              }
+            ]
+          },
+          "sort": {
+            "lastActivityAt": 1,
+            "createdAt": 1
+          },
+          "projection": {
+            "fullName": 1,
+            "memberId": 1,
+            "phone": 1,
+            "status": 1,
+            "lastActivityAt": 1,
+            "provinceId": 1,
+            "districtId": 1,
+            "areaId": 1,
+            "basicUnitId": 1,
+            "createdAt": 1
+          },
+          "skip": 0,
+          "limit": 10
+        },
+        "signature": "0e12e59c14ddc611b1679ac060c1da35b38f881de7f69527a567cf9dcea595eb"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "_id": {
+              "$in": [
+                {
+                  "$oid": "6a75a3f0ba1fbef74f88b636"
+                }
+              ]
+            }
+          },
+          "projection": {
+            "name": 1
+          }
+        },
+        "signature": "7bc7a70acdbf2d2b27c505ee2f61a835bc382032ae6a7f12daf893df16901a6e"
+      },
+      {
+        "type": "find",
+        "collection": "districts",
+        "command": {
+          "find": "districts",
+          "filter": {
+            "_id": {
+              "$in": [
+                {
+                  "$oid": "6a75b3d1b576621deb6a6e34"
+                }
+              ]
+            }
+          },
+          "projection": {
+            "name": 1
+          }
+        },
+        "signature": "ff3dd27548f5def96af3b66224824b107773ff0ae40d4e7df009f5568df7fdde"
+      },
+      {
+        "type": "find",
+        "collection": "areas",
+        "command": {
+          "find": "areas",
+          "filter": {
+            "_id": {
+              "$in": [
+                {
+                  "$oid": "6a75b3d1b576621deb6a6e96"
+                }
+              ]
+            }
+          },
+          "projection": {
+            "name": 1
+          }
+        },
+        "signature": "fbf5e241a059d9be92b62539101f7e308c1dc5c60e3813ab9b81adb8955824be"
+      },
+      {
+        "type": "find",
+        "collection": "basicunits",
+        "command": {
+          "find": "basicunits",
+          "filter": {
+            "_id": {
+              "$in": [
+                {
+                  "$oid": "6a75b3d2b576621deb6a6ea5"
+                },
+                {
+                  "$oid": "6a75b3d2b576621deb6a6eb4"
+                }
+              ]
+            }
+          },
+          "projection": {
+            "name": 1
+          }
+        },
+        "signature": "2222cae6eafb46f0112304e4f328ec19ae7e34cf9dbbadd841e5981d974442e2"
+      }
+    ],
+    "dbOperations": 7
+  },
+  {
+    "name": "provinces",
+    "url": "/api/org/provinces",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "find",
+        "collection": "provinces",
+        "command": {
+          "find": "provinces",
+          "filter": {
+            "isActive": true
+          },
+          "sort": {
+            "name": 1
+          }
+        },
+        "signature": "64c9642424e935df9ace8ce04029a36f0375d3ff739a0cfba2d5e05b73d05463"
+      }
+    ],
+    "dbOperations": 2
+  },
+  {
+    "name": "unread-count",
+    "url": "/api/notifications/unread-count",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "aggregate",
+        "collection": "notifications",
+        "command": {
+          "aggregate": "notifications",
+          "pipeline": [
+            {
+              "$match": {
+                "$or": [
+                  {
+                    "expiresAt": null
+                  },
+                  {
+                    "expiresAt": {
+                      "$exists": false
+                    }
+                  },
+                  {
+                    "expiresAt": {
+                      "$gt": {
+                        "$date": "2026-09-09T14:57:25.606Z"
+                      }
+                    }
+                  }
+                ],
+                "userId": {
+                  "$oid": "6a75a23069a71f7105a7e5c8"
+                },
+                "read": false
+              }
+            },
+            {
+              "$group": {
+                "_id": 1,
+                "n": {
+                  "$sum": 1
+                }
+              }
+            }
+          ]
+        },
+        "signature": "ba0fb972c0e0b81fce17bbcb7ede1e38389469934484fb27d70bbdfe8499cb67"
+      }
+    ],
+    "dbOperations": 2
+  },
+  {
+    "name": "auth-me",
+    "url": "/api/auth/me",
+    "operations": [
+      {
+        "type": "find",
+        "collection": "users",
+        "command": {
+          "find": "users",
+          "filter": {
+            "_id": {
+              "$oid": "6a75a23069a71f7105a7e5c8"
+            }
+          },
+          "projection": {
+            "emailVerificationToken": 0,
+            "emailVerificationExpires": 0,
+            "passwordResetToken": 0,
+            "passwordResetExpires": 0
+          },
+          "limit": 1
+        },
+        "signature": "fc7b4ebc98896707105e00a9a01e36f31b2215f86c9ad0657c1724ddf7162b49"
+      },
+      {
+        "type": "find",
+        "collection": "roles",
+        "command": {
+          "find": "roles",
+          "filter": {},
+          "projection": {
+            "code": 1,
+            "label": 1,
+            "permissions": 1,
+            "isActive": 1
+          }
+        },
+        "signature": "f0b80b80004db7e69b8efde8375ecdbaf10f4ab5145025df040cce686ac5c73e"
+      }
+    ],
+    "dbOperations": 2
+  }
+]

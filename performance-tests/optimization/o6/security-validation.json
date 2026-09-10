@@ -1,0 +1,1 @@
+{"passed":true,"databaseUnchanged":true,"personas":["Central","Province","District","Area","Basic Unit","Central Admin","Member","unauthenticated","tampered scope"],"concurrentDifferentScopes":true,"details":"See performance-tests/results/optimization/o6/security-validation.json"}

@@ -1,0 +1,1 @@
+{"responseBytes":9670,"fields":{"byLevel":{"bytes":8914,"rows":{"PROVINCE":3,"DISTRICT":9,"AREA":24,"BASIC_UNIT":48},"used":true},"trend":{"bytes":591,"rows":12,"used":true},"totals":{"bytes":57,"used":true},"levels":{"bytes":43,"rows":4,"used":true}},"unusedNotRemoved":["byLevel.*[]._id"]}

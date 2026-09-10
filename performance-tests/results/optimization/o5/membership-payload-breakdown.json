@@ -1,0 +1,46 @@
+{
+  "responseBytes": 9670,
+  "breakdown": {
+    "levels": {
+      "bytes": 43,
+      "arrayLength": 4,
+      "nestedLengths": null,
+      "usedByFrontend": true,
+      "required": true
+    },
+    "byLevel": {
+      "bytes": 8914,
+      "arrayLength": null,
+      "nestedLengths": {
+        "PROVINCE": 3,
+        "DISTRICT": 9,
+        "AREA": 24,
+        "BASIC_UNIT": 48
+      },
+      "usedByFrontend": true,
+      "required": true
+    },
+    "totals": {
+      "bytes": 57,
+      "arrayLength": null,
+      "nestedLengths": null,
+      "usedByFrontend": true,
+      "required": true
+    },
+    "trend": {
+      "bytes": 591,
+      "arrayLength": 12,
+      "nestedLengths": null,
+      "usedByFrontend": true,
+      "required": true
+    }
+  },
+  "unused": [
+    {
+      "field": "byLevel.*[]._id",
+      "evidence": "No MembershipAnalytics consumer reads row _id; rows are chart inputs only.",
+      "removed": false,
+      "reason": "Payload-only candidate was not retained because the measured endpoint benefit came from eliminating database scans and exact response equivalence was preferred."
+    }
+  ]
+}

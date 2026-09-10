@@ -1,0 +1,1 @@
+{"combinedSnapshotNodeCpuMeanPct":{"before":27.447452,"after":13.722293},"combinedSnapshotHostCpuMeanPct":{"before":54.350122,"after":38.891195},"combinedRejectedBecause":"CPU/command reduction did not outweigh snapshot and Group-3 latency regressions","finalObservedNodeCpuMeanPct":{"baseline":42.782725,"final":50.90301,"designChanged":false}}

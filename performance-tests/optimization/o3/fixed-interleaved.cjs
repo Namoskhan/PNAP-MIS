@@ -1,0 +1,8 @@
+const fs=require('node:fs'),path=require('node:path');
+const {start,root,normalize,hash}=require('../o2/harness.cjs');
+const config=JSON.parse(fs.readFileSync(path.join(root,'performance-tests/optimization/o2/benchmark-config.json')));
+const urls=Object.fromEntries(config.ops.map(x=>[x.name,x.url]));
+const out=path.join(root,'performance-tests/results/optimization/o3');
+const pct=(a,p)=>{const s=[...a].sort((x,y)=>x-y),i=(s.length-1)*p;return s[Math.floor(i)]+(s[Math.ceil(i)]-s[Math.floor(i)])*(i%1)};
+const stats=a=>{const mean=a.reduce((x,y)=>x+y,0)/a.length,sd=Math.sqrt(a.reduce((x,y)=>x+(y-mean)**2,0)/a.length);return{n:a.length,mean,sd,cv:sd/mean,p50:pct(a,.5),p90:pct(a,.9),p95:pct(a,.95),p99:pct(a,.99),max:Math.max(...a)}};
+(async()=>{const h=await start();try{const result={};for(const name of ['summary','org-breakdown','inactive-units']){const A=[],B=[];for(let i=0;i<30;i++){delete process.env.O3_SUMMARY_COUNT_CONTROL;A.push(await h.request(urls[name]));process.env.O3_SUMMARY_COUNT_CONTROL='1';B.push(await h.request(urls[name]));}result[name]={current:stats(A.map(x=>x.ms)),control:stats(B.map(x=>x.ms)),responseEqual:A.every((x,i)=>hash(normalize(x.body))===hash(normalize(B[i].body))),shapeEqual:A.every((x,i)=>x.shapeHash===B[i].shapeHash),currentRows:A.map(x=>({ms:x.ms,bytes:x.bytes,hash:x.hash})),controlRows:B.map(x=>({ms:x.ms,bytes:x.bytes,hash:x.hash}))};}fs.writeFileSync(path.join(out,'fixed-interleaved-results.json'),JSON.stringify(result,null,2));}finally{delete process.env.O3_SUMMARY_COUNT_CONTROL;await h.close();}})().catch(e=>{console.error(e);process.exit(1)});

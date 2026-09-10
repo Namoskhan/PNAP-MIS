@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import useAnalytics from '../hooks/useAnalytics';
 import { Colors, FontSize, Radius, Spacing } from '../constants/colors';
@@ -25,7 +24,7 @@ import MembershipAnalytics from './dashboard/MembershipAnalytics';
 import CampaignsAnalytics from './dashboard/CampaignsAnalytics';
 import MeetingsAnalytics from './dashboard/MeetingsAnalytics';
 import ReportsAnalytics from './dashboard/ReportsAnalytics';
-import { InactiveUnitsTable, InactiveMembersTable } from './dashboard/InactiveTables';
+import { InactiveUnitsTable } from './dashboard/InactiveTables';
 
 const EMPTY_SCOPE = { provinceId: '', districtId: '', areaId: '', basicUnitId: '' };
 const DRILL_KEY = {
@@ -49,7 +48,6 @@ const LEVEL_NOUN = {
 };
 
 const num = (v) => (v ?? 0).toLocaleString();
-const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
 /**
  * Layman-friendly Unit Tier Card
@@ -89,7 +87,7 @@ function UnitTierCard({ title, active = 0, total = 0, noun = 'units' }) {
       </View>
 
       <Text style={styles.unitTierSub} numberOfLines={1}>
-        {num(active)} working · {num(silent)} silent
+        {num(active)} active · {num(silent)} inactive
       </Text>
     </View>
   );
@@ -141,6 +139,7 @@ function SectionCard({
 
 export default function CommandCenter({ accessScope = null }) {
   const { user } = useAuth();
+  const isSuper = user?.roles?.includes('SUPER_ADMIN');
   const scrollViewRef = useRef(null);
 
   const initialScope = useMemo(() => {
@@ -225,8 +224,10 @@ export default function CommandCenter({ accessScope = null }) {
 
   const s = summary.data;
   const o = s?.organization;
-  const trail = scopeInfo.data?.trail;
-  const scopeName = trail?.length ? trail[trail.length - 1].name : 'National Standing';
+  const trail = isSuper
+    ? scopeInfo.data?.trail?.filter((item) => item.level !== 'NATIONAL')
+    : scopeInfo.data?.trail;
+  const scopeName = trail?.length ? trail[trail.length - 1].name : 'the whole country';
   const windowLabel = `last ${filters.days} days`;
   const childNoun = LEVEL_NOUN[org.data?.level] || 'Province';
 
@@ -235,21 +236,6 @@ export default function CommandCenter({ accessScope = null }) {
     d.setDate(d.getDate() - filters.days);
     return d.toISOString().slice(0, 10);
   })();
-
-  // Aggregate active & total units across all tiers
-  const activeUnits =
-    (o?.basicUnits?.active || 0) +
-    (o?.areas?.active || 0) +
-    (o?.districts?.active || 0) +
-    (o?.provinces?.active || 0);
-
-  const totalUnits =
-    (o?.basicUnits?.total || 0) +
-    (o?.areas?.total || 0) +
-    (o?.districts?.total || 0) +
-    (o?.provinces?.total || 0);
-
-  const unitHealthPct = totalUnits > 0 ? Math.round((activeUnits / totalUnits) * 100) : 0;
 
   const isFiltered = Boolean(
     scope.provinceId ||
@@ -266,21 +252,12 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── Banner / Masthead ── */}
       <View style={styles.banner}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.bannerEyebrow}>COMMAND CENTER</Text>
-          <Text style={styles.bannerTitle} numberOfLines={1}>{scopeName}</Text>
-          <Text style={styles.bannerSub}>Executive Leadership Overview</Text>
+          {!isSuper ? <Text style={styles.bannerEyebrow}>Dashboard</Text> : null}
+          <Text style={styles.bannerTitle} numberOfLines={1}>
+            {scopeName === 'the whole country' ? 'Command Center' : scopeName}
+          </Text>
         </View>
         <View style={styles.bannerActions}>
-          <Link href="/announcements" asChild>
-            <TouchableOpacity style={styles.headerBtn}>
-              <Text style={styles.headerIcon}>📣</Text>
-            </TouchableOpacity>
-          </Link>
-          <Link href="/notifications" asChild>
-            <TouchableOpacity style={styles.headerBtn}>
-              <Text style={styles.headerIcon}>🔔</Text>
-            </TouchableOpacity>
-          </Link>
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>Live</Text>
@@ -303,12 +280,14 @@ export default function CommandCenter({ accessScope = null }) {
         {/* Scope Breadcrumb & Reset button */}
         {scope.provinceId && !lockedScope ? (
           <View style={{ marginBottom: Spacing.sm }}>
-            <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
+            {(!isSuper || trail?.length > 0) ? (
+              <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
+            ) : null}
             <TouchableOpacity
               style={styles.backNationalBtn}
               onPress={() => navigateTo('NATIONAL')}
             >
-              <Text style={styles.backNationalText}>← Back to National (Entire Country)</Text>
+              <Text style={styles.backNationalText}>Back to all provinces</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -323,7 +302,7 @@ export default function CommandCenter({ accessScope = null }) {
             </View>
             <View style={styles.filterChip}>
               <Text style={styles.filterChipText} numberOfLines={1}>
-                📍 {scope.provinceId ? scopeName : 'National (All)'}
+                📍 {scope.provinceId ? scopeName : 'All provinces'}
               </Text>
             </View>
             {isFiltered && (
@@ -369,89 +348,11 @@ export default function CommandCenter({ accessScope = null }) {
           </Card>
         ) : null}
 
-        {/* ── Executive Pulse: 4 High-Level Indicators (Layman Overview) ── */}
-        <View style={styles.pulseSection}>
-          <View style={styles.pulseHeaderRow}>
-            <Text style={styles.pulseSectionTitle}>ORGANIZATIONAL PULSE</Text>
-            <View style={styles.healthStatusBadge}>
-              <View style={[styles.healthDot, { backgroundColor: unitHealthPct >= 50 ? '#16a34a' : '#d97706' }]} />
-              <Text style={[styles.healthStatusText, { color: unitHealthPct >= 50 ? '#16a34a' : '#d97706' }]}>
-                {unitHealthPct >= 50 ? 'Healthy Standing' : 'Needs Follow-up'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.pulseGrid}>
-            {/* 1. Total Members */}
-            <View style={styles.pulseCard}>
-              <View style={styles.pulseCardHeader}>
-                <Text style={styles.pulseIcon}>👥</Text>
-                <View style={[styles.pulsePill, { backgroundColor: 'rgba(22, 163, 74, 0.12)' }]}>
-                  <Text style={[styles.pulsePillText, { color: Colors.success }]}>
-                    +{num(s?.membership?.newMembers)}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.pulseValue}>{num(s?.membership?.total)}</Text>
-              <Text style={styles.pulseLabel}>Total Members</Text>
-            </View>
-
-            {/* 2. Working Units */}
-            <View style={styles.pulseCard}>
-              <View style={styles.pulseCardHeader}>
-                <Text style={styles.pulseIcon}>🏢</Text>
-                <View style={[styles.pulsePill, { backgroundColor: 'rgba(30, 64, 175, 0.12)' }]}>
-                  <Text style={[styles.pulsePillText, { color: Colors.primary }]}>
-                    {unitHealthPct}% active
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.pulseValue}>{num(activeUnits)}</Text>
-              <Text style={styles.pulseLabel}>Working Units (of {num(totalUnits)})</Text>
-            </View>
-
-            {/* 3. Meetings Conducted */}
-            <View style={styles.pulseCard}>
-              <View style={styles.pulseCardHeader}>
-                <Text style={styles.pulseIcon}>📅</Text>
-                <View style={[styles.pulsePill, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
-                  <Text style={[styles.pulsePillText, { color: '#6366f1' }]}>
-                    {pct(s?.meetings?.conducted, s?.meetings?.total)}% held
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.pulseValue}>{num(s?.meetings?.conducted)}</Text>
-              <Text style={styles.pulseLabel}>Meetings Held (of {num(s?.meetings?.total)})</Text>
-            </View>
-
-            {/* 4. Active Campaigns */}
-            <View style={styles.pulseCard}>
-              <View style={styles.pulseCardHeader}>
-                <Text style={styles.pulseIcon}>📢</Text>
-                <View style={[styles.pulsePill, { backgroundColor: 'rgba(217, 119, 6, 0.12)' }]}>
-                  <Text style={[styles.pulsePillText, { color: Colors.warning }]}>
-                    {num(s?.campaigns?.running)} active
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.pulseValue}>{num(s?.campaigns?.total || s?.campaigns?.running)}</Text>
-              <Text style={styles.pulseLabel}>Field Campaigns</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── Detailed Sections List ── */}
-        <View style={styles.sectionsListHeader}>
-          <Text style={styles.sectionsListTitle}>DETAILED REPORTS & ANALYTICS</Text>
-        </View>
-
         {/* ── SECTION 1: Overview & Standing ── */}
         <SectionCard
           icon="📊"
           number="1"
-          title="Overview & Standing"
-          subtitle="Membership totals and tier-by-tier health"
-          meta={s ? `${num(s.membership?.total)} members` : null}
+          title="Members and units"
         >
           {summary.loading && !s ? (
             <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
@@ -463,7 +364,7 @@ export default function CommandCenter({ accessScope = null }) {
                   <Text style={styles.memberHighlightLabel}>TOTAL REGISTERED MEMBERS</Text>
                   <Text style={styles.memberHighlightVal}>{num(s.membership?.total)}</Text>
                   <Text style={styles.memberHighlightSub}>
-                    Active across all party levels and registered branches
+                    {num(s.membership?.newMembers)} joined in the {windowLabel}
                   </Text>
                 </View>
                 <View style={styles.memberHighlightRight}>
@@ -478,7 +379,7 @@ export default function CommandCenter({ accessScope = null }) {
               {/* 2x2 Unit Tier Cards (De-cluttered Grid) */}
               <View style={styles.tierGridRow}>
                 <UnitTierCard
-                  title="Provincial Parties"
+                  title="Provinces"
                   active={o.provinces?.active}
                   total={o.provinces?.total}
                   noun="parties"
@@ -506,14 +407,6 @@ export default function CommandCenter({ accessScope = null }) {
                 />
               </View>
 
-              {/* Layman Guide Note */}
-              <View style={styles.laymanTipCard}>
-                <Text style={styles.laymanTipIcon}>💡</Text>
-                <Text style={styles.laymanTipText}>
-                  <Text style={{ fontWeight: '700' }}>Layman Guide: </Text>
-                  "Working" units are active with registered officers and recent meetings. "Silent" units haven't recorded activity recently and may need leadership check-ins.
-                </Text>
-              </View>
             </View>
           ) : null}
         </SectionCard>
@@ -522,8 +415,8 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="🏛️"
           number="2"
-          title={`Provinces & Units (${childNoun}s)`}
-          subtitle="Side-by-side comparison; tap any card to drill in"
+          title={`${childNoun} comparison`}
+          subtitle={lockedScope ? 'Records from units that belong to your unit.' : 'Tap a name to view details.'}
           meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
         >
           {org.loading && !org.data ? (
@@ -536,7 +429,7 @@ export default function CommandCenter({ accessScope = null }) {
             <ProvinceMatrix
               rows={org.data?.rows || []}
               levelNoun={childNoun}
-              onDrill={drillTo}
+              onDrill={lockedScope ? undefined : drillTo}
             />
           )}
         </SectionCard>
@@ -545,8 +438,7 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="👥"
           number="3"
-          title="Membership & Growth Trends"
-          subtitle="Registration velocity, member statuses, and distribution"
+          title="New and active members"
           meta={s ? `${num(s.membership?.newMembers)} new` : null}
         >
           <MembershipAnalytics
@@ -560,19 +452,18 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="📢"
           number="4"
-          title="Field Campaigns & Initiatives"
-          subtitle="Coordination drives, active initiatives, and field progress"
+          title="Campaigns"
           meta={s ? `${num(s.campaigns?.running)} running` : null}
         >
-          <CampaignsAnalytics params={params} windowLabel={windowLabel} />
+          <CampaignsAnalytics params={params} windowLabel={windowLabel} showResults={!isSuper} />
         </SectionCard>
 
         {/* ── SECTION 5: Governance & Meetings ── */}
         <SectionCard
           icon="📅"
           number="5"
-          title="Governance & Meetings"
-          subtitle="Scheduled vs conducted meetings by council and tier"
+          title="Meetings"
+          subtitle="See planned and completed meetings by level, group and year."
           meta={s ? `${num(s.meetings?.conducted)} of ${num(s.meetings?.total)} held` : null}
         >
           <MeetingsAnalytics params={params} windowLabel={windowLabel} />
@@ -582,14 +473,14 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="📑"
           number="6"
-          title="Periodic Performance Reports"
-          subtitle="Report filing status and overdue unit submissions"
+          title="Reports"
           meta={s ? `${num(s.reports?.outstanding)} owed` : null}
         >
           <ReportsAnalytics
             params={params}
             periodFrom={periodFrom}
             scope={scope}
+            accessScope={accessScope}
           />
         </SectionCard>
 
@@ -597,13 +488,11 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="⚠️"
           number="7"
-          title="Attention Needed (Dormant)"
-          subtitle="Inactive units and members requiring leadership follow-up"
-          meta="Action items"
+          title="Needs attention"
+          subtitle="See inactive units and the officers in charge."
         >
           <View style={{ gap: Spacing.md }}>
             <InactiveUnitsTable params={params} />
-            <InactiveMembersTable params={params} />
           </View>
         </SectionCard>
       </ScrollView>

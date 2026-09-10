@@ -1,0 +1,193 @@
+{
+  "passed": true,
+  "databaseUnchanged": true,
+  "failures": [],
+  "concurrentDifferentScopes": [
+    {
+      "persona": "PROVINCE",
+      "status": 200,
+      "hash": "c2b8ca999c830a7270fbb3e532afd66f466486065b92cd35e2be705e22337a7e"
+    },
+    {
+      "persona": "DISTRICT",
+      "status": 200,
+      "hash": "9bded5af809b03c84a672b3c580b2b7795f1c2d2cc9b3fdcd0a636485898c521"
+    }
+  ],
+  "rows": [
+    {
+      "persona": "unauthenticated",
+      "endpoint": "summary",
+      "status": 401
+    },
+    {
+      "persona": "unauthenticated",
+      "endpoint": "org-breakdown",
+      "status": 401
+    },
+    {
+      "persona": "unauthenticated",
+      "endpoint": "inactive-units",
+      "status": 401
+    },
+    {
+      "persona": "CENTRAL",
+      "endpoint": "summary",
+      "status": 200,
+      "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "CENTRAL",
+      "endpoint": "org-breakdown",
+      "status": 200,
+      "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "CENTRAL",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "PROVINCE",
+      "endpoint": "summary",
+      "status": 200,
+      "hash": "c2b8ca999c830a7270fbb3e532afd66f466486065b92cd35e2be705e22337a7e",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "PROVINCE",
+      "endpoint": "org-breakdown",
+      "status": 200,
+      "hash": "1ceb4f79fadacf82d9fa032b5e39edb81aef5688bd1e2c8dc82943059581eef8",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "PROVINCE",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "DISTRICT",
+      "endpoint": "summary",
+      "status": 200,
+      "hash": "9bded5af809b03c84a672b3c580b2b7795f1c2d2cc9b3fdcd0a636485898c521",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "DISTRICT",
+      "endpoint": "org-breakdown",
+      "status": 200,
+      "hash": "b2fa43f137c65b12a48c96290fa9cdcdac0f54903a917ef692e4f5f08421b035",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "DISTRICT",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "AREA",
+      "endpoint": "summary",
+      "status": 200,
+      "hash": "8d008aa36b7ee12adc0c433ad55455ffd02317b2b3dc64df82e0188e8afff264",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "AREA",
+      "endpoint": "org-breakdown",
+      "status": 200,
+      "hash": "48a43e32ea63ad2d6f599ba9b00df641468e939e19d4ae415d7c13bfe46c12ac",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "AREA",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "BASIC_UNIT",
+      "endpoint": "summary",
+      "status": 200,
+      "hash": "5399a8311354bf9d5d38d57bbd365beaae86f9b9d7bc1d97cc4a4d609187ef1f",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "BASIC_UNIT",
+      "endpoint": "org-breakdown",
+      "status": 200,
+      "hash": "1fa809f80f29886301b7139b9d7b9a46bab89a2924cb86efdbb177688d1fe304",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "BASIC_UNIT",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+      "tamperedStatus": 200,
+      "tamperedEqual": true
+    },
+    {
+      "persona": "CENTRAL_ADMIN",
+      "endpoint": "summary",
+      "status": 200,
+      "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "CENTRAL_ADMIN",
+      "endpoint": "org-breakdown",
+      "status": 200,
+      "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "CENTRAL_ADMIN",
+      "endpoint": "inactive-units",
+      "status": 200,
+      "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "MEMBER_PERSONA",
+      "endpoint": "summary",
+      "status": 403,
+      "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "MEMBER_PERSONA",
+      "endpoint": "org-breakdown",
+      "status": 403,
+      "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+      "tamperedEqual": null
+    },
+    {
+      "persona": "MEMBER_PERSONA",
+      "endpoint": "inactive-units",
+      "status": 403,
+      "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+      "tamperedEqual": null
+    }
+  ]
+}

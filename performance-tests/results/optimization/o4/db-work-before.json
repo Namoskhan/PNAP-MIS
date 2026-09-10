@@ -1,0 +1,18 @@
+{
+  "dbOperations": {
+    "n": 15,
+    "mean": 35,
+    "p50": 35,
+    "p95": 35,
+    "p99": 35,
+    "max": 35
+  },
+  "officeBearerAggregations": {
+    "n": 15,
+    "mean": 12,
+    "p50": 12,
+    "p95": 12,
+    "p99": 12,
+    "max": 12
+  }
+}

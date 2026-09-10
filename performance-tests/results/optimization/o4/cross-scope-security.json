@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "level": "PROVINCE",
+      "status": 200,
+      "concurrentHash": "c2b8ca999c830a7270fbb3e532afd66f466486065b92cd35e2be705e22337a7e",
+      "isolatedHash": "c2b8ca999c830a7270fbb3e532afd66f466486065b92cd35e2be705e22337a7e",
+      "equal": true
+    },
+    {
+      "level": "DISTRICT",
+      "status": 200,
+      "concurrentHash": "9bded5af809b03c84a672b3c580b2b7795f1c2d2cc9b3fdcd0a636485898c521",
+      "isolatedHash": "9bded5af809b03c84a672b3c580b2b7795f1c2d2cc9b3fdcd0a636485898c521",
+      "equal": true
+    }
+  ],
+  "builds": 2,
+  "uniqueKeys": 2,
+  "inFlightRemaining": 0,
+  "passed": true
+}

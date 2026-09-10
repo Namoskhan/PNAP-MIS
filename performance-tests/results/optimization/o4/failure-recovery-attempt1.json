@@ -1,0 +1,31 @@
+{
+  "statuses": [
+    500,
+    200,
+    200
+  ],
+  "failureHashes": [
+    "b33c878512e51814b1fa5d8533f35b6803a032e1feb7246b4908e77bd180c7f1",
+    "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+    "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048"
+  ],
+  "sameFailure": false,
+  "afterFailureInFlight": 0,
+  "healthyStatus": 200,
+  "afterHealthyInFlight": 0,
+  "events": [
+    {
+      "key": "org|2025-09-09T13:09:03.542Z|now|||||",
+      "startedAt": 15922.5131,
+      "endedAt": 15922.6261,
+      "outcome": "rejected"
+    },
+    {
+      "key": "org|2025-09-09T13:09:03.542Z|now|||||",
+      "startedAt": 15932.3821,
+      "endedAt": 16041.704,
+      "outcome": "fulfilled"
+    }
+  ],
+  "passed": false
+}

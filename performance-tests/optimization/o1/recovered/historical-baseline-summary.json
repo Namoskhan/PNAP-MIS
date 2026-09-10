@@ -1,0 +1,113 @@
+{
+  "label": "Recovered summary of existing O1 LOCAL RECONSTRUCTED PRE-OPTIMIZATION BASELINE; no new baseline run",
+  "sourceSession": "rollout-2026-09-09T10-02-19-01a0848b-a3d2-7590-957d-27ff4cabd449.jsonl",
+  "sourceLogSha256": "403bde83bd372076220763fc3ae2e05f29a5703382e8841d4bebbaff23f49dc3",
+  "recoveredAt": "2026-09-09T09:39:49.203Z",
+  "iterations": 20,
+  "warmups": 2,
+  "vus": 1,
+  "percentile": "Linear interpolation at (n-1)*p",
+  "results": [
+    {
+      "name": "members-list",
+      "url": "/api/members?scope=all",
+      "p50": 21.15,
+      "p95": 32.66
+    },
+    {
+      "name": "member-first-page",
+      "url": "/api/members?scope=all&page=1&limit=25",
+      "p50": 24.29,
+      "p95": 34.78
+    },
+    {
+      "name": "member-deep-page",
+      "url": "/api/members?scope=all&page=15&limit=25",
+      "p50": 24.42,
+      "p95": 30.32
+    },
+    {
+      "name": "member-search",
+      "url": "/api/members?q=a&page=1&limit=25",
+      "p50": 22.12,
+      "p95": 27.58
+    },
+    {
+      "name": "dashboard-summary",
+      "url": "/api/dashboard/summary?days=365&from=2025-09-09T05:56:29.192Z",
+      "p50": 85.32,
+      "p95": 109
+    },
+    {
+      "name": "dashboard-org-breakdown",
+      "url": "/api/dashboard/org-breakdown?days=365&from=2025-09-09T05:56:29.192Z",
+      "p50": 107.58,
+      "p95": 157.7
+    },
+    {
+      "name": "dashboard-membership",
+      "url": "/api/dashboard/membership?days=365&from=2025-09-09T05:56:29.192Z",
+      "p50": 95.11,
+      "p95": 132.51
+    },
+    {
+      "name": "meetings",
+      "url": "/api/meetings",
+      "p50": 21.7,
+      "p95": 27.54
+    },
+    {
+      "name": "activities",
+      "url": "/api/activities",
+      "p50": 12.47,
+      "p95": 15.6
+    },
+    {
+      "name": "responsibilities",
+      "url": "/api/responsibilities",
+      "p50": 23.76,
+      "p95": 37.1
+    },
+    {
+      "name": "single-member",
+      "url": "/api/members/6a7df77fc6ed35561a1b9278",
+      "p50": 10.78,
+      "p95": 13.01
+    },
+    {
+      "name": "dashboard-province-breakdown",
+      "url": "/api/dashboard/province-breakdown?days=365&from=2025-09-09T05:56:29.192Z",
+      "p50": 96.01,
+      "p95": 113.47
+    },
+    {
+      "name": "members-province",
+      "url": "/api/members?provinceId=6a75a3f0ba1fbef74f88b636&page=1&limit=25",
+      "p50": 21.78,
+      "p95": 25.95
+    },
+    {
+      "name": "meetings-unit",
+      "url": "/api/meetings?unitLevel=PROVINCE&unitId=6a75a3abba1fbef74f88b616",
+      "p50": 9.03,
+      "p95": 11.24
+    },
+    {
+      "name": "activities-unit",
+      "url": "/api/activities?unitLevel=AREA&unitId=6a75a663ba1fbef74f88ba57",
+      "p50": 9.29,
+      "p95": 10.92
+    },
+    {
+      "name": "responsibilities-unit",
+      "url": "/api/responsibilities?unitLevel=DISTRICT&unitId=6a75a46aba1fbef74f88b75d",
+      "p50": 17.95,
+      "p95": 19.12
+    }
+  ],
+  "limitations": [
+    "P50/P95 were printed to two decimal places.",
+    "Original raw sample arrays, full 135 explain documents, 23 functional hashes and full 40-collection index/stat inventory are not intact.",
+    "Historical source output includes selected, sometimes truncated explain summaries; it is not the missing raw explain file."
+  ]
+}

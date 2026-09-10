@@ -1,0 +1,560 @@
+[
+  {
+    "case": "unauthenticated",
+    "op": "summary",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "scope",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "org-breakdown",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "membership",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "campaigns",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "meetings",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "reports",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "inactive-units",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "unauthenticated",
+    "op": "inactive-members",
+    "status": 401,
+    "hash": "958aa1600c2ded8196b4d62c0fc6798c04894295b6ab7c6f2e758c9c3ea82d60"
+  },
+  {
+    "case": "CENTRAL",
+    "op": "summary",
+    "role": "CHAIRMAN",
+    "status": 200,
+    "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "CENTRAL",
+    "op": "org-breakdown",
+    "role": "CHAIRMAN",
+    "status": 200,
+    "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+    "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e"
+  },
+  {
+    "case": "CENTRAL",
+    "op": "membership",
+    "role": "CHAIRMAN",
+    "status": 200,
+    "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+    "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552"
+  },
+  {
+    "case": "CENTRAL",
+    "op": "reports",
+    "role": "CHAIRMAN",
+    "status": 200,
+    "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "CENTRAL",
+    "op": "inactive-units",
+    "role": "CHAIRMAN",
+    "status": 200,
+    "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+    "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249"
+  },
+  {
+    "case": "PROVINCE",
+    "op": "summary",
+    "role": "PRESIDENT",
+    "status": 200,
+    "hash": "c2b8ca999c830a7270fbb3e532afd66f466486065b92cd35e2be705e22337a7e",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "PROVINCE:tampered",
+    "op": "summary",
+    "status": 200,
+    "hash": "c2b8ca999c830a7270fbb3e532afd66f466486065b92cd35e2be705e22337a7e",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "PROVINCE",
+    "op": "org-breakdown",
+    "role": "PRESIDENT",
+    "status": 200,
+    "hash": "1ceb4f79fadacf82d9fa032b5e39edb81aef5688bd1e2c8dc82943059581eef8",
+    "shapeHash": "267d5f95b9389c3a016ba585910d0ee83a60ddaf3bdb74083dbeec0990ce0542"
+  },
+  {
+    "case": "PROVINCE:tampered",
+    "op": "org-breakdown",
+    "status": 200,
+    "hash": "1ceb4f79fadacf82d9fa032b5e39edb81aef5688bd1e2c8dc82943059581eef8",
+    "shapeHash": "267d5f95b9389c3a016ba585910d0ee83a60ddaf3bdb74083dbeec0990ce0542"
+  },
+  {
+    "case": "PROVINCE",
+    "op": "membership",
+    "role": "PRESIDENT",
+    "status": 200,
+    "hash": "4ce11b9950bd4b2723ae52044427762501887ab719f863ce5d4047ed40f8dd0c",
+    "shapeHash": "ffbf59265a97dead1344d1a3cee1167e6bcb88e2b68d0d3ec5ade57fa86bb77a"
+  },
+  {
+    "case": "PROVINCE:tampered",
+    "op": "membership",
+    "status": 200,
+    "hash": "4ce11b9950bd4b2723ae52044427762501887ab719f863ce5d4047ed40f8dd0c",
+    "shapeHash": "ffbf59265a97dead1344d1a3cee1167e6bcb88e2b68d0d3ec5ade57fa86bb77a"
+  },
+  {
+    "case": "PROVINCE",
+    "op": "reports",
+    "role": "PRESIDENT",
+    "status": 200,
+    "hash": "6a28adaf8198c3aa3281eb136154aec989f305fa83d0f9b326417c14e103c2ca",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "PROVINCE:tampered",
+    "op": "reports",
+    "status": 200,
+    "hash": "6a28adaf8198c3aa3281eb136154aec989f305fa83d0f9b326417c14e103c2ca",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "PROVINCE",
+    "op": "inactive-units",
+    "role": "PRESIDENT",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "PROVINCE:tampered",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "DISTRICT",
+    "op": "summary",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "9bded5af809b03c84a672b3c580b2b7795f1c2d2cc9b3fdcd0a636485898c521",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "DISTRICT:tampered",
+    "op": "summary",
+    "status": 200,
+    "hash": "9bded5af809b03c84a672b3c580b2b7795f1c2d2cc9b3fdcd0a636485898c521",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "DISTRICT",
+    "op": "org-breakdown",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "b2fa43f137c65b12a48c96290fa9cdcdac0f54903a917ef692e4f5f08421b035",
+    "shapeHash": "268f4b6b7f7ea2f0d5c01a98f5f794709b1fcea932345ad21004cc5d31ffc6fe"
+  },
+  {
+    "case": "DISTRICT:tampered",
+    "op": "org-breakdown",
+    "status": 200,
+    "hash": "b2fa43f137c65b12a48c96290fa9cdcdac0f54903a917ef692e4f5f08421b035",
+    "shapeHash": "268f4b6b7f7ea2f0d5c01a98f5f794709b1fcea932345ad21004cc5d31ffc6fe"
+  },
+  {
+    "case": "DISTRICT",
+    "op": "membership",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "e5a795dbaf161a0067516164e1835b00c1100766f65522fe9ec3b16f323d6b5f",
+    "shapeHash": "4a17f8ad1e48b353c94fd69ab05613d201a8de27df2eabc0b7ed49f69bdad59c"
+  },
+  {
+    "case": "DISTRICT:tampered",
+    "op": "membership",
+    "status": 200,
+    "hash": "e5a795dbaf161a0067516164e1835b00c1100766f65522fe9ec3b16f323d6b5f",
+    "shapeHash": "4a17f8ad1e48b353c94fd69ab05613d201a8de27df2eabc0b7ed49f69bdad59c"
+  },
+  {
+    "case": "DISTRICT",
+    "op": "reports",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "e3d972b042f1ceac2e70e4ac598580f4a02819f9b4fd02bebdc86707f52e5cb2",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "DISTRICT:tampered",
+    "op": "reports",
+    "status": 200,
+    "hash": "e3d972b042f1ceac2e70e4ac598580f4a02819f9b4fd02bebdc86707f52e5cb2",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "DISTRICT",
+    "op": "inactive-units",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "DISTRICT:tampered",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "AREA",
+    "op": "summary",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "8d008aa36b7ee12adc0c433ad55455ffd02317b2b3dc64df82e0188e8afff264",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "AREA:tampered",
+    "op": "summary",
+    "status": 200,
+    "hash": "8d008aa36b7ee12adc0c433ad55455ffd02317b2b3dc64df82e0188e8afff264",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "AREA",
+    "op": "org-breakdown",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "48a43e32ea63ad2d6f599ba9b00df641468e939e19d4ae415d7c13bfe46c12ac",
+    "shapeHash": "e0da2e89fbfaecc6fdfd7146c57478e3987ab66846e9517fb69f657fd3c2542f"
+  },
+  {
+    "case": "AREA:tampered",
+    "op": "org-breakdown",
+    "status": 200,
+    "hash": "48a43e32ea63ad2d6f599ba9b00df641468e939e19d4ae415d7c13bfe46c12ac",
+    "shapeHash": "e0da2e89fbfaecc6fdfd7146c57478e3987ab66846e9517fb69f657fd3c2542f"
+  },
+  {
+    "case": "AREA",
+    "op": "membership",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "7cb8c182502a230ee1484878f9687ba21862e4cb87b2e92a8bfbf245290d8dd8",
+    "shapeHash": "7531df388c5f4eedc157a44fba0afa41dec5bd5f9a1bfe87651bdfdf4750c22c"
+  },
+  {
+    "case": "AREA:tampered",
+    "op": "membership",
+    "status": 200,
+    "hash": "7cb8c182502a230ee1484878f9687ba21862e4cb87b2e92a8bfbf245290d8dd8",
+    "shapeHash": "7531df388c5f4eedc157a44fba0afa41dec5bd5f9a1bfe87651bdfdf4750c22c"
+  },
+  {
+    "case": "AREA",
+    "op": "reports",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "0240c85d466f953934ce91ee2917b24b4fa81d589aa021b338262f20cd3562df",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "AREA:tampered",
+    "op": "reports",
+    "status": 200,
+    "hash": "0240c85d466f953934ce91ee2917b24b4fa81d589aa021b338262f20cd3562df",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "AREA",
+    "op": "inactive-units",
+    "role": "SECRETARY",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "AREA:tampered",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "BASIC_UNIT",
+    "op": "summary",
+    "role": "SENIOR_MAWIN",
+    "status": 200,
+    "hash": "5399a8311354bf9d5d38d57bbd365beaae86f9b9d7bc1d97cc4a4d609187ef1f",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "BASIC_UNIT:tampered",
+    "op": "summary",
+    "status": 200,
+    "hash": "5399a8311354bf9d5d38d57bbd365beaae86f9b9d7bc1d97cc4a4d609187ef1f",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "BASIC_UNIT",
+    "op": "org-breakdown",
+    "role": "SENIOR_MAWIN",
+    "status": 200,
+    "hash": "1fa809f80f29886301b7139b9d7b9a46bab89a2924cb86efdbb177688d1fe304",
+    "shapeHash": "1f2efce6edf6cb5c60639d8f01bf86582356f71c1733ebcb96bfc4422b3ab481"
+  },
+  {
+    "case": "BASIC_UNIT:tampered",
+    "op": "org-breakdown",
+    "status": 200,
+    "hash": "1fa809f80f29886301b7139b9d7b9a46bab89a2924cb86efdbb177688d1fe304",
+    "shapeHash": "1f2efce6edf6cb5c60639d8f01bf86582356f71c1733ebcb96bfc4422b3ab481"
+  },
+  {
+    "case": "BASIC_UNIT",
+    "op": "membership",
+    "role": "SENIOR_MAWIN",
+    "status": 200,
+    "hash": "96108628d7e943e14d8057f68c7002ee2ef2586a2953efbdec2f9ca3c2eba187",
+    "shapeHash": "c56a9e660ac57109e6c43cd598c5469273d46c0085d783d910190075fd15697f"
+  },
+  {
+    "case": "BASIC_UNIT:tampered",
+    "op": "membership",
+    "status": 200,
+    "hash": "96108628d7e943e14d8057f68c7002ee2ef2586a2953efbdec2f9ca3c2eba187",
+    "shapeHash": "c56a9e660ac57109e6c43cd598c5469273d46c0085d783d910190075fd15697f"
+  },
+  {
+    "case": "BASIC_UNIT",
+    "op": "reports",
+    "role": "SENIOR_MAWIN",
+    "status": 200,
+    "hash": "c07fcb58286ab92e1c6f231306619a04e3bcfe6648941d61cc35144492fadea1",
+    "shapeHash": "c6ba369eb050b3db7c1db8bf1bfee609febb3da6d0ae7ab96c4137a671536b27"
+  },
+  {
+    "case": "BASIC_UNIT:tampered",
+    "op": "reports",
+    "status": 200,
+    "hash": "c07fcb58286ab92e1c6f231306619a04e3bcfe6648941d61cc35144492fadea1",
+    "shapeHash": "c6ba369eb050b3db7c1db8bf1bfee609febb3da6d0ae7ab96c4137a671536b27"
+  },
+  {
+    "case": "BASIC_UNIT",
+    "op": "inactive-units",
+    "role": "SENIOR_MAWIN",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "BASIC_UNIT:tampered",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "fa8df0f54012b1c0ab85d95875bf47f5cc5c64706ff04ef3b8f7a9e560816e75",
+    "shapeHash": "459d8c709c03a96195b7778d5d701d5e90a8da99bc53157f7de1edb2fee065f6"
+  },
+  {
+    "case": "CENTRAL_ADMIN",
+    "op": "summary",
+    "role": "CENTRAL_ADMIN",
+    "status": 200,
+    "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "CENTRAL_ADMIN",
+    "op": "org-breakdown",
+    "role": "CENTRAL_ADMIN",
+    "status": 200,
+    "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+    "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e"
+  },
+  {
+    "case": "CENTRAL_ADMIN",
+    "op": "membership",
+    "role": "CENTRAL_ADMIN",
+    "status": 200,
+    "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+    "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552"
+  },
+  {
+    "case": "CENTRAL_ADMIN",
+    "op": "reports",
+    "role": "CENTRAL_ADMIN",
+    "status": 200,
+    "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c"
+  },
+  {
+    "case": "CENTRAL_ADMIN",
+    "op": "inactive-units",
+    "role": "CENTRAL_ADMIN",
+    "status": 200,
+    "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+    "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249"
+  },
+  {
+    "case": "MEMBER_PERSONA",
+    "op": "summary",
+    "role": "MEMBER",
+    "status": 403,
+    "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+    "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6"
+  },
+  {
+    "case": "MEMBER_PERSONA",
+    "op": "org-breakdown",
+    "role": "MEMBER",
+    "status": 403,
+    "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+    "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6"
+  },
+  {
+    "case": "MEMBER_PERSONA",
+    "op": "membership",
+    "role": "MEMBER",
+    "status": 403,
+    "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+    "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6"
+  },
+  {
+    "case": "MEMBER_PERSONA",
+    "op": "reports",
+    "role": "MEMBER",
+    "status": 403,
+    "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+    "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6"
+  },
+  {
+    "case": "MEMBER_PERSONA",
+    "op": "inactive-units",
+    "role": "MEMBER",
+    "status": 403,
+    "hash": "6986c85fd1ccf8285e1218151f804224ae1fe23ab90160c9bed4715904f8ce94",
+    "shapeHash": "d740cd357c089642b5cef744b7f6cf88b42168f204cc1497a0990882479c7bb6"
+  },
+  {
+    "case": "filter:&memberStatus=ACTIVE",
+    "op": "summary",
+    "status": 200,
+    "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "filter:&memberStatus=ACTIVE",
+    "op": "membership",
+    "status": 200,
+    "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+    "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552"
+  },
+  {
+    "case": "filter:&memberStatus=ACTIVE",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+    "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249"
+  },
+  {
+    "case": "filter:&memberStatus=REJECTED",
+    "op": "summary",
+    "status": 200,
+    "hash": "d6519d757d2b6a33ac0d71ac88bb69a09e44f1f9c7db7789116dd9eb1672bdaa",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "filter:&memberStatus=REJECTED",
+    "op": "membership",
+    "status": 200,
+    "hash": "ac4e6d5a91e0fd7b885660669f5cff06044b69ce4ee0d4839955ee45f1be1e17",
+    "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552"
+  },
+  {
+    "case": "filter:&memberStatus=REJECTED",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+    "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249"
+  },
+  {
+    "case": "filter:&to=2026-08-01",
+    "op": "summary",
+    "status": 200,
+    "hash": "9f9245e1516f6346797e6f9e9e4f2bea2d8cfe3c1da1fa7544538d3a226f15f6",
+    "shapeHash": "13d0fb46b06d18a7de51afa0d0a90c9406e487854ec9ef4a0816a1155fb09404"
+  },
+  {
+    "case": "filter:&to=2026-08-01",
+    "op": "membership",
+    "status": 200,
+    "hash": "72744bebdceead94bd19cd80dee99a77ff71ebd04df3529fa96e794149c7e2ba",
+    "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552"
+  },
+  {
+    "case": "filter:&to=2026-08-01",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "ce9af755cb142e199c0083f2fd04a21e1c02fe421fe1b94d91a53a2277f9b18b",
+    "shapeHash": "499ef8f532969a7da502f343461f508c0df26671521b081a54ee2d2b5c002794"
+  },
+  {
+    "case": "filter:&orgStatus=ACTIVE",
+    "op": "summary",
+    "status": 200,
+    "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f"
+  },
+  {
+    "case": "filter:&orgStatus=ACTIVE",
+    "op": "membership",
+    "status": 200,
+    "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+    "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552"
+  },
+  {
+    "case": "filter:&orgStatus=ACTIVE",
+    "op": "inactive-units",
+    "status": 200,
+    "hash": "b3be63da3ca77fe59cae1543fc50e06ee9ebb13785794aaa03e385c28b42b9b6",
+    "shapeHash": "bb4ffd53bf3663028a969f96cb5b0c88ca2b4599a8313096b3a0a9ee57b22fb4"
+  }
+]

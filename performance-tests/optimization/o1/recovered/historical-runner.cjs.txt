@@ -1,0 +1,209 @@
+// Local-only, read-only baseline/validation runner. Does not call connectDB,
+// syncIndexes, seeders or migrations. Index builds are a separate reviewed step.
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const cp = require('child_process');
+const root = path.resolve(__dirname, '../../..');
+const appRoot = path.join(root, 'pnap-mis');
+const mongoose = require(path.join(appRoot, 'node_modules/mongoose'));
+const { EJSON } = require(path.join(appRoot, 'node_modules/bson'));
+const env = require(path.join(appRoot, 'server/src/config/env'));
+const output = path.join(root, 'performance-tests/results/optimization/o1');
+const phase = process.argv[2];
+if (!['before', 'after'].includes(phase)) throw new Error('Use before or after');
+const uri = new URL(env.MONGO_URI);
+if (!['127.0.0.1', 'localhost', '[::1]'].includes(uri.hostname)
+    || uri.pathname !== '/pnap_mis' || env.NODE_ENV !== 'development') {
+  throw new Error('STOP: target is not the verified local development database');
+}
+fs.mkdirSync(output, { recursive: true });
+function save(file, value, dir = __dirname) {
+  const target = path.join(dir, file);
+  if (fs.existsSync(target)) throw new Error(`Refusing to overwrite evidence: ${target}`);
+  fs.writeFileSync(target, EJSON.stringify(value, null, 2, { relaxed: false }));
+}
+function load(file, dir = __dirname) { return EJSON.parse(fs.readFileSync(path.join(dir, file), 'utf8')); }
+const hash = v => crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
+function canonical(v) {
+  if (Array.isArray(v)) return v.map(canonical);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v).sort()
+    .filter(k => k !== 'generatedAt').map(k => [k, canonical(v[k])]));
+  return v;
+}
+function shape(v) {
+  if (Array.isArray(v)) return ['array', ...new Set(v.map(x => JSON.stringify(shape(x))))].sort();
+  if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v).sort().map(k => [k, shape(v[k])]));
+  return v === null ? 'null' : typeof v;
+}
+function percentile(a, p) {
+  const s = [...a].sort((x, y) => x - y), i = (s.length - 1) * p;
+  return s[Math.floor(i)] + (s[Math.ceil(i)] - s[Math.floor(i)]) * (i % 1);
+}
+function planSummary(raw) {
+  const cursor = raw.stages?.find(x => x.$cursor)?.$cursor || raw;
+  const e = cursor.executionStats || {};
+  const winningPlan = cursor.queryPlanner?.winningPlan || raw.queryPlanner?.winningPlan;
+  const stages = new Set(), indexes = new Set();
+  function walk(x) {
+    if (!x || typeof x !== 'object') return;
+    if (x.stage) stages.add(x.stage);
+    if (x.indexName) indexes.add(x.indexName);
+    Object.values(x).forEach(y => Array.isArray(y) ? y.forEach(walk) : walk(y));
+  }
+  walk(winningPlan);
+  if (raw.stages?.some(x => x.$sort)) stages.add('SORT');
+  return { winningPlan, executionTimeMillis: e.executionTimeMillis ?? null,
+    nReturned: e.nReturned ?? null, totalDocsExamined: e.totalDocsExamined ?? null,
+    totalKeysExamined: e.totalKeysExamined ?? null, stages: [...stages], indexes: [...indexes],
+    flags: Object.fromEntries(['COLLSCAN', 'IXSCAN', 'SORT', 'FETCH', 'SKIP'].map(k => [k, stages.has(k)])) };
+}
+let server;
+async function main() {
+  mongoose.set('autoIndex', false);
+  mongoose.set('autoCreate', false);
+  mongoose.set('strictQuery', true);
+  await mongoose.connect(env.MONGO_URI, { autoIndex: false, autoCreate: false,
+    monitorCommands: true, serverSelectionTimeoutMS: 5000 });
+  const db = mongoose.connection.db;
+  if (db.databaseName !== 'pnap_mis') throw new Error('STOP: database name mismatch');
+  const modelDir = path.join(appRoot, 'server/src/models');
+  for (const file of fs.readdirSync(modelDir).filter(f => f.endsWith('.js'))) require(path.join(modelDir, file));
+  const indexes = [], stats = [];
+  for (const c of await db.listCollections({}, { nameOnly: true }).toArray()) {
+    if (c.name.startsWith('system.')) continue;
+    const actual = await db.collection(c.name).indexes();
+    const models = Object.values(mongoose.models).filter(m => m.collection.name === c.name);
+    indexes.push({ collection: c.name, actual: actual.map(i => ({ name: i.name, fields: i.key,
+      unique: !!i.unique, sparse: !!i.sparse, partialFilterExpression: i.partialFilterExpression ?? null,
+      source: 'MongoDB listIndexes', raw: i })),
+      mongoose: models.map(m => ({ model: m.modelName, source: `server/src/models/${m.modelName}.js`, indexes: m.schema.indexes() })) });
+    const s = await db.command({ collStats: c.name });
+    stats.push({ collection: c.name, count: s.count, size: s.size, storageSize: s.storageSize,
+      totalIndexSize: s.totalIndexSize, indexSizes: s.indexSizes });
+  }
+  const statsDoc = { database: db.databaseName, environment: env.NODE_ENV,
+    host: uri.hostname, capturedAt: new Date(), dbStats: await db.stats(), collections: stats };
+  save(`indexes-${phase}.json`, indexes);
+  save(`database-stats-${phase}.json`, statsDoc);
+  console.log('COUNTS', JSON.stringify(stats.filter(s => ['members','meetings','activities','responsibilities','roleassignments'].includes(s.collection))));
+  const User = mongoose.model('User');
+  let config;
+  if (phase === 'before') {
+    const superUser = await User.findOne({ roles: 'SUPER_ADMIN', isActive: true }).select('_id roles').lean();
+    if (!superUser) throw new Error('No existing active Super Admin test identity');
+    const member = await db.collection('members').findOne({}, { projection: { _id: 1, provinceId: 1, areaId: 1 } });
+    const count = stats.find(s => s.collection === 'members')?.count || 0;
+    if (!member || !count) throw new Error('No member records to benchmark');
+    const from = new Date(Date.now() - 365 * 86400000).toISOString();
+    const deepPage = Math.max(1, Math.ceil(count / 25) - 1);
+    const ops = [
+      ['members-list', '/api/members?scope=all'],
+      ['member-first-page', '/api/members?scope=all&page=1&limit=25'],
+      ['member-deep-page', `/api/members?scope=all&page=${deepPage}&limit=25`],
+      ['member-search', '/api/members?q=a&page=1&limit=25'],
+      ['dashboard-summary', `/api/dashboard/summary?days=365&from=${from}`],
+      ['dashboard-org-breakdown', `/api/dashboard/org-breakdown?days=365&from=${from}`],
+      ['dashboard-membership', `/api/dashboard/membership?days=365&from=${from}`],
+      ['meetings', '/api/meetings'], ['activities', '/api/activities'], ['responsibilities', '/api/responsibilities'],
+      ['single-member', `/api/members/${member._id}`],
+      ['dashboard-province-breakdown', `/api/dashboard/province-breakdown?days=365&from=${from}`],
+      ['members-province', `/api/members?provinceId=${member.provinceId}&page=1&limit=25`],
+    ].map(([name, url]) => ({ name, url }));
+    for (const [coll, endpoint] of [['meetings', 'meetings'], ['activities', 'activities'], ['responsibilities', 'responsibilities']]) {
+      const row = await db.collection(coll).findOne({ unitId: { $exists: true } }, { projection: { unitId: 1, unitLevel: 1 } });
+      if (row) ops.push({ name: `${endpoint}-unit`, url: `/api/${endpoint}?unitLevel=${row.unitLevel}&unitId=${row.unitId}` });
+    }
+    const scopedUser = await User.findOne({ isActive: true, roles: { $nin: ['SUPER_ADMIN', 'CENTRAL_ADMIN'] }, 'scope.areaId': { $exists: true } }).select('_id roles').lean();
+    config = { label: 'O1 LOCAL RECONSTRUCTED PRE-OPTIMIZATION BASELINE', database: db.databaseName,
+      userId: superUser._id, scopedUserId: scopedUser?._id ?? null, iterations: 20, warmups: 2, vus: 1,
+      deepPage, count, ops, createdAt: new Date(),
+      auth: 'Existing active user; application signToken helper, unchanged Bearer authenticate middleware. Login excluded.',
+      cache: 'Existing analyticsService.invalidateCache called before every request, outside timing. No production code or caching changes.',
+      percentile: 'Linear interpolation on sorted samples at (n-1)*p',
+      gitStatusBefore: cp.execFileSync('git', ['status','--short'], { cwd: root, encoding: 'utf8' }) };
+    save('benchmark-config.json', config);
+  } else {
+    config = load('benchmark-config.json');
+    const previous = load('database-stats-before.json');
+    for (const c of previous.collections) if (stats.find(s => s.collection === c.collection)?.count !== c.count) throw new Error(`STOP: count drift in ${c.collection}`);
+  }
+  const { signToken } = require(path.join(appRoot, 'server/src/middleware/auth'));
+  const user = await User.findById(config.userId);
+  const token = signToken(user);
+  const app = require(path.join(appRoot, 'server/src/app'));
+  server = app.listen(0, '127.0.0.1');
+  await new Promise(r => server.once('listening', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const analytics = require(path.join(appRoot, 'server/src/services/analyticsService'));
+  let commands = null;
+  mongoose.connection.getClient().on('commandStarted', event => {
+    if (!commands || !['find','aggregate','count','distinct'].includes(event.commandName)) return;
+    const c = event.command;
+    const keep = ['find','aggregate','count','distinct','filter','sort','projection','skip','limit','pipeline','cursor','query','key','collation','allowDiskUse'];
+    commands.push(EJSON.parse(EJSON.stringify(Object.fromEntries(keep.filter(k => k in c).map(k => [k,c[k]])), { relaxed: false })));
+  });
+  async function request(url, bearer = token) {
+    analytics.invalidateCache();
+    const start = performance.now();
+    const r = await fetch(base + url, { headers: bearer ? { Authorization: `Bearer ${bearer}` } : {}, signal: AbortSignal.timeout(60000) });
+    const body = await r.json();
+    return { status: r.status, ms: performance.now() - start, body };
+  }
+  const traces = [], checks = [], results = [];
+  for (const op of config.ops) {
+    commands = [];
+    const first = await request(op.url);
+    traces.push({ ...op, commands }); commands = null;
+    checks.push({ ...op, status: first.status, shape: shape(first.body), responseHash: hash(canonical(first.body)),
+      recordCount: Array.isArray(first.body.data) ? first.body.data.length : null });
+    if (first.status !== 200) throw new Error(`STOP: ${op.name} returned ${first.status}: ${JSON.stringify(first.body)}`);
+    for (let i = 0; i < config.warmups; i++) await request(op.url);
+    const samples = [], statuses = [];
+    for (let i = 0; i < config.iterations; i++) {
+      const r = await request(op.url); samples.push(r.ms); statuses.push(r.status);
+      if (r.status !== first.status || hash(canonical(r.body)) !== checks.at(-1).responseHash) throw new Error(`STOP: unstable response during ${op.name}`);
+    }
+    results.push({ ...op, samples, statuses, p50: percentile(samples,.5), p90: percentile(samples,.9),
+      p95: percentile(samples,.95), p99: percentile(samples,.99), max: Math.max(...samples),
+      errorRate: statuses.filter(s => s !== 200).length / statuses.length });
+    console.log('BENCH', op.name, results.at(-1).p95.toFixed(2));
+  }
+  for (const url of ['/api/members?scope=all','/api/dashboard/summary','/api/meetings','/api/activities','/api/responsibilities']) {
+    const r = await request(url, null); checks.push({ name: `unauthenticated:${url}`, status: r.status, responseHash: hash(canonical(r.body)), shape: shape(r.body) });
+  }
+  if (config.scopedUserId) {
+    const scoped = await User.findById(config.scopedUserId);
+    for (const url of ['/api/members?scope=all','/api/dashboard/summary']) {
+      const r = await request(url, signToken(scoped));
+      checks.push({ name: `scoped-user:${url}`, status: r.status, responseHash: hash(canonical(r.body)), shape: shape(r.body) });
+    }
+  }
+  save(`functional-${phase}.json`, checks);
+  save(phase === 'before' ? 'baseline-before.json' : 'performance-after.json', {
+    label: phase === 'before' ? config.label : 'O1 LOCAL POST-OPTIMIZATION MEASUREMENT',
+    iterations: config.iterations, vus: 1, capturedAt: new Date(), results });
+  save(`commands-${phase}.json`, traces, output);
+  const querySource = phase === 'before' ? traces : load('commands-before.json', output);
+  const explanations = [];
+  for (const op of querySource) {
+    for (let i = 0; i < op.commands.length; i++) {
+      const command = op.commands[i];
+      const raw = await db.command({ explain: command, verbosity: 'executionStats' });
+      explanations.push({ id: `${op.name}:${i}`, operation: op.name, collection: command.find || command.aggregate || command.count || command.distinct,
+        command, ...planSummary(raw), raw });
+    }
+  }
+  save(`explain-${phase}.json`, explanations);
+  if (phase === 'after') {
+    const before = load('functional-before.json');
+    const mismatches = checks.filter((c,i) => c.status !== before[i].status || c.responseHash !== before[i].responseHash || hash(c.shape) !== hash(before[i].shape));
+    save('functional-comparison.json', { passed: !mismatches.length, checked: checks.length, mismatches });
+    if (mismatches.length) throw new Error('STOP: functional difference; revert related index');
+  }
+  console.log('DONE', phase, explanations.length, 'explains');
+}
+main().catch(e => { console.error(e.message); process.exitCode = 1; }).finally(async () => {
+  if (server) await new Promise(r => server.close(r));
+  await mongoose.disconnect();
+});

@@ -1,0 +1,15 @@
+{
+  "executionTimeMs": 97,
+  "nReturned": 80,
+  "totalDocsExamined": 241,
+  "totalKeysExamined": 299,
+  "winningStages": [
+    "PROJECTION_SIMPLE",
+    "OR",
+    "FETCH",
+    "IXSCAN"
+  ],
+  "hasCollscan": false,
+  "hasIxscan": true,
+  "hasSort": false
+}

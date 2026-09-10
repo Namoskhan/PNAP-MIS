@@ -1,0 +1,16 @@
+{
+  "authoritativeMethod": "interleaved control/candidate for changed membership path and staged fan-out; independent baseline/final for unchanged inactive-units",
+  "membership": {
+    "before": { "p50Ms": 11.02685, "p95Ms": 19.209895, "p99Ms": 89.233251, "bytes": 9670, "dbOperations": 8, "mongodbCriticalReplayMs": 8, "nodeResidualMeanMsApprox": 7.156987 },
+    "after": { "p50Ms": 10.81905, "p95Ms": 18.41625, "p99Ms": 27.145128, "bytes": 9670, "dbOperations": 6, "mongodbCriticalReplayMs": 4, "nodeResidualMeanMsApprox": 8.229807 }
+  },
+  "inactiveUnits": {
+    "before": { "p50Ms": 41.34875, "p95Ms": 60.636845, "p99Ms": 65.310859, "bytes": 874, "dbOperations": 9 },
+    "after": { "p50Ms": 40.51935, "p95Ms": 48.951305, "p99Ms": 53.297166, "bytes": 874, "dbOperations": 9 },
+    "codeChanged": false
+  },
+  "stagedDashboard": {
+    "before": { "p50Ms": 102.7304, "p95Ms": 162.07388, "dbOperations": 58, "eventLoopP95Ms": 19.611647, "nodeCpuMeanPct": 82.808442 },
+    "after": { "p50Ms": 97.2769, "p95Ms": 130.4094, "dbOperations": 56, "eventLoopP95Ms": 15.687679, "nodeCpuMeanPct": 86.917 }
+  }
+}

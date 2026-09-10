@@ -10,7 +10,7 @@ import MeetingsAnalytics from './MeetingsAnalytics';
 import CampaignsAnalytics from './CampaignsAnalytics';
 import ReportsAnalytics from './ReportsAnalytics';
 import ActivityMonitoring from './ActivityMonitoring';
-import { InactiveUnitsTable, InactiveMembersTable } from './InactiveTables';
+import { InactiveUnitsTable } from './InactiveTables';
 
 // ─── Executive National MIS Dashboard ──────────────────────────────
 //
@@ -231,12 +231,11 @@ export default function ExecutiveAnalytics() {
 
       <DashboardSection
         title="Inactive Organization"
-        subtitle="Dormant units and members, with the responsible officer"
+        subtitle="Dormant units, with the responsible officer"
         badge={s ? (s.organization.basicUnits.inactive + s.membership.inactive).toLocaleString() : undefined}
       >
         <div style={{ display: 'grid', gap: 10 }}>
           <InactiveUnitsTable params={params} />
-          <InactiveMembersTable params={params} />
         </div>
       </DashboardSection>
     </div>

@@ -1,0 +1,4590 @@
+[
+  {
+    "name": "members-list",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {}
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "find": "members",
+        "filter": {},
+        "sort": {
+          "createdAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "projection": {
+          "passwordHash": {
+            "$numberInt": "0"
+          }
+        },
+        "skip": {
+          "$numberInt": "0"
+        },
+        "limit": {
+          "$numberInt": "20"
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75ad73ba1fbef74f88c224"
+              },
+              {
+                "$oid": "6a75ad63ba1fbef74f88c211"
+              },
+              {
+                "$oid": "6a75ad34ba1fbef74f88c1a1"
+              },
+              {
+                "$oid": "6a75ad21ba1fbef74f88c18c"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a8d5ba1fbef74f88bba3"
+              },
+              {
+                "$oid": "6a75a89dba1fbef74f88bb7f"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a4b4ba1fbef74f88b78b"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "member-first-page",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {}
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "find": "members",
+        "filter": {},
+        "sort": {
+          "createdAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "projection": {
+          "passwordHash": {
+            "$numberInt": "0"
+          }
+        },
+        "skip": {
+          "$numberInt": "0"
+        },
+        "limit": {
+          "$numberInt": "25"
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75ad73ba1fbef74f88c224"
+              },
+              {
+                "$oid": "6a75ad63ba1fbef74f88c211"
+              },
+              {
+                "$oid": "6a75ad34ba1fbef74f88c1a1"
+              },
+              {
+                "$oid": "6a75ad21ba1fbef74f88c18c"
+              },
+              {
+                "$oid": "6a75adbaba1fbef74f88c2ab"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a8d5ba1fbef74f88bba3"
+              },
+              {
+                "$oid": "6a75a89dba1fbef74f88bb7f"
+              },
+              {
+                "$oid": "6a75a907ba1fbef74f88bbc7"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a4b4ba1fbef74f88b78b"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "member-deep-page",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {}
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "find": "members",
+        "filter": {},
+        "sort": {
+          "createdAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "projection": {
+          "passwordHash": {
+            "$numberInt": "0"
+          }
+        },
+        "skip": {
+          "$numberInt": "350"
+        },
+        "limit": {
+          "$numberInt": "25"
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d0b576621deb6a6c16"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6c07"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6bbc"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6bad"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6be9"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6bda"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e87"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e78"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e5a"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d0b576621deb6a6bf8"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6b9e"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6bcb"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e69"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e3c"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d0b576621deb6a6b96"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e34"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3f0ba1fbef74f88b636"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "member-search",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {
+              "$or": [
+                {
+                  "fullName": {
+                    "$regularExpression": {
+                      "pattern": "a",
+                      "options": "i"
+                    }
+                  }
+                },
+                {
+                  "cnic": {
+                    "$regularExpression": {
+                      "pattern": "a",
+                      "options": "i"
+                    }
+                  }
+                },
+                {
+                  "phone": {
+                    "$regularExpression": {
+                      "pattern": "a",
+                      "options": "i"
+                    }
+                  }
+                },
+                {
+                  "memberId": {
+                    "$regularExpression": {
+                      "pattern": "a",
+                      "options": "i"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "find": "members",
+        "filter": {
+          "$or": [
+            {
+              "fullName": {
+                "$regularExpression": {
+                  "pattern": "a",
+                  "options": "i"
+                }
+              }
+            },
+            {
+              "cnic": {
+                "$regularExpression": {
+                  "pattern": "a",
+                  "options": "i"
+                }
+              }
+            },
+            {
+              "phone": {
+                "$regularExpression": {
+                  "pattern": "a",
+                  "options": "i"
+                }
+              }
+            },
+            {
+              "memberId": {
+                "$regularExpression": {
+                  "pattern": "a",
+                  "options": "i"
+                }
+              }
+            }
+          ]
+        },
+        "sort": {
+          "createdAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "projection": {
+          "passwordHash": {
+            "$numberInt": "0"
+          }
+        },
+        "skip": {
+          "$numberInt": "0"
+        },
+        "limit": {
+          "$numberInt": "25"
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75ad73ba1fbef74f88c224"
+              },
+              {
+                "$oid": "6a75ad63ba1fbef74f88c211"
+              },
+              {
+                "$oid": "6a75ad34ba1fbef74f88c1a1"
+              },
+              {
+                "$oid": "6a75ad21ba1fbef74f88c18c"
+              },
+              {
+                "$oid": "6a75adbaba1fbef74f88c2ab"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a8d5ba1fbef74f88bba3"
+              },
+              {
+                "$oid": "6a75a89dba1fbef74f88bb7f"
+              },
+              {
+                "$oid": "6a75a907ba1fbef74f88bbc7"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a4b4ba1fbef74f88b78b"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "dashboard-summary",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$group": {
+              "_id": "$status",
+              "count": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "meetings",
+        "pipeline": [
+          {
+            "$match": {
+              "startAt": {
+                "$gte": {
+                  "$date": {
+                    "$numberLong": "1757397389192"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": "$state",
+              "count": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "activities",
+        "pipeline": [
+          {
+            "$match": {
+              "type": "CAMPAIGN",
+              "startAt": {
+                "$gte": {
+                  "$date": {
+                    "$numberLong": "1757397389192"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": null,
+              "total": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              },
+              "completed": {
+                "$sum": {
+                  "$cond": [
+                    {
+                      "$eq": [
+                        "$state",
+                        "COMPLETED"
+                      ]
+                    },
+                    {
+                      "$numberInt": "1"
+                    },
+                    {
+                      "$numberInt": "0"
+                    }
+                  ]
+                }
+              },
+              "upcoming": {
+                "$sum": {
+                  "$cond": [
+                    {
+                      "$and": [
+                        {
+                          "$eq": [
+                            "$state",
+                            "PLANNED"
+                          ]
+                        },
+                        {
+                          "$gt": [
+                            "$startAt",
+                            {
+                              "$date": {
+                                "$numberLong": "1788947048449"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$numberInt": "1"
+                    },
+                    {
+                      "$numberInt": "0"
+                    }
+                  ]
+                }
+              },
+              "running": {
+                "$sum": {
+                  "$cond": [
+                    {
+                      "$and": [
+                        {
+                          "$eq": [
+                            "$state",
+                            "PLANNED"
+                          ]
+                        },
+                        {
+                          "$lte": [
+                            "$startAt",
+                            {
+                              "$date": {
+                                "$numberLong": "1788947048449"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$numberInt": "1"
+                    },
+                    {
+                      "$numberInt": "0"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {}
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "meetings",
+        "pipeline": [
+          {
+            "$match": {
+              "state": {
+                "$in": [
+                  "SCHEDULED",
+                  "IN_PROGRESS",
+                  "PENDING_REPORT"
+                ]
+              },
+              "endAt": {
+                "$lt": {
+                  "$date": {
+                    "$numberLong": "1788947048449"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "areaId": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {
+              "lastActivityAt": {
+                "$gte": {
+                  "$date": {
+                    "$numberLong": "1757397389192"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {
+              "createdAt": {
+                "$gte": {
+                  "$date": {
+                    "$numberLong": "1757397389192"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "BASIC_UNIT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "AREA",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "DISTRICT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "PROVINCE",
+              "roleCode": {
+                "$in": [
+                  "PRESIDENT",
+                  "GENERAL_SECRETARY",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      }
+    ]
+  },
+  {
+    "name": "dashboard-org-breakdown",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "areaId": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "BASIC_UNIT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "AREA",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "DISTRICT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "PROVINCE",
+              "roleCode": {
+                "$in": [
+                  "PRESIDENT",
+                  "GENERAL_SECRETARY",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$group": {
+              "_id": "$provinceId",
+              "total": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              },
+              "active": {
+                "$sum": {
+                  "$cond": [
+                    {
+                      "$and": [
+                        {
+                          "$ne": [
+                            "$lastActivityAt",
+                            null
+                          ]
+                        },
+                        {
+                          "$gte": [
+                            "$lastActivityAt",
+                            {
+                              "$date": {
+                                "$numberLong": "1757397389192"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$numberInt": "1"
+                    },
+                    {
+                      "$numberInt": "0"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "activitylogs",
+        "pipeline": [
+          {
+            "$match": {
+              "occurredAt": {
+                "$gte": {
+                  "$date": {
+                    "$numberLong": "1757397389192"
+                  }
+                }
+              },
+              "category": {
+                "$ne": "SYSTEM"
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": "$provinceId",
+              "events": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              },
+              "lastActivityAt": {
+                "$max": "$occurredAt"
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      }
+    ]
+  },
+  {
+    "name": "dashboard-membership",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$group": {
+              "_id": null,
+              "total": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              },
+              "active": {
+                "$sum": {
+                  "$cond": [
+                    {
+                      "$and": [
+                        {
+                          "$ne": [
+                            "$lastActivityAt",
+                            null
+                          ]
+                        },
+                        {
+                          "$gte": [
+                            "$lastActivityAt",
+                            {
+                              "$date": {
+                                "$numberLong": "1757397389192"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$numberInt": "1"
+                    },
+                    {
+                      "$numberInt": "0"
+                    }
+                  ]
+                }
+              },
+              "newMembers": {
+                "$sum": {
+                  "$cond": [
+                    {
+                      "$and": [
+                        {
+                          "$gte": [
+                            "$createdAt",
+                            {
+                              "$date": {
+                                "$numberLong": "1757397389192"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$numberInt": "1"
+                    },
+                    {
+                      "$numberInt": "0"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$facet": {
+              "PROVINCE": [
+                {
+                  "$group": {
+                    "_id": "$provinceId",
+                    "total": {
+                      "$sum": {
+                        "$numberInt": "1"
+                      }
+                    },
+                    "active": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$ne": [
+                                  "$lastActivityAt",
+                                  null
+                                ]
+                              },
+                              {
+                                "$gte": [
+                                  "$lastActivityAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    },
+                    "newMembers": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$gte": [
+                                  "$createdAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "DISTRICT": [
+                {
+                  "$group": {
+                    "_id": "$districtId",
+                    "total": {
+                      "$sum": {
+                        "$numberInt": "1"
+                      }
+                    },
+                    "active": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$ne": [
+                                  "$lastActivityAt",
+                                  null
+                                ]
+                              },
+                              {
+                                "$gte": [
+                                  "$lastActivityAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    },
+                    "newMembers": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$gte": [
+                                  "$createdAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "AREA": [
+                {
+                  "$group": {
+                    "_id": "$areaId",
+                    "total": {
+                      "$sum": {
+                        "$numberInt": "1"
+                      }
+                    },
+                    "active": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$ne": [
+                                  "$lastActivityAt",
+                                  null
+                                ]
+                              },
+                              {
+                                "$gte": [
+                                  "$lastActivityAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    },
+                    "newMembers": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$gte": [
+                                  "$createdAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ],
+              "BASIC_UNIT": [
+                {
+                  "$group": {
+                    "_id": "$basicUnitId",
+                    "total": {
+                      "$sum": {
+                        "$numberInt": "1"
+                      }
+                    },
+                    "active": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$ne": [
+                                  "$lastActivityAt",
+                                  null
+                                ]
+                              },
+                              {
+                                "$gte": [
+                                  "$lastActivityAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    },
+                    "newMembers": {
+                      "$sum": {
+                        "$cond": [
+                          {
+                            "$and": [
+                              {
+                                "$gte": [
+                                  "$createdAt",
+                                  {
+                                    "$date": {
+                                      "$numberLong": "1757397389192"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$numberInt": "1"
+                          },
+                          {
+                            "$numberInt": "0"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$group": {
+              "_id": {
+                "$dateToString": {
+                  "format": "%Y-%m",
+                  "date": "$createdAt"
+                }
+              },
+              "newMembers": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "areaId": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "BASIC_UNIT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "AREA",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "DISTRICT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "PROVINCE",
+              "roleCode": {
+                "$in": [
+                  "PRESIDENT",
+                  "GENERAL_SECRETARY",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      }
+    ]
+  },
+  {
+    "name": "meetings",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "meetings",
+        "filter": {},
+        "sort": {
+          "startAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "limit": {
+          "$numberInt": "200"
+        }
+      },
+      {
+        "find": "members",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a7df7afc6ed35561a1b943a"
+              },
+              {
+                "$oid": "6a7ec2ca6286fb1018f22347"
+              },
+              {
+                "$oid": "6a7ec2ca6286fb1018f2233d"
+              },
+              {
+                "$oid": "6a7df783c6ed35561a1b929b"
+              },
+              {
+                "$oid": "6a7ec2cb6286fb1018f22509"
+              },
+              {
+                "$oid": "6a7df7a8c6ed35561a1b93f9"
+              },
+              {
+                "$oid": "6a7df7b5c6ed35561a1b9476"
+              },
+              {
+                "$oid": "6a7ec2cb6286fb1018f226fd"
+              },
+              {
+                "$oid": "6a7ec2ca6286fb1018f222c0"
+              },
+              {
+                "$oid": "6a7ec2ca6286fb1018f222ca"
+              },
+              {
+                "$oid": "6a7ec2cb6286fb1018f22653"
+              },
+              {
+                "$oid": "6a7dc32f1f55612da892a691"
+              },
+              {
+                "$oid": "6a76ed975ea5b34b68891fa0"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "fullName": {
+            "$numberInt": "1"
+          },
+          "memberId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75ac0fba1fbef74f88bf21"
+              },
+              null,
+              {
+                "$oid": "6a75ad34ba1fbef74f88c1a1"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e4b"
+              },
+              {
+                "$oid": "6a75aa4cba1fbef74f88bc7a"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a5fdba1fbef74f88b9bd"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6bcb"
+              },
+              null,
+              {
+                "$oid": "6a75a663ba1fbef74f88ba57"
+              },
+              {
+                "$oid": "6a75a89dba1fbef74f88bb7f"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e3c"
+              },
+              {
+                "$oid": "6a75a50bba1fbef74f88b883"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a46aba1fbef74f88b75d"
+              },
+              {
+                "$oid": "6a75b3d0b576621deb6a6b96"
+              },
+              {
+                "$oid": "6a75a490ba1fbef74f88b778"
+              },
+              null,
+              {
+                "$oid": "6a75a4b4ba1fbef74f88b78b"
+              },
+              {
+                "$oid": "6a75b3d1b576621deb6a6e34"
+              },
+              {
+                "$oid": "6a75a448ba1fbef74f88b742"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              },
+              {
+                "$oid": "6a75a3f0ba1fbef74f88b636"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "activities",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "activities",
+        "filter": {},
+        "sort": {
+          "startAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "limit": {
+          "$numberInt": "200"
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75ac0fba1fbef74f88bf21"
+              },
+              null,
+              {
+                "$oid": "6a75aa4cba1fbef74f88bc7a"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a5fdba1fbef74f88b9bd"
+              },
+              {
+                "$oid": "6a75a663ba1fbef74f88ba57"
+              },
+              {
+                "$oid": "6a75a50bba1fbef74f88b883"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a46aba1fbef74f88b75d"
+              },
+              {
+                "$oid": "6a75a490ba1fbef74f88b778"
+              },
+              {
+                "$oid": "6a75a448ba1fbef74f88b742"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "responsibilities",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "responsibilities",
+        "filter": {},
+        "sort": {
+          "dueDate": {
+            "$numberInt": "1"
+          },
+          "createdAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "limit": {
+          "$numberInt": "500"
+        }
+      },
+      {
+        "find": "members",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a7df7b6c6ed35561a1b947b"
+              },
+              {
+                "$oid": "6a7ec2cb6286fb1018f225ef"
+              },
+              {
+                "$oid": "6a7ec2cb6286fb1018f2264e"
+              },
+              {
+                "$oid": "6a7df7b5c6ed35561a1b9476"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "fullName": {
+            "$numberInt": "1"
+          },
+          "memberId": {
+            "$numberInt": "1"
+          },
+          "phone": {
+            "$numberInt": "1"
+          },
+          "cnic": {
+            "$numberInt": "1"
+          },
+          "basicUnitId": {
+            "$numberInt": "1"
+          },
+          "areaId": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              null,
+              {
+                "$oid": "6a75aa4cba1fbef74f88bc7a"
+              },
+              {
+                "$oid": "6a75abd4ba1fbef74f88be9e"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a5d6ba1fbef74f88b991"
+              },
+              null,
+              {
+                "$oid": "6a75a50bba1fbef74f88b883"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a46aba1fbef74f88b75d"
+              },
+              {
+                "$oid": "6a75a448ba1fbef74f88b742"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75abd4ba1fbef74f88be9e"
+              },
+              {
+                "$oid": "6a75aa4cba1fbef74f88bc7a"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a5d6ba1fbef74f88b991"
+              },
+              {
+                "$oid": "6a75a50bba1fbef74f88b883"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a46aba1fbef74f88b75d"
+              },
+              {
+                "$oid": "6a75a448ba1fbef74f88b742"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "roleassignments",
+        "filter": {
+          "memberId": {
+            "$in": [
+              {
+                "$oid": "6a7df7b6c6ed35561a1b947b"
+              },
+              {
+                "$oid": "6a7ec2cb6286fb1018f225ef"
+              },
+              {
+                "$oid": "6a7ec2cb6286fb1018f2264e"
+              },
+              {
+                "$oid": "6a7df7b5c6ed35561a1b9476"
+              }
+            ]
+          },
+          "state": "APPROVED",
+          "endedAt": {
+            "$exists": false
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "single-member",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "members",
+        "filter": {
+          "_id": {
+            "$oid": "6a7df77fc6ed35561a1b9278"
+          }
+        },
+        "projection": {
+          "passwordHash": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d2b576621deb6a6ea5"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d1b576621deb6a6e96"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d1b576621deb6a6e34"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3f0ba1fbef74f88b636"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "dashboard-province-breakdown",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "isActive": true
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "areaId": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "BASIC_UNIT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "AREA",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "DISTRICT",
+              "roleCode": {
+                "$in": [
+                  "SECRETARY",
+                  "SENIOR_MAWIN",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "roleassignments",
+        "pipeline": [
+          {
+            "$match": {
+              "unitLevel": "PROVINCE",
+              "roleCode": {
+                "$in": [
+                  "PRESIDENT",
+                  "GENERAL_SECRETARY",
+                  "FINANCE_SECRETARY"
+                ]
+              },
+              "state": "APPROVED",
+              "endedAt": {
+                "$exists": false
+              }
+            }
+          },
+          {
+            "$lookup": {
+              "from": "members",
+              "let": {
+                "mid": "$memberId"
+              },
+              "pipeline": [
+                {
+                  "$match": {
+                    "$expr": {
+                      "$eq": [
+                        "$_id",
+                        "$$mid"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "$project": {
+                    "fullName": {
+                      "$numberInt": "1"
+                    },
+                    "memberId": {
+                      "$numberInt": "1"
+                    },
+                    "phone": {
+                      "$numberInt": "1"
+                    },
+                    "lastActivityAt": {
+                      "$numberInt": "1"
+                    }
+                  }
+                }
+              ],
+              "as": "member"
+            }
+          },
+          {
+            "$unwind": {
+              "path": "$member",
+              "preserveNullAndEmptyArrays": false
+            }
+          },
+          {
+            "$group": {
+              "_id": "$unitId",
+              "lastActivityAt": {
+                "$max": "$member.lastActivityAt"
+              },
+              "officers": {
+                "$push": {
+                  "roleCode": "$roleCode",
+                  "memberId": "$member._id",
+                  "memberCode": "$member.memberId",
+                  "fullName": "$member.fullName",
+                  "phone": "$member.phone",
+                  "lastActivityAt": "$member.lastActivityAt"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$group": {
+              "_id": "$provinceId",
+              "total": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              },
+              "active": {
+                "$sum": {
+                  "$cond": [
+                    {
+                      "$and": [
+                        {
+                          "$ne": [
+                            "$lastActivityAt",
+                            null
+                          ]
+                        },
+                        {
+                          "$gte": [
+                            "$lastActivityAt",
+                            {
+                              "$date": {
+                                "$numberLong": "1757397389192"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "$numberInt": "1"
+                    },
+                    {
+                      "$numberInt": "0"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "aggregate": "activitylogs",
+        "pipeline": [
+          {
+            "$match": {
+              "occurredAt": {
+                "$gte": {
+                  "$date": {
+                    "$numberLong": "1757397389192"
+                  }
+                }
+              },
+              "category": {
+                "$ne": "SYSTEM"
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": "$provinceId",
+              "events": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              },
+              "lastActivityAt": {
+                "$max": "$occurredAt"
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      }
+    ]
+  },
+  {
+    "name": "members-province",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "aggregate": "members",
+        "pipeline": [
+          {
+            "$match": {
+              "provinceId": {
+                "$oid": "6a75a3f0ba1fbef74f88b636"
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": {
+                "$numberInt": "1"
+              },
+              "n": {
+                "$sum": {
+                  "$numberInt": "1"
+                }
+              }
+            }
+          }
+        ],
+        "cursor": {}
+      },
+      {
+        "find": "members",
+        "filter": {
+          "provinceId": {
+            "$oid": "6a75a3f0ba1fbef74f88b636"
+          }
+        },
+        "sort": {
+          "createdAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "projection": {
+          "passwordHash": {
+            "$numberInt": "0"
+          }
+        },
+        "skip": {
+          "$numberInt": "0"
+        },
+        "limit": {
+          "$numberInt": "25"
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d5b576621deb6a769b"
+              },
+              {
+                "$oid": "6a75b3d5b576621deb6a768c"
+              },
+              {
+                "$oid": "6a75b3d5b576621deb6a76c8"
+              },
+              {
+                "$oid": "6a75b3d5b576621deb6a76b9"
+              },
+              {
+                "$oid": "6a75b3d5b576621deb6a76f5"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d5b576621deb6a767d"
+              },
+              {
+                "$oid": "6a75b3d5b576621deb6a76aa"
+              },
+              {
+                "$oid": "6a75b3d5b576621deb6a76d7"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75b3d5b576621deb6a7675"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3f0ba1fbef74f88b636"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "meetings-unit",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "meetings",
+        "filter": {
+          "unitLevel": "PROVINCE",
+          "unitId": {
+            "$oid": "6a75a3abba1fbef74f88b616"
+          }
+        },
+        "sort": {
+          "startAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "limit": {
+          "$numberInt": "200"
+        }
+      },
+      {
+        "find": "members",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a76ed975ea5b34b68891fa0"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "fullName": {
+            "$numberInt": "1"
+          },
+          "memberId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "activities-unit",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "activities",
+        "filter": {
+          "unitLevel": "AREA",
+          "unitId": {
+            "$oid": "6a75a663ba1fbef74f88ba57"
+          }
+        },
+        "sort": {
+          "startAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "limit": {
+          "$numberInt": "200"
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a663ba1fbef74f88ba57"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a490ba1fbef74f88b778"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "responsibilities-unit",
+    "commands": [
+      {
+        "find": "users",
+        "filter": {
+          "_id": {
+            "$oid": "6a75a23069a71f7105a7e5c8"
+          }
+        },
+        "projection": {
+          "emailVerificationToken": {
+            "$numberInt": "0"
+          },
+          "emailVerificationExpires": {
+            "$numberInt": "0"
+          },
+          "passwordResetToken": {
+            "$numberInt": "0"
+          },
+          "passwordResetExpires": {
+            "$numberInt": "0"
+          }
+        },
+        "limit": {
+          "$numberInt": "1"
+        }
+      },
+      {
+        "find": "responsibilities",
+        "filter": {
+          "unitLevel": "DISTRICT",
+          "unitId": {
+            "$oid": "6a75a46aba1fbef74f88b75d"
+          }
+        },
+        "sort": {
+          "dueDate": {
+            "$numberInt": "1"
+          },
+          "createdAt": {
+            "$numberInt": "-1"
+          }
+        },
+        "limit": {
+          "$numberInt": "500"
+        }
+      },
+      {
+        "find": "members",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a7ec2cb6286fb1018f225ef"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "fullName": {
+            "$numberInt": "1"
+          },
+          "memberId": {
+            "$numberInt": "1"
+          },
+          "phone": {
+            "$numberInt": "1"
+          },
+          "cnic": {
+            "$numberInt": "1"
+          },
+          "basicUnitId": {
+            "$numberInt": "1"
+          },
+          "areaId": {
+            "$numberInt": "1"
+          },
+          "districtId": {
+            "$numberInt": "1"
+          },
+          "provinceId": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a46aba1fbef74f88b75d"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "basicunits",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75abd4ba1fbef74f88be9e"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "areas",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a5d6ba1fbef74f88b991"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "districts",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a46aba1fbef74f88b75d"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "provinces",
+        "filter": {
+          "_id": {
+            "$in": [
+              {
+                "$oid": "6a75a3abba1fbef74f88b616"
+              }
+            ]
+          }
+        },
+        "projection": {
+          "name": {
+            "$numberInt": "1"
+          },
+          "code": {
+            "$numberInt": "1"
+          }
+        }
+      },
+      {
+        "find": "roleassignments",
+        "filter": {
+          "memberId": {
+            "$in": [
+              {
+                "$oid": "6a7ec2cb6286fb1018f225ef"
+              }
+            ]
+          },
+          "state": "APPROVED",
+          "endedAt": {
+            "$exists": false
+          }
+        }
+      }
+    ]
+  }
+]

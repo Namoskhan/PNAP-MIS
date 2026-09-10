@@ -1,0 +1,14 @@
+{
+  "classification": "ROOT CAUSE IDENTIFIED",
+  "o2RegressedFinal": {"requests":13,"duplicates":0,"responseBytes":28058,"transferBytes":36033,"completionP50Ms":1727.831,"completionP95Ms":2201.163,"dbOperations":80},
+  "o3Final": {"requests":13,"duplicates":0,"responseBytes":28058,"transferBytes":36033,"completionP50Ms":833.365,"completionP95Ms":993.219,"dbOperations":80},
+  "apiFanoutInterleaved": {"currentP50Ms":225.673,"currentP95Ms":281.538,"summaryCountControlP50Ms":220.177,"summaryCountControlP95Ms":290.183},
+  "fanoutThresholds": {
+    "summaryOnly":{"p50Ms":102.419,"p95Ms":117.651,"eventLoopP95Ms":16.200,"hostCpuMeanPct":37.07},
+    "summaryPlusOrg":{"p50Ms":142.117,"p95Ms":161.998,"eventLoopP95Ms":16.141,"hostCpuMeanPct":55.71},
+    "plusInactiveUnits":{"p50Ms":157.816,"p95Ms":164.736,"eventLoopP95Ms":24.019,"hostCpuMeanPct":66.60},
+    "fullDashboard":{"p50Ms":227.118,"p95Ms":309.830,"eventLoopP95Ms":56.603,"hostCpuMeanPct":62.37}
+  },
+  "conclusion":"The O2 block regression was not reproducible. Host/time-order variance and cold concurrent fan-out amplify shared office-bearer snapshot work; no retained O2 change was shown to cause the regression."
+}
+

@@ -1,0 +1,494 @@
+{
+  "capturedAt": {
+    "$date": {
+      "$numberLong": "1788947046528"
+    }
+  },
+  "dbStats": {
+    "db": "pnap_mis",
+    "collections": {
+      "$numberInt": "40"
+    },
+    "views": {
+      "$numberInt": "0"
+    },
+    "objects": {
+      "$numberInt": "4255"
+    },
+    "avgObjSize": {
+      "$numberDouble": "401.8016451233843"
+    },
+    "dataSize": {
+      "$numberInt": "1709666"
+    },
+    "storageSize": {
+      "$numberInt": "1490944"
+    },
+    "indexes": {
+      "$numberInt": "213"
+    },
+    "indexSize": {
+      "$numberInt": "6299648"
+    },
+    "totalSize": {
+      "$numberInt": "7790592"
+    },
+    "scaleFactor": {
+      "$numberInt": "1"
+    },
+    "fsUsedSize": {
+      "$numberLong": "80023769088"
+    },
+    "fsTotalSize": {
+      "$numberLong": "151201509376"
+    },
+    "ok": {
+      "$numberInt": "1"
+    }
+  },
+  "indexes": [
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "_id": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "_id_"
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "memberId": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "memberId_1",
+      "background": true,
+      "unique": true,
+      "sparse": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "cnic": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "cnic_1",
+      "background": true,
+      "unique": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "username": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "username_1",
+      "background": true,
+      "unique": true,
+      "sparse": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "basicUnitId": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "basicUnitId_1",
+      "background": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "areaId": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "areaId_1",
+      "background": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "districtId": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "districtId_1",
+      "background": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "provinceId": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "provinceId_1",
+      "background": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "status": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "status_1",
+      "background": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "provinceId": {
+          "$numberInt": "1"
+        },
+        "lastActivityAt": {
+          "$numberInt": "-1"
+        }
+      },
+      "name": "provinceId_1_lastActivityAt_-1",
+      "background": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "status": {
+          "$numberInt": "1"
+        },
+        "lastActivityAt": {
+          "$numberInt": "-1"
+        }
+      },
+      "name": "status_1_lastActivityAt_-1",
+      "background": true
+    },
+    {
+      "v": {
+        "$numberInt": "2"
+      },
+      "key": {
+        "email": {
+          "$numberInt": "1"
+        }
+      },
+      "name": "email_1",
+      "background": true,
+      "unique": true,
+      "partialFilterExpression": {
+        "email": {
+          "$type": "string"
+        }
+      }
+    }
+  ],
+  "collections": [
+    {
+      "collection": "activities",
+      "count": {
+        "$numberInt": "3"
+      },
+      "sha256": "a8e16224a388a64a85c9cc253dd333981cab4d4260af4c959173f193af0b248c"
+    },
+    {
+      "collection": "activitylogs",
+      "count": {
+        "$numberInt": "1761"
+      },
+      "sha256": "c35a1cb8e0347c53451ea5b1b7dcf820aaf6a5fc9fba6c91476aca97d73ebc15"
+    },
+    {
+      "collection": "announcements",
+      "count": {
+        "$numberInt": "3"
+      },
+      "sha256": "932f6d67f915a1d599abb9f3c191ba23b333a50c869fcf677dee5a479450a520"
+    },
+    {
+      "collection": "areas",
+      "count": {
+        "$numberInt": "24"
+      },
+      "sha256": "5a2e5816e35d37e08acce75b0cf2ddffc9641890e888249fee9df946265e310b"
+    },
+    {
+      "collection": "auditlogs",
+      "count": {
+        "$numberInt": "42"
+      },
+      "sha256": "1b9fee32144008749340c03b58aa96c9787c26a920f15b05ed2b1bf70b638d01"
+    },
+    {
+      "collection": "basicunits",
+      "count": {
+        "$numberInt": "48"
+      },
+      "sha256": "8fcdd8e1f87c751365fe3e844a65e60e380e4c60c47b7ca65c4ad3ada3f5ab8b"
+    },
+    {
+      "collection": "cabinetslots",
+      "count": {
+        "$numberInt": "884"
+      },
+      "sha256": "881a5974fe16524c525798692d1c034bde4efe68ec724fc1667de1d5e9bdb016"
+    },
+    {
+      "collection": "cabinettemplates",
+      "count": {
+        "$numberInt": "36"
+      },
+      "sha256": "8d5402339c7268d45a3ae1a8369ebfe02ff80ae0fc66a824c4e6733e198887c4"
+    },
+    {
+      "collection": "centrals",
+      "count": {
+        "$numberInt": "1"
+      },
+      "sha256": "0a7e263529e9b1e5fe49b77a78268c8acfc9a026685749e9d6e4311b4bf8825b"
+    },
+    {
+      "collection": "congresses",
+      "count": {
+        "$numberInt": "0"
+      },
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "collection": "congressmembers",
+      "count": {
+        "$numberInt": "2"
+      },
+      "sha256": "fedae4a1112eeed5013dd467274a3d0308c33ae2468501db10369037695a677f"
+    },
+    {
+      "collection": "counters",
+      "count": {
+        "$numberInt": "22"
+      },
+      "sha256": "b55dbdbd01a922b0a64fbb67ac5f109263b2f711cb942455a5d18a8d6de659b0"
+    },
+    {
+      "collection": "districts",
+      "count": {
+        "$numberInt": "9"
+      },
+      "sha256": "9b2e84cf0a4abdae6207b972189237a39325b2eedbfbf14b77733738586f6932"
+    },
+    {
+      "collection": "donations",
+      "count": {
+        "$numberInt": "2"
+      },
+      "sha256": "8e6405510472413917c45affa1569f65d80d4ee9fc7d90b4faf33a5b8c96fd7b"
+    },
+    {
+      "collection": "eventconfigsnapshots",
+      "count": {
+        "$numberInt": "18"
+      },
+      "sha256": "7dea7b19f49b51f7d3f0b92474b0efa8dc4e1122f593c63526f32c971f447a30"
+    },
+    {
+      "collection": "eventtypeconfigs",
+      "count": {
+        "$numberInt": "18"
+      },
+      "sha256": "0c0bb1cd29913c49a1d591974fece860e75cd6089a9b998443120fda88cf7002"
+    },
+    {
+      "collection": "expenses",
+      "count": {
+        "$numberInt": "1"
+      },
+      "sha256": "290d3be18d30e3f8b53b7c50332bcceddef3e57286f9d72d3e2ce620627f3d74"
+    },
+    {
+      "collection": "fielddefinitions",
+      "count": {
+        "$numberInt": "0"
+      },
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "collection": "fundtransfers",
+      "count": {
+        "$numberInt": "2"
+      },
+      "sha256": "0fd00f8758e44c6b0ada8bb4fb682fccbfdfb46f25dbf39284f50b56027098e9"
+    },
+    {
+      "collection": "jirgamembers",
+      "count": {
+        "$numberInt": "2"
+      },
+      "sha256": "af2eaa1df035a340c20ee85f5c4b29b96d7caa637d3e6fc8ecb1c4b3c5597add"
+    },
+    {
+      "collection": "meetings",
+      "count": {
+        "$numberInt": "17"
+      },
+      "sha256": "6475c4b9f131d79d85aec898d2b6cb52fc4dadd8a04fbfdca8a947efdc37fef4"
+    },
+    {
+      "collection": "members",
+      "count": {
+        "$numberInt": "384"
+      },
+      "sha256": "1b4bf9d09d2e227b7fa146d7c406cac134ffb2ba5705ce9efb14f95b34858dcc"
+    },
+    {
+      "collection": "notifications",
+      "count": {
+        "$numberInt": "369"
+      },
+      "sha256": "232476b84ce51aba2d247c0fdde970cddc54462d4ff3e2f3ca4377225e40a38a"
+    },
+    {
+      "collection": "performancerulesets",
+      "count": {
+        "$numberInt": "1"
+      },
+      "sha256": "81c41a766a1f3fac069ac184c43ff4e1ff4a62c24ad0cd7a52d89c106026580e"
+    },
+    {
+      "collection": "permanentmemberships",
+      "count": {
+        "$numberInt": "2"
+      },
+      "sha256": "cffee24734638eb8edbf0f06b2a28f4af70af0d31a3efebdbf743d6ae7f83196"
+    },
+    {
+      "collection": "provinces",
+      "count": {
+        "$numberInt": "3"
+      },
+      "sha256": "6b0e3930bd9461b06e48443dfbd635c7a627e011c0570a462d718785777043e2"
+    },
+    {
+      "collection": "reporttemplates",
+      "count": {
+        "$numberInt": "0"
+      },
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "collection": "responsibilities",
+      "count": {
+        "$numberInt": "4"
+      },
+      "sha256": "047b2cd7794eeef55c420b32c5282f981a636eaaa8310b6a0c38fc346b016892"
+    },
+    {
+      "collection": "responsibilitytemplates",
+      "count": {
+        "$numberInt": "0"
+      },
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "collection": "roleassignments",
+      "count": {
+        "$numberInt": "325"
+      },
+      "sha256": "1f08d4c0722ef657d2949456954febacf2993cb5ce28277205fd94b7499a89c0"
+    },
+    {
+      "collection": "roles",
+      "count": {
+        "$numberInt": "22"
+      },
+      "sha256": "c5ba2badd12251ea26c6b6e96924141c822ac49b11ebc6009b3cdce09ed09007"
+    },
+    {
+      "collection": "settingsversions",
+      "count": {
+        "$numberInt": "28"
+      },
+      "sha256": "582055c99e15ba9954221d9604537ff439ec9665d60791bb346f77946fbb804b"
+    },
+    {
+      "collection": "systemsettings",
+      "count": {
+        "$numberInt": "1"
+      },
+      "sha256": "ca689d6b5480ffe32816ae2e6afec9d8cde165dfb79ebc9b42469d938eed713a"
+    },
+    {
+      "collection": "transfers",
+      "count": {
+        "$numberInt": "0"
+      },
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "collection": "unitpolicies",
+      "count": {
+        "$numberInt": "1"
+      },
+      "sha256": "20b2ae2983d3d6fa6a0de20bf8ba915bbc509e9a87ca07b448484988c08f3947"
+    },
+    {
+      "collection": "unitproposals",
+      "count": {
+        "$numberInt": "0"
+      },
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "collection": "unittierconfigs",
+      "count": {
+        "$numberInt": "5"
+      },
+      "sha256": "658e43c894e3b0802ebee6f92d435e53dd1f0c14e8a2eda4c0e73beb9b769067"
+    },
+    {
+      "collection": "unittierconfigsnapshots",
+      "count": {
+        "$numberInt": "0"
+      },
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "collection": "users",
+      "count": {
+        "$numberInt": "210"
+      },
+      "sha256": "b87f1507d7146941da932c7bfab6fca76a2d1256cc89b617ff7aae3043e47c11"
+    },
+    {
+      "collection": "workflowconfigs",
+      "count": {
+        "$numberInt": "5"
+      },
+      "sha256": "576364012abb07d1d54b28b966c5249fe38b92c62428e9a66f038a345a04abf4"
+    }
+  ],
+  "note": "Fresh integrity snapshot only, not a replacement historical performance baseline."
+}

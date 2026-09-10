@@ -353,6 +353,7 @@ function activeExpr(f, activeIds) {
 const CACHE_TTL_MS = 45 * 1000;
 const CACHE_MAX = 40;
 const cache = new Map();
+const orgSnapshotInFlight = new Map();
 
 function cacheKey(prefix, f) {
   return [
@@ -465,7 +466,10 @@ async function officeBearerActivity(level) {
  * join AND the inactive tables.
  */
 async function orgSnapshot(f) {
-  return cached('org', f, async () => {
+  const key = cacheKey('org', f);
+  const activeBuild = orgSnapshotInFlight.get(key);
+  if (activeBuild) return activeBuild;
+  const build = cached('org', f, async () => {
     const [provinces, districts, areas, basicUnits] = await Promise.all([
       Province.find(unitMatch(f, 'PROVINCE')).select('name code').lean(),
       District.find(unitMatch(f, 'DISTRICT')).select('name code provinceId').lean(),
@@ -503,6 +507,25 @@ async function orgSnapshot(f) {
       basicUnits: decorate(basicUnits, buAct),
     };
   });
+  orgSnapshotInFlight.set(key, build);
+  try {
+    return await build;
+  } finally {
+    if (orgSnapshotInFlight.get(key) === build) orgSnapshotInFlight.delete(key);
+  }
+}
+
+// Read-only unit labels for analytics that do not calculate unit activity.
+// Keeping this separate from orgSnapshot avoids its four office-bearer
+// aggregations while preserving the same scoped unit ids and names.
+async function unitDirectory(f) {
+  const [provinces, districts, areas, basicUnits] = await Promise.all([
+    Province.find(unitMatch(f, 'PROVINCE')).select('name code').lean(),
+    District.find(unitMatch(f, 'DISTRICT')).select('name code provinceId').lean(),
+    Area.find(unitMatch(f, 'AREA')).select('name districtId provinceId').lean(),
+    BasicUnit.find(unitMatch(f, 'BASIC_UNIT')).select('name areaId districtId provinceId').lean(),
+  ]);
+  return { provinces, districts, areas, basicUnits };
 }
 
 function tally(units) {
@@ -526,11 +549,10 @@ async function summary(f) {
     const now = new Date();
 
     const [
-      total, active, newMembers, byStatus, org,
+      active, newMembers, byStatus, org,
       meetingStates, campaignStates,
       outstandingReports,
     ] = await Promise.all([
-      Member.countDocuments(base),
       Member.countDocuments({ ...base, ...activeClause }),
       // "New" is registered-in-window, which is a different question
       // from active-in-window and routinely a different set.
@@ -582,6 +604,7 @@ async function summary(f) {
 
     const statusCounts = Object.fromEntries(Member.STATUSES.map((s) => [s, 0]));
     for (const g of byStatus) if (g._id) statusCounts[g._id] = g.count;
+    const total = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
 
     const mStates = Object.fromEntries(Meeting.STATES.map((s) => [s, 0]));
     for (const g of meetingStates) if (g._id) mStates[g._id] = g.count;
@@ -824,53 +847,44 @@ async function membershipAnalytics(f) {
       ],
     };
 
-    const [totals, byUnit, trendRows, org] = await Promise.all([
+    // Totals, trends and every tier breakdown read the same roster. A single
+    // facet keeps those calculations in one database operation and one pass.
+    const [membershipRows, org] = await Promise.all([
       Member.aggregate([
-        ...(Object.keys(base).length ? [{ $match: base }] : []),
-        {
-          $group: {
-            _id: null,
-            total: { $sum: 1 },
-            active: { $sum: { $cond: [activeExpr(f, activeIds), 1, 0] } },
-            newMembers: { $sum: { $cond: [isNew, 1, 0] } },
-          },
+      ...(Object.keys(base).length ? [{ $match: base }] : []),
+      {
+        $facet: {
+          totals: [{
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              active: { $sum: { $cond: [activeExpr(f, activeIds), 1, 0] } },
+              newMembers: { $sum: { $cond: [isNew, 1, 0] } },
+            },
+          }],
+          trend: [{
+            $group: {
+              _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+              newMembers: { $sum: 1 },
+            },
+          }],
+          ...Object.fromEntries(levels.map((lvl) => [lvl, [{
+            $group: {
+              _id: `$${LEVEL_FK[lvl]}`,
+              total: { $sum: 1 },
+              active: { $sum: { $cond: [activeExpr(f, activeIds), 1, 0] } },
+              newMembers: { $sum: { $cond: [isNew, 1, 0] } },
+            },
+          }]])),
         },
+      },
       ]),
-      // $facet fans the same matched roster out to one grouping per
-      // tier, so four breakdowns cost one pass rather than four.
-      // MongoDB rejects an empty $facet object. A Basic Unit is a leaf,
-      // so it has no child-tier breakdowns; totals and trends still load.
-      levels.length ? Member.aggregate([
-        ...(Object.keys(base).length ? [{ $match: base }] : []),
-        {
-          $facet: Object.fromEntries(levels.map((lvl) => [
-            lvl,
-            [{
-              $group: {
-                _id: `$${LEVEL_FK[lvl]}`,
-                total: { $sum: 1 },
-                active: { $sum: { $cond: [activeExpr(f, activeIds), 1, 0] } },
-                newMembers: { $sum: { $cond: [isNew, 1, 0] } },
-              },
-            }],
-          ])),
-        },
-      ]) : Promise.resolve([]),
-      // 12-month registration trend, independent of the activity window
-      // so the shape of growth stays visible whatever the filter says.
-      Member.aggregate([
-        ...(Object.keys(base).length ? [{ $match: base }] : []),
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
-            newMembers: { $sum: 1 },
-          },
-        },
-      ]),
-      orgSnapshot(f),
+      unitDirectory(f),
     ]);
 
-    const facets = byUnit[0] || {};
+    const facets = membershipRows[0] || {};
+    const totals = facets.totals || [];
+    const trendRows = facets.trend || [];
     const unitsFor = unitListsOf(org);
 
     // One rows[] per tier. Units with no members are kept here (unlike
@@ -1226,7 +1240,7 @@ async function campaignsAnalytics(f) {
           },
         },
       ]),
-      orgSnapshot(f),
+      unitDirectory(f),
     ]);
 
     const totals = { running: 0, upcoming: 0, completed: 0, cancelled: 0 };
@@ -1344,7 +1358,7 @@ async function reportsAnalytics(f) {
           },
         },
       ]),
-      orgSnapshot(f),
+      unitDirectory(f),
     ]);
 
     const units = (unitListsOf(org)[childLevel]) || [];

@@ -1,0 +1,2237 @@
+{
+  "collections": [
+    {
+      "name": "activities",
+      "count": 3,
+      "hash": "a8e16224a388a64a85c9cc253dd333981cab4d4260af4c959173f193af0b248c"
+    },
+    {
+      "name": "activitylogs",
+      "count": 1761,
+      "hash": "c35a1cb8e0347c53451ea5b1b7dcf820aaf6a5fc9fba6c91476aca97d73ebc15"
+    },
+    {
+      "name": "announcements",
+      "count": 3,
+      "hash": "932f6d67f915a1d599abb9f3c191ba23b333a50c869fcf677dee5a479450a520"
+    },
+    {
+      "name": "areas",
+      "count": 24,
+      "hash": "5a2e5816e35d37e08acce75b0cf2ddffc9641890e888249fee9df946265e310b"
+    },
+    {
+      "name": "auditlogs",
+      "count": 42,
+      "hash": "1b9fee32144008749340c03b58aa96c9787c26a920f15b05ed2b1bf70b638d01"
+    },
+    {
+      "name": "basicunits",
+      "count": 48,
+      "hash": "8fcdd8e1f87c751365fe3e844a65e60e380e4c60c47b7ca65c4ad3ada3f5ab8b"
+    },
+    {
+      "name": "cabinetslots",
+      "count": 884,
+      "hash": "881a5974fe16524c525798692d1c034bde4efe68ec724fc1667de1d5e9bdb016"
+    },
+    {
+      "name": "cabinettemplates",
+      "count": 36,
+      "hash": "8d5402339c7268d45a3ae1a8369ebfe02ff80ae0fc66a824c4e6733e198887c4"
+    },
+    {
+      "name": "centrals",
+      "count": 1,
+      "hash": "0a7e263529e9b1e5fe49b77a78268c8acfc9a026685749e9d6e4311b4bf8825b"
+    },
+    {
+      "name": "congresses",
+      "count": 0,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "congressmembers",
+      "count": 2,
+      "hash": "fedae4a1112eeed5013dd467274a3d0308c33ae2468501db10369037695a677f"
+    },
+    {
+      "name": "counters",
+      "count": 22,
+      "hash": "b55dbdbd01a922b0a64fbb67ac5f109263b2f711cb942455a5d18a8d6de659b0"
+    },
+    {
+      "name": "districts",
+      "count": 9,
+      "hash": "9b2e84cf0a4abdae6207b972189237a39325b2eedbfbf14b77733738586f6932"
+    },
+    {
+      "name": "donations",
+      "count": 2,
+      "hash": "8e6405510472413917c45affa1569f65d80d4ee9fc7d90b4faf33a5b8c96fd7b"
+    },
+    {
+      "name": "eventconfigsnapshots",
+      "count": 18,
+      "hash": "7dea7b19f49b51f7d3f0b92474b0efa8dc4e1122f593c63526f32c971f447a30"
+    },
+    {
+      "name": "eventtypeconfigs",
+      "count": 18,
+      "hash": "0c0bb1cd29913c49a1d591974fece860e75cd6089a9b998443120fda88cf7002"
+    },
+    {
+      "name": "expenses",
+      "count": 1,
+      "hash": "290d3be18d30e3f8b53b7c50332bcceddef3e57286f9d72d3e2ce620627f3d74"
+    },
+    {
+      "name": "fielddefinitions",
+      "count": 0,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "fundtransfers",
+      "count": 2,
+      "hash": "0fd00f8758e44c6b0ada8bb4fb682fccbfdfb46f25dbf39284f50b56027098e9"
+    },
+    {
+      "name": "jirgamembers",
+      "count": 2,
+      "hash": "af2eaa1df035a340c20ee85f5c4b29b96d7caa637d3e6fc8ecb1c4b3c5597add"
+    },
+    {
+      "name": "meetings",
+      "count": 17,
+      "hash": "6475c4b9f131d79d85aec898d2b6cb52fc4dadd8a04fbfdca8a947efdc37fef4"
+    },
+    {
+      "name": "members",
+      "count": 384,
+      "hash": "1b4bf9d09d2e227b7fa146d7c406cac134ffb2ba5705ce9efb14f95b34858dcc"
+    },
+    {
+      "name": "notifications",
+      "count": 369,
+      "hash": "232476b84ce51aba2d247c0fdde970cddc54462d4ff3e2f3ca4377225e40a38a"
+    },
+    {
+      "name": "performancerulesets",
+      "count": 1,
+      "hash": "81c41a766a1f3fac069ac184c43ff4e1ff4a62c24ad0cd7a52d89c106026580e"
+    },
+    {
+      "name": "permanentmemberships",
+      "count": 2,
+      "hash": "cffee24734638eb8edbf0f06b2a28f4af70af0d31a3efebdbf743d6ae7f83196"
+    },
+    {
+      "name": "provinces",
+      "count": 3,
+      "hash": "6b0e3930bd9461b06e48443dfbd635c7a627e011c0570a462d718785777043e2"
+    },
+    {
+      "name": "reporttemplates",
+      "count": 0,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "responsibilities",
+      "count": 4,
+      "hash": "047b2cd7794eeef55c420b32c5282f981a636eaaa8310b6a0c38fc346b016892"
+    },
+    {
+      "name": "responsibilitytemplates",
+      "count": 0,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "roleassignments",
+      "count": 325,
+      "hash": "1f08d4c0722ef657d2949456954febacf2993cb5ce28277205fd94b7499a89c0"
+    },
+    {
+      "name": "roles",
+      "count": 22,
+      "hash": "c5ba2badd12251ea26c6b6e96924141c822ac49b11ebc6009b3cdce09ed09007"
+    },
+    {
+      "name": "settingsversions",
+      "count": 28,
+      "hash": "582055c99e15ba9954221d9604537ff439ec9665d60791bb346f77946fbb804b"
+    },
+    {
+      "name": "systemsettings",
+      "count": 1,
+      "hash": "ca689d6b5480ffe32816ae2e6afec9d8cde165dfb79ebc9b42469d938eed713a"
+    },
+    {
+      "name": "transfers",
+      "count": 0,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "unitpolicies",
+      "count": 1,
+      "hash": "20b2ae2983d3d6fa6a0de20bf8ba915bbc509e9a87ca07b448484988c08f3947"
+    },
+    {
+      "name": "unitproposals",
+      "count": 0,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "unittierconfigs",
+      "count": 5,
+      "hash": "658e43c894e3b0802ebee6f92d435e53dd1f0c14e8a2eda4c0e73beb9b769067"
+    },
+    {
+      "name": "unittierconfigsnapshots",
+      "count": 0,
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "users",
+      "count": 210,
+      "hash": "b87f1507d7146941da932c7bfab6fca76a2d1256cc89b617ff7aae3043e47c11"
+    },
+    {
+      "name": "workflowconfigs",
+      "count": 5,
+      "hash": "576364012abb07d1d54b28b966c5249fe38b92c62428e9a66f038a345a04abf4"
+    }
+  ],
+  "indexes": [
+    {
+      "collection": "activities",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "type": 1
+          },
+          "name": "type_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "body": 1
+          },
+          "name": "body_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "typeCode": 1
+          },
+          "name": "typeCode_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "activitylogs",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "memberId": 1,
+            "occurredAt": -1
+          },
+          "name": "memberId_1_occurredAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "occurredAt": -1
+          },
+          "name": "occurredAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1,
+            "occurredAt": -1
+          },
+          "name": "provinceId_1_occurredAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1,
+            "occurredAt": -1
+          },
+          "name": "districtId_1_occurredAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1,
+            "occurredAt": -1
+          },
+          "name": "areaId_1_occurredAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "dedupeKey": 1
+          },
+          "name": "dedupeKey_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "dedupeKey": {
+              "$type": "string"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "announcements",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetMemberId": 1
+          },
+          "name": "targetMemberId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetUserId": 1
+          },
+          "name": "targetUserId_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "areas",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1,
+            "name": 1
+          },
+          "name": "districtId_1_name_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1,
+            "code": 1
+          },
+          "name": "districtId_1_code_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "code": {
+              "$type": "string"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "auditlogs",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "actorUserId": 1
+          },
+          "name": "actorUserId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "action": 1
+          },
+          "name": "action_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetType": 1
+          },
+          "name": "targetType_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetId": 1
+          },
+          "name": "targetId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "createdAt": -1
+          },
+          "name": "createdAt_-1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "basicunits",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1,
+            "name": 1
+          },
+          "name": "areaId_1_name_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1,
+            "code": 1
+          },
+          "name": "areaId_1_code_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "code": {
+              "$type": "string"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "cabinetslots",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1,
+            "unitId": 1,
+            "roleCode": 1
+          },
+          "name": "unitLevel_1_unitId_1_roleCode_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1,
+            "unitId": 1
+          },
+          "name": "unitLevel_1_unitId_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "cabinettemplates",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "tierCode": 1
+          },
+          "name": "tierCode_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "roleCode": 1
+          },
+          "name": "roleCode_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tierCode": 1,
+            "roleCode": 1
+          },
+          "name": "tierCode_1_roleCode_1",
+          "background": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "centrals",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        }
+      ]
+    },
+    {
+      "collection": "congresses",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "heldOn": 1
+          },
+          "name": "heldOn_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "heldOn": 1,
+            "isActive": 1
+          },
+          "name": "heldOn_1_isActive_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "isActive": true
+          }
+        }
+      ]
+    },
+    {
+      "collection": "congressmembers",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "memberId": 1
+          },
+          "name": "memberId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1,
+            "unitId": 1,
+            "memberId": 1,
+            "isActive": 1
+          },
+          "name": "unitLevel_1_unitId_1_memberId_1_isActive_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "isActive": true
+          }
+        }
+      ]
+    },
+    {
+      "collection": "counters",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        }
+      ]
+    },
+    {
+      "collection": "districts",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1,
+            "code": 1
+          },
+          "name": "provinceId_1_code_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "code": {
+              "$type": "string"
+            }
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1,
+            "name": 1
+          },
+          "name": "provinceId_1_name_1",
+          "background": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "donations",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "receiptNo": 1
+          },
+          "name": "receiptNo_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "fiscalYear": 1
+          },
+          "name": "fiscalYear_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1,
+            "fiscalYear": 1,
+            "receiptNo": 1
+          },
+          "name": "unitId_1_fiscalYear_1_receiptNo_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "body": 1
+          },
+          "name": "body_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "eventconfigsnapshots",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "entity": 1
+          },
+          "name": "entity_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "snapshotHash": 1
+          },
+          "name": "snapshotHash_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "entity": 1,
+            "typeCode": 1,
+            "configVersion": 1
+          },
+          "name": "entity_1_typeCode_1_configVersion_1",
+          "background": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "eventtypeconfigs",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "entity": 1
+          },
+          "name": "entity_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "entity": 1,
+            "code": 1
+          },
+          "name": "entity_1_code_1",
+          "background": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "expenses",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "body": 1
+          },
+          "name": "body_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "fielddefinitions",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "key": 1
+          },
+          "name": "key_1",
+          "background": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "fundtransfers",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "sourceLevel": 1
+          },
+          "name": "sourceLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "sourceUnitId": 1
+          },
+          "name": "sourceUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "destinationLevel": 1
+          },
+          "name": "destinationLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "destinationUnitId": 1
+          },
+          "name": "destinationUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "direction": 1
+          },
+          "name": "direction_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "body": 1
+          },
+          "name": "body_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "jirgamembers",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "memberId": 1
+          },
+          "name": "memberId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1,
+            "unitId": 1,
+            "memberId": 1,
+            "isActive": 1
+          },
+          "name": "unitLevel_1_unitId_1_memberId_1_isActive_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "isActive": true
+          }
+        }
+      ]
+    },
+    {
+      "collection": "meetings",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "type": 1
+          },
+          "name": "type_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "body": 1
+          },
+          "name": "body_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "typeCode": 1
+          },
+          "name": "typeCode_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "members",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "memberId": 1
+          },
+          "name": "memberId_1",
+          "background": true,
+          "unique": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "cnic": 1
+          },
+          "name": "cnic_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "username": 1
+          },
+          "name": "username_1",
+          "background": true,
+          "unique": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1
+          },
+          "name": "status_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1,
+            "lastActivityAt": -1
+          },
+          "name": "provinceId_1_lastActivityAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "status": 1,
+            "lastActivityAt": -1
+          },
+          "name": "status_1_lastActivityAt_-1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "email": 1
+          },
+          "name": "email_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "email": {
+              "$type": "string"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "notifications",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1
+          },
+          "name": "userId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "read": 1
+          },
+          "name": "read_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "announcementId": 1
+          },
+          "name": "announcementId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "expiresAt": 1
+          },
+          "name": "expiresAt_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "userId": 1,
+            "read": 1,
+            "createdAt": -1
+          },
+          "name": "userId_1_read_1_createdAt_-1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "performancerulesets",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "scope": 1
+          },
+          "name": "scope_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "scope": "GLOBAL"
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "scope": 1,
+            "tierCode": 1
+          },
+          "name": "scope_1_tierCode_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "scope": "TIER"
+          }
+        }
+      ]
+    },
+    {
+      "collection": "permanentmemberships",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1,
+            "unitId": 1,
+            "memberId": 1
+          },
+          "name": "unitLevel_1_unitId_1_memberId_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "isActive": true
+          }
+        }
+      ]
+    },
+    {
+      "collection": "provinces",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "name": 1
+          },
+          "name": "name_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "code": 1
+          },
+          "name": "code_1",
+          "background": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "reporttemplates",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "entity": 1,
+            "isActive": 1
+          },
+          "name": "entity_1_isActive_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "responsibilities",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "basicUnitId": 1
+          },
+          "name": "basicUnitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "areaId": 1
+          },
+          "name": "areaId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "districtId": 1
+          },
+          "name": "districtId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "provinceId": 1
+          },
+          "name": "provinceId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "assignedToMemberId": 1
+          },
+          "name": "assignedToMemberId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "templateId": 1,
+            "sourceRef.id": 1
+          },
+          "name": "templateId_1_sourceRef.id_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "templateId": {
+              "$exists": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "collection": "responsibilitytemplates",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "trigger.event": 1,
+            "isActive": 1
+          },
+          "name": "trigger.event_1_isActive_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "roleassignments",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1
+          },
+          "name": "unitLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitId": 1
+          },
+          "name": "unitId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "memberId": 1
+          },
+          "name": "memberId_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "unitLevel": 1,
+            "unitId": 1,
+            "roleCode": 1,
+            "state": 1,
+            "endedAt": 1
+          },
+          "name": "unitLevel_1_unitId_1_roleCode_1_state_1_endedAt_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "roles",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "code": 1
+          },
+          "name": "code_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "category": 1
+          },
+          "name": "category_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "settingsversions",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "versionNumber": 1
+          },
+          "name": "versionNumber_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "changedAt": 1
+          },
+          "name": "changedAt_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "versionNumber": -1
+          },
+          "name": "versionNumber_-1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "systemsettings",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        }
+      ]
+    },
+    {
+      "collection": "transfers",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        }
+      ]
+    },
+    {
+      "collection": "unitpolicies",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "scope": 1
+          },
+          "name": "scope_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "scope": "GLOBAL"
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "scope": 1,
+            "tierCode": 1
+          },
+          "name": "scope_1_tierCode_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "scope": "TIER"
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "scope": 1,
+            "tierCode": 1,
+            "unitId": 1
+          },
+          "name": "scope_1_tierCode_1_unitId_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "scope": "UNIT"
+          }
+        }
+      ]
+    },
+    {
+      "collection": "unitproposals",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "targetLevel": 1
+          },
+          "name": "targetLevel_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "state": 1
+          },
+          "name": "state_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "unittierconfigs",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "tierCode": 1
+          },
+          "name": "tierCode_1",
+          "background": true,
+          "unique": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        }
+      ]
+    },
+    {
+      "collection": "unittierconfigsnapshots",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "tierCode": 1
+          },
+          "name": "tierCode_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "snapshotHash": 1
+          },
+          "name": "snapshotHash_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "tierCode": 1,
+            "configVersion": 1
+          },
+          "name": "tierCode_1_configVersion_1",
+          "background": true,
+          "unique": true
+        }
+      ]
+    },
+    {
+      "collection": "users",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "email": 1
+          },
+          "name": "email_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "email": {
+              "$type": "string"
+            }
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "cnic": 1
+          },
+          "name": "cnic_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "cnic": {
+              "$type": "string"
+            }
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "username": 1
+          },
+          "name": "username_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "username": {
+              "$type": "string"
+            }
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "emailVerificationToken": 1
+          },
+          "name": "emailVerificationToken_1",
+          "background": true,
+          "sparse": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "passwordResetToken": 1
+          },
+          "name": "passwordResetToken_1",
+          "background": true,
+          "sparse": true
+        }
+      ]
+    },
+    {
+      "collection": "workflowconfigs",
+      "indexes": [
+        {
+          "v": 2,
+          "key": {
+            "_id": 1
+          },
+          "name": "_id_"
+        },
+        {
+          "v": 2,
+          "key": {
+            "isSystem": 1
+          },
+          "name": "isSystem_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "isActive": 1
+          },
+          "name": "isActive_1",
+          "background": true
+        },
+        {
+          "v": 2,
+          "key": {
+            "domain": 1,
+            "scope": 1
+          },
+          "name": "domain_1_scope_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "scope": "GLOBAL"
+          }
+        },
+        {
+          "v": 2,
+          "key": {
+            "domain": 1,
+            "scope": 1,
+            "tierCode": 1
+          },
+          "name": "domain_1_scope_1_tierCode_1",
+          "background": true,
+          "unique": true,
+          "partialFilterExpression": {
+            "scope": "TIER"
+          }
+        }
+      ]
+    }
+  ]
+}

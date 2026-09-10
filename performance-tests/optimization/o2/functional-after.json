@@ -1,0 +1,1967 @@
+[
+  {
+    "name": "summary",
+    "status": 200,
+    "hash": "a9b80cdc7d73da6628c70ce7d4e05c365c625dd948e6e08b7eb0dc40ed6f8e26",
+    "shapeHash": "3090cb967336238c2859f0aa371011429e5b1144026a59fcbbbf9c170ae1e37f",
+    "data": {
+      "data": {
+        "campaigns": {
+          "completed": 1,
+          "running": 0,
+          "total": 1,
+          "upcoming": 0
+        },
+        "meetings": {
+          "conducted": 12,
+          "scheduled": 5,
+          "total": 17
+        },
+        "membership": {
+          "active": 294,
+          "activePct": 77,
+          "byStatus": {
+            "ACTIVE": 384,
+            "DECEASED": 0,
+            "EXPELLED": 0,
+            "INACTIVE": 0,
+            "PENDING_APPROVAL": 0,
+            "REJECTED": 0,
+            "SUSPENDED": 0
+          },
+          "inactive": 90,
+          "newMembers": 384,
+          "total": 384
+        },
+        "organization": {
+          "areas": {
+            "active": 24,
+            "inactive": 0,
+            "total": 24
+          },
+          "basicUnits": {
+            "active": 46,
+            "inactive": 2,
+            "total": 48
+          },
+          "districts": {
+            "active": 8,
+            "inactive": 1,
+            "total": 9
+          },
+          "provinces": {
+            "active": 2,
+            "inactive": 1,
+            "total": 3
+          }
+        },
+        "reports": {
+          "filed": 12,
+          "outstanding": 5
+        },
+        "window": {
+          "days": 365,
+          "from": "2025-09-09T13:09:03.542Z",
+          "to": null
+        }
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "scope",
+    "status": 200,
+    "hash": "7126838277d562f44e85a914e826b0891d7b24650f8d37fade27133aafe718ed",
+    "shapeHash": "b942c0e5c887cf1eea95d33fee6d0c0499a09ed0196b5bb361398eea8245610b",
+    "data": {
+      "data": {
+        "childLevel": "PROVINCE",
+        "level": "NATIONAL",
+        "trail": [
+          {
+            "_id": null,
+            "level": "NATIONAL",
+            "name": "Pakistan"
+          }
+        ]
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "org-breakdown",
+    "status": 200,
+    "hash": "811b19ff1c33b15abd990e7461b965787da9cd2d185dc644315c7314d57d8219",
+    "shapeHash": "02f458eaa47880256462e275fe0581d0815d57cf70c0254ac8ebd71629ba5d2e",
+    "data": {
+      "data": {
+        "level": "PROVINCE",
+        "rows": [
+          {
+            "_id": "6a75a3f0ba1fbef74f88b636",
+            "areas": {
+              "active": 12,
+              "inactive": 0,
+              "total": 12
+            },
+            "basicUnits": {
+              "active": 22,
+              "inactive": 2,
+              "total": 24
+            },
+            "code": "BN-1",
+            "districts": {
+              "active": 4,
+              "inactive": 0,
+              "total": 4
+            },
+            "isActiveUnit": true,
+            "level": "PROVINCE",
+            "members": {
+              "active": 138,
+              "activePct": 72,
+              "inactive": 54,
+              "total": 192
+            },
+            "name": "Balochistan",
+            "officer": {
+              "fullName": "Usman Lehri",
+              "lastActivityAt": "2026-08-14T10:06:15.876Z",
+              "memberCode": "PNAP-BN-1-WAD-2026-000053",
+              "memberId": "6a7ec2ca6286fb1018f224dc",
+              "phone": "0300-3000264",
+              "roleCode": "PRESIDENT"
+            },
+            "recentActivity": {
+              "events": 871,
+              "lastActivityAt": "2026-08-31T09:00:38.675Z"
+            }
+          },
+          {
+            "_id": "6a75a3abba1fbef74f88b616",
+            "areas": {
+              "active": 12,
+              "inactive": 0,
+              "total": 12
+            },
+            "basicUnits": {
+              "active": 24,
+              "inactive": 0,
+              "total": 24
+            },
+            "code": "KP-1",
+            "districts": {
+              "active": 4,
+              "inactive": 0,
+              "total": 4
+            },
+            "isActiveUnit": true,
+            "level": "PROVINCE",
+            "members": {
+              "active": 156,
+              "activePct": 81,
+              "inactive": 36,
+              "total": 192
+            },
+            "name": "KPK",
+            "officer": {
+              "fullName": "Fatima Sherani",
+              "lastActivityAt": "2026-08-14T09:45:07.301Z",
+              "memberCode": "PNAP-KP-1-PW-1-2026-000048",
+              "memberId": "6a7ec2cb6286fb1018f22662",
+              "phone": "0300-3000342",
+              "roleCode": "PRESIDENT"
+            },
+            "recentActivity": {
+              "events": 450,
+              "lastActivityAt": "2026-09-02T10:06:25.508Z"
+            }
+          },
+          {
+            "_id": "6a9071b6267b3d1386043f88",
+            "areas": {
+              "active": 0,
+              "inactive": 0,
+              "total": 0
+            },
+            "basicUnits": {
+              "active": 0,
+              "inactive": 0,
+              "total": 0
+            },
+            "code": "PB-1",
+            "districts": {
+              "active": 0,
+              "inactive": 1,
+              "total": 1
+            },
+            "isActiveUnit": false,
+            "level": "PROVINCE",
+            "members": {
+              "active": 0,
+              "activePct": 0,
+              "inactive": 0,
+              "total": 0
+            },
+            "name": "punjab",
+            "officer": null,
+            "recentActivity": {
+              "events": 2,
+              "lastActivityAt": "2026-08-27T17:20:49.861Z"
+            }
+          }
+        ]
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "membership",
+    "status": 200,
+    "hash": "5e289a5c2900a481b0040df61355a8b457cb5a0e2033de8ccc0d33890e305d86",
+    "shapeHash": "42b42110e4a064b650e77b94c1853280ee10d1a1c0d5e4c9d5dd454eacf6b552",
+    "data": {
+      "data": {
+        "byLevel": {
+          "AREA": [
+            {
+              "_id": "6a75b3d0b576621deb6a6c5a",
+              "active": 11,
+              "inactive": 5,
+              "name": "Brewery",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a663ba1fbef74f88ba57",
+              "active": 16,
+              "inactive": 0,
+              "name": "Dargai",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e96",
+              "active": 3,
+              "inactive": 13,
+              "name": "Dobandi",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a538ba1fbef74f88b8ab",
+              "active": 8,
+              "inactive": 8,
+              "name": "Gulberg",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e3c",
+              "active": 14,
+              "inactive": 2,
+              "name": "Gulistan",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a5fdba1fbef74f88b9bd",
+              "active": 9,
+              "inactive": 7,
+              "name": "Katlang",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a907ba1fbef74f88bbc7",
+              "active": 14,
+              "inactive": 2,
+              "name": "Kondamor",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c2d",
+              "active": 9,
+              "inactive": 7,
+              "name": "Kuchlak",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a76d7",
+              "active": 9,
+              "inactive": 7,
+              "name": "Nal",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a76aa",
+              "active": 16,
+              "inactive": 0,
+              "name": "Ornach",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c87",
+              "active": 14,
+              "inactive": 2,
+              "name": "Panjpai",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e69",
+              "active": 11,
+              "inactive": 5,
+              "name": "Qilla Abdullah",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6bcb",
+              "active": 11,
+              "inactive": 5,
+              "name": "Quetta City",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6b9e",
+              "active": 15,
+              "inactive": 1,
+              "name": "Quetta Saddar",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a5abba1fbef74f88b96d",
+              "active": 9,
+              "inactive": 7,
+              "name": "Rustam",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a50bba1fbef74f88b883",
+              "active": 16,
+              "inactive": 0,
+              "name": "Saddar",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6bf8",
+              "active": 11,
+              "inactive": 5,
+              "name": "Sariab",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a89dba1fbef74f88bb7f",
+              "active": 16,
+              "inactive": 0,
+              "name": "Shahmansoor",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a682ba1fbef74f88ba79",
+              "active": 13,
+              "inactive": 3,
+              "name": "Sheergar",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a5d6ba1fbef74f88b991",
+              "active": 14,
+              "inactive": 2,
+              "name": "Thaktbhai",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a8d5ba1fbef74f88bba3",
+              "active": 16,
+              "inactive": 0,
+              "name": "Topai",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a846ba1fbef74f88bae7",
+              "active": 11,
+              "inactive": 5,
+              "name": "Totakan",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75a56eba1fbef74f88b8d9",
+              "active": 14,
+              "inactive": 2,
+              "name": "University Town",
+              "newMembers": 16,
+              "total": 16
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a767d",
+              "active": 14,
+              "inactive": 2,
+              "name": "Wadh",
+              "newMembers": 16,
+              "total": 16
+            }
+          ],
+          "BASIC_UNIT": [
+            {
+              "_id": "6a75b3d0b576621deb6a6c69",
+              "active": 3,
+              "inactive": 5,
+              "name": "Brewery Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c78",
+              "active": 8,
+              "inactive": 0,
+              "name": "Brewery Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ac59ba1fbef74f88bfa8",
+              "active": 8,
+              "inactive": 0,
+              "name": "Dargai-1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ac65ba1fbef74f88bfb7",
+              "active": 8,
+              "inactive": 0,
+              "name": "Dargai-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d2b576621deb6a6ea5",
+              "active": 0,
+              "inactive": 8,
+              "name": "Dobandi Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d2b576621deb6a6eb4",
+              "active": 3,
+              "inactive": 5,
+              "name": "Dobandi Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75aae6ba1fbef74f88bd93",
+              "active": 4,
+              "inactive": 4,
+              "name": "Gulberg 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75aadaba1fbef74f88bd84",
+              "active": 4,
+              "inactive": 4,
+              "name": "Gulberg A",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e4b",
+              "active": 8,
+              "inactive": 0,
+              "name": "Gulistan Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e5a",
+              "active": 6,
+              "inactive": 2,
+              "name": "Gulistan Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ac0fba1fbef74f88bf21",
+              "active": 6,
+              "inactive": 2,
+              "name": "Katlan-1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ac1eba1fbef74f88bf32",
+              "active": 3,
+              "inactive": 5,
+              "name": "katlang-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ada2ba1fbef74f88c296",
+              "active": 6,
+              "inactive": 2,
+              "name": "Kondamor",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75adbaba1fbef74f88c2ab",
+              "active": 8,
+              "inactive": 0,
+              "name": "kondamor-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c3c",
+              "active": 3,
+              "inactive": 5,
+              "name": "Kuchlak Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c4b",
+              "active": 6,
+              "inactive": 2,
+              "name": "Kuchlak Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a76e6",
+              "active": 3,
+              "inactive": 5,
+              "name": "Nal Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a76f5",
+              "active": 6,
+              "inactive": 2,
+              "name": "Nal Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a76b9",
+              "active": 8,
+              "inactive": 0,
+              "name": "Ornach Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a76c8",
+              "active": 8,
+              "inactive": 0,
+              "name": "Ornach Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c96",
+              "active": 6,
+              "inactive": 2,
+              "name": "Panjpai Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6ca5",
+              "active": 8,
+              "inactive": 0,
+              "name": "Panjpai Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e78",
+              "active": 3,
+              "inactive": 5,
+              "name": "Qilla Abdullah Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e87",
+              "active": 8,
+              "inactive": 0,
+              "name": "Qilla Abdullah Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6bda",
+              "active": 3,
+              "inactive": 5,
+              "name": "Quetta City Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6be9",
+              "active": 8,
+              "inactive": 0,
+              "name": "Quetta City Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6bad",
+              "active": 7,
+              "inactive": 1,
+              "name": "Quetta Saddar Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6bbc",
+              "active": 8,
+              "inactive": 0,
+              "name": "Quetta Saddar Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ab8eba1fbef74f88be17",
+              "active": 6,
+              "inactive": 2,
+              "name": "Rustam 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ab99ba1fbef74f88be26",
+              "active": 3,
+              "inactive": 5,
+              "name": "Rustam 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75aa4cba1fbef74f88bc7a",
+              "active": 8,
+              "inactive": 0,
+              "name": "Saddar 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75aa57ba1fbef74f88bc8b",
+              "active": 8,
+              "inactive": 0,
+              "name": "Saddar 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c07",
+              "active": 3,
+              "inactive": 5,
+              "name": "Sariab Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c16",
+              "active": 8,
+              "inactive": 0,
+              "name": "Sariab Unit 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ad21ba1fbef74f88c18c",
+              "active": 8,
+              "inactive": 0,
+              "name": "Shah-1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ad34ba1fbef74f88c1a1",
+              "active": 8,
+              "inactive": 0,
+              "name": "Shah-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ac8cba1fbef74f88c02b",
+              "active": 7,
+              "inactive": 1,
+              "name": "Sheergar-1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75aca0ba1fbef74f88c03c",
+              "active": 6,
+              "inactive": 2,
+              "name": "Sheerghar-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75abd4ba1fbef74f88be9e",
+              "active": 6,
+              "inactive": 2,
+              "name": "Thaktbhai-1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75abe5ba1fbef74f88bead",
+              "active": 8,
+              "inactive": 0,
+              "name": "Thaktbhai-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ad63ba1fbef74f88c211",
+              "active": 8,
+              "inactive": 0,
+              "name": "Topai-1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75ad73ba1fbef74f88c224",
+              "active": 8,
+              "inactive": 0,
+              "name": "Topai-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75accaba1fbef74f88c0b0",
+              "active": 3,
+              "inactive": 5,
+              "name": "Totakan-1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75acd8ba1fbef74f88c0c1",
+              "active": 8,
+              "inactive": 0,
+              "name": "Totakan-2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75aa94ba1fbef74f88bcfb",
+              "active": 6,
+              "inactive": 2,
+              "name": "University Town 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75aaa3ba1fbef74f88bd10",
+              "active": 8,
+              "inactive": 0,
+              "name": "University Town 2",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a768c",
+              "active": 6,
+              "inactive": 2,
+              "name": "Wadh Unit 1",
+              "newMembers": 8,
+              "total": 8
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a769b",
+              "active": 8,
+              "inactive": 0,
+              "name": "Wadh Unit 2",
+              "newMembers": 8,
+              "total": 8
+            }
+          ],
+          "DISTRICT": [
+            {
+              "_id": "6a75a490ba1fbef74f88b778",
+              "active": 40,
+              "inactive": 8,
+              "name": "Malakand",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a75a46aba1fbef74f88b75d",
+              "active": 32,
+              "inactive": 16,
+              "name": "Mardan",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a75a448ba1fbef74f88b742",
+              "active": 38,
+              "inactive": 10,
+              "name": "Peshawar",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a75b3d1b576621deb6a6e34",
+              "active": 28,
+              "inactive": 20,
+              "name": "Qilla Abdullah",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6b96",
+              "active": 37,
+              "inactive": 11,
+              "name": "Quetta East",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a75b3d0b576621deb6a6c25",
+              "active": 34,
+              "inactive": 14,
+              "name": "Quetta West",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a75a4b4ba1fbef74f88b78b",
+              "active": 46,
+              "inactive": 2,
+              "name": "Swabi",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a75b3d5b576621deb6a7675",
+              "active": 39,
+              "inactive": 9,
+              "name": "Wadh",
+              "newMembers": 48,
+              "total": 48
+            },
+            {
+              "_id": "6a9071f1267b3d1386043fa1",
+              "active": 0,
+              "inactive": 0,
+              "name": "Attock",
+              "newMembers": 0,
+              "total": 0
+            }
+          ],
+          "PROVINCE": [
+            {
+              "_id": "6a75a3f0ba1fbef74f88b636",
+              "active": 138,
+              "inactive": 54,
+              "name": "Balochistan",
+              "newMembers": 192,
+              "total": 192
+            },
+            {
+              "_id": "6a75a3abba1fbef74f88b616",
+              "active": 156,
+              "inactive": 36,
+              "name": "KPK",
+              "newMembers": 192,
+              "total": 192
+            },
+            {
+              "_id": "6a9071b6267b3d1386043f88",
+              "active": 0,
+              "inactive": 0,
+              "name": "punjab",
+              "newMembers": 0,
+              "total": 0
+            }
+          ]
+        },
+        "levels": [
+          "PROVINCE",
+          "DISTRICT",
+          "AREA",
+          "BASIC_UNIT"
+        ],
+        "totals": {
+          "active": 294,
+          "inactive": 90,
+          "newMembers": 384,
+          "total": 384
+        },
+        "trend": [
+          {
+            "label": "Oct",
+            "month": "2025-10",
+            "newMembers": 0
+          },
+          {
+            "label": "Nov",
+            "month": "2025-11",
+            "newMembers": 0
+          },
+          {
+            "label": "Dec",
+            "month": "2025-12",
+            "newMembers": 0
+          },
+          {
+            "label": "Jan",
+            "month": "2026-01",
+            "newMembers": 0
+          },
+          {
+            "label": "Feb",
+            "month": "2026-02",
+            "newMembers": 0
+          },
+          {
+            "label": "Mar",
+            "month": "2026-03",
+            "newMembers": 0
+          },
+          {
+            "label": "Apr",
+            "month": "2026-04",
+            "newMembers": 0
+          },
+          {
+            "label": "May",
+            "month": "2026-05",
+            "newMembers": 0
+          },
+          {
+            "label": "Jun",
+            "month": "2026-06",
+            "newMembers": 0
+          },
+          {
+            "label": "Jul",
+            "month": "2026-07",
+            "newMembers": 0
+          },
+          {
+            "label": "Aug",
+            "month": "2026-08",
+            "newMembers": 384
+          },
+          {
+            "label": "Sep",
+            "month": "2026-09",
+            "newMembers": 0
+          }
+        ]
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "campaigns",
+    "status": 200,
+    "hash": "fa1ee505841efecb1121aff8df72dc3de0b7e6318405140a478d9a2c7169daa2",
+    "shapeHash": "0099525fda8389cb24f641f7c896984bee786e501b9f5dbb913005880f2ad21d",
+    "data": {
+      "data": {
+        "byLevel": {
+          "AREA": [
+            {
+              "_id": "6a75a50bba1fbef74f88b883",
+              "cancelled": 0,
+              "completed": 1,
+              "name": "Saddar",
+              "running": 0,
+              "total": 1,
+              "upcoming": 0
+            }
+          ],
+          "BASIC_UNIT": [
+            {
+              "_id": "6a75aa4cba1fbef74f88bc7a",
+              "cancelled": 0,
+              "completed": 1,
+              "name": "Saddar 1",
+              "running": 0,
+              "total": 1,
+              "upcoming": 0
+            }
+          ],
+          "DISTRICT": [
+            {
+              "_id": "6a75a448ba1fbef74f88b742",
+              "cancelled": 0,
+              "completed": 1,
+              "name": "Peshawar",
+              "running": 0,
+              "total": 1,
+              "upcoming": 0
+            }
+          ],
+          "PROVINCE": [
+            {
+              "_id": "6a75a3abba1fbef74f88b616",
+              "cancelled": 0,
+              "completed": 1,
+              "name": "KPK",
+              "running": 0,
+              "total": 1,
+              "upcoming": 0
+            }
+          ]
+        },
+        "levels": [
+          "PROVINCE",
+          "DISTRICT",
+          "AREA",
+          "BASIC_UNIT"
+        ],
+        "reach": {
+          "actualJoiners": 0,
+          "conversionPct": null,
+          "expectedJoiners": 0,
+          "householdsVisited": 16,
+          "peopleContacted": 255,
+          "volunteerHours": 0
+        },
+        "totals": {
+          "cancelled": 0,
+          "completed": 1,
+          "running": 0,
+          "total": 1,
+          "upcoming": 0
+        },
+        "trend": [
+          {
+            "completed": 0,
+            "label": "Oct",
+            "month": "2025-10",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Nov",
+            "month": "2025-11",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Dec",
+            "month": "2025-12",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Jan",
+            "month": "2026-01",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Feb",
+            "month": "2026-02",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Mar",
+            "month": "2026-03",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Apr",
+            "month": "2026-04",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "May",
+            "month": "2026-05",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Jun",
+            "month": "2026-06",
+            "total": 0
+          },
+          {
+            "completed": 0,
+            "label": "Jul",
+            "month": "2026-07",
+            "total": 0
+          },
+          {
+            "completed": 1,
+            "label": "Aug",
+            "month": "2026-08",
+            "total": 1
+          },
+          {
+            "completed": 0,
+            "label": "Sep",
+            "month": "2026-09",
+            "total": 0
+          }
+        ]
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "meetings",
+    "status": 200,
+    "hash": "eb996a5cfb17e83d578ea6aafaad417c0691b8246881ddc606e45391f5afce2d",
+    "shapeHash": "37abcd08b2a54d024736da2a8faf975b8d1732c24c8e40eb91317a29a0c36a95",
+    "data": {
+      "data": {
+        "bodiesPresent": [
+          "COMMITTEE",
+          "EXECUTIVE",
+          "GENERAL_BODY",
+          "JIRGA"
+        ],
+        "byState": {
+          "CANCELLED": 0,
+          "DRAFT": 0,
+          "FINALIZED": 12,
+          "IN_PROGRESS": 0,
+          "PENDING_REPORT": 0,
+          "SCHEDULED": 5
+        },
+        "byTier": [
+          {
+            "body": "EXECUTIVE",
+            "conducted": 4,
+            "level": "AREA",
+            "scheduled": 0,
+            "total": 4
+          },
+          {
+            "body": "EXECUTIVE",
+            "conducted": 2,
+            "level": "BASIC_UNIT",
+            "scheduled": 1,
+            "total": 3
+          },
+          {
+            "body": "COMMITTEE",
+            "conducted": 2,
+            "level": "BASIC_UNIT",
+            "scheduled": 0,
+            "total": 2
+          },
+          {
+            "body": "EXECUTIVE",
+            "conducted": 2,
+            "level": "PROVINCE",
+            "scheduled": 0,
+            "total": 2
+          },
+          {
+            "body": "GENERAL_BODY",
+            "conducted": 1,
+            "level": "AREA",
+            "scheduled": 1,
+            "total": 2
+          },
+          {
+            "body": "JIRGA",
+            "conducted": 1,
+            "level": "PROVINCE",
+            "scheduled": 1,
+            "total": 2
+          },
+          {
+            "body": "EXECUTIVE",
+            "conducted": 0,
+            "level": "DISTRICT",
+            "scheduled": 1,
+            "total": 1
+          },
+          {
+            "body": "JIRGA",
+            "conducted": 0,
+            "level": "DISTRICT",
+            "scheduled": 1,
+            "total": 1
+          }
+        ],
+        "congressConfigured": true,
+        "jirgaTracked": false,
+        "tiersPresent": [
+          "PROVINCE",
+          "DISTRICT",
+          "AREA",
+          "BASIC_UNIT"
+        ],
+        "totals": {
+          "conducted": 12,
+          "overdueReports": 5,
+          "scheduled": 5,
+          "total": 17
+        },
+        "trend": [
+          {
+            "conducted": 0,
+            "label": "Oct",
+            "month": "2025-10",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Nov",
+            "month": "2025-11",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Dec",
+            "month": "2025-12",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Jan",
+            "month": "2026-01",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Feb",
+            "month": "2026-02",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Mar",
+            "month": "2026-03",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Apr",
+            "month": "2026-04",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "May",
+            "month": "2026-05",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Jun",
+            "month": "2026-06",
+            "total": 0
+          },
+          {
+            "conducted": 0,
+            "label": "Jul",
+            "month": "2026-07",
+            "total": 0
+          },
+          {
+            "conducted": 11,
+            "label": "Aug",
+            "month": "2026-08",
+            "total": 16
+          },
+          {
+            "conducted": 1,
+            "label": "Sep",
+            "month": "2026-09",
+            "total": 1
+          }
+        ],
+        "unassignedMeetings": 0,
+        "yearBasis": "CALENDAR",
+        "yearBasisLabel": "Calendar year",
+        "yearly": [
+          {
+            "bodies": {
+              "COMMITTEE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "EXECUTIVE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "GENERAL_BODY": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "JIRGA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "conducted": 0,
+            "label": "2022",
+            "scheduled": 0,
+            "tiers": {
+              "AREA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "BASIC_UNIT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "CENTRAL": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "DISTRICT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "PROVINCE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "total": 0,
+            "year": 2022
+          },
+          {
+            "bodies": {
+              "COMMITTEE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "EXECUTIVE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "GENERAL_BODY": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "JIRGA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "conducted": 0,
+            "label": "2023",
+            "scheduled": 0,
+            "tiers": {
+              "AREA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "BASIC_UNIT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "CENTRAL": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "DISTRICT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "PROVINCE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "total": 0,
+            "year": 2023
+          },
+          {
+            "bodies": {
+              "COMMITTEE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "EXECUTIVE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "GENERAL_BODY": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "JIRGA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "conducted": 0,
+            "label": "2024",
+            "scheduled": 0,
+            "tiers": {
+              "AREA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "BASIC_UNIT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "CENTRAL": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "DISTRICT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "PROVINCE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "total": 0,
+            "year": 2024
+          },
+          {
+            "bodies": {
+              "COMMITTEE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "EXECUTIVE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "GENERAL_BODY": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "JIRGA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "conducted": 0,
+            "label": "2025",
+            "scheduled": 0,
+            "tiers": {
+              "AREA": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "BASIC_UNIT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "CENTRAL": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "DISTRICT": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "PROVINCE": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              }
+            },
+            "total": 0,
+            "year": 2025
+          },
+          {
+            "bodies": {
+              "COMMITTEE": {
+                "conducted": 2,
+                "scheduled": 0,
+                "total": 2
+              },
+              "EXECUTIVE": {
+                "conducted": 8,
+                "scheduled": 2,
+                "total": 10
+              },
+              "GENERAL_BODY": {
+                "conducted": 1,
+                "scheduled": 1,
+                "total": 2
+              },
+              "JIRGA": {
+                "conducted": 1,
+                "scheduled": 2,
+                "total": 3
+              }
+            },
+            "conducted": 12,
+            "label": "2026",
+            "scheduled": 5,
+            "tiers": {
+              "AREA": {
+                "conducted": 5,
+                "scheduled": 1,
+                "total": 6
+              },
+              "BASIC_UNIT": {
+                "conducted": 4,
+                "scheduled": 1,
+                "total": 5
+              },
+              "CENTRAL": {
+                "conducted": 0,
+                "scheduled": 0,
+                "total": 0
+              },
+              "DISTRICT": {
+                "conducted": 0,
+                "scheduled": 2,
+                "total": 2
+              },
+              "PROVINCE": {
+                "conducted": 3,
+                "scheduled": 1,
+                "total": 4
+              }
+            },
+            "total": 17,
+            "year": 2026
+          }
+        ],
+        "yearlyMatrix": [
+          {
+            "body": "EXECUTIVE",
+            "conducted": 2,
+            "label": "2026",
+            "level": "PROVINCE",
+            "scheduled": 0,
+            "total": 2,
+            "year": 2026
+          },
+          {
+            "body": "JIRGA",
+            "conducted": 1,
+            "label": "2026",
+            "level": "PROVINCE",
+            "scheduled": 1,
+            "total": 2,
+            "year": 2026
+          },
+          {
+            "body": "EXECUTIVE",
+            "conducted": 0,
+            "label": "2026",
+            "level": "DISTRICT",
+            "scheduled": 1,
+            "total": 1,
+            "year": 2026
+          },
+          {
+            "body": "JIRGA",
+            "conducted": 0,
+            "label": "2026",
+            "level": "DISTRICT",
+            "scheduled": 1,
+            "total": 1,
+            "year": 2026
+          },
+          {
+            "body": "EXECUTIVE",
+            "conducted": 4,
+            "label": "2026",
+            "level": "AREA",
+            "scheduled": 0,
+            "total": 4,
+            "year": 2026
+          },
+          {
+            "body": "GENERAL_BODY",
+            "conducted": 1,
+            "label": "2026",
+            "level": "AREA",
+            "scheduled": 1,
+            "total": 2,
+            "year": 2026
+          },
+          {
+            "body": "COMMITTEE",
+            "conducted": 2,
+            "label": "2026",
+            "level": "BASIC_UNIT",
+            "scheduled": 0,
+            "total": 2,
+            "year": 2026
+          },
+          {
+            "body": "EXECUTIVE",
+            "conducted": 2,
+            "label": "2026",
+            "level": "BASIC_UNIT",
+            "scheduled": 1,
+            "total": 3,
+            "year": 2026
+          }
+        ]
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "reports",
+    "status": 200,
+    "hash": "2fd4443113c30045e6be8e53cb18f1d12149098256fbf0dc1f356098bff73378",
+    "shapeHash": "7674140ef46b97b4f45f232165c048127223d7f82b5091b095de021e3a81582c",
+    "data": {
+      "data": {
+        "level": "PROVINCE",
+        "rows": [
+          {
+            "_id": "6a75a3abba1fbef74f88b616",
+            "filed": 8,
+            "filingRate": 73,
+            "name": "KPK",
+            "outstanding": 3,
+            "total": 11
+          },
+          {
+            "_id": "6a75a3f0ba1fbef74f88b636",
+            "filed": 4,
+            "filingRate": 67,
+            "name": "Balochistan",
+            "outstanding": 2,
+            "total": 6
+          }
+        ],
+        "totals": {
+          "filed": 12,
+          "filingRate": 71,
+          "outstanding": 5
+        }
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "inactive-units",
+    "status": 200,
+    "hash": "c2d1148deb2edc4ac5dc233faeafb1d1ef5dc43c75fd9d18c97d2795003eb048",
+    "shapeHash": "fd93931f88c4ddb3f33349e84aa149ef77c9af2071205ada7fcb4c9a9635a249",
+    "data": {
+      "data": {
+        "items": [
+          {
+            "_id": "6a75b3d2b576621deb6a6ea5",
+            "area": "Dobandi",
+            "areaId": "6a75b3d1b576621deb6a6e96",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "districtId": "6a75b3d1b576621deb6a6e34",
+            "lastActivityAt": null,
+            "level": "BASIC_UNIT",
+            "name": "Dobandi Unit 1",
+            "officer": null,
+            "officerCount": 0,
+            "province": "Balochistan",
+            "provinceId": "6a75a3f0ba1fbef74f88b636",
+            "status": "INACTIVE"
+          },
+          {
+            "_id": "6a75b3d2b576621deb6a6eb4",
+            "area": "Dobandi",
+            "areaId": "6a75b3d1b576621deb6a6e96",
+            "basicUnit": "Dobandi Unit 2",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "districtId": "6a75b3d1b576621deb6a6e34",
+            "lastActivityAt": null,
+            "level": "BASIC_UNIT",
+            "name": "Dobandi Unit 2",
+            "officer": null,
+            "officerCount": 0,
+            "province": "Balochistan",
+            "provinceId": "6a75a3f0ba1fbef74f88b636",
+            "status": "INACTIVE"
+          }
+        ],
+        "level": "BASIC_UNIT",
+        "limit": 10,
+        "page": 1,
+        "pages": 1,
+        "total": 2
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "inactive-members",
+    "status": 200,
+    "hash": "279bae25160c3e09cf5ecf77d00857d666de88dd33ab8be0519afe2d587e622e",
+    "shapeHash": "aa63db34b5379872783f881265c7b58053fc28d007a864d47098759db4bb554d",
+    "data": {
+      "data": {
+        "items": [
+          {
+            "_id": "6a7df77fc6ed35561a1b9278",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Nimra Rehman",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000008",
+            "phone": "0300-3000001",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7df780c6ed35561a1b927d",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Usman Iqbal",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000009",
+            "phone": "0300-3000002",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7df780c6ed35561a1b9282",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Komal Chaudhry",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000010",
+            "phone": "0300-3000003",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7df781c6ed35561a1b9287",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 2",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Fahad Baloch",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000011",
+            "phone": "0300-3000004",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7df781c6ed35561a1b928c",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 2",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Ahmed Ali",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000012",
+            "phone": "0300-3000005",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7df782c6ed35561a1b9291",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 2",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Rashid Qureshi",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000013",
+            "phone": "0300-3000006",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7ec2c96286fb1018f22289",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Zubair Bhittani",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000026",
+            "phone": "0300-3000145",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7ec2c96286fb1018f2228e",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Ahmed Nasar",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000027",
+            "phone": "0300-3000146",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7ec2c96286fb1018f22293",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Shahid Jamali",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000028",
+            "phone": "0300-3000147",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          },
+          {
+            "_id": "6a7ec2c96286fb1018f22298",
+            "area": "Dobandi",
+            "basicUnit": "Dobandi Unit 1",
+            "daysInactive": null,
+            "district": "Qilla Abdullah",
+            "fullName": "Kiran Rind",
+            "lastActivityAt": null,
+            "memberCode": "PNAP-BN-1-QIL-2026-000029",
+            "phone": "0300-3000148",
+            "province": "Balochistan",
+            "status": "ACTIVE"
+          }
+        ],
+        "limit": 10,
+        "page": 1,
+        "pages": 9,
+        "total": 90
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "provinces",
+    "status": 200,
+    "hash": "55676fd9fe0e6ee7cfa62f1f2e854686f0931a252c21b7a5ce7a8edfbc975686",
+    "shapeHash": "ce0d67a1b34fb06d1305ec4d363ba52f81b119968279d9cc247d738bf8a38b20",
+    "data": {
+      "data": [
+        {
+          "__v": 0,
+          "_id": "6a75a3f0ba1fbef74f88b636",
+          "code": "BN-1",
+          "committee": {
+            "formedAt": "2026-08-14T09:49:58.659Z",
+            "formedBy": "6a7df5ade08c61eb978ded90",
+            "name": "Balochistan Sobayi Committee"
+          },
+          "createdAt": "2026-08-07T09:22:56.430Z",
+          "isActive": true,
+          "name": "Balochistan",
+          "updatedAt": "2026-08-14T09:49:58.663Z"
+        },
+        {
+          "__v": 0,
+          "_id": "6a75a3abba1fbef74f88b616",
+          "code": "KP-1",
+          "committee": {
+            "formedAt": "2026-08-08T08:31:10.114Z",
+            "formedBy": "6a75a23069a71f7105a7e5c8",
+            "name": "KPK Sobayi Committee"
+          },
+          "createdAt": "2026-08-07T09:21:47.192Z",
+          "isActive": true,
+          "name": "KPK",
+          "updatedAt": "2026-08-08T08:31:10.118Z"
+        },
+        {
+          "__v": 0,
+          "_id": "6a9071b6267b3d1386043f88",
+          "code": "PB-1",
+          "createdAt": "2026-08-27T17:19:50.143Z",
+          "isActive": true,
+          "name": "punjab",
+          "updatedAt": "2026-08-27T17:19:50.143Z"
+        }
+      ],
+      "success": true
+    }
+  },
+  {
+    "name": "unread-count",
+    "status": 200,
+    "hash": "ef40681c53ed09b580eae3dece75b4267fb601ed127c028b3a0ff6aa2f420b65",
+    "shapeHash": "d61876f1af32dabbd507968f9b893a25430c398cd28a1976ebb50dcd56e8871f",
+    "data": {
+      "data": {
+        "count": 0
+      },
+      "success": true
+    }
+  },
+  {
+    "name": "auth-me",
+    "status": 200,
+    "hash": "74a6b958fbaeda3ced16b35b75e9f4820a5fb768a60f8f0307a72a2a89900e57",
+    "shapeHash": "cd1ef342ae7eb62d3ffac08175917d2f90d7001fdd7addd8f4bd6890784e2403"
+  }
+]

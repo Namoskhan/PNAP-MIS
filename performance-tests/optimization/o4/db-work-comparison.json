@@ -1,0 +1,5 @@
+{
+  "group3": { "dbOperations": { "before": 35, "after": 19 }, "officeBearerAggregations": { "before": 12, "after": 4 } },
+  "fullFanout": { "dbOperationsMedian": { "before": 74, "after": 58 }, "officeBearerAggregationsMedian": { "before": 12, "after": 4 } },
+  "staging": { "dbOperations": { "simultaneous": 58, "staged": 58 } }
+}

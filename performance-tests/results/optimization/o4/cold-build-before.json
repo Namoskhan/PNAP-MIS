@@ -1,0 +1,102 @@
+{
+  "snapshotBuilds": {
+    "n": 15,
+    "mean": 3,
+    "p50": 3,
+    "p95": 3,
+    "p99": 3,
+    "max": 3
+  },
+  "rows": [
+    {
+      "trial": 1,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 2,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 3,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 4,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 5,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 6,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 7,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 8,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 9,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 10,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 11,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 12,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 13,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 14,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    },
+    {
+      "trial": 15,
+      "snapshotBuilds": 3,
+      "maxConcurrent": 3,
+      "inFlightRemaining": 0
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "classification": "HIGH LOCAL VARIANCE",
+  "reproduction": {
+    "summary": {"p50Ms":130.714,"p95Ms":215.419,"cv":0.305},
+    "orgBreakdown": {"p50Ms":125.583,"p95Ms":202.573,"cv":0.214},
+    "inactiveUnits": {"p50Ms":93.380,"p95Ms":108.580,"cv":0.101}
+  },
+  "fixedInterleaved": {
+    "summaryCurrent": {"p50Ms":109.519,"p95Ms":177.381,"cv":0.277},
+    "summaryControl": {"p50Ms":116.341,"p95Ms":151.636,"cv":0.156},
+    "orgBreakdownCurrent": {"p50Ms":117.272,"p95Ms":143.625,"cv":0.137},
+    "orgBreakdownControl": {"p50Ms":107.124,"p95Ms":137.565,"cv":0.151},
+    "inactiveUnitsCurrent": {"p50Ms":86.282,"p95Ms":109.462,"cv":0.106},
+    "inactiveUnitsControl": {"p50Ms":86.332,"p95Ms":100.528,"cv":0.086}
+  },
+  "evidence": "The same retained code produced O2 final browser P50/P95 1727.83/2201.16 ms and O3 final 833.36/993.22 ms. Unchanged endpoints moved with test order, and fixed interleaving made current/control results close."
+}
+

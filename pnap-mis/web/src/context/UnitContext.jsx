@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from './AuthContext';
 import { LEVEL_ORDER, homeTierOf, levelIndex } from '../utils/unitTier';
@@ -39,6 +39,7 @@ export function UnitProvider({ children }) {
   const [districts, setDistricts] = useState([]);
   const [areas, setAreas] = useState([]);
   const [units, setUnits] = useState([]);
+  const provincesLoadedRef = useRef(false);
 
   // AuthContext seeds `user` synchronously from its own localStorage
   // cache, so the owner check is available on the very first render —
@@ -50,8 +51,17 @@ export function UnitProvider({ children }) {
   // would trigger a 401 and the axios interceptor would bounce them
   // back to /login. Re-runs after login because `user` updates.
   useEffect(() => {
-    if (!user) { setProvinces([]); return; }
-    api.get('/org/provinces').then((r) => setProvinces(r.data.data)).catch(() => {});
+    if (!user) {
+      provincesLoadedRef.current = false;
+      setProvinces([]);
+      return;
+    }
+    if (!provincesLoadedRef.current) {
+      provincesLoadedRef.current = true;
+      api.get('/org/provinces').then((r) => setProvinces(r.data.data)).catch(() => {
+        provincesLoadedRef.current = false;
+      });
+    }
 
     // Constrain unit context for AREA_ADMINs to their own area or
     // a basic unit beneath it. If no ctx exists yet, default to
