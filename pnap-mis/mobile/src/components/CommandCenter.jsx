@@ -224,7 +224,8 @@ export default function CommandCenter({ accessScope = null }) {
 
   const s = summary.data;
   const o = s?.organization;
-  const trail = isSuper
+  const isCentralDashboard = !accessScope?.unitId;
+  const trail = isCentralDashboard
     ? scopeInfo.data?.trail?.filter((item) => item.level !== 'NATIONAL')
     : scopeInfo.data?.trail;
   const scopeName = trail?.length ? trail[trail.length - 1].name : 'the whole country';
@@ -252,7 +253,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── Banner / Masthead ── */}
       <View style={styles.banner}>
         <View style={{ flex: 1 }}>
-          {!isSuper ? <Text style={styles.bannerEyebrow}>Dashboard</Text> : null}
+          {!isCentralDashboard ? <Text style={styles.bannerEyebrow}>Dashboard</Text> : null}
           <Text style={styles.bannerTitle} numberOfLines={1}>
             {scopeName === 'the whole country' ? 'Command Center' : scopeName}
           </Text>
@@ -280,7 +281,7 @@ export default function CommandCenter({ accessScope = null }) {
         {/* Scope Breadcrumb & Reset button */}
         {scope.provinceId && !lockedScope ? (
           <View style={{ marginBottom: Spacing.sm }}>
-            {(!isSuper || trail?.length > 0) ? (
+            {(!isCentralDashboard || trail?.length > 0) ? (
               <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
             ) : null}
             <TouchableOpacity

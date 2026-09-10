@@ -65,8 +65,14 @@ api.getToken = () => Storage.getItem('pnap_token');
 // Attach JWT token from Storage on every request.
 api.interceptors.request.use(async (config) => {
   try {
-    const token = await Storage.getItem('pnap_token');
+    const [token, activeRole] = await Promise.all([
+      Storage.getItem('pnap_token'),
+      config.url?.startsWith('/dashboard/')
+        ? Storage.getItem('pnap_active_role')
+        : Promise.resolve(null),
+    ]);
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (activeRole) config.headers['X-Dashboard-Role'] = activeRole;
   } catch {
     // Silently skip if storage fails
   }
