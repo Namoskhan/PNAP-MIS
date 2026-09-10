@@ -435,12 +435,7 @@ export default function UnitDashboard() {
                 icon="👥"
                 iconBg="#eff6ff"
                 iconColor="#1e40af"
-                spark={[
-                  Math.max(0, (data.members?.total || 0) - 5),
-                  Math.max(0, (data.members?.total || 0) - 3),
-                  Math.max(0, (data.members?.total || 0) - 1),
-                  data.members?.total || 0,
-                ]}
+                spark={(data.analytics?.trend || []).map((b) => b.members || 0)}
                 format={(v) => `${(v ?? 0).toLocaleString()} / ${data.members?.total ?? 0}`}
                 subLabel="Active roster"
               />
@@ -451,7 +446,7 @@ export default function UnitDashboard() {
                 iconBg="#dcfce7"
                 iconColor="#15803d"
                 sparkColor="#15803d"
-                spark={[0, (data.finance?.donations || 0) * 0.4, (data.finance?.donations || 0) * 0.7, data.finance?.donations || 0]}
+                spark={(data.analytics?.trend || []).map((b) => b.donations || 0)}
                 format={(v) => formatPkr(v)}
                 subLabel="Total income"
               />
@@ -464,7 +459,7 @@ export default function UnitDashboard() {
                 iconBg="#fee2e2"
                 iconColor="#b91c1c"
                 sparkColor="#b91c1c"
-                spark={[0, (data.finance?.expenses || 0) * 0.3, (data.finance?.expenses || 0) * 0.6, data.finance?.expenses || 0]}
+                spark={(data.analytics?.trend || []).map((b) => b.expenses || 0)}
                 format={(v) => formatPkr(v)}
                 subLabel="Approved spent"
               />

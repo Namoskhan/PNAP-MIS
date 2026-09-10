@@ -364,10 +364,10 @@ export default function UnitDashboardPage() {
   );
 
   const firstName = user?.fullName?.split(' ')[0] || '';
-  // Central Cabinet officeholders use the Central Dashboard as their
+  // Central Cabinet officeholders without a selected unit use the Central Dashboard as their
   // only dashboard. Keep this redirect so an old bookmark to /unit
   // cannot reopen the previous unit dashboard.
-  if (user?.canViewExecutiveDashboard) return <Navigate to="/" replace />;
+  if (user?.canViewExecutiveDashboard && !user?.dashboardScope && !ctx?.unitId) return <Navigate to="/" replace />;
 
   return (
     <div>
@@ -446,13 +446,9 @@ export default function UnitDashboardPage() {
             const trend = data.analytics?.trend || [];
             const sparkMeetings = trend.length ? trend.map((b) => b.meetings || 0) : [0, 0, 0, 0, 0, data.meetings.last30Days || 0];
             const sparkActivities = trend.length ? trend.map((b) => b.activities || 0) : [0, 0, 0, 0, 0, data.activities.last30Days || 0];
-            const memberSpark = [
-              Math.max(0, data.members.total - 5), Math.max(0, data.members.total - 4),
-              Math.max(0, data.members.total - 3), Math.max(0, data.members.total - 2),
-              Math.max(0, data.members.total - 1), data.members.total,
-            ];
-            const balance = data.finance.balance || 0;
-            const balanceSpark = [0, balance * 0.3, balance * 0.5, balance * 0.7, balance * 0.85, balance];
+            const sparkMembers = trend.length ? trend.map((b) => b.members || 0) : [0, 0, 0, 0, 0, data.members.total || 0];
+            const sparkDonations = trend.length ? trend.map((b) => b.donations || 0) : [0, 0, 0, 0, 0, data.finance.donations || 0];
+            const sparkExpenses = trend.length ? trend.map((b) => b.expenses || 0) : [0, 0, 0, 0, 0, data.finance.expenses || 0];
             const fmtShort = (n) => {
               if (n == null) return '—';
               const abs = Math.abs(n);
@@ -466,7 +462,7 @@ export default function UnitDashboardPage() {
                   label="Members"
                   value={data.members.active}
                   icon="👥"
-                  spark={memberSpark}
+                  spark={sparkMembers}
                   format={(v) => `${(v ?? 0).toLocaleString()} / ${data.members.total}`}
                 />
                 <SmartKpi
@@ -475,7 +471,7 @@ export default function UnitDashboardPage() {
                   icon="💰"
                   iconBg={BRAND.pinker}
                   iconColor={BRAND.darkest}
-                  spark={balanceSpark}
+                  spark={sparkDonations}
                   format={(v) => `Rs. ${fmtShort(v)}`}
                 />
                 <SmartKpi
@@ -486,7 +482,7 @@ export default function UnitDashboardPage() {
                   iconColor={BRAND.mid}
                   sparkColor={BRAND.mid}
                   sparkFill="rgba(30,64,175,0.10)"
-                  spark={sparkActivities.map((v, i) => v + i * (data.finance.expenses / 30 || 0))}
+                  spark={sparkExpenses}
                   format={(v) => `Rs. ${fmtShort(v)}`}
                 />
                 <SmartKpi

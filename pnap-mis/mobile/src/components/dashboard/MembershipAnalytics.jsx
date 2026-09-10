@@ -79,8 +79,7 @@ export default function MembershipAnalytics({ params, windowLabel = 'last 12 mon
 
   const trendBuckets = (data.trend || []).map((b) => ({
     month: b.label,
-    meetings: b.newMembers || 0,
-    activities: 0,
+    total: b.newMembers || 0,
   }));
 
   return (

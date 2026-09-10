@@ -34,13 +34,26 @@ export default function DashboardPage() {
     if (!isPureMember) return;
     if (!silent) setLoadingMember(true);
     const tasks = [];
-    if (user?.memberId) {
-      tasks.push(api.get(`/members/${user.memberId}`).then((r) => setMe(r.data.data)).catch(() => {}));
-    }
-    if (user?.scope?.basicUnitId) {
-      const params = { unitLevel: 'BASIC_UNIT', unitId: user.scope.basicUnitId };
+
+    const loadUnitEvents = (buId) => {
+      if (!buId) return;
+      const params = { unitLevel: 'BASIC_UNIT', unitId: buId };
       tasks.push(api.get('/meetings', { params }).then((r) => setMeetings((r.data.data || []).slice(0, 5))).catch(() => {}));
       tasks.push(api.get('/activities', { params }).then((r) => setActivities((r.data.data || []).slice(0, 5))).catch(() => {}));
+    };
+
+    let directBuId = user?.scope?.basicUnitId;
+    if (user?.memberId) {
+      tasks.push(api.get(`/members/${user.memberId}`).then((r) => {
+        const mem = r.data.data;
+        setMe(mem);
+        if (!directBuId && (mem?.basicUnitId?._id || mem?.basicUnitId)) {
+          loadUnitEvents(mem.basicUnitId?._id || mem.basicUnitId);
+        }
+      }).catch(() => {}));
+    }
+    if (directBuId) {
+      loadUnitEvents(directBuId);
     }
     Promise.all(tasks).finally(() => {
       if (!silent) setLoadingMember(false);

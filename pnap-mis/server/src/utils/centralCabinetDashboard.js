@@ -25,15 +25,26 @@ const SCOPE_KEY = {
 function accessFromAssignments(user, assignments) {
   if (!user) return null;
   if (user.roles?.includes('SUPER_ADMIN') || user.roles?.includes('CENTRAL_ADMIN')) return { level: 'CENTRAL', unitId: null };
+
+  // Administrative scope from user document (for admin roles without RoleAssignment records)
+  if (user.roles?.includes('PROVINCE_ADMIN') && user.scope?.provinceId) {
+    return { level: 'PROVINCE', unitId: String(user.scope.provinceId) };
+  }
+  if (user.roles?.includes('DISTRICT_ADMIN') && user.scope?.districtId) {
+    return { level: 'DISTRICT', unitId: String(user.scope.districtId) };
+  }
+  if (user.roles?.includes('AREA_ADMIN') && user.scope?.areaId) {
+    return { level: 'AREA', unitId: String(user.scope.areaId) };
+  }
+
   if (!user.memberId) return null;
 
   const central = assignments.find((a) => a.unitLevel === 'CENTRAL'
-    && CENTRAL_CABINET_DASHBOARD_ROLES.includes(a.roleCode));
+    && (CENTRAL_CABINET_DASHBOARD_ROLES.includes(a.roleCode) || a.roleCode !== 'MEMBER'));
   if (central) return { level: 'CENTRAL', unitId: null };
 
   for (const level of ['PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT']) {
-    const match = assignments.find((a) => a.unitLevel === level
-      && SCOPED_DASHBOARD_ROLES[level].includes(a.roleCode));
+    const match = assignments.find((a) => a.unitLevel === level && a.roleCode !== 'MEMBER');
     if (match?.unitId) return { level, unitId: String(match.unitId) };
   }
   return null;
