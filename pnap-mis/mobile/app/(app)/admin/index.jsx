@@ -67,10 +67,10 @@ export default function AdminHubScreen() {
       : (ctx?.unitName || 'Administrative Control Center');
 
   const sections = [
-    // 1. Super Admin God Mode
+    // 1. Super Administration
     {
-      key: 'god_mode',
-      title: 'God Mode',
+      key: 'super_admin',
+      title: 'Super Administration',
       icon: '👑',
       show: () => isSuper,
       items: [
@@ -357,7 +357,7 @@ export default function AdminHubScreen() {
   const visibleSections = sections.filter((s) => s.show() && s.items.length > 0);
 
   const [openSections, setOpenSections] = useState({
-    god_mode: true,
+    super_admin: true,
     user_manager: true,
     unit_mgmt: true,
     event_manager: true,

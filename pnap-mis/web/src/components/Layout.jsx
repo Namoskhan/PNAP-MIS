@@ -22,7 +22,7 @@ import { useBranding } from '../context/BrandingContext';
 import {
   UsersIcon, FolderIcon, BuildingIcon, GearIcon,
   UserIcon, PowerIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon,
-  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon, XIcon,
+  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon, XIcon, ShieldIcon,
 } from './icons';
 
 const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
@@ -294,8 +294,12 @@ export default function Layout() {
 
         {isSuperAdmin && (
           <>
-            <div className="nav-group">God Mode</div>
-            <nav>
+            <NavGroup
+              label="Super Administration"
+              icon={<ShieldIcon size={14} />}
+              storageKey="pnap_nav_super_admin"
+              defaultOpen
+            >
               <NavLink to="/" end>Dashboard</NavLink>
               {/* Lands on the user directory pre-filtered to the tier
                   Super Admin is responsible for; the create action for
@@ -316,7 +320,7 @@ export default function Layout() {
               <NavLink to="/members">All Members</NavLink>
               <NavLink to="/admin/pending-approvals">Pending Role Approvals</NavLink>
               <NavLink to="/admin/finance-overview">Finance Overview</NavLink>
-            </nav>
+            </NavGroup>
             <NavGroup label="User Manager" icon={<UsersIcon size={14} />} storageKey="pnap_nav_user_manager" defaultOpen>
               <NavLink to="/admin/roles">Role Management</NavLink>
               {/* Same page as the Central Admins entry above but with
