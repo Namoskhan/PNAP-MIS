@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { ActivityIndicator, View, Platform } from 'react-native';
+import { ActivityIndicator, View, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, isSuperAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
@@ -81,6 +81,13 @@ export default function AppLayout() {
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => <TabIcon name="home" color={color} size={size} />,
           headerTitle: 'PNAP MIS',
+          headerLeft: () => (
+            <Image
+              source={require('../../assets/logo.png')}
+              style={{ width: 28, height: 28, borderRadius: 14, marginLeft: 16 }}
+              resizeMode="contain"
+            />
+          ),
         }}
       />
 

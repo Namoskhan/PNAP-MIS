@@ -87,8 +87,7 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
 
   const trendBuckets = (data.trend || []).map((b) => ({
     month: b.label,
-    meetings: b.total || 0,
-    activities: 0,
+    total: b.total || 0,
   }));
 
   const axisLabel = (y) => y.shortLabel || y.label;

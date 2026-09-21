@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -53,9 +54,11 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.safe}>
       {/* Header Banner */}
       <View style={styles.header}>
-        <View style={styles.logoCircle}>
-          <Text style={styles.logoText}>P</Text>
-        </View>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
         <Text style={styles.appName}>PNAP MIS</Text>
         <Text style={styles.appTagline}>Management Information System</Text>
       </View>
@@ -153,21 +156,17 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     backgroundColor: Colors.primary,
   },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
   },
   appName: {
     fontSize: FontSize.xxl,

@@ -247,7 +247,10 @@ export default function PublicRegisterModal({ open, onClose }) {
     <div className="modal-backdrop" onClick={onBackdropClick}>
       <div className="modal" style={{ maxWidth: 920 }} role="dialog" aria-modal="true" aria-label="Register as a member">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h2 style={{ margin: 0 }}>Become a Party Worker</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src="/logo.png" alt="PNAP Logo" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'contain' }} />
+            <h2 style={{ margin: 0 }}>Become a Party Worker</h2>
+          </div>
           <button
             type="button"
             className="btn secondary"

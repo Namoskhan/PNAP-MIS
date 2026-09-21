@@ -22,14 +22,14 @@ export default function AreaTrendChart({
     return MONTH_SHORT[(parseInt(m, 10) || 1) - 1] || '';
   }
 
-  const totals = trend.map((b) => (b.meetings || 0) + (b.activities || 0));
+  const totals = trend.map((b) => b.value ?? b.total ?? ((b.meetings || 0) + (b.activities || 0)));
   const max = Math.max(...totals, 1);
 
   return (
     <View style={[styles.container, { height }]}>
       <View style={styles.barsContainer}>
         {trend.map((bucket, i) => {
-          const total = (bucket.meetings || 0) + (bucket.activities || 0);
+          const total = bucket.value ?? bucket.total ?? ((bucket.meetings || 0) + (bucket.activities || 0));
           const heightPct = Math.max(6, Math.round((total / max) * 100));
 
           return (

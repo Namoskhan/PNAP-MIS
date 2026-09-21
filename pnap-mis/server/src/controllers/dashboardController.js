@@ -118,6 +118,7 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
     meetingsByType, activitiesByType,
     meetingQuality, campaignAgg,
     meetingsTrend, activitiesTrend,
+    membersTrend, donationsTrend, expensesTrend,
   ] = await Promise.all([
     // Meeting counts grouped by type (last 30 days at this unit).
     Meeting.aggregate([
@@ -200,6 +201,39 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
       },
       { $sort: { _id: 1 } },
     ]),
+    // Monthly new members count for trend chart (last 6 months).
+    Member.aggregate([
+      { $match: { ...memberFilter, createdAt: { $gte: since6mo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    // Monthly donation receipts for trend chart (last 6 months).
+    Donation.aggregate([
+      { $match: { ...ownFilter, receivedAt: { $gte: since6mo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$receivedAt' } },
+          total: { $sum: '$amount' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    // Monthly approved expenses for trend chart (last 6 months).
+    Expense.aggregate([
+      { $match: { ...ownFilter, state: 'APPROVED', incurredAt: { $gte: since6mo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$incurredAt' } },
+          total: { $sum: '$amount' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
   ]);
 
   const mq = meetingQuality[0] || { finalizedTotal: 0, rosterSum: 0, presentSum: 0, photosSum: 0, gpsTaggedSum: 0, meetingsWithPhotos: 0 };
@@ -215,7 +249,18 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const m = meetingsTrend.find((r) => r._id === key)?.count || 0;
     const a = activitiesTrend.find((r) => r._id === key)?.count || 0;
-    trendBuckets.push({ month: key, meetings: m, activities: a });
+    const mem = membersTrend.find((r) => r._id === key)?.count || 0;
+    const don = donationsTrend.find((r) => r._id === key)?.total || 0;
+    const exp = expensesTrend.find((r) => r._id === key)?.total || 0;
+    trendBuckets.push({
+      month: key,
+      meetings: m,
+      activities: a,
+      members: mem,
+      donations: don,
+      expenses: exp,
+      balance: don - exp,
+    });
   }
 
   const analytics = {

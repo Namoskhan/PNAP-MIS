@@ -82,8 +82,7 @@ export default function CampaignsAnalytics({ params, windowLabel = 'last 12 mont
 
   const trendBuckets = (data.trend || []).map((b) => ({
     month: b.label,
-    meetings: b.total || 0,
-    activities: 0,
+    total: b.total || 0,
   }));
 
   return (

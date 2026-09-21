@@ -22,7 +22,7 @@ import { useBranding } from '../context/BrandingContext';
 import {
   UsersIcon, FolderIcon, BuildingIcon, GearIcon,
   UserIcon, PowerIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon,
-  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon, XIcon,
+  CommitteeIcon, JirgaIcon, CongressIcon, GlobeIcon, XIcon, ShieldIcon,
 } from './icons';
 
 const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
@@ -257,7 +257,21 @@ export default function Layout() {
       />
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-top-row">
-          <h1>{branding.identity?.shortName || 'PKNAP'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <img
+              src={branding?.logos?.sidebar?.url || '/logo.png'}
+              alt="PNAP Logo"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                objectFit: 'contain',
+                flexShrink: 0,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            />
+            {!collapsed && <h1 style={{ margin: 0, fontSize: 18 }}>{branding.identity?.shortName || 'PKNAP'}</h1>}
+          </div>
           <button
             type="button"
             className={`sidebar-toggle ${collapsed ? 'collapsed' : 'open'}`}
@@ -280,8 +294,12 @@ export default function Layout() {
 
         {isSuperAdmin && (
           <>
-            <div className="nav-group">God Mode</div>
-            <nav>
+            <NavGroup
+              label="Super Administration"
+              icon={<ShieldIcon size={14} />}
+              storageKey="pnap_nav_super_admin"
+              defaultOpen
+            >
               <NavLink to="/" end>Dashboard</NavLink>
               {/* Lands on the user directory pre-filtered to the tier
                   Super Admin is responsible for; the create action for
@@ -302,7 +320,7 @@ export default function Layout() {
               <NavLink to="/members">All Members</NavLink>
               <NavLink to="/admin/pending-approvals">Pending Role Approvals</NavLink>
               <NavLink to="/admin/finance-overview">Finance Overview</NavLink>
-            </nav>
+            </NavGroup>
             <NavGroup label="User Manager" icon={<UsersIcon size={14} />} storageKey="pnap_nav_user_manager" defaultOpen>
               <NavLink to="/admin/roles">Role Management</NavLink>
               {/* Same page as the Central Admins entry above but with
