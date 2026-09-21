@@ -1,0 +1,46 @@
+{
+  "buildSuccess": true,
+  "timestamp": "2026-09-11T07:37:13.431Z",
+  "distFiles": [
+    {
+      "path": "assets\\index-2MSsyl9C.css",
+      "bytes": 108083,
+      "gzipBytes": 18911
+    },
+    {
+      "path": "assets\\index-JgCJ7jVi.js",
+      "bytes": 944602,
+      "gzipBytes": 234858
+    },
+    {
+      "path": "favicon.ico",
+      "bytes": 1129,
+      "gzipBytes": 1152
+    },
+    {
+      "path": "favicon.png",
+      "bytes": 1129,
+      "gzipBytes": 1152
+    },
+    {
+      "path": "favicon.svg",
+      "bytes": 302,
+      "gzipBytes": 224
+    },
+    {
+      "path": "index.html",
+      "bytes": 2110,
+      "gzipBytes": 1056
+    }
+  ],
+  "summary": {
+    "totalJsBytes": 944602,
+    "totalJsGzipBytes": 234858,
+    "initialJsBytes": 944602,
+    "initialJsGzipBytes": 234858,
+    "largestJsChunkBytes": 944602,
+    "totalCssBytes": 108083,
+    "totalCssGzipBytes": 18911,
+    "chunkCount": 1
+  }
+}

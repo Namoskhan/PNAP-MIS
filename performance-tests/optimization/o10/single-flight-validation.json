@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-09-11T14:03:23.077Z",
+  "status": "FAILED",
+  "concurrencyWaveSize": 5,
+  "totalWaveDurationMs": 424.88,
+  "allSuccessful": true,
+  "sameKeyEquivalent": false,
+  "differentKeysSeparated": true,
+  "coalescedResponses": [
+    {
+      "url": "/api/dashboard/summary?days=365",
+      "statusCode": 200,
+      "latencyMs": 414.12,
+      "bytes": 696,
+      "hash": "2e0ac51f0518e1329b1e5f26bf849d2c1042dc12ec473c64214d5a9fa7476872"
+    },
+    {
+      "url": "/api/dashboard/org-breakdown?days=365",
+      "statusCode": 200,
+      "latencyMs": 417.78,
+      "bytes": 1648,
+      "hash": "494bbde53029cf79d297bf41241318c6284427790860ec7242528c70f9f5f1e7"
+    },
+    {
+      "url": "/api/dashboard/inactive-units?days=365&level=BASIC_UNIT&page=1&limit=10",
+      "statusCode": 200,
+      "latencyMs": 405.3,
+      "bytes": 874,
+      "hash": "7a57deb9963cd7f218119836c2999328877ea7945dbfce523c424a7314fe471c"
+    },
+    {
+      "url": "/api/dashboard/summary?days=365",
+      "statusCode": 200,
+      "latencyMs": 406.43,
+      "bytes": 696,
+      "hash": "281d09cb5a084e1e426721b0f469b93fcc4ed3e7eaa95cb202cc8c45fa19f4b9"
+    },
+    {
+      "url": "/api/dashboard/org-breakdown?days=365",
+      "statusCode": 200,
+      "latencyMs": 417.76,
+      "bytes": 1648,
+      "hash": "494bbde53029cf79d297bf41241318c6284427790860ec7242528c70f9f5f1e7"
+    }
+  ],
+  "crossScopeCheck": {
+    "nationalHash": "9bf2d51d4fd988397fe4de60fb9526d7ba81e0233514a6662baa6540fa1643a3",
+    "scopedHash": "11bbdacd2060aa60f82bddeea7678f614d3eff049f33f8a31cbf3ae526e4afbc",
+    "separated": true
+  }
+}

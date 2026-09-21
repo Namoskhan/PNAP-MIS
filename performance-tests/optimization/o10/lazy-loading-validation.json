@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-09-11T15:34:58.482Z",
+  "loginEagerVerified": true,
+  "routes": [
+    {
+      "name": "Login (Eager)",
+      "route": "/login",
+      "httpStatus": 200,
+      "servesSpaHtml": true
+    },
+    {
+      "name": "Dashboard (Lazy)",
+      "route": "/dashboard",
+      "httpStatus": 200,
+      "servesSpaHtml": true
+    },
+    {
+      "name": "Members (Lazy)",
+      "route": "/members",
+      "httpStatus": 200,
+      "servesSpaHtml": true
+    },
+    {
+      "name": "Meetings (Lazy)",
+      "route": "/meetings",
+      "httpStatus": 200,
+      "servesSpaHtml": true
+    },
+    {
+      "name": "Reports (Lazy)",
+      "route": "/reports",
+      "httpStatus": 200,
+      "servesSpaHtml": true
+    },
+    {
+      "name": "Settings (Lazy)",
+      "route": "/settings",
+      "httpStatus": 200,
+      "servesSpaHtml": true
+    },
+    {
+      "name": "Units (Lazy)",
+      "route": "/units",
+      "httpStatus": 200,
+      "servesSpaHtml": true
+    }
+  ],
+  "allChunksAccessible": true,
+  "totalChunkCount": 73
+}

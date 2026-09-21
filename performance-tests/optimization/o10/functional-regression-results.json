@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-09-11T15:43:59.018Z",
+  "allPassed": true,
+  "results": [
+    {
+      "name": "Public Branding / Settings",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Auth Check Current User",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Summary",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Scope",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Org Breakdown",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Membership Analytics",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Campaigns",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Meetings",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Reports",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Inactive Units (Basic Unit)",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Inactive Units (Area)",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Dashboard Inactive Members",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Members Directory (scope=all)",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Members Filter (gender=MALE)",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Meetings Management List",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Activities Management List",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Announcements List",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Notifications Center",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "name": "Health Check Endpoint",
+      "status": 200,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "phase": "O9",
+  "frontendPath": "pnap-mis/web",
+  "reactVersion": "18.3.1",
+  "reactDomVersion": "18.3.1",
+  "reactRouterDomVersion": "6.26.2",
+  "axiosVersion": "1.7.7",
+  "viteVersion": "5.4.21",
+  "nodeVersion": "v24.11.0",
+  "buildCommand": "npm run build",
+  "previewCommand": "npm run preview",
+  "devPort": 5173,
+  "previewPort": 4173,
+  "serverSpaPort": 5000
+}

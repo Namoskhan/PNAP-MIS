@@ -1,0 +1,62 @@
+[
+  {
+    "level": "A",
+    "database": "pnap_mis_o7_a",
+    "checks": {
+      "memberOrphans": 0,
+      "roleOrphans": 0,
+      "invalidRoleLevel": 0,
+      "levelUnitMismatch": 0,
+      "duplicateMemberIds": 0,
+      "duplicateCnics": 0,
+      "duplicateRoleIds": 0,
+      "requiredCodesMissing": []
+    },
+    "passed": true
+  },
+  {
+    "level": "B",
+    "database": "pnap_mis_o7_b",
+    "checks": {
+      "memberOrphans": 0,
+      "roleOrphans": 0,
+      "invalidRoleLevel": 0,
+      "levelUnitMismatch": 0,
+      "duplicateMemberIds": 0,
+      "duplicateCnics": 0,
+      "duplicateRoleIds": 0,
+      "requiredCodesMissing": []
+    },
+    "passed": true
+  },
+  {
+    "level": "C",
+    "database": "pnap_mis_o7_c",
+    "checks": {
+      "memberOrphans": 0,
+      "roleOrphans": 0,
+      "invalidRoleLevel": 0,
+      "levelUnitMismatch": 0,
+      "duplicateMemberIds": 0,
+      "duplicateCnics": 0,
+      "duplicateRoleIds": 0,
+      "requiredCodesMissing": []
+    },
+    "passed": true
+  },
+  {
+    "level": "D",
+    "database": "pnap_mis_o7_d",
+    "checks": {
+      "memberOrphans": 0,
+      "roleOrphans": 0,
+      "invalidRoleLevel": 0,
+      "levelUnitMismatch": 0,
+      "duplicateMemberIds": 0,
+      "duplicateCnics": 0,
+      "duplicateRoleIds": 0,
+      "requiredCodesMissing": []
+    },
+    "passed": true
+  }
+]

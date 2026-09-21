@@ -1,0 +1,106 @@
+{
+  "tier10k": {
+    "candidate-a": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "6dbe728715fbc12ee706a96edf87393074ba6d38c2aa27394130b61972879043"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "d6cea5ab44dc1c069ce4c5cf82f874de9bd674d5f7f254cf359efe91344e845e"
+      }
+    },
+    "candidate-b": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "6dbe728715fbc12ee706a96edf87393074ba6d38c2aa27394130b61972879043"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "d6cea5ab44dc1c069ce4c5cf82f874de9bd674d5f7f254cf359efe91344e845e"
+      }
+    },
+    "candidate-c": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "6dbe728715fbc12ee706a96edf87393074ba6d38c2aa27394130b61972879043"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "d6cea5ab44dc1c069ce4c5cf82f874de9bd674d5f7f254cf359efe91344e845e"
+      }
+    },
+    "candidate-d": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "6dbe728715fbc12ee706a96edf87393074ba6d38c2aa27394130b61972879043"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "d6cea5ab44dc1c069ce4c5cf82f874de9bd674d5f7f254cf359efe91344e845e"
+      }
+    },
+    "candidate-e": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "6dbe728715fbc12ee706a96edf87393074ba6d38c2aa27394130b61972879043"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "d6cea5ab44dc1c069ce4c5cf82f874de9bd674d5f7f254cf359efe91344e845e"
+      }
+    }
+  },
+  "tier50k": {
+    "candidate-a": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "0de9e14231e7a4e22e39d4b90c2f76483792f3bf5e2595bd4f2afdd08af0095f"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "4409698280f734759e9434d810052af0960ef1a362c2f7f23a4717f1d42834fe"
+      }
+    },
+    "candidate-b": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "0de9e14231e7a4e22e39d4b90c2f76483792f3bf5e2595bd4f2afdd08af0095f"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "4409698280f734759e9434d810052af0960ef1a362c2f7f23a4717f1d42834fe"
+      }
+    },
+    "candidate-c": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "0de9e14231e7a4e22e39d4b90c2f76483792f3bf5e2595bd4f2afdd08af0095f"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "4409698280f734759e9434d810052af0960ef1a362c2f7f23a4717f1d42834fe"
+      }
+    },
+    "candidate-d": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "0de9e14231e7a4e22e39d4b90c2f76483792f3bf5e2595bd4f2afdd08af0095f"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "4409698280f734759e9434d810052af0960ef1a362c2f7f23a4717f1d42834fe"
+      }
+    },
+    "candidate-e": {
+      "BASIC_UNIT": {
+        "match": true,
+        "hash": "0de9e14231e7a4e22e39d4b90c2f76483792f3bf5e2595bd4f2afdd08af0095f"
+      },
+      "AREA": {
+        "match": true,
+        "hash": "4409698280f734759e9434d810052af0960ef1a362c2f7f23a4717f1d42834fe"
+      }
+    }
+  }
+}

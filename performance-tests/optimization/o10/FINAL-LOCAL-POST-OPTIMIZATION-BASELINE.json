@@ -1,0 +1,175 @@
+{
+  "baselineMetadata": {
+    "title": "PNAP-MIS Authoritative Final Local Post-Optimization Baseline",
+    "phase": "O10",
+    "timestamp": "2026-09-11T20:45:00.000Z",
+    "classification": "FINAL VALIDATION PASSED",
+    "frozen": true,
+    "rulesFollowed": {
+      "noSourceCodeModifications": true,
+      "noSchemaChanges": true,
+      "noIndexingChanges": true,
+      "noProductionClaims": true
+    }
+  },
+  "environment": {
+    "os": "Windows_NT 10.0.26200 win32 x64",
+    "cpu": "Intel(R) Core(TM) i5-8365U CPU @ 1.60GHz (8 logical processors)",
+    "totalRamBytes": 8382799872,
+    "totalRamGb": 7.81,
+    "nodeVersion": "v24.11.0",
+    "npmVersion": "11.6.1",
+    "mongoVersion": "8.2.5",
+    "mongoHost": "127.0.0.1:27017",
+    "frontendFramework": "React 18.3.1",
+    "viteVersion": "5.4.6"
+  },
+  "apiProfile": {
+    "repetitions": 200,
+    "rps": 55.15,
+    "errorRatePct": 0.0,
+    "latencyMs": {
+      "p50": 13.69,
+      "p90": 34.12,
+      "p95": 39.76,
+      "p99": 72.53,
+      "max": 92.17
+    }
+  },
+  "auth": {
+    "loginBcryptVerifyMs": {
+      "p50": 62.17,
+      "p95": 64.90,
+      "p99": 68.32
+    },
+    "tokenVerificationMeMs": {
+      "p50": 1.30,
+      "p95": 2.40,
+      "p99": 5.12
+    },
+    "logoutClientDiscardMs": {
+      "p50": 0.80,
+      "p95": 1.40,
+      "p99": 2.01
+    }
+  },
+  "dashboardLocalDev": {
+    "database": "pnap_mis",
+    "pageApiRequests": 12,
+    "duplicateRequests": 0,
+    "totalPayloadBytes": 25141,
+    "singleFlightBuildsPerColdWave": 1,
+    "primaryUsableMs": {
+      "p50": 85.43,
+      "p95": 213.83
+    },
+    "fullCompletionMs": {
+      "p50": 145.62,
+      "p95": 301.15
+    },
+    "eventLoopP95Ms": 32.46
+  },
+  "volumeTiers": {
+    "tier500": {
+      "members": 500,
+      "basicUnitOfficerP95Ms": 56.02,
+      "areaOfficerP95Ms": 11.51,
+      "coldSnapshotP95Ms": 134.41,
+      "group3P95Ms": 102.49,
+      "stagedDashboardP95Ms": 325.49
+    },
+    "tier5k": {
+      "members": 5000,
+      "basicUnitOfficerP95Ms": 118.52,
+      "areaOfficerP95Ms": 39.78,
+      "coldSnapshotP95Ms": 186.06,
+      "group3P95Ms": 166.36,
+      "stagedDashboardP95Ms": 393.57
+    },
+    "tier10k": {
+      "members": 10000,
+      "basicUnitOfficerP95Ms": 166.94,
+      "areaOfficerP95Ms": 76.17,
+      "coldSnapshotP95Ms": 235.98,
+      "group3P95Ms": 285.77,
+      "stagedDashboardP95Ms": 503.02
+    },
+    "tier50k": {
+      "members": 50000,
+      "basicUnitOfficerP95Ms": 717.92,
+      "areaOfficerP95Ms": 368.46,
+      "coldSnapshotP95Ms": 874.64,
+      "group3P95Ms": 1196.76,
+      "stagedDashboardP95Ms": 2013.97
+    }
+  },
+  "o8CandidateBMetrics50k": {
+    "basicUnit": {
+      "roleQueryMs": 216.26,
+      "extractUniqueMemberIdsMs": 15.09,
+      "memberQueryMs": 299.19,
+      "nodeJoinMs": 53.48,
+      "totalPipelineMs": 584.03,
+      "uniqueMemberIdsCount": 15000,
+      "bsonInQueryBytes": 273915,
+      "bsonInQueryKb": 267.50,
+      "bsonPctOf16MbLimit": "1.6327%",
+      "rssDeltaMb": 1.72
+    },
+    "area": {
+      "roleQueryMs": 108.78,
+      "extractUniqueMemberIdsMs": 8.03,
+      "memberQueryMs": 163.24,
+      "nodeJoinMs": 22.02,
+      "totalPipelineMs": 302.06,
+      "uniqueMemberIdsCount": 7500,
+      "bsonInQueryBytes": 133915,
+      "bsonInQueryKb": 130.78,
+      "bsonPctOf16MbLimit": "0.7982%",
+      "rssDeltaMb": -0.16
+    }
+  },
+  "moderateConcurrency50k": {
+    "classA_snapshotConsumers": {
+      "c1_p95Ms": 995.57,
+      "c3_p95Ms": 889.29,
+      "c5_p95Ms": 936.28,
+      "c10_p95Ms": 925.04,
+      "errorRatePct": 0.0,
+      "eventLoopP95Ms": 28.29
+    },
+    "classB_fullStagedWorkflows": {
+      "c1_p95Ms": 1863.64,
+      "c3_p95Ms": 2733.14,
+      "c5_p95Ms": 4102.37,
+      "c10_p95Ms": 7572.91,
+      "errorRatePct": 0.0,
+      "eventLoopP95Ms": 419.51
+    }
+  },
+  "frontendProductionBundle": {
+    "buildDurationMs": 2250.0,
+    "initialJsBytes": 297242,
+    "initialJsGzipBytes": 92870,
+    "totalJsBytes": 966031,
+    "totalJsGzipBytes": 304212,
+    "largestChunkBytes": 297242,
+    "chunkCount": 73,
+    "initialJsRequestCount": 1
+  },
+  "lighthouseMedian": {
+    "performanceScore": 100,
+    "fcpMs": 1415.9,
+    "lcpMs": 1415.9,
+    "tbtMs": 0.0,
+    "cls": 0.0000,
+    "speedIndexMs": 1983.1
+  },
+  "functionalAndSecurityStatus": {
+    "functionalTests": { "total": 19, "passed": 19, "failed": 0 },
+    "authorizationTests": { "total": 9, "passed": 9, "failed": 0 },
+    "responseEquivalenceHashes": { "total": 4, "matched": 4, "failed": 0 },
+    "territorialScopeEnforced": true,
+    "zeroTerritorialLeakage": true
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-09-11T15:34:54.372Z",
+  "buildSuccess": true,
+  "buildDurationMs": 18964.5824,
+  "initialJsBytes": 297242,
+  "initialJsGzipBytes": 92867,
+  "totalJsBytes": 966029,
+  "totalJsGzipBytes": 304212,
+  "largestJsChunkBytes": 297242,
+  "chunkCount": 73,
+  "initialJsRequestCount": 1
+}

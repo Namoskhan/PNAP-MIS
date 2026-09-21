@@ -1,0 +1,90 @@
+{
+  "label": "Baseline O8 Retained State",
+  "timestamp": "2026-09-11T09:49:59.191Z",
+  "bundle": {
+    "initialJsBytes": 297242,
+    "initialJsKb": 290.28,
+    "initialJsGzipBytes": 92867,
+    "initialJsGzipKb": 90.69,
+    "totalJsBytes": 966029,
+    "totalJsKb": 943.39,
+    "totalJsGzipBytes": 304212,
+    "totalJsGzipKb": 297.08,
+    "largestJsChunkBytes": 297242,
+    "largestJsChunkKb": 290.28,
+    "totalCssBytes": 108083,
+    "totalCssKb": 105.55,
+    "totalCssGzipBytes": 18911,
+    "totalCssGzipKb": 18.47,
+    "chunkCount": 73,
+    "initialChunkCount": 1
+  },
+  "requests": {
+    "totalInitialRequests": 3,
+    "jsRequests": 1,
+    "cssRequests": 1,
+    "initialTransferredBytes": 407435
+  },
+  "lighthouseLogin": {
+    "performanceScore": 99,
+    "fcpMs": 1637.5699499999998,
+    "lcpMs": 1637.5699499999998,
+    "tbtMs": 0,
+    "cls": 0.0007,
+    "speedIndexMs": 2129.1813395845925,
+    "mainThreadWorkMs": 265.44000000000005,
+    "bootupTimeMs": 33.904,
+    "runs": [
+      {
+        "performanceScore": 99,
+        "fcpMs": 1626.82035,
+        "lcpMs": 1626.8203500000002,
+        "tbtMs": 0,
+        "cls": 0.0006943904361588086,
+        "speedIndexMs": 2064.667383750686,
+        "mainThreadWorkMs": 275.60600000000005,
+        "bootupTimeMs": 70.926
+      },
+      {
+        "performanceScore": 87,
+        "fcpMs": 3068.5579000000002,
+        "lcpMs": 3068.5579000000007,
+        "tbtMs": 0,
+        "cls": 0,
+        "speedIndexMs": 3940.7931841675577,
+        "mainThreadWorkMs": 262.916,
+        "bootupTimeMs": 33.904
+      },
+      {
+        "performanceScore": 99,
+        "fcpMs": 1725.4497499999998,
+        "lcpMs": 1725.4497499999998,
+        "tbtMs": 0,
+        "cls": 0.0006943904361588086,
+        "speedIndexMs": 2129.1813395845925,
+        "mainThreadWorkMs": 265.44000000000005,
+        "bootupTimeMs": 26.411000000000012
+      },
+      {
+        "performanceScore": 99,
+        "fcpMs": 1591.6642,
+        "lcpMs": 1591.6642,
+        "tbtMs": 0,
+        "cls": 0,
+        "speedIndexMs": 2643.286056668517,
+        "mainThreadWorkMs": 260.9600000000001,
+        "bootupTimeMs": 33.80300000000001
+      },
+      {
+        "performanceScore": 99,
+        "fcpMs": 1637.5699499999998,
+        "lcpMs": 1637.5699499999998,
+        "tbtMs": 0,
+        "cls": 0.0006943904361588086,
+        "speedIndexMs": 2080.801847499675,
+        "mainThreadWorkMs": 290.068,
+        "bootupTimeMs": 92.48300000000015
+      }
+    ]
+  }
+}
