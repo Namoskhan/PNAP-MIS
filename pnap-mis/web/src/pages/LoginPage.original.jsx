@@ -1,13 +1,12 @@
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { errorMessage } from '../api/client';
+import PublicRegisterModal from '../components/PublicRegisterModal';
 import IdentifierField from '../components/IdentifierField';
 import PasswordField from '../components/PasswordField';
 import { useToast } from '../components/Toast';
-
-const PublicRegisterModal = lazy(() => import('../components/PublicRegisterModal'));
 
 export default function LoginPage() {
   const { login, user } = useAuth();
@@ -114,11 +113,7 @@ export default function LoginPage() {
           <Link to="/resend-verification">Resend verification</Link>
         </div>
       </form>
-      {registerOpen && (
-        <Suspense fallback={null}>
-          <PublicRegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
-        </Suspense>
-      )}
+      <PublicRegisterModal open={registerOpen} onClose={() => setRegisterOpen(false)} />
     </div>
   );
 }

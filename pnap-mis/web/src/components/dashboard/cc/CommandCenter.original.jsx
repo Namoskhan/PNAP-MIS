@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import useAnalytics from '../useAnalytics';
 import CountUp from '../../CountUp';
@@ -8,12 +8,11 @@ import Reveal from './Reveal';
 import ProvinceMatrix from './ProvinceMatrix';
 import ScopeBreadcrumb from '../ScopeBreadcrumb';
 import AnalyticsFilters from '../AnalyticsFilters';
-
-const MembershipAnalytics = lazy(() => import('../MembershipAnalytics'));
-const MeetingsAnalytics = lazy(() => import('../MeetingsAnalytics'));
-const CampaignsAnalytics = lazy(() => import('../CampaignsAnalytics'));
-const ReportsAnalytics = lazy(() => import('../ReportsAnalytics'));
-const InactiveUnitsTable = lazy(() => import('../InactiveTables').then((m) => ({ default: m.InactiveUnitsTable })));
+import MembershipAnalytics from '../MembershipAnalytics';
+import MeetingsAnalytics from '../MeetingsAnalytics';
+import CampaignsAnalytics from '../CampaignsAnalytics';
+import ReportsAnalytics from '../ReportsAnalytics';
+import { InactiveUnitsTable } from '../InactiveTables';
 
 // ─── Command Centre ──────────────────────────────────────────────────
 //
@@ -269,13 +268,9 @@ export default function CommandCenter({ accessScope = null }) {
         title="New and active members"
         meta={s ? `${num(s.membership.newMembers)} new` : null}
       >
-        {secondaryReady ? (
-          <Suspense fallback={<SkeletonCard lines={4} />}>
-            <MembershipAnalytics params={params} windowLabel={windowLabel} byStatus={s?.membership.byStatus} />
-          </Suspense>
-        ) : (
-          <SkeletonCard lines={4} />
-        )}
+        {secondaryReady
+          ? <MembershipAnalytics params={params} windowLabel={windowLabel} byStatus={s?.membership.byStatus} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 4 — Work ── */}
@@ -284,13 +279,9 @@ export default function CommandCenter({ accessScope = null }) {
         title="Campaigns"
         meta={s ? `${num(s.campaigns.running)} running` : null}
       >
-        {secondaryReady ? (
-          <Suspense fallback={<SkeletonCard lines={4} />}>
-            <CampaignsAnalytics params={params} windowLabel={windowLabel} showResults={!isSuper} />
-          </Suspense>
-        ) : (
-          <SkeletonCard lines={4} />
-        )}
+        {secondaryReady
+          ? <CampaignsAnalytics params={params} windowLabel={windowLabel} showResults={!isSuper} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 5 — Governance ── */}
@@ -300,13 +291,9 @@ export default function CommandCenter({ accessScope = null }) {
         lead="See planned and completed meetings by level, group and year."
         meta={s ? `${num(s.meetings.conducted)} of ${num(s.meetings.total)} held` : null}
       >
-        {secondaryReady ? (
-          <Suspense fallback={<SkeletonCard lines={4} />}>
-            <MeetingsAnalytics params={params} windowLabel={windowLabel} />
-          </Suspense>
-        ) : (
-          <SkeletonCard lines={4} />
-        )}
+        {secondaryReady
+          ? <MeetingsAnalytics params={params} windowLabel={windowLabel} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 6 — Reports ── */}
@@ -315,13 +302,9 @@ export default function CommandCenter({ accessScope = null }) {
         title="Reports"
         meta={s ? `${num(s.reports.outstanding)} not submitted` : null}
       >
-        {secondaryReady ? (
-          <Suspense fallback={<SkeletonCard lines={4} />}>
-            <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} accessScope={accessScope} />
-          </Suspense>
-        ) : (
-          <SkeletonCard lines={4} />
-        )}
+        {secondaryReady
+          ? <ReportsAnalytics params={params} periodFrom={periodFrom} scope={scope} accessScope={accessScope} />
+          : <SkeletonCard lines={4} />}
       </Act>
 
       {/* ── ACT 7 — Attention ── */}
@@ -331,13 +314,7 @@ export default function CommandCenter({ accessScope = null }) {
         lead="See inactive units and the officers in charge."
       >
         <div style={{ display: 'grid', gap: 16 }}>
-          {secondaryReady ? (
-            <Suspense fallback={<SkeletonCard lines={4} />}>
-              <InactiveUnitsTable params={params} />
-            </Suspense>
-          ) : (
-            <SkeletonCard lines={4} />
-          )}
+          {secondaryReady ? <InactiveUnitsTable params={params} /> : <SkeletonCard lines={4} />}
         </div>
       </Act>
     </div>
