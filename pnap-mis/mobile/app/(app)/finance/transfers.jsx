@@ -118,6 +118,16 @@ export default function TransfersScreen() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [modalErr, setModalErr] = useState('');
 
+  // Destination Selector Mode: LIST vs TREE
+  const [destMode, setDestMode] = useState('LIST');
+  const [pickProv, setPickProv] = useState('');
+  const [pickDist, setPickDist] = useState('');
+  const [pickArea, setPickArea] = useState('');
+  const [listProvinces, setListProvinces] = useState([]);
+  const [listDistricts, setListDistricts] = useState([]);
+  const [listAreas, setListAreas] = useState([]);
+  const [listUnits, setListUnits] = useState([]);
+
   // Rejection Modal State
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState(null);
@@ -264,6 +274,70 @@ export default function TransfersScreen() {
     return unsub;
   }, [tab, activeLevel, resolvedUnitId, targetBody]);
 
+  // Load cascading unit lists for destination picker with offline cache
+  useEffect(() => {
+    if (!transferModalOpen) return;
+    (async () => {
+      try {
+        const res = await api.get('/org/provinces');
+        setListProvinces(res.data?.data || []);
+      } catch {
+        const cached = await getCache('org_provinces');
+        if (cached) setListProvinces(cached);
+      }
+    })();
+  }, [transferModalOpen]);
+
+  useEffect(() => {
+    if (!pickProv) {
+      setListDistricts([]);
+      setPickDist('');
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.get('/org/districts', { params: { provinceId: pickProv } });
+        setListDistricts(res.data?.data || []);
+      } catch {
+        const cached = await getCache(`org_districts_${pickProv}`);
+        if (cached) setListDistricts(cached);
+      }
+    })();
+  }, [pickProv]);
+
+  useEffect(() => {
+    if (!pickDist) {
+      setListAreas([]);
+      setPickArea('');
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.get('/org/areas', { params: { districtId: pickDist } });
+        setListAreas(res.data?.data || []);
+      } catch {
+        const cached = await getCache(`org_areas_${pickDist}`);
+        if (cached) setListAreas(cached);
+      }
+    })();
+  }, [pickDist]);
+
+  useEffect(() => {
+    if (!pickArea) {
+      setListUnits([]);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.get('/org/basic-units', { params: { areaId: pickArea } });
+        setListUnits(res.data?.data || []);
+      } catch {
+        const cached = await getCache(`org_basic_units_${pickArea}`);
+        if (cached) setListUnits(cached);
+      }
+    })();
+  }, [pickArea]);
+
   // Preview destination whenever selection changes
   useEffect(() => {
     if (!picked || !activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') {
@@ -288,8 +362,22 @@ export default function TransfersScreen() {
       }
     }).catch((err) => {
       if (!cancelled) {
-        setPreview(null);
-        setPreviewErr(errorMessage(err));
+        if (isNetworkError(err)) {
+          // Offline fallback preview
+          setPreview({
+            destination: {
+              id: picked.id,
+              name: picked.name,
+              level: picked.level,
+            },
+            direction: 'SAME_TIER',
+            path: [{ name: picked.name, level: picked.level }],
+          });
+          setPreviewErr('');
+        } else {
+          setPreview(null);
+          setPreviewErr(errorMessage(err));
+        }
       }
     }).finally(() => {
       if (!cancelled) setPreviewLoading(false);
@@ -817,17 +905,150 @@ export default function TransfersScreen() {
             {/* Modal Body: 2 Columns on Tablet/Desktop, 1 Column on Mobile */}
             <View style={[styles.transferModalLayout, isTablet && styles.transferModalLayoutTablet]}>
               
-              {/* Left Column: Org Tree */}
+              {/* Left Column: Destination Selector (Direct Picker or Org Tree) */}
               <View style={[styles.treeCol, isTablet && styles.treeColTablet]}>
-                <Text style={styles.fieldLabel}>Choose Destination (from Tree) *</Text>
-                <View style={[styles.treeContainer, isTablet && { height: Math.min(520, height * 0.55) }]}>
-                  <OrgTree 
-                    selectedId={picked?.id} 
-                    disabledId={resolvedUnitId} 
-                    source={{ level: activeLevel, unitId: resolvedUnitId }}
-                    onSelect={(node) => setPicked(node)}
-                  />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={styles.fieldLabel}>Choose Destination *</Text>
+                  <View style={styles.destModeToggle}>
+                    <TouchableOpacity
+                      style={[styles.destModeBtn, destMode === 'LIST' && styles.destModeBtnActive]}
+                      onPress={() => setDestMode('LIST')}
+                    >
+                      <Text style={[styles.destModeText, destMode === 'LIST' && styles.destModeTextActive]}>
+                        Direct List
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.destModeBtn, destMode === 'TREE' && styles.destModeBtnActive]}
+                      onPress={() => setDestMode('TREE')}
+                    >
+                      <Text style={[styles.destModeText, destMode === 'TREE' && styles.destModeTextActive]}>
+                        Org Tree
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
+
+                {destMode === 'LIST' ? (
+                  <ScrollView
+                    style={[styles.treeContainer, { padding: 10 }]}
+                    nestedScrollEnabled={true}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                  >
+                    {/* Quick PKNAP Central option */}
+                    <TouchableOpacity
+                      style={[styles.quickDestBtn, picked?.id === 'CENTRAL' && styles.quickDestBtnSelected]}
+                      onPress={() => setPicked({ id: 'CENTRAL', name: 'PKNAP Central', level: 'CENTRAL' })}
+                    >
+                      <Ionicons name="globe-outline" size={16} color={Colors.primary} />
+                      <Text style={styles.quickDestText}>PKNAP Central (قومي مرکز)</Text>
+                    </TouchableOpacity>
+
+                    {/* Province Selection */}
+                    <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>1. Select Province</Text>
+                    <View style={styles.pickerWrap}>
+                      <Picker
+                        selectedValue={pickProv}
+                        onValueChange={(val) => {
+                          setPickProv(val);
+                          if (val) {
+                            const p = listProvinces.find((x) => x._id === val);
+                            if (p) setPicked({ id: p._id, name: p.name, level: 'PROVINCE' });
+                          }
+                        }}
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="-- Choose Province --" value="" />
+                        {listProvinces.map((p) => (
+                          <Picker.Item key={p._id} label={p.name} value={p._id} />
+                        ))}
+                      </Picker>
+                    </View>
+
+                    {/* District Selection */}
+                    {listDistricts.length > 0 && (
+                      <>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>2. Select District</Text>
+                        <View style={styles.pickerWrap}>
+                          <Picker
+                            selectedValue={pickDist}
+                            onValueChange={(val) => {
+                              setPickDist(val);
+                              if (val) {
+                                const d = listDistricts.find((x) => x._id === val);
+                                if (d) setPicked({ id: d._id, name: d.name, level: 'DISTRICT' });
+                              }
+                            }}
+                            style={styles.picker}
+                          >
+                            <Picker.Item label="-- Choose District --" value="" />
+                            {listDistricts.map((d) => (
+                              <Picker.Item key={d._id} label={d.name} value={d._id} />
+                            ))}
+                          </Picker>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Area Selection */}
+                    {listAreas.length > 0 && (
+                      <>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>3. Select Area</Text>
+                        <View style={styles.pickerWrap}>
+                          <Picker
+                            selectedValue={pickArea}
+                            onValueChange={(val) => {
+                              setPickArea(val);
+                              if (val) {
+                                const a = listAreas.find((x) => x._id === val);
+                                if (a) setPicked({ id: a._id, name: a.name, level: 'AREA' });
+                              }
+                            }}
+                            style={styles.picker}
+                          >
+                            <Picker.Item label="-- Choose Area --" value="" />
+                            {listAreas.map((a) => (
+                              <Picker.Item key={a._id} label={a.name} value={a._id} />
+                            ))}
+                          </Picker>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Basic Unit Selection */}
+                    {listUnits.length > 0 && (
+                      <>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>4. Select Basic Unit</Text>
+                        <View style={styles.pickerWrap}>
+                          <Picker
+                            selectedValue={picked?.level === 'BASIC_UNIT' ? picked.id : ''}
+                            onValueChange={(val) => {
+                              if (val) {
+                                const u = listUnits.find((x) => x._id === val);
+                                if (u) setPicked({ id: u._id, name: u.name, level: 'BASIC_UNIT' });
+                              }
+                            }}
+                            style={styles.picker}
+                          >
+                            <Picker.Item label="-- Choose Basic Unit --" value="" />
+                            {listUnits.map((u) => (
+                              <Picker.Item key={u._id} label={u.name} value={u._id} />
+                            ))}
+                          </Picker>
+                        </View>
+                      </>
+                    )}
+                  </ScrollView>
+                ) : (
+                  <View style={[styles.treeContainer, isTablet && { height: Math.min(520, height * 0.55) }]}>
+                    <OrgTree 
+                      selectedId={picked?.id} 
+                      disabledId={resolvedUnitId} 
+                      source={{ level: activeLevel, unitId: resolvedUnitId }}
+                      onSelect={(node) => setPicked(node)}
+                    />
+                  </View>
+                )}
               </View>
 
               {/* Right Column: Form Inputs */}

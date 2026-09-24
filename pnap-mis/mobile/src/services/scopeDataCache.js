@@ -276,7 +276,52 @@ export async function syncUserScopeCache(user, ctx, options = {}) {
         const res = await api.get('/activities', {
           params: { unitLevel, unitId },
         });
-        await setCache(`activities_${unitLevel}_${unitId}_NON_COMMITTEE`, res.data?.data || []);
+        const acts = res.data?.data || [];
+        await setCache(`activities_${unitLevel}_${unitId}_NON_COMMITTEE`, acts);
+        for (const a of acts.slice(0, 3)) {
+          if (a._id) {
+            await setCache(`activity_detail_${a._id}`, a);
+          }
+        }
+      });
+
+      // 7. Unit Dashboard Data
+      if (onProgress) onProgress({ step: 'DASHBOARD', message: 'Caching dashboard statistics...' });
+
+      await safeFetch('Unit Dashboard', async () => {
+        const res = await api.get('/dashboard/unit', { params: { unitLevel, unitId } });
+        if (res.data?.data) {
+          await setCache(`dashboard_unit_${unitLevel}_${unitId}`, res.data.data);
+        }
+      });
+
+      if (unitLevel !== 'BASIC_UNIT') {
+        await safeFetch('Unit Subordinates', async () => {
+          const res = await api.get('/dashboard/subordinates', { params: { unitLevel, unitId } });
+          if (res.data?.data) {
+            await setCache(`dashboard_subordinates_${unitLevel}_${unitId}`, res.data.data);
+          }
+        });
+      }
+
+      // 8. Unit Responsibilities
+      if (onProgress) onProgress({ step: 'RESPONSIBILITIES', message: 'Caching responsibilities...' });
+
+      await safeFetch('Unit Responsibilities', async () => {
+        const res = await api.get('/responsibilities', { params: { unitLevel, unitId } });
+        const respList = res.data?.data || [];
+        await setCache(`responsibilities_${unitLevel}_${unitId}_all`, respList);
+        await setCache(`responsibilities_${unitLevel}_${unitId}_`, respList);
+      });
+    }
+
+    // 9. Personal Member Profile (if linked)
+    if (user?.memberId) {
+      await safeFetch('Personal Member Profile', async () => {
+        const res = await api.get(`/members/${user.memberId}`);
+        if (res.data?.data) {
+          await setCache(`member_profile_${user.memberId}`, res.data.data);
+        }
       });
     }
 

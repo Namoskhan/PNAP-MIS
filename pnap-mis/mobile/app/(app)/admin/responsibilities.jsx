@@ -18,7 +18,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../../src/utils/permissions';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, isNetworkError } from '../../../src/api/client';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+} from '../../../src/services/offlineStorage';
+import { getCachedAttendees } from '../../../src/services/scopeDataCache';
 import { confirmAction } from '../../../src/utils/dialog';
 import { useToast } from '../../../src/components/Toast';
 import Card from '../../../src/components/Card';
@@ -52,6 +60,7 @@ export default function ResponsibilitiesScreen() {
 
   const canManage = canManageMeetings(user) && !isCentralAdminOversight(user) && !isSuperAdminOversight(user);
 
+  const { isOnline } = useNetwork();
   const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
   const [resolvedUnitId, setResolvedUnitId] = useState(params.unitId || ctx?.unitId);
   const [resolvedUnitName, setResolvedUnitName] = useState(ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : activeLevel));
@@ -94,14 +103,38 @@ export default function ResponsibilitiesScreen() {
       setLoading(false);
       return;
     }
-    if (!silent) setLoading(true);
+
+    const cacheKey = `responsibilities_${activeLevel}_${resolvedUnitId}_${filterState || 'all'}`;
+    const [cached, offlineCreated] = await Promise.all([
+      getCache(cacheKey),
+      getOfflineEntities('RESPONSIBILITY'),
+    ]);
+
+    const unitOffline = (offlineCreated || []).filter(
+      (r) => (!resolvedUnitId || r.unitId === resolvedUnitId) && (!filterState || r.state === filterState)
+    );
+
+    if (cached && cached.length > 0) {
+      setItems([...unitOffline, ...cached]);
+      if (!silent) setLoading(false);
+    } else if (unitOffline.length > 0) {
+      setItems(unitOffline);
+      if (!silent) setLoading(false);
+    } else if (!silent) {
+      setLoading(true);
+    }
+
     try {
       const qParams = { unitLevel: activeLevel, unitId: resolvedUnitId };
       if (filterState) qParams.state = filterState;
       const res = await api.get('/responsibilities', { params: qParams });
-      setItems(res.data?.data || []);
+      const serverList = res.data?.data || [];
+      await setCache(cacheKey, serverList);
+      setItems([...unitOffline, ...serverList]);
     } catch (e) {
-      toast.error(errorMessage(e));
+      if (!isNetworkError(e) || (!cached?.length && !unitOffline.length)) {
+        toast.error(errorMessage(e));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -120,10 +153,19 @@ export default function ResponsibilitiesScreen() {
   // Load eligible members for assignment
   useEffect(() => {
     if (!resolvedUnitId || resolvedUnitId === 'CENTRAL' || !showCreate) return;
+    let active = true;
+
+    // Load cached attendees first
+    getCachedAttendees(activeLevel, resolvedUnitId, 'GENERAL_BODY').then((cached) => {
+      if (active && cached?.length > 0) setMembers(cached);
+    }).catch(() => {});
+
     api.get('/meetings/eligible-attendees', {
       params: { unitLevel: activeLevel, unitId: resolvedUnitId, body: 'GENERAL_BODY' },
     })
-      .then((r) => setMembers(r.data?.data || []))
+      .then((r) => {
+        if (active && r.data?.data) setMembers(r.data.data);
+      })
       .catch(() => {
         const p = { status: 'ACTIVE', limit: 300 };
         if (activeLevel === 'BASIC_UNIT') p.basicUnitId = resolvedUnitId;
@@ -131,8 +173,14 @@ export default function ResponsibilitiesScreen() {
         else if (activeLevel === 'DISTRICT') p.districtId = resolvedUnitId;
         else if (activeLevel === 'PROVINCE') p.provinceId = resolvedUnitId;
         else if (activeLevel === 'CENTRAL') p.scope = 'all';
-        api.get('/members', { params: p }).then((r) => setMembers(r.data?.data || [])).catch(() => {});
+        api.get('/members', { params: p })
+          .then((r) => {
+            if (active && r.data?.data) setMembers(r.data.data);
+          })
+          .catch(() => {});
       });
+
+    return () => { active = false; };
   }, [activeLevel, resolvedUnitId, showCreate]);
 
   async function handleCreate() {
@@ -142,10 +190,15 @@ export default function ResponsibilitiesScreen() {
     }
     setFormErr('');
     setSaving(true);
+    const assignee = members.find((m) => m._id === form.assignedToMemberId);
+    const payload = { ...form, unitLevel: activeLevel, unitId: resolvedUnitId };
+    Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
+
     try {
-      const payload = { ...form, unitLevel: activeLevel, unitId: resolvedUnitId };
-      Object.keys(payload).forEach((k) => { if (payload[k] === '') delete payload[k]; });
-      const assignee = members.find((m) => m._id === form.assignedToMemberId);
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/responsibilities', payload);
       setShowCreate(false);
       setForm({ title: '', description: '', dueDate: '', assignedToMemberId: '' });
@@ -155,7 +208,35 @@ export default function ResponsibilitiesScreen() {
         assignee ? `"${payload.title}" assigned to ${assignee.fullName}.` : `"${payload.title}" assigned.`
       );
     } catch (e) {
-      setFormErr(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const offlineId = `offline_${Date.now()}`;
+        const offlineRecord = {
+          ...payload,
+          _id: offlineId,
+          state: 'PENDING',
+          assignedToMemberId: assignee || { _id: form.assignedToMemberId, fullName: 'Assigned Member' },
+          createdAt: new Date().toISOString(),
+          _isOffline: true,
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'RESPONSIBILITY',
+          action: 'CREATE',
+          endpoint: '/responsibilities',
+          method: 'POST',
+          payload,
+          displayTitle: `Responsibility: "${payload.title}"`,
+          localRecord: offlineRecord,
+        });
+
+        setItems((prev) => [offlineRecord, ...prev]);
+        setShowCreate(false);
+        setForm({ title: '', description: '', dueDate: '', assignedToMemberId: '' });
+        setMemberSearch('');
+        toast.success(`Offline: "${payload.title}" saved locally. Will sync when online.`);
+      } else {
+        setFormErr(errorMessage(e));
+      }
     } finally {
       setSaving(false);
     }
@@ -163,29 +244,69 @@ export default function ResponsibilitiesScreen() {
 
   async function handleUpdateState(id, patch) {
     try {
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
       await api.patch(`/responsibilities/${id}`, patch);
       reload(true);
       const stateLabel = patch.state ? (STATE_CONFIG[patch.state]?.label || patch.state) : 'Updated';
       toast.success(patch.state ? `Marked ${stateLabel.toLowerCase()}.` : 'Responsibility updated.');
     } catch (e) {
-      toast.error(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'RESPONSIBILITY',
+          action: 'UPDATE',
+          endpoint: `/responsibilities/${id}`,
+          method: 'PATCH',
+          payload: patch,
+          displayTitle: `Update Responsibility: ${patch.state || 'Edit'}`,
+        });
+        setItems((prev) =>
+          prev.map((item) => (item._id === id ? { ...item, ...patch } : item))
+        );
+        const stateLabel = patch.state ? (STATE_CONFIG[patch.state]?.label || patch.state) : 'Updated';
+        toast.success(`Offline: Marked ${stateLabel.toLowerCase()}. Will sync when online.`);
+      } else {
+        toast.error(errorMessage(e));
+      }
     }
   }
 
   async function handleCompleteSubmit() {
     if (!completeItem) return;
     setCompleting(true);
+    const patch = {
+      state: 'COMPLETED',
+      completionNote: completionNote.trim() || undefined,
+    };
     try {
-      await api.patch(`/responsibilities/${completeItem._id}`, {
-        state: 'COMPLETED',
-        completionNote: completionNote.trim() || undefined,
-      });
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+      await api.patch(`/responsibilities/${completeItem._id}`, patch);
       toast.success('Marked completed.');
       setCompleteItem(null);
       setCompletionNote('');
       reload(true);
     } catch (e) {
-      toast.error(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'RESPONSIBILITY',
+          action: 'UPDATE',
+          endpoint: `/responsibilities/${completeItem._id}`,
+          method: 'PATCH',
+          payload: patch,
+          displayTitle: `Complete Responsibility: "${completeItem.title}"`,
+        });
+        setItems((prev) =>
+          prev.map((item) => (item._id === completeItem._id ? { ...item, ...patch } : item))
+        );
+        toast.success('Offline: Marked completed. Will sync when online.');
+        setCompleteItem(null);
+        setCompletionNote('');
+      } else {
+        toast.error(errorMessage(e));
+      }
     } finally {
       setCompleting(false);
     }
@@ -197,11 +318,26 @@ export default function ResponsibilitiesScreen() {
       `Delete "${item.title}"? This cannot be undone.`,
       async () => {
         try {
+          if (!isOnline) {
+            throw new Error('OFFLINE_MODE');
+          }
           await api.delete(`/responsibilities/${item._id}`);
           toast.success('Responsibility deleted.');
           reload(true);
         } catch (e) {
-          toast.error(errorMessage(e));
+          if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+            await enqueueOfflineAction({
+              entityType: 'RESPONSIBILITY',
+              action: 'DELETE',
+              endpoint: `/responsibilities/${item._id}`,
+              method: 'DELETE',
+              displayTitle: `Delete Responsibility: "${item.title}"`,
+            });
+            setItems((prev) => prev.filter((i) => i._id !== item._id));
+            toast.success('Offline: Deleted locally. Will sync when online.');
+          } else {
+            toast.error(errorMessage(e));
+          }
         }
       },
       { confirmText: 'Delete', destructive: true }
@@ -227,7 +363,12 @@ export default function ResponsibilitiesScreen() {
       <Card style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{r.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[styles.cardTitle, { flex: 1 }]}>{r.title}</Text>
+              {r._isOffline && (
+                <Badge label="OFFLINE" color={Colors.warning} bg="rgba(217, 119, 6, 0.15)" />
+              )}
+            </View>
             {r.description ? (
               <Text style={styles.cardDesc} numberOfLines={3}>{r.description}</Text>
             ) : null}

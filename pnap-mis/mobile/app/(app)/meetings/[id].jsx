@@ -36,6 +36,7 @@ import Badge from '../../../src/components/Badge';
 import EmptyState from '../../../src/components/EmptyState';
 import Avatar from '../../../src/components/Avatar';
 import { useToast } from '../../../src/components/Toast';
+import { useNetwork } from '../../../src/context/NetworkContext';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 
@@ -62,6 +63,7 @@ export default function MeetingDetailScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
+  const { isOnline } = useNetwork();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -234,6 +236,12 @@ export default function MeetingDetailScreen() {
       toast.error(msg);
       return;
     }
+    if (!meeting.photos || meeting.photos.length === 0) {
+      const msg = 'At least 1 photo is required to finalize this meeting. Please upload a meeting photo first.';
+      setFinalizeError(msg);
+      toast.error(msg);
+      return;
+    }
     setFinalizingBusy(true);
     const payload = {
       decisions: previouswork.trim(),
@@ -311,6 +319,7 @@ export default function MeetingDetailScreen() {
 
   async function handleUploadPhoto() {
     setPhotoError('');
+    let validAssets = [];
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -320,12 +329,37 @@ export default function MeetingDetailScreen() {
       });
       if (result.canceled || !result.assets?.length) return;
 
+      // Validate photo formats (JPEG, PNG, WebP)
+      const invalidNames = [];
+      for (const a of (result.assets || []).slice(0, 10)) {
+        const mime = (a.mimeType || a.type || '').toLowerCase();
+        const ext = (a.fileName || a.name || a.uri || '').toLowerCase();
+        const isJpg = mime.includes('jpeg') || mime.includes('jpg') || ext.endsWith('.jpg') || ext.endsWith('.jpeg');
+        const isPng = mime.includes('png') || ext.endsWith('.png');
+        const isWebp = mime.includes('webp') || ext.endsWith('.webp');
+        if (isJpg || isPng || isWebp) {
+          validAssets.push(a);
+        } else {
+          invalidNames.push(a.fileName || 'file');
+        }
+      }
+
+      if (invalidNames.length > 0) {
+        toast.error(`Only JPG, PNG, and WebP formats are supported. Excluded: ${invalidNames.join(', ')}`);
+        if (validAssets.length === 0) return;
+      }
+
       setUploadingPhoto(true);
+
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       toast.show('Uploading photos...', 'info');
 
       const fd = new FormData();
-      for (let i = 0; i < result.assets.slice(0, 10).length; i++) {
-        const asset = result.assets[i];
+      for (let i = 0; i < validAssets.length; i++) {
+        const asset = validAssets[i];
         if (Platform.OS === 'web') {
           if (asset.file) {
             fd.append('photos', asset.file);
@@ -361,21 +395,42 @@ export default function MeetingDetailScreen() {
       }
       load();
     } catch (e) {
-      if (isNetworkError(e)) {
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
         await enqueueOfflineAction({
           entityType: 'MEETING',
           action: 'UPLOAD_PHOTOS',
           endpoint: `/meetings/${meeting._id}/photos`,
           method: 'POST',
-          files: (result?.assets || []).slice(0, 10).map((a, i) => ({
-            fieldName: 'photos',
-            uri: a.uri,
-            name: a.fileName || `photo_${Date.now()}_${i}.jpg`,
-            type: a.mimeType || 'image/jpeg',
-          })),
+          files: validAssets.map((a, i) => {
+            const rawFile = (typeof File !== 'undefined' && a.file instanceof File)
+              ? a.file
+              : ((typeof Blob !== 'undefined' && a.file instanceof Blob)
+                ? a.file
+                : (a.file || null));
+            return {
+              fieldName: 'photos',
+              uri: a.uri,
+              file: rawFile,
+              name: a.fileName || a.name || `photo_${Date.now()}_${i}.jpg`,
+              type: a.mimeType || a.type || 'image/jpeg',
+            };
+          }),
           displayTitle: `Upload Photos: ${meeting.title || 'Meeting'}`,
         });
-        toast.success('Photos saved offline. Will upload when back online.');
+
+        // Optimistically record photos on meeting so finalization check passes offline
+        const offlinePhotos = validAssets.map((a, i) => ({
+          url: a.uri,
+          filename: a.fileName || `offline_photo_${i}.jpg`,
+          _isOffline: true,
+        }));
+        const updated = {
+          ...meeting,
+          photos: [...(meeting.photos || []), ...offlinePhotos],
+        };
+        setMeeting(updated);
+        await setCache(`meeting_detail_${meeting._id}`, updated);
+        toast.success(`${validAssets.length} photo(s) saved offline. Will sync when back online.`);
         return;
       }
       const msg = errorMessage(e);

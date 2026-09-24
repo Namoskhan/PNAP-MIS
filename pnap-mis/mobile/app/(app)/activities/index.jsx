@@ -288,6 +288,12 @@ export default function ActivitiesScreen() {
       toast.error(msg);
       return;
     }
+    if (form.endAt && new Date(form.endAt).getTime() <= new Date(form.startAt).getTime()) {
+      const msg = 'End date/time must be strictly after start date/time.';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
 
     setSaving(true);
     try {

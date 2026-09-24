@@ -408,18 +408,19 @@ export default function FinanceScreen() {
       return;
     }
 
+    let donorName = donationForm.donorName;
+    let donorCnic = donationForm.donorCnic;
+    if (donationForm.donorType === 'MEMBER' && donationForm.donorMemberId) {
+      const found = members.find((m) => String(m._id) === String(donationForm.donorMemberId));
+      if (found) {
+        if (!donorName) donorName = found.fullName;
+        if (!donorCnic && found.cnic) donorCnic = found.cnic;
+      }
+    }
+
     setSaving(true);
     try {
       const fd = new FormData();
-      let donorName = donationForm.donorName;
-      let donorCnic = donationForm.donorCnic;
-      if (donationForm.donorType === 'MEMBER' && donationForm.donorMemberId) {
-        const found = members.find((m) => String(m._id) === String(donationForm.donorMemberId));
-        if (found) {
-          if (!donorName) donorName = found.fullName;
-          if (!donorCnic && found.cnic) donorCnic = found.cnic;
-        }
-      }
 
       const payload = {
         ...donationForm,
@@ -462,12 +463,18 @@ export default function FinanceScreen() {
         const streamLabel = isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : 'Executive'));
         const files = [];
         if (donReceipt) {
+          const rawFile = (typeof File !== 'undefined' && donReceipt instanceof File)
+            ? donReceipt
+            : ((typeof Blob !== 'undefined' && donReceipt instanceof Blob)
+              ? donReceipt
+              : (donReceipt?.file || null));
+
           files.push({
             fieldName: 'receipt',
-            name: donReceipt.name || 'receipt.jpg',
-            type: donReceipt.type || 'image/jpeg',
+            name: donReceipt.name || rawFile?.name || 'receipt.jpg',
+            type: donReceipt.type || rawFile?.type || 'image/jpeg',
             uri: donReceipt.uri,
-            file: donReceipt.file,
+            file: rawFile,
           });
         }
 
@@ -530,6 +537,10 @@ export default function FinanceScreen() {
       setErr('Incurred date is required.');
       return;
     }
+    if (!expEvidence) {
+      setErr('A bill / voucher image is required for every expense.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -573,12 +584,18 @@ export default function FinanceScreen() {
         const streamLabel = isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : 'Executive'));
         const files = [];
         if (expEvidence) {
+          const rawFile = (typeof File !== 'undefined' && expEvidence instanceof File)
+            ? expEvidence
+            : ((typeof Blob !== 'undefined' && expEvidence instanceof Blob)
+              ? expEvidence
+              : (expEvidence?.file || null));
+
           files.push({
             fieldName: 'evidence',
-            name: expEvidence.name || 'evidence.jpg',
-            type: expEvidence.type || 'image/jpeg',
+            name: expEvidence.name || rawFile?.name || 'evidence.jpg',
+            type: expEvidence.type || rawFile?.type || 'image/jpeg',
             uri: expEvidence.uri,
-            file: expEvidence.file,
+            file: rawFile,
           });
         }
 

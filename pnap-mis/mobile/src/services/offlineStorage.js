@@ -63,23 +63,37 @@ export async function persistOfflineFile(fileObj) {
   if (!fileObj) return null;
 
   try {
+    const rawFile = (typeof File !== 'undefined' && fileObj instanceof File)
+      ? fileObj
+      : ((typeof Blob !== 'undefined' && fileObj instanceof Blob)
+        ? fileObj
+        : (fileObj.file || null));
+
     // Web: Convert File/Blob to base64 Data URL for persistent storage
     if (Platform.OS === 'web') {
-      if (fileObj.file && typeof FileReader !== 'undefined') {
+      if (rawFile && typeof FileReader !== 'undefined') {
         const dataUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
-          reader.readAsDataURL(fileObj.file);
+          reader.readAsDataURL(rawFile);
         });
         return {
           fieldName: fileObj.fieldName || 'file',
-          name: fileObj.name || fileObj.file.name || 'upload.jpg',
-          type: fileObj.type || fileObj.file.type || 'image/jpeg',
+          name: fileObj.name || rawFile.name || 'upload.jpg',
+          type: fileObj.type || rawFile.type || 'image/jpeg',
           dataUrl,
         };
       }
-      if (fileObj.uri && fileObj.uri.startsWith('blob:') && typeof fetch !== 'undefined') {
+      if (fileObj.uri && (fileObj.uri.startsWith('blob:') || fileObj.uri.startsWith('data:')) && typeof fetch !== 'undefined') {
+        if (fileObj.uri.startsWith('data:')) {
+          return {
+            fieldName: fileObj.fieldName || 'file',
+            name: fileObj.name || 'upload.jpg',
+            type: fileObj.type || 'image/jpeg',
+            dataUrl: fileObj.uri,
+          };
+        }
         const res = await fetch(fileObj.uri);
         const blob = await res.blob();
         const dataUrl = await new Promise((resolve, reject) => {
@@ -258,6 +272,24 @@ export async function removeOfflineAction(id) {
 export async function clearOfflineQueue() {
   await AppStorage.removeItem(QUEUE_STORAGE_KEY);
   notifyListeners([]);
+}
+
+export async function clearFailedOfflineActions() {
+  const queue = await getOfflineQueue();
+  const kept = queue.filter((i) => i.status !== 'FAILED');
+  await AppStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(kept));
+  notifyListeners(kept);
+  return kept;
+}
+
+export async function resetFailedToPending() {
+  const queue = await getOfflineQueue();
+  const updated = queue.map((i) =>
+    i.status === 'FAILED' ? { ...i, status: 'PENDING', retryCount: 0, error: null } : i
+  );
+  await AppStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(updated));
+  notifyListeners(updated);
+  return updated;
 }
 
 /**

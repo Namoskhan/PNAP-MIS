@@ -19,13 +19,13 @@ import { shortDate } from '../utils/formatters';
 
 export default function OfflineBanner() {
   const insets = useSafeAreaInsets();
-  const { isOnline, pendingCount, isSyncing, syncNow } = useNetwork();
+  const { isOnline, pendingCount, failedCount, isSyncing, syncNow, clearFailed, retryFailed } = useNetwork();
   const [showQueueModal, setShowQueueModal] = useState(false);
   const [queueItems, setQueueItems] = useState([]);
   const [loadingQueue, setLoadingQueue] = useState(false);
 
-  // If online and nothing is pending and not syncing, show nothing
-  const shouldShow = !isOnline || pendingCount > 0 || isSyncing;
+  // If online and nothing is pending/failed and not syncing, show nothing
+  const shouldShow = !isOnline || pendingCount > 0 || (failedCount || 0) > 0 || isSyncing;
 
   async function openQueue() {
     setLoadingQueue(true);
@@ -44,14 +44,28 @@ export default function OfflineBanner() {
     setQueueItems(updated);
   }
 
+  async function handleClearFailed() {
+    if (clearFailed) await clearFailed();
+    const updated = await getOfflineQueue();
+    setQueueItems(updated);
+  }
+
+  async function handleRetryFailed() {
+    if (retryFailed) await retryFailed();
+    const updated = await getOfflineQueue();
+    setQueueItems(updated);
+  }
+
   if (!shouldShow) return null;
+
+  const hasFailed = (failedCount || 0) > 0;
 
   return (
     <>
       <View
         style={[
           styles.container,
-          !isOnline ? styles.offlineBg : styles.syncBg,
+          !isOnline ? styles.offlineBg : (hasFailed && pendingCount === 0 ? styles.failedBg : styles.syncBg),
           Platform.OS !== 'web' && insets.top > 0 ? { paddingTop: insets.top + 4 } : null,
         ]}
       >
@@ -70,6 +84,13 @@ export default function OfflineBanner() {
                 color="#fff"
                 style={styles.icon}
               />
+            ) : hasFailed && pendingCount === 0 ? (
+              <Ionicons
+                name="alert-circle-outline"
+                size={16}
+                color="#fff"
+                style={styles.icon}
+              />
             ) : (
               <Ionicons
                 name="cloud-upload-outline"
@@ -83,8 +104,10 @@ export default function OfflineBanner() {
               {isSyncing
                 ? 'Syncing offline records with server...'
                 : !isOnline
-                ? `Offline Mode ${pendingCount > 0 ? `• ${pendingCount} pending sync` : '• Changes saved locally'}`
-                : `${pendingCount} offline ${pendingCount === 1 ? 'item' : 'items'} ready to sync`}
+                ? `Offline Mode ${pendingCount > 0 ? `• ${pendingCount} pending sync` : '• Changes saved locally'}${hasFailed ? ` (${failedCount} failed)` : ''}`
+                : pendingCount > 0
+                ? `${pendingCount} offline ${pendingCount === 1 ? 'item' : 'items'} ready to sync${hasFailed ? ` (${failedCount} failed)` : ''}`
+                : `${failedCount} item${failedCount === 1 ? '' : 's'} failed validation • Tap to view`}
             </Text>
           </View>
 
@@ -100,14 +123,12 @@ export default function OfflineBanner() {
               </TouchableOpacity>
             )}
 
-            {pendingCount > 0 && (
-              <Ionicons
-                name="chevron-forward"
-                size={14}
-                color="rgba(255,255,255,0.8)"
-                style={{ marginLeft: 4 }}
-              />
-            )}
+            <Ionicons
+              name="chevron-forward"
+              size={14}
+              color="rgba(255,255,255,0.8)"
+              style={{ marginLeft: 4 }}
+            />
           </View>
         </TouchableOpacity>
       </View>
@@ -201,7 +222,28 @@ export default function OfflineBanner() {
             </ScrollView>
 
             <View style={styles.modalFooter}>
-              {isOnline && queueItems.length > 0 ? (
+              {hasFailed && (
+                <TouchableOpacity
+                  style={styles.modalClearFailedBtn}
+                  onPress={handleClearFailed}
+                >
+                  <Ionicons name="trash-outline" size={15} color="#DC2626" style={{ marginRight: 4 }} />
+                  <Text style={styles.modalClearFailedText}>Discard Failed</Text>
+                </TouchableOpacity>
+              )}
+
+              {isOnline && hasFailed && (
+                <TouchableOpacity
+                  style={styles.modalRetryFailedBtn}
+                  disabled={isSyncing}
+                  onPress={handleRetryFailed}
+                >
+                  <Ionicons name="reload" size={15} color="#0284C7" style={{ marginRight: 4 }} />
+                  <Text style={styles.modalRetryFailedText}>Retry Failed</Text>
+                </TouchableOpacity>
+              )}
+
+              {isOnline && pendingCount > 0 ? (
                 <TouchableOpacity
                   style={[styles.modalSyncBtn, isSyncing && { opacity: 0.6 }]}
                   disabled={isSyncing}
@@ -245,6 +287,9 @@ const styles = StyleSheet.create({
   },
   offlineBg: {
     backgroundColor: '#D97706', // Warm Amber
+  },
+  failedBg: {
+    backgroundColor: '#DC2626', // Crimson Red for failed items
   },
   syncBg: {
     backgroundColor: '#0284C7', // Sky Blue
@@ -445,6 +490,38 @@ const styles = StyleSheet.create({
   modalSyncBtnText: {
     color: '#fff',
     fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  modalClearFailedBtn: {
+    backgroundColor: '#FEE2E2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  modalClearFailedText: {
+    color: '#DC2626',
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  modalRetryFailedBtn: {
+    backgroundColor: '#E0F2FE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: Radius.md,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  modalRetryFailedText: {
+    color: '#0284C7',
+    fontSize: FontSize.sm,
     fontWeight: '700',
   },
   modalCloseBtn: {

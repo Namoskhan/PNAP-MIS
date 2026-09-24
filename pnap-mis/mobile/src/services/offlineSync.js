@@ -22,13 +22,16 @@ function notifySyncListeners(state) {
 /**
  * Reconstructs FormData with attached offline files
  */
+/**
+ * Reconstructs FormData with attached offline files
+ */
 async function buildFormData(payload, files) {
   const fd = new FormData();
 
   // Append text payload fields
   Object.entries(payload || {}).forEach(([key, val]) => {
     if (val !== undefined && val !== null) {
-      if (typeof val === 'object' && !(val instanceof Blob) && !(val instanceof File)) {
+      if (typeof val === 'object' && !(val instanceof Blob) && (typeof File === 'undefined' || !(val instanceof File))) {
         fd.append(key, JSON.stringify(val));
       } else {
         fd.append(key, String(val));
@@ -45,9 +48,21 @@ async function buildFormData(payload, files) {
 
       if (Platform.OS === 'web') {
         if (f.dataUrl) {
-          const res = await fetch(f.dataUrl);
-          const blob = await res.blob();
-          fd.append(fieldName, blob, fileName);
+          try {
+            const res = await fetch(f.dataUrl);
+            const blob = await res.blob();
+            fd.append(fieldName, blob, fileName);
+          } catch {
+            if (f.file) fd.append(fieldName, f.file, fileName);
+          }
+        } else if (f.file) {
+          fd.append(fieldName, f.file, fileName);
+        } else if (f.uri) {
+          try {
+            const res = await fetch(f.uri);
+            const blob = await res.blob();
+            fd.append(fieldName, blob, fileName);
+          } catch {}
         }
       } else {
         fd.append(fieldName, {
@@ -63,9 +78,13 @@ async function buildFormData(payload, files) {
 }
 
 /**
- * Main synchronizer: Processes pending offline items and dispatches them to server
+ * Main synchronizer: Processes pending offline items and dispatches them to server.
+ * Only processes PENDING items by default. FAILED items require explicit retry.
  */
-export async function syncOfflineQueue(onProgress) {
+export async function syncOfflineQueue(options = {}) {
+  const { onProgress, retryFailed = false } =
+    typeof options === 'function' ? { onProgress: options } : options;
+
   if (isSyncInProgress) {
     return { skipped: true, reason: 'Sync already in progress' };
   }
@@ -74,8 +93,9 @@ export async function syncOfflineQueue(onProgress) {
   notifySyncListeners({ isSyncing: true });
 
   const queue = await getOfflineQueue();
-  const pendingItems = queue.filter(
-    (item) => item.status === 'PENDING' || item.status === 'FAILED'
+  // IMPORTANT: Auto-sync ONLY processes PENDING items to avoid infinite error loops
+  const targetItems = queue.filter(
+    (item) => item.status === 'PENDING' || (retryFailed && item.status === 'FAILED')
   );
 
   let syncedCount = 0;
@@ -83,10 +103,9 @@ export async function syncOfflineQueue(onProgress) {
   let networkStopped = false;
 
   try {
-    for (const item of pendingItems) {
-      // Notify current progress
+    for (const item of targetItems) {
       if (onProgress) {
-        onProgress({ currentItem: item, syncedCount, total: pendingItems.length });
+        onProgress({ currentItem: item, syncedCount, total: targetItems.length });
       }
 
       await updateOfflineAction(item.id, { status: 'SYNCING' });
@@ -97,7 +116,11 @@ export async function syncOfflineQueue(onProgress) {
 
         if (Array.isArray(item.files) && item.files.length > 0) {
           requestData = await buildFormData(item.payload, item.files);
-          headers['Content-Type'] = 'multipart/form-data';
+          // On native React Native, explicitly set multipart/form-data.
+          // On Web, omit Content-Type so browser sets boundary automatically.
+          if (Platform.OS !== 'web') {
+            headers['Content-Type'] = 'multipart/form-data';
+          }
         } else {
           requestData = item.payload;
         }
@@ -114,22 +137,39 @@ export async function syncOfflineQueue(onProgress) {
         await removeOfflineAction(item.id);
         syncedCount += 1;
       } catch (err) {
+        const httpStatus = err.response?.status;
+
+        // If rate-limited (HTTP 429), back off immediately and keep as PENDING
+        if (httpStatus === 429) {
+          await updateOfflineAction(item.id, {
+            status: 'PENDING',
+            error: 'Server rate limit exceeded (429). Pausing sync.',
+          });
+          networkStopped = true;
+          break;
+        }
+
         if (isNetworkError(err)) {
           // Network connection dropped midway: revert item to PENDING and stop
           await updateOfflineAction(item.id, { status: 'PENDING' });
           networkStopped = true;
           break;
-        } else {
-          // Client or server logic error (e.g. 400 Bad Request, validation fail)
-          const errorMsg = errorMessage(err);
-          const retryCount = (item.retryCount || 0) + 1;
-          await updateOfflineAction(item.id, {
-            status: retryCount >= 3 ? 'FAILED' : 'PENDING',
-            retryCount,
-            error: errorMsg,
-          });
-          failedCount += 1;
         }
+
+        // Semantic / Validation errors (400, 422, 403, 404):
+        // These will never succeed on automated retry without fixing data.
+        // Mark as FAILED immediately to halt looping.
+        const isClientError = httpStatus >= 400 && httpStatus < 500;
+        const errorMsg = errorMessage(err);
+        const retryCount = (item.retryCount || 0) + 1;
+        const nextStatus = isClientError || retryCount >= 2 ? 'FAILED' : 'PENDING';
+
+        await updateOfflineAction(item.id, {
+          status: nextStatus,
+          retryCount,
+          error: errorMsg,
+        });
+        failedCount += 1;
       }
     }
   } finally {

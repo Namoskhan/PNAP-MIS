@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { api } from '../../../src/api/client';
+import { getCache, setCache } from '../../../src/services/offlineStorage';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import EmptyState from '../../../src/components/EmptyState';
@@ -24,13 +25,32 @@ export default function ActivityDetailScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
+    // Load from cache first
+    getCache(`activity_detail_${id}`).then((cached) => {
+      if (active && cached) {
+        setActivity(cached);
+        setLoading(false);
+      }
+    }).catch(() => {});
+
     api.get(`/activities/${id}`)
-      .then((r) => setActivity(r.data.data))
+      .then((r) => {
+        if (active && r.data?.data) {
+          setActivity(r.data.data);
+          setCache(`activity_detail_${id}`, r.data.data).catch(() => {});
+        }
+      })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
   }, [id]);
 
-  if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={Colors.primary} /></View>;
+  if (loading && !activity) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={Colors.primary} /></View>;
   if (!activity) return <EmptyState icon="❌" title="Activity not found" />;
 
   const a = activity;

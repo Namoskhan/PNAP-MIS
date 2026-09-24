@@ -7,6 +7,8 @@ import {
   enqueueOfflineAction,
   getCache,
   setCache,
+  clearFailedOfflineActions,
+  resetFailedToPending,
 } from '../services/offlineStorage';
 import {
   syncOfflineQueue,
@@ -20,29 +22,39 @@ export function NetworkProvider({ children }) {
   const [isOnline, setIsOnline] = useState(true);
   const [isInternetReachable, setIsInternetReachable] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncResult, setLastSyncResult] = useState(null);
   const wasOffline = useRef(false);
+  const lastSyncTimeRef = useRef(0);
 
-  // Update pending queue count
+  // Update pending queue count (strictly separates PENDING from FAILED)
   const refreshPendingCount = useCallback(async () => {
     try {
       const queue = await getOfflineQueue();
-      const count = queue.filter(
-        (i) => i.status === 'PENDING' || i.status === 'FAILED'
-      ).length;
-      setPendingCount(count);
+      const pCount = queue.filter((i) => i.status === 'PENDING').length;
+      const fCount = queue.filter((i) => i.status === 'FAILED').length;
+      setPendingCount(pCount);
+      setFailedCount(fCount);
     } catch {
       setPendingCount(0);
+      setFailedCount(0);
     }
   }, []);
 
   // Trigger synchronization
-  const syncNow = useCallback(async (showToast) => {
+  const syncNow = useCallback(async (options = {}) => {
     if (getIsSyncing()) return;
+    const now = Date.now();
+    // Throttle automatic sync triggers by 5s unless forced
+    if (now - lastSyncTimeRef.current < 5000 && !options.force && !options.retryFailed) {
+      return;
+    }
+    lastSyncTimeRef.current = now;
+
     setIsSyncing(true);
     try {
-      const res = await syncOfflineQueue();
+      const res = await syncOfflineQueue(options);
       setLastSyncResult(res);
       await refreshPendingCount();
       return res;
@@ -52,6 +64,17 @@ export function NetworkProvider({ children }) {
       setIsSyncing(false);
     }
   }, [refreshPendingCount]);
+
+  const clearFailed = useCallback(async () => {
+    await clearFailedOfflineActions();
+    await refreshPendingCount();
+  }, [refreshPendingCount]);
+
+  const retryFailed = useCallback(async () => {
+    await resetFailedToPending();
+    await refreshPendingCount();
+    return syncNow({ retryFailed: true, force: true });
+  }, [refreshPendingCount, syncNow]);
 
   // Subscribe to NetInfo network changes
   useEffect(() => {
@@ -133,10 +156,13 @@ export function NetworkProvider({ children }) {
     isOnline,
     isInternetReachable,
     pendingCount,
+    failedCount,
     isSyncing,
     lastSyncResult,
     syncNow,
     refreshPendingCount,
+    clearFailed,
+    retryFailed,
     enqueueOfflineAction,
     getCache,
     setCache,

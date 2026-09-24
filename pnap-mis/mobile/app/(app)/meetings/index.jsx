@@ -41,6 +41,7 @@ import DateTimePicker from '../../../src/components/DateTimePicker';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import useEventTypes from '../../../src/hooks/useEventTypes';
 import { getCachedAttendees } from '../../../src/services/scopeDataCache';
+import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 
 const DEFAULT_TYPE_CODE = 'EXC';
 
@@ -397,6 +398,12 @@ export default function MeetingsScreen() {
     }
     if (!form.venue.trim()) {
       const msg = 'Venue is required.';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+    if (form.endAt && new Date(form.endAt).getTime() <= new Date(form.startAt).getTime()) {
+      const msg = 'End date/time must be strictly after start date/time.';
       setFormError(msg);
       toast.error(msg);
       return;

@@ -13,8 +13,9 @@ import {
 import { Link, useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useUnit } from '../../context/UnitContext';
-import { api, errorMessage } from '../../api/client';
+import { api, errorMessage, isNetworkError } from '../../api/client';
 import { useToast } from '../Toast';
+import { getCache, setCache } from '../../services/offlineStorage';
 import {
   isHigherAdmin,
   isPresidentPersona,
@@ -100,7 +101,7 @@ export default function UnitDashboard() {
   }, [ctx]);
 
   const loadData = useRef(null);
-  loadData.current = function loadData(silent = false) {
+  loadData.current = async function loadData(silent = false) {
     if (!ctx?.unitLevel || !ctx?.unitId) {
       setLoading(false);
       setRefreshing(false);
@@ -108,17 +109,37 @@ export default function UnitDashboard() {
     }
 
     const myId = ++fetchIdRef.current;
-    if (!silent) setLoading(true);
+
+    // First load from offline cache if available
+    const cacheKeyUnit = `dashboard_unit_${ctx.unitLevel}_${ctx.unitId}`;
+    const cacheKeySubs = `dashboard_subordinates_${ctx.unitLevel}_${ctx.unitId}`;
+    const [cachedUnit, cachedSubs] = await Promise.all([
+      getCache(cacheKeyUnit),
+      ctx.unitLevel !== 'BASIC_UNIT' ? getCache(cacheKeySubs) : Promise.resolve([]),
+    ]);
+
+    if (myId === fetchIdRef.current && cachedUnit) {
+      setData(cachedUnit);
+      if (cachedSubs) setSubordinates(cachedSubs);
+      if (!silent) setLoading(false);
+    } else if (!silent) {
+      setLoading(true);
+    }
     setRefreshing(true);
 
     const tasks = [
       api.get('/dashboard/unit', { params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId } })
         .then((r) => {
-          if (myId === fetchIdRef.current) setData(r.data.data);
+          if (myId === fetchIdRef.current && r.data?.data) {
+            setData(r.data.data);
+            setCache(cacheKeyUnit, r.data.data).catch(() => {});
+          }
         })
         .catch((err) => {
           if (myId === fetchIdRef.current) {
-            toast.error(errorMessage(err));
+            if (!isNetworkError(err) || !cachedUnit) {
+              toast.error(errorMessage(err));
+            }
           }
         }),
     ];
@@ -127,10 +148,15 @@ export default function UnitDashboard() {
       tasks.push(
         api.get('/dashboard/subordinates', { params: { unitLevel: ctx.unitLevel, unitId: ctx.unitId } })
           .then((r) => {
-            if (myId === fetchIdRef.current) setSubordinates(r.data.data || []);
+            if (myId === fetchIdRef.current && r.data?.data) {
+              setSubordinates(r.data.data);
+              setCache(cacheKeySubs, r.data.data).catch(() => {});
+            }
           })
-          .catch(() => {
-            if (myId === fetchIdRef.current) setSubordinates([]);
+          .catch((err) => {
+            if (myId === fetchIdRef.current && !cachedSubs) {
+              setSubordinates([]);
+            }
           })
       );
     } else if (myId === fetchIdRef.current) {

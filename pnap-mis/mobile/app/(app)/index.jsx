@@ -14,6 +14,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useUnit } from '../../src/context/UnitContext';
 import { api } from '../../src/api/client';
 import { isPureMember } from '../../src/utils/permissions';
+import { getCache, setCache } from '../../src/services/offlineStorage';
 import Card from '../../src/components/Card';
 import Badge from '../../src/components/Badge';
 import CommandCenter from '../../src/components/CommandCenter';
@@ -42,16 +43,56 @@ export default function DashboardScreen() {
   }, [isMember, user?.memberId, user?.scope?.basicUnitId]);
 
   async function loadMemberData(silent = false) {
+    const buId = user?.scope?.basicUnitId || ctx?.unitId;
+
+    // Load from offline cache first
+    if (user?.memberId) {
+      const cachedProfile = await getCache(`member_profile_${user.memberId}`);
+      if (cachedProfile) setMe(cachedProfile);
+    }
+    if (buId) {
+      const [cachedM, cachedA] = await Promise.all([
+        getCache(`meetings_BASIC_UNIT_${buId}_NON_COMMITTEE`),
+        getCache(`activities_BASIC_UNIT_${buId}_NON_COMMITTEE`),
+      ]);
+      if (cachedM?.length) setMeetings(cachedM.slice(0, 5));
+      if (cachedA?.length) setActivities(cachedA.slice(0, 5));
+    }
+
     if (!silent) setLoadingMember(true);
     const tasks = [];
     if (user?.memberId) {
-      tasks.push(api.get(`/members/${user.memberId}`).then((r) => setMe(r.data.data)).catch(() => {}));
+      tasks.push(
+        api.get(`/members/${user.memberId}`)
+          .then((r) => {
+            if (r.data?.data) {
+              setMe(r.data.data);
+              setCache(`member_profile_${user.memberId}`, r.data.data).catch(() => {});
+            }
+          })
+          .catch(() => {})
+      );
     }
-    const buId = user?.scope?.basicUnitId || ctx?.unitId;
     if (buId) {
       const params = { unitLevel: 'BASIC_UNIT', unitId: buId };
-      tasks.push(api.get('/meetings', { params }).then((r) => setMeetings((r.data.data || []).slice(0, 5))).catch(() => {}));
-      tasks.push(api.get('/activities', { params }).then((r) => setActivities((r.data.data || []).slice(0, 5))).catch(() => {}));
+      tasks.push(
+        api.get('/meetings', { params })
+          .then((r) => {
+            const list = (r.data?.data || []).slice(0, 5);
+            setMeetings(list);
+            setCache(`meetings_BASIC_UNIT_${buId}_NON_COMMITTEE`, list).catch(() => {});
+          })
+          .catch(() => {})
+      );
+      tasks.push(
+        api.get('/activities', { params })
+          .then((r) => {
+            const list = (r.data?.data || []).slice(0, 5);
+            setActivities(list);
+            setCache(`activities_BASIC_UNIT_${buId}_NON_COMMITTEE`, list).catch(() => {});
+          })
+          .catch(() => {})
+      );
     }
     Promise.all(tasks).finally(() => {
       setLoadingMember(false);
