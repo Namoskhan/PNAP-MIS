@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useUnit } from '../../src/context/UnitContext';
 import { roleLabel, isPureMember, isSuperAdmin } from '../../src/utils/permissions';
 import { resolveMediaUrl } from '../../src/api/client';
+import { Storage } from '../../src/utils/storage';
 import Avatar from '../../src/components/Avatar';
 import Card from '../../src/components/Card';
 import Badge from '../../src/components/Badge';
@@ -51,6 +52,25 @@ export default function ProfileScreen() {
 
   const [signingOut, setSigningOut] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState({ isRemembered: true, expiryDays: 7 });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [rem, exp] = await Promise.all([
+          Storage.getItem('pnap_remember_me'),
+          Storage.getItem('pnap_session_expiry'),
+        ]);
+        const isRemembered = rem !== 'false';
+        let expiryDays = 7;
+        if (exp) {
+          const msLeft = Number(exp) - Date.now();
+          expiryDays = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+        }
+        setSessionInfo({ isRemembered, expiryDays });
+      } catch {}
+    })();
+  }, []);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -345,6 +365,38 @@ export default function ProfileScreen() {
               </View>
             </Card>
           )}
+
+          {/* Offline & Session Status */}
+          <Card style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
+                <Text style={styles.sectionTitle}>Offline & Session Security</Text>
+              </View>
+              <Badge
+                text={sessionInfo.isRemembered ? '7-Day Offline' : 'Standard'}
+                variant={sessionInfo.isRemembered ? 'success' : 'default'}
+              />
+            </View>
+
+            <View style={styles.infoList}>
+              <InfoItem
+                icon="time-outline"
+                label="Session Validity"
+                value={
+                  sessionInfo.isRemembered
+                    ? `Active for ~${sessionInfo.expiryDays} day(s) without credentials`
+                    : 'Standard session'
+                }
+              />
+              <InfoItem
+                icon="cloud-offline-outline"
+                label="Offline Field Access"
+                value="Enabled — you can view data and record actions offline without re-entering credentials."
+                isLast
+              />
+            </View>
+          </Card>
 
           {/* Account Actions */}
           <Card style={styles.sectionCard}>

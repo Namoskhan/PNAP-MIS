@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { Storage } from '../utils/storage';
-import { api } from '../api/client';
+import { api, setUnauthorizedHandler } from '../api/client';
 
 // Port of web/src/context/AuthContext.jsx.
 // Uses cross-platform Storage (SecureStore on Native, localStorage on Web).
@@ -10,6 +10,10 @@ const AuthContext = createContext(null);
 const TOKEN_KEY = 'pnap_token';
 const USER_KEY = 'pnap_user';
 const ACTIVE_ROLE_KEY = 'pnap_active_role';
+const REMEMBER_ME_KEY = 'pnap_remember_me';
+const SESSION_EXPIRY_KEY = 'pnap_session_expiry';
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 const ROLE_PRIORITY = [
   'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
@@ -68,23 +72,56 @@ export function AuthProvider({ children }) {
     return true;
   });
 
+  // Listen for global 401s from client.js
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      setActiveRoleRaw(null);
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
   // Hydrate from Storage on first mount (async for native SecureStore).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [rawUser, rawRole] = await Promise.all([
+        const [rawUser, rawRole, rawToken, rawExpiry] = await Promise.all([
           Storage.getItem(USER_KEY),
           Storage.getItem(ACTIVE_ROLE_KEY),
+          Storage.getItem(TOKEN_KEY),
+          Storage.getItem(SESSION_EXPIRY_KEY),
         ]);
         if (cancelled) return;
-        if (rawUser) {
+
+        // Check if session has expired past 7 days (or 12h without rememberMe)
+        if (rawExpiry) {
+          const expiry = Number(rawExpiry);
+          if (expiry > 0 && Date.now() > expiry) {
+            console.log('[AuthContext] Session expired past duration; clearing credentials.');
+            await Promise.all([
+              Storage.removeItem(TOKEN_KEY),
+              Storage.removeItem(USER_KEY),
+              Storage.removeItem(ACTIVE_ROLE_KEY),
+              Storage.removeItem(SESSION_EXPIRY_KEY),
+            ]);
+            setUser(null);
+            setActiveRoleRaw(null);
+            setLoading(false);
+            return;
+          }
+        }
+
+        if (rawUser && rawToken) {
           try {
             setUser(JSON.parse(rawUser));
           } catch (e) {
             console.warn('[AuthContext] Parse user error:', e);
           }
+        } else if (!rawToken) {
+          setUser(null);
         }
+
         if (rawRole) {
           setActiveRoleRaw(rawRole);
         }
@@ -118,8 +155,17 @@ export function AuthProvider({ children }) {
       const fresh = res.data.data;
       setUser(fresh);
       await Storage.setItem(USER_KEY, JSON.stringify(fresh));
+
+      // Sliding window extension: if rememberMe is enabled, extend session expiry by 7 days
+      const rawRemember = await Storage.getItem(REMEMBER_ME_KEY);
+      if (rawRemember === 'true') {
+        const newExpiry = Date.now() + SEVEN_DAYS_MS;
+        await Storage.setItem(SESSION_EXPIRY_KEY, String(newExpiry));
+      }
+
       return fresh;
     } catch {
+      // Offline / network failure: retain cached user and credentials
       return null;
     }
   }
@@ -190,13 +236,25 @@ export function AuthProvider({ children }) {
     };
   }, [user, activeRole]);
 
-  async function login(identifier, password) {
+  async function login(identifier, password, rememberMe = true) {
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { identifier, password });
+      const res = await api.post('/auth/login', {
+        identifier,
+        password,
+        rememberMe: Boolean(rememberMe),
+      });
       const { token, user: u } = res.data.data;
-      await Storage.setItem(TOKEN_KEY, token);
-      await Storage.setItem(USER_KEY, JSON.stringify(u));
+      const durationMs = rememberMe ? SEVEN_DAYS_MS : TWELVE_HOURS_MS;
+      const expiry = Date.now() + durationMs;
+
+      await Promise.all([
+        Storage.setItem(TOKEN_KEY, token),
+        Storage.setItem(USER_KEY, JSON.stringify(u)),
+        Storage.setItem(REMEMBER_ME_KEY, rememberMe ? 'true' : 'false'),
+        Storage.setItem(SESSION_EXPIRY_KEY, String(expiry)),
+      ]);
+
       await setActiveRole(null);
       setUser(u);
       return u;
@@ -206,10 +264,13 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    await Storage.removeItem(TOKEN_KEY);
-    await Storage.removeItem(USER_KEY);
-    await Storage.removeItem(ACTIVE_ROLE_KEY);
-    await Storage.removeItem('pnap_unit_ctx');
+    await Promise.all([
+      Storage.removeItem(TOKEN_KEY),
+      Storage.removeItem(USER_KEY),
+      Storage.removeItem(ACTIVE_ROLE_KEY),
+      Storage.removeItem('pnap_unit_ctx'),
+      Storage.removeItem(SESSION_EXPIRY_KEY),
+    ]);
     setActiveRoleRaw(null);
     setUser(null);
   }

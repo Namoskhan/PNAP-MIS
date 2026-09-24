@@ -62,36 +62,59 @@ export const api = axios.create({
 
 api.getToken = () => Storage.getItem('pnap_token');
 
-// Attach JWT token from Storage on every request.
+let unauthorizedHandler = null;
+
+export function setUnauthorizedHandler(fn) {
+  unauthorizedHandler = fn;
+}
+
+// Attach JWT token and session hints from Storage on every request.
 api.interceptors.request.use(async (config) => {
   try {
-    const [token, activeRole] = await Promise.all([
+    const [token, activeRole, rememberMe] = await Promise.all([
       Storage.getItem('pnap_token'),
       config.url?.startsWith('/dashboard/')
         ? Storage.getItem('pnap_active_role')
         : Promise.resolve(null),
+      Storage.getItem('pnap_remember_me'),
     ]);
     if (token) config.headers.Authorization = `Bearer ${token}`;
     if (activeRole) config.headers['X-Dashboard-Role'] = activeRole;
+    if (rememberMe === 'true') config.headers['X-Keep-Logged-In'] = 'true';
   } catch {
     // Silently skip if storage fails
   }
   return config;
 });
 
-// Global 401 handler — clear stored credentials and let the AuthContext
-// detect the missing token and redirect to login.
+// Response interceptor:
+// 1. Sliding window renewal: capture renewed JWT if server issued X-Refreshed-Token
+// 2. Global 401 handler: clear stored credentials and notify AuthContext
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    try {
+      const refreshed = res.headers?.['x-refreshed-token'] || res.headers?.['X-Refreshed-Token'];
+      if (refreshed) {
+        Storage.setItem('pnap_token', refreshed).catch(() => {});
+      }
+    } catch {}
+    return res;
+  },
   async (err) => {
     if (err.response?.status === 401) {
       try {
-        await Storage.removeItem('pnap_token');
-        await Storage.removeItem('pnap_user');
-        await Storage.removeItem('pnap_active_role');
-        await Storage.removeItem('pnap_unit_ctx');
+        await Promise.all([
+          Storage.removeItem('pnap_token'),
+          Storage.removeItem('pnap_user'),
+          Storage.removeItem('pnap_active_role'),
+          Storage.removeItem('pnap_unit_ctx'),
+          Storage.removeItem('pnap_session_expiry'),
+        ]);
       } catch {
         // ignore
+      }
+      if (typeof unauthorizedHandler === 'function') {
+        unauthorizedHandler();
       }
     }
     return Promise.reject(err);

@@ -35,6 +35,7 @@ app.use(
       return cb(null, false);
     },
     credentials: true,
+    exposedHeaders: ['X-Refreshed-Token'],
   })
 );
 
