@@ -20,10 +20,17 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { canManageMeetings, isSuperAdmin, isSuperAdminOversight, isCentralAdminOversight } from '../../../src/utils/permissions';
 import { Storage } from '../../../src/utils/storage';
+import {
+  setCache,
+  getCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+} from '../../../src/services/offlineStorage';
+import { getCachedAttendees } from '../../../src/services/scopeDataCache';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import EmptyState from '../../../src/components/EmptyState';
@@ -102,11 +109,27 @@ export default function MeetingDetailScreen() {
   const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [finalizingBusy, setFinalizingBusy] = useState(false);
 
-  function load() {
-    api.get(`/meetings/${id}`)
-      .then((r) => setMeeting(r.data.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  async function load() {
+    const cacheKey = `meeting_detail_${id}`;
+    try {
+      const r = await api.get(`/meetings/${id}`);
+      const data = r.data?.data;
+      if (data) {
+        setMeeting(data);
+        await setCache(cacheKey, data);
+      }
+    } catch {
+      const cached = await getCache(cacheKey);
+      if (cached) {
+        setMeeting(cached);
+      } else {
+        const offlineMeetings = await getOfflineEntities('MEETING');
+        const found = offlineMeetings.find((m) => m._id === id);
+        if (found) setMeeting(found);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -122,9 +145,11 @@ export default function MeetingDetailScreen() {
     setSupervisorAttended(Boolean(meeting?.supervisorAttended));
     setSupervisorMemberId(meeting?.supervisorMemberId?._id || meeting?.supervisorMemberId || '');
 
+    const attendeesCacheKey = `meeting_attendees_${meeting._id}`;
     try {
       const r = await api.get(`/meetings/${meeting._id}/attendees`);
       const list = r.data.data || [];
+      await setCache(attendeesCacheKey, list);
       const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
       const rows = list.map((m) => ({
         memberId: m._id,
@@ -135,7 +160,24 @@ export default function MeetingDetailScreen() {
       }));
       setAttendance(rows);
     } catch (e) {
-      toast.error('Could not load attendee roster.');
+      // Offline fallback: load cached meeting attendees or unit attendees
+      let list = await getCache(attendeesCacheKey);
+      if (!list || !list.length) {
+        list = await getCachedAttendees(meeting.unitLevel, meeting.unitId, meeting.body);
+      }
+      if (list && list.length > 0) {
+        const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
+        const rows = list.map((m) => ({
+          memberId: m._id,
+          name: m.fullName,
+          memberCode: m.memberId,
+          roleText: m.roleText || m.roleCode,
+          status: existingMap.get(String(m._id)) || 'ABSENT',
+        }));
+        setAttendance(rows);
+      } else {
+        toast.error('Could not load attendee roster (offline).');
+      }
     } finally {
       setLoadingAttendees(false);
     }
@@ -147,11 +189,20 @@ export default function MeetingDetailScreen() {
 
   async function loadSupervisors() {
     setSupervisorsLoading(true);
+    const cacheKey = `meeting_supervisors_${meeting._id}`;
     try {
       const r = await api.get(`/meetings/${meeting._id}/supervisor-candidates`);
-      setSupervisorCandidates(r.data.data || []);
+      const data = r.data.data || [];
+      setSupervisorCandidates(data);
+      await setCache(cacheKey, data);
     } catch {
-      setSupervisorCandidates([]);
+      const cached = await getCache(cacheKey);
+      if (cached && cached.length) {
+        setSupervisorCandidates(cached);
+      } else {
+        const fallbackRoles = (await getCache(`roles_${meeting.unitLevel}_${meeting.unitId}`)) || [];
+        setSupervisorCandidates(fallbackRoles);
+      }
     } finally {
       setSupervisorsLoading(false);
     }
@@ -184,21 +235,47 @@ export default function MeetingDetailScreen() {
       return;
     }
     setFinalizingBusy(true);
+    const payload = {
+      decisions: previouswork.trim(),
+      upcomingStrategy: upcomingStrategy.trim() || undefined,
+      notes: notes.trim() || undefined,
+      supervisorAttended,
+      supervisorMemberId: supervisorAttended && supervisorMemberId ? supervisorMemberId : undefined,
+      attendance: attendance.map((r) => ({ memberId: r.memberId, status: r.status })),
+    };
     try {
-      const payload = {
-        decisions: previouswork.trim(),
-        upcomingStrategy: upcomingStrategy.trim() || undefined,
-        notes: notes.trim() || undefined,
-        supervisorAttended,
-        supervisorMemberId: supervisorAttended && supervisorMemberId ? supervisorMemberId : undefined,
-        attendance: attendance.map((r) => ({ memberId: r.memberId, status: r.status })),
-      };
       await api.post(`/meetings/${meeting._id}/finalize`, payload);
       toast.success('Meeting finalized successfully.');
       setShowFinalize(false);
       setFinalizeError('');
       load();
     } catch (e) {
+      if (isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'MEETING',
+          action: 'FINALIZE',
+          endpoint: `/meetings/${meeting._id}/finalize`,
+          method: 'POST',
+          payload,
+          displayTitle: `Finalize Meeting: ${meeting.title || 'Meeting'}`,
+        });
+        const updated = {
+          ...meeting,
+          state: 'FINALIZED',
+          decisions: payload.decisions,
+          upcomingStrategy: payload.upcomingStrategy,
+          notes: payload.notes,
+          supervisorAttended: payload.supervisorAttended,
+          attendance: payload.attendance,
+          _isOfflineFinalized: true,
+        };
+        setMeeting(updated);
+        await setCache(`meeting_detail_${meeting._id}`, updated);
+        toast.success('Finalize saved offline. Will sync when back online.');
+        setShowFinalize(false);
+        setFinalizeError('');
+        return;
+      }
       const msg = errorMessage(e);
       setFinalizeError(msg);
       toast.error(msg);
@@ -284,6 +361,23 @@ export default function MeetingDetailScreen() {
       }
       load();
     } catch (e) {
+      if (isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'MEETING',
+          action: 'UPLOAD_PHOTOS',
+          endpoint: `/meetings/${meeting._id}/photos`,
+          method: 'POST',
+          files: (result?.assets || []).slice(0, 10).map((a, i) => ({
+            fieldName: 'photos',
+            uri: a.uri,
+            name: a.fileName || `photo_${Date.now()}_${i}.jpg`,
+            type: a.mimeType || 'image/jpeg',
+          })),
+          displayTitle: `Upload Photos: ${meeting.title || 'Meeting'}`,
+        });
+        toast.success('Photos saved offline. Will upload when back online.');
+        return;
+      }
       const msg = errorMessage(e);
       setPhotoError(msg);
       toast.error(msg);

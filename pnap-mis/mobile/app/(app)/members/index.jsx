@@ -224,8 +224,15 @@ export default function MembersScreen() {
     setAreaId(user?.scope?.areaId || '');
 
     api.get('/org/provinces')
-      .then((r) => setProvinces(r.data?.data || []))
-      .catch(() => {});
+      .then((r) => {
+        const data = r.data?.data || [];
+        setProvinces(data);
+        setCache('org_provinces', data).catch(() => {});
+      })
+      .catch(async () => {
+        const cached = await getCache('org_provinces');
+        if (cached) setProvinces(cached);
+      });
   }, [showCreate]);
 
   useEffect(() => {
@@ -234,9 +241,17 @@ export default function MembersScreen() {
       setDistrictId('');
       return;
     }
+    const cacheKey = `org_districts_${provinceId}`;
     api.get('/org/districts', { params: { provinceId } })
-      .then((r) => setDistricts(r.data?.data || []))
-      .catch(() => {});
+      .then((r) => {
+        const data = r.data?.data || [];
+        setDistricts(data);
+        setCache(cacheKey, data).catch(() => {});
+      })
+      .catch(async () => {
+        const cached = await getCache(cacheKey);
+        if (cached) setDistricts(cached);
+      });
   }, [provinceId]);
 
   useEffect(() => {
@@ -245,9 +260,17 @@ export default function MembersScreen() {
       setAreaId('');
       return;
     }
+    const cacheKey = `org_areas_${districtId}`;
     api.get('/org/areas', { params: { districtId } })
-      .then((r) => setAreas(r.data?.data || []))
-      .catch(() => {});
+      .then((r) => {
+        const data = r.data?.data || [];
+        setAreas(data);
+        setCache(cacheKey, data).catch(() => {});
+      })
+      .catch(async () => {
+        const cached = await getCache(cacheKey);
+        if (cached) setAreas(cached);
+      });
   }, [districtId]);
 
   useEffect(() => {
@@ -256,9 +279,17 @@ export default function MembersScreen() {
       setForm((f) => ({ ...f, basicUnitId: '' }));
       return;
     }
+    const cacheKey = `org_basic_units_${areaId}`;
     api.get('/org/basic-units', { params: { areaId } })
-      .then((r) => setUnits(r.data?.data || []))
-      .catch(() => {});
+      .then((r) => {
+        const data = r.data?.data || [];
+        setUnits(data);
+        setCache(cacheKey, data).catch(() => {});
+      })
+      .catch(async () => {
+        const cached = await getCache(cacheKey);
+        if (cached) setUnits(cached);
+      });
   }, [areaId]);
 
   async function pickPhoto() {

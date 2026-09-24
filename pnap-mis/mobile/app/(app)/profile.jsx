@@ -19,6 +19,8 @@ import { useUnit } from '../../src/context/UnitContext';
 import { roleLabel, isPureMember, isSuperAdmin } from '../../src/utils/permissions';
 import { resolveMediaUrl } from '../../src/api/client';
 import { Storage } from '../../src/utils/storage';
+import { useToast } from '../../src/components/Toast';
+import { getScopedCacheMeta, syncUserScopeCache } from '../../src/services/scopeDataCache';
 import Avatar from '../../src/components/Avatar';
 import Card from '../../src/components/Card';
 import Badge from '../../src/components/Badge';
@@ -50,9 +52,19 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
+  const toast = useToast();
   const [signingOut, setSigningOut] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [sessionInfo, setSessionInfo] = useState({ isRemembered: true, expiryDays: 7 });
+  const [cacheMeta, setCacheMeta] = useState(null);
+  const [syncingCache, setSyncingCache] = useState(false);
+
+  async function refreshCacheMeta() {
+    try {
+      const meta = await getScopedCacheMeta();
+      setCacheMeta(meta);
+    } catch {}
+  }
 
   useEffect(() => {
     (async () => {
@@ -69,13 +81,32 @@ export default function ProfileScreen() {
         }
         setSessionInfo({ isRemembered, expiryDays });
       } catch {}
+      await refreshCacheMeta();
     })();
   }, []);
+
+  async function handleSyncCache() {
+    setSyncingCache(true);
+    try {
+      const res = await syncUserScopeCache(user, ctx, { force: true });
+      if (res?.success) {
+        toast?.success?.('Offline scope cache updated successfully');
+      } else {
+        toast?.info?.('Could not reach server to refresh cache. Existing cache retained.');
+      }
+      await refreshCacheMeta();
+    } catch {
+      toast?.error?.('Failed to sync offline cache');
+    } finally {
+      setSyncingCache(false);
+    }
+  }
 
   async function handleRefresh() {
     setRefreshing(true);
     try {
       if (refreshMe) await refreshMe();
+      await refreshCacheMeta();
     } catch {} finally {
       setRefreshing(false);
     }
@@ -392,10 +423,34 @@ export default function ProfileScreen() {
               <InfoItem
                 icon="cloud-offline-outline"
                 label="Offline Field Access"
-                value="Enabled — you can view data and record actions offline without re-entering credentials."
+                value="Enabled — you can view data, create meetings, register members, and record finance offline."
+              />
+              <InfoItem
+                icon="server-outline"
+                label="Scope Data Cached"
+                value={
+                  cacheMeta?.lastSync
+                    ? `${new Date(cacheMeta.lastSync).toLocaleDateString()} ${new Date(cacheMeta.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${cacheMeta.unitLevel || 'Scope'}: ${cacheMeta.unitName || 'Central'})`
+                    : 'Auto-syncs in background'
+                }
                 isLast
               />
             </View>
+
+            <TouchableOpacity
+              style={styles.syncCacheBtn}
+              onPress={handleSyncCache}
+              disabled={syncingCache}
+            >
+              {syncingCache ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <>
+                  <Ionicons name="cloud-download-outline" size={16} color="#ffffff" />
+                  <Text style={styles.syncCacheBtnText}>Update Offline Scope Cache</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </Card>
 
           {/* Account Actions */}
@@ -737,6 +792,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#92400e',
     marginTop: 1,
+  },
+
+  syncCacheBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.lg,
+    paddingVertical: 12,
+    marginTop: Spacing.md,
+  },
+  syncCacheBtnText: {
+    color: '#ffffff',
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
 
   // Account Actions

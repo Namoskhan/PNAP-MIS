@@ -39,8 +39,8 @@ import Card from '../../../src/components/Card';
 import EmptyState from '../../../src/components/EmptyState';
 import DateTimePicker from '../../../src/components/DateTimePicker';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
-import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 import useEventTypes from '../../../src/hooks/useEventTypes';
+import { getCachedAttendees } from '../../../src/services/scopeDataCache';
 
 const DEFAULT_TYPE_CODE = 'EXC';
 
@@ -139,6 +139,8 @@ export default function MeetingsScreen() {
       : (isCommitteeView ? 'COMMITTEE'
       : ((form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') ? 'GENERAL_BODY' : 'EXECUTIVE')));
 
+    const cacheKey = `attendees_${activeLevel}_${resolvedUnitId}_${bodyForAttendees}`;
+
     api.get('/meetings/eligible-attendees', {
       params: {
         unitLevel: activeLevel,
@@ -147,8 +149,21 @@ export default function MeetingsScreen() {
         typeCode: form.typeCode,
       },
     })
-      .then((r) => { if (active) setChairpersonOptions(r.data.data || []); })
-      .catch(() => {})
+      .then((r) => {
+        if (active) {
+          const data = r.data.data || [];
+          setChairpersonOptions(data);
+          setCache(cacheKey, data).catch(() => {});
+        }
+      })
+      .catch(async () => {
+        if (active) {
+          const cached = await getCachedAttendees(activeLevel, resolvedUnitId, bodyForAttendees);
+          if (cached && cached.length > 0) {
+            setChairpersonOptions(cached);
+          }
+        }
+      })
       .finally(() => { if (active) setLoadingChairpersons(false); });
     return () => { active = false; };
   }, [showForm, activeLevel, resolvedUnitId, form.typeCode, isCongressView, isJirgaView, isCommitteeView]);

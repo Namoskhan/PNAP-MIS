@@ -178,16 +178,24 @@ export default function FinanceScreen() {
 
   // Load eligible members for donor linking
   useEffect(() => {
-    if (!resolvedUnitId || resolvedUnitId === 'CENTRAL') {
-      api.get('/members', { params: { limit: 500 } }).then((r) => setMembers(r.data?.data || [])).catch(() => {});
-      return;
-    }
+    const cacheKey = `finance_members_${activeLevel}_${resolvedUnitId || 'all'}`;
     const p = { limit: 500 };
-    if (activeLevel === 'BASIC_UNIT') p.basicUnitId = resolvedUnitId;
-    else if (activeLevel === 'AREA') p.areaId = resolvedUnitId;
-    else if (activeLevel === 'DISTRICT') p.districtId = resolvedUnitId;
-    else if (activeLevel === 'PROVINCE') p.provinceId = resolvedUnitId;
-    api.get('/members', { params: p }).then((r) => setMembers(r.data?.data || [])).catch(() => {});
+    if (resolvedUnitId && resolvedUnitId !== 'CENTRAL') {
+      if (activeLevel === 'BASIC_UNIT') p.basicUnitId = resolvedUnitId;
+      else if (activeLevel === 'AREA') p.areaId = resolvedUnitId;
+      else if (activeLevel === 'DISTRICT') p.districtId = resolvedUnitId;
+      else if (activeLevel === 'PROVINCE') p.provinceId = resolvedUnitId;
+    }
+    api.get('/members', { params: p })
+      .then((r) => {
+        const data = r.data?.data || [];
+        setMembers(data);
+        setCache(cacheKey, data).catch(() => {});
+      })
+      .catch(async () => {
+        const cached = await getCache(cacheKey);
+        if (cached) setMembers(cached);
+      });
   }, [activeLevel, resolvedUnitId]);
 
   async function load(silent = false) {
