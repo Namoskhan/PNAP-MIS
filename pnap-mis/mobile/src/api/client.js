@@ -103,6 +103,15 @@ export function unwrap(promise) {
   return promise.then((res) => res.data?.data);
 }
 
+// Checks if an error is network-related (offline / disconnected / server down)
+export function isNetworkError(err) {
+  if (!err) return false;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  if (!err.response && (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || err.message === 'Network Error')) return true;
+  if (!err.response && (err.isAxiosError || String(err).includes('Network Error'))) return true;
+  return false;
+}
+
 // Extracts a user-facing error message from an axios error.
 export function errorMessage(err) {
   const errObj = err?.response?.data?.error;

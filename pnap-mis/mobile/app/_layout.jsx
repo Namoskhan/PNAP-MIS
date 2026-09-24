@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../src/api/client';
 import { Colors } from '../src/constants/colors';
 
+import { NetworkProvider } from '../src/context/NetworkContext';
+
 // Suppress non-actionable dev/library warnings (React Navigation web pointerEvents, reanimated reduced motion, etc.)
 LogBox.ignoreLogs([
   'props.pointerEvents is deprecated',
@@ -131,8 +133,9 @@ export default function RootLayout() {
       }
 
       return () => {
-        if (typeof window.removeEventListener === 'function') {
-          window.removeEventListener('error', handleExtensionError, true);
+        const existing = typeof document !== 'undefined' ? document.getElementById(styleId) : null;
+        if (existing) {
+          existing.remove();
         }
       };
     }
@@ -142,17 +145,19 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <AuthProvider>
-        <UnitProvider>
-          <ToastProvider>
-            <StatusBar style="light" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(app)" options={{ headerShown: false }} />
-            </Stack>
-          </ToastProvider>
-        </UnitProvider>
-      </AuthProvider>
+      <NetworkProvider>
+        <AuthProvider>
+          <UnitProvider>
+            <ToastProvider>
+              <StatusBar style="light" />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(app)" options={{ headerShown: false }} />
+              </Stack>
+            </ToastProvider>
+          </UnitProvider>
+        </AuthProvider>
+      </NetworkProvider>
     </GestureHandlerRootView>
   );
 }

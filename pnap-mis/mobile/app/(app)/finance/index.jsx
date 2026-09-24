@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { api, errorMessage, resolveMediaUrl } from '../../../src/api/client';
+import { api, errorMessage, resolveMediaUrl, isNetworkError } from '../../../src/api/client';
 import {
   canManageFinance,
   canApproveExpense,
@@ -32,6 +32,14 @@ import {
   isHigherAdmin,
 } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+  subscribeQueue,
+} from '../../../src/services/offlineStorage';
 import Badge from '../../../src/components/Badge';
 import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
@@ -95,6 +103,7 @@ export default function FinanceScreen() {
   const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
   const rawUnitId = params.unitId || ctx?.unitId || '';
   const [resolvedUnitId, setResolvedUnitId] = useState(rawUnitId);
+  const { isOnline } = useNetwork();
 
   const canRecord = canManageFinance(user)
     && !isCentralAdminOversight(user)
@@ -185,16 +194,62 @@ export default function FinanceScreen() {
     if (!resolvedUnitId || resolvedUnitId === 'CENTRAL') { setLoading(false); return; }
     if (!silent) setLoading(true);
     const qParams = { unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody };
+    const cacheKey = `finance_${activeLevel}_${resolvedUnitId}_${targetBody}`;
+
+    const filterOffline = (offlineList) => {
+      return (offlineList || []).filter((o) => {
+        const uId = o.unitId || o.payload?.unitId;
+        const b = o.body || o.payload?.body;
+        const matchesUnit = !uId || !resolvedUnitId || uId === resolvedUnitId;
+        const matchesBody = !b || b === targetBody;
+        return matchesUnit && matchesBody;
+      });
+    };
+
     try {
       const [dRes, eRes, sRes] = await Promise.all([
         api.get('/finance/donations', { params: qParams }),
         api.get('/finance/expenses', { params: qParams }),
         api.get('/finance/summary', { params: qParams }).catch(() => ({ data: { data: null } })),
       ]);
-      setDonations(dRes.data.data || []);
-      setExpenses(eRes.data.data || []);
-      setSummary(sRes.data?.data);
-    } catch { /* ignore */ } finally {
+      const serverDonations = dRes.data.data || [];
+      const serverExpenses = eRes.data.data || [];
+      const serverSummary = sRes.data?.data || null;
+
+      await setCache(cacheKey, {
+        donations: serverDonations,
+        expenses: serverExpenses,
+        summary: serverSummary,
+      });
+
+      const [offlineDonations, offlineExpenses] = await Promise.all([
+        getOfflineEntities('DONATION'),
+        getOfflineEntities('EXPENSE'),
+      ]);
+
+      setDonations([...filterOffline(offlineDonations), ...serverDonations]);
+      setExpenses([...filterOffline(offlineExpenses), ...serverExpenses]);
+      setSummary(serverSummary);
+    } catch {
+      // Offline fallback: load from persistent local cache
+      const cached = await getCache(cacheKey);
+      const [offlineDonations, offlineExpenses] = await Promise.all([
+        getOfflineEntities('DONATION'),
+        getOfflineEntities('EXPENSE'),
+      ]);
+
+      const validOfflineDonations = filterOffline(offlineDonations);
+      const validOfflineExpenses = filterOffline(offlineExpenses);
+
+      if (cached) {
+        setDonations([...validOfflineDonations, ...(cached.donations || [])]);
+        setExpenses([...validOfflineExpenses, ...(cached.expenses || [])]);
+        setSummary(cached.summary || null);
+      } else {
+        setDonations(validOfflineDonations);
+        setExpenses(validOfflineExpenses);
+      }
+    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -216,6 +271,13 @@ export default function FinanceScreen() {
   }
 
   useEffect(() => { load(); }, [activeLevel, resolvedUnitId, targetBody]);
+
+  useEffect(() => {
+    const unsub = subscribeQueue(() => {
+      load(true);
+    });
+    return unsub;
+  }, [activeLevel, resolvedUnitId, targetBody]);
   useEffect(() => {
     if (tab === 'MONTHLY') {
       loadMonthly();
@@ -376,6 +438,10 @@ export default function FinanceScreen() {
         }
       }
 
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/finance/donations', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -384,8 +450,61 @@ export default function FinanceScreen() {
       setShowDonation(false);
       load(true);
     } catch (e) {
-      setErr(errorMessage(e));
-      toast.error(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const streamLabel = isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : 'Executive'));
+        const files = [];
+        if (donReceipt) {
+          files.push({
+            fieldName: 'receipt',
+            name: donReceipt.name || 'receipt.jpg',
+            type: donReceipt.type || 'image/jpeg',
+            uri: donReceipt.uri,
+            file: donReceipt.file,
+          });
+        }
+
+        const offlineRecord = {
+          ...donationForm,
+          donorName,
+          donorCnic,
+          unitLevel: activeLevel,
+          unitId: resolvedUnitId,
+          body: targetBody,
+          amount: donAmount,
+          receiptNo: `OFFLINE-${Math.floor(1000 + Math.random() * 9000)}`,
+          receivedAt: donationForm.receivedAt || new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          state: 'OFFLINE_PENDING',
+          _isOffline: true,
+        };
+
+        const payload = {
+          ...donationForm,
+          donorName,
+          donorCnic,
+          unitLevel: activeLevel,
+          unitId: resolvedUnitId,
+          body: targetBody,
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'DONATION',
+          action: 'CREATE',
+          endpoint: '/finance/donations',
+          method: 'POST',
+          payload,
+          files,
+          displayTitle: `Donation: ${PKR(donAmount)} from ${donorName || 'Donor'}`,
+          localRecord: offlineRecord,
+        });
+
+        toast.success(`Offline: ${streamLabel} donation of ${PKR(donAmount)} saved locally. Will sync when online.`);
+        setShowDonation(false);
+        load(true);
+      } else {
+        setErr(errorMessage(e));
+        toast.error(errorMessage(e));
+      }
     } finally {
       setSaving(false);
     }
@@ -430,6 +549,10 @@ export default function FinanceScreen() {
         }
       }
 
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/finance/expenses', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -438,8 +561,53 @@ export default function FinanceScreen() {
       setShowExpense(false);
       load(true);
     } catch (e) {
-      setErr(errorMessage(e));
-      toast.error(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const streamLabel = isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : 'Executive'));
+        const files = [];
+        if (expEvidence) {
+          files.push({
+            fieldName: 'evidence',
+            name: expEvidence.name || 'evidence.jpg',
+            type: expEvidence.type || 'image/jpeg',
+            uri: expEvidence.uri,
+            file: expEvidence.file,
+          });
+        }
+
+        const payload = {
+          ...expenseForm,
+          unitLevel: activeLevel,
+          unitId: resolvedUnitId,
+          body: targetBody,
+        };
+
+        const offlineRecord = {
+          ...payload,
+          amount: expAmount,
+          incurredAt: expenseForm.incurredAt || new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          state: 'OFFLINE_PENDING',
+          _isOffline: true,
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'EXPENSE',
+          action: 'CREATE',
+          endpoint: '/finance/expenses',
+          method: 'POST',
+          payload,
+          files,
+          displayTitle: `Expense: ${PKR(expAmount)} for ${expenseForm.description}`,
+          localRecord: offlineRecord,
+        });
+
+        toast.success(`Offline: ${streamLabel} expense of ${PKR(expAmount)} saved locally. Will sync when online.`);
+        setShowExpense(false);
+        load(true);
+      } else {
+        setErr(errorMessage(e));
+        toast.error(errorMessage(e));
+      }
     } finally {
       setSaving(false);
     }
@@ -949,9 +1117,9 @@ export default function FinanceScreen() {
                         <View style={[styles.td, { width: isTablet ? '22%' : 150 }]}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                             <Badge
-                              label={isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
-                              color={isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'))}
-                              bg={isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'))}
+                              label={d._isOffline ? 'Offline Pending' : (isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive')))}
+                              color={d._isOffline ? '#D97706' : (isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569')))}
+                              bg={d._isOffline ? '#FEF3C7' : (isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9')))}
                             />
                             <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '700' }}>{d.receiptNo}</Text>
                           </View>
@@ -1057,9 +1225,9 @@ export default function FinanceScreen() {
                         </Text>
                         <View style={[styles.td, { width: isTablet ? '9%' : 90 }]}>
                           <Badge
-                            label={e.state || 'PENDING'}
-                            color={e.state === 'APPROVED' ? '#15803d' : (e.state === 'REJECTED' ? '#b91c1c' : '#b45309')}
-                            bg={e.state === 'APPROVED' ? '#dcfce7' : (e.state === 'REJECTED' ? '#fee2e2' : '#fef3c7')}
+                            label={e._isOffline ? 'OFFLINE' : (e.state || 'PENDING')}
+                            color={e._isOffline ? '#D97706' : (e.state === 'APPROVED' ? '#15803d' : (e.state === 'REJECTED' ? '#b91c1c' : '#b45309'))}
+                            bg={e._isOffline ? '#FEF3C7' : (e.state === 'APPROVED' ? '#dcfce7' : (e.state === 'REJECTED' ? '#fee2e2' : '#fef3c7'))}
                           />
                         </View>
                         <View style={[styles.td, { width: isTablet ? '10%' : 150, flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>

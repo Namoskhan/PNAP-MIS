@@ -21,7 +21,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { api, errorMessage, resolveMediaUrl } from '../../../src/api/client';
+import { api, errorMessage, resolveMediaUrl, isNetworkError } from '../../../src/api/client';
 import {
   canManageFinance,
   canApproveExpense,
@@ -31,6 +31,14 @@ import {
   isHigherAdmin,
 } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+  subscribeQueue,
+} from '../../../src/services/offlineStorage';
 import Badge from '../../../src/components/Badge';
 import OrgTree from '../../../src/components/OrgTree';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
@@ -73,6 +81,7 @@ export default function TransfersScreen() {
   const [tab, setTab] = useState('outgoing');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { isOnline } = useNetwork();
 
   const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
   const rawUnitId = params.unitId || ctx?.unitId || '';
@@ -205,13 +214,38 @@ export default function TransfersScreen() {
   async function reload() {
     if (!activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') return;
     setLoading(true);
+    const cacheKey = `transfers_${activeLevel}_${resolvedUnitId}_${tab}_${targetBody}`;
+
+    const filterOffline = (offlineList) => {
+      return (offlineList || []).filter((o) => {
+        const sId = o.sourceUnitId || o.payload?.sourceUnitId;
+        const b = o.body || o.payload?.body;
+        const matchesUnit = !sId || !resolvedUnitId || sId === resolvedUnitId;
+        const matchesBody = !b || b === targetBody;
+        return matchesUnit && matchesBody;
+      });
+    };
+
     try {
       const q = { unitLevel: activeLevel, unitId: resolvedUnitId, direction: tab, body: targetBody };
       const r = await api.get('/transfers', { params: q });
-      setItems(r.data.data || []);
+      const serverItems = r.data.data || [];
+      await setCache(cacheKey, serverItems);
+
+      const offlineItems = await getOfflineEntities('TRANSFER');
+      const validOffline = filterOffline(offlineItems);
+      setItems([...validOffline, ...serverItems]);
       loadSourceBalance();
     } catch (err) {
-      toast.error(errorMessage(err));
+      // Offline fallback: load from persistent local cache
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('TRANSFER');
+      const validOffline = filterOffline(offlineItems);
+      if (cached || validOffline.length > 0) {
+        setItems([...validOffline, ...(cached || [])]);
+      } else {
+        toast.error(errorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -221,6 +255,13 @@ export default function TransfersScreen() {
     if (resolvedUnitId && resolvedUnitId !== 'CENTRAL') {
       reload();
     }
+  }, [tab, activeLevel, resolvedUnitId, targetBody]);
+
+  useEffect(() => {
+    const unsub = subscribeQueue(() => {
+      reload();
+    });
+    return unsub;
   }, [tab, activeLevel, resolvedUnitId, targetBody]);
 
   // Preview destination whenever selection changes
@@ -343,6 +384,10 @@ export default function TransfersScreen() {
         });
       }
 
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/transfers', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -357,10 +402,65 @@ export default function TransfersScreen() {
       reload();
       toast.success(successMsg);
     } catch (e) {
-      const err = errorMessage(e);
-      setModalErr(err);
-      toast.error(err);
-      setConfirmOpen(false);
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const files = [];
+        if (receipt) {
+          files.push({
+            fieldName: 'receipt',
+            name: receipt.name || 'receipt.jpg',
+            type: receipt.type || 'image/jpeg',
+            uri: receipt.uri,
+            file: receipt.file,
+          });
+        }
+
+        const payload = {
+          sourceLevel: activeLevel,
+          sourceUnitId: resolvedUnitId,
+          destinationId: preview.destination.id,
+          amount: form.amount,
+          mode: form.mode,
+          reference: form.reference?.trim() || undefined,
+          note: form.note?.trim() || undefined,
+          body: targetBody,
+        };
+
+        const offlineRecord = {
+          ...payload,
+          sourceUnit: { name: ctx?.unitName || 'My Unit', level: activeLevel },
+          destinationUnit: { name: preview?.destination?.name || 'Destination' },
+          direction: 'OUT',
+          state: 'OFFLINE_PENDING',
+          _isOffline: true,
+          createdAt: new Date().toISOString(),
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'TRANSFER',
+          action: 'CREATE',
+          endpoint: '/transfers',
+          method: 'POST',
+          payload,
+          files,
+          displayTitle: `Transfer: ${PKR(parseFloat(form.amount))} to ${preview?.destination?.name || 'Unit'}`,
+          localRecord: offlineRecord,
+        });
+
+        const successMsg = `Offline: Fund transfer of ${PKR(parseFloat(form.amount))} to ${preview.destination.name} saved locally. Will sync when online!`;
+        setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
+        setReceipt(null);
+        setPicked(null);
+        setPreview(null);
+        setConfirmOpen(false);
+        setTransferModalOpen(false);
+        reload();
+        toast.success(successMsg);
+      } else {
+        const err = errorMessage(e);
+        setModalErr(err);
+        toast.error(err);
+        setConfirmOpen(false);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -661,7 +761,7 @@ export default function TransfersScreen() {
                     </View>
 
                     <View style={[styles.td, { width: isTablet ? '10%' : 115, justifyContent: 'center' }]}>
-                      <Badge variant={t.state === 'ACKNOWLEDGED' ? 'success' : t.state === 'REJECTED' ? 'error' : (t.state === 'CANCELLED' ? 'muted' : 'warning')} label={t.state} />
+                      <Badge variant={t._isOffline ? 'warning' : (t.state === 'ACKNOWLEDGED' ? 'success' : t.state === 'REJECTED' ? 'error' : (t.state === 'CANCELLED' ? 'muted' : 'warning'))} label={t._isOffline ? 'OFFLINE' : t.state} />
                       {t.state === 'REJECTED' && t.decisionNote && (
                         <Text style={{ fontSize: 10, color: Colors.error, marginTop: 2 }} numberOfLines={2}>
                           {t.decisionNote}

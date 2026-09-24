@@ -24,9 +24,17 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, isHigherAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+  subscribeQueue,
+} from '../../../src/services/offlineStorage';
 import Badge from '../../../src/components/Badge';
 import Card from '../../../src/components/Card';
 import DateTimePicker from '../../../src/components/DateTimePicker';
@@ -99,6 +107,7 @@ export default function ActivitiesScreen() {
 
   const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
   const rawUnitId = params.unitId || ctx?.unitId || '';
+  const { isOnline } = useNetwork();
   const canManage = canManageMeetings(user)
     && !isCentralAdminOversight(user)
     && !isSuperAdminOversight(user)
@@ -200,13 +209,36 @@ export default function ActivitiesScreen() {
       return;
     }
     if (!silent) setLoading(true);
+    const cacheKey = `activities_${activeLevel}_${resolvedUnitId}_${targetBody}`;
+
+    const filterOffline = (offlineList) => {
+      return (offlineList || []).filter((o) => {
+        const uId = o.unitId || o.payload?.unitId;
+        const b = o.body || o.payload?.body;
+        const matchesUnit = !uId || !resolvedUnitId || uId === resolvedUnitId;
+        const matchesBody = !b || b === targetBody;
+        return matchesUnit && matchesBody;
+      });
+    };
+
     try {
       const res = await api.get('/activities', {
         params: { unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody },
       });
-      setItems(res.data.data || []);
+      const serverItems = res.data.data || [];
+      await setCache(cacheKey, serverItems);
+
+      const offlineItems = await getOfflineEntities('ACTIVITY');
+      const validOffline = filterOffline(offlineItems);
+      setItems([...validOffline, ...serverItems]);
     } catch {
-      // ignore
+      // Offline fallback: load from persistent local cache
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('ACTIVITY');
+      const validOffline = filterOffline(offlineItems);
+      if (cached || validOffline.length > 0) {
+        setItems([...validOffline, ...(cached || [])]);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -214,6 +246,14 @@ export default function ActivitiesScreen() {
   }
 
   useEffect(() => { load(); }, [activeLevel, resolvedUnitId, targetBody]);
+
+  useEffect(() => {
+    const unsub = subscribeQueue(() => {
+      load(true);
+    });
+    return unsub;
+  }, [activeLevel, resolvedUnitId, targetBody]);
+
   function onRefresh() { setRefreshing(true); load(true); }
 
   function openCreate() {
@@ -273,6 +313,10 @@ export default function ActivitiesScreen() {
         if (form.campaign_volunteerHours) payload.campaign_volunteerHours = Number(form.campaign_volunteerHours);
       }
 
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/activities', payload);
       const streamLabel = isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : 'Executive'));
       toast.success(`${streamLabel} activity "${form.title}" recorded.`);
@@ -281,9 +325,57 @@ export default function ActivitiesScreen() {
       setFormError('');
       load(true);
     } catch (e) {
-      const msg = errorMessage(e);
-      setFormError(msg);
-      toast.error(msg);
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const streamLabel = isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : 'Executive'));
+        const payload = {
+          title: form.title.trim(),
+          description: form.description?.trim() || undefined,
+          venue: form.venue?.trim() || undefined,
+          startAt: form.startAt,
+          endAt: form.endAt || undefined,
+          typeCode: form.typeCode,
+          type: form.typeCode,
+          body: targetBody,
+          unitLevel: activeLevel,
+          unitId: resolvedUnitId,
+        };
+
+        if (form.typeCode === 'CAMPAIGN') {
+          if (form.campaign_householdsVisited) payload.campaign_householdsVisited = Number(form.campaign_householdsVisited);
+          if (form.campaign_peopleContacted) payload.campaign_peopleContacted = Number(form.campaign_peopleContacted);
+          if (form.campaign_pamphletsDistributed) payload.campaign_pamphletsDistributed = Number(form.campaign_pamphletsDistributed);
+          if (form.campaign_expectedJoiners) payload.campaign_expectedJoiners = Number(form.campaign_expectedJoiners);
+          if (form.campaign_actualJoiners) payload.campaign_actualJoiners = Number(form.campaign_actualJoiners);
+          if (form.campaign_volunteerHours) payload.campaign_volunteerHours = Number(form.campaign_volunteerHours);
+        }
+
+        const offlineRecord = {
+          ...payload,
+          state: 'OFFLINE_PENDING',
+          photos: [],
+          createdAt: new Date().toISOString(),
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'ACTIVITY',
+          action: 'CREATE',
+          endpoint: '/activities',
+          method: 'POST',
+          payload,
+          displayTitle: `Activity: ${payload.title}`,
+          localRecord: offlineRecord,
+        });
+
+        toast.success(`Offline: ${streamLabel} activity "${form.title}" saved locally. Will sync when online.`);
+        setShowForm(false);
+        setForm(EMPTY_FORM);
+        setFormError('');
+        load(true);
+      } else {
+        const msg = errorMessage(e);
+        setFormError(msg);
+        toast.error(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -555,8 +647,9 @@ export default function ActivitiesScreen() {
     const typeBadgeColor = isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'));
 
     const photoCount = (a.photos || []).length;
-    const statusColor = a.state === 'COMPLETED' ? '#15803d' : (a.state === 'CANCELLED' ? '#b91c1c' : '#b45309');
-    const statusBg = a.state === 'COMPLETED' ? '#dcfce7' : (a.state === 'CANCELLED' ? '#fee2e2' : '#fef3c7');
+    const statusColor = a._isOffline ? '#D97706' : (a.state === 'COMPLETED' ? '#15803d' : (a.state === 'CANCELLED' ? '#b91c1c' : '#b45309'));
+    const statusBg = a._isOffline ? '#FEF3C7' : (a.state === 'COMPLETED' ? '#dcfce7' : (a.state === 'CANCELLED' ? '#fee2e2' : '#fef3c7'));
+    const statusLabel = a._isOffline ? 'OFFLINE (PENDING SYNC)' : (a.state || 'DRAFT');
 
     return (
       <Card style={styles.activityCard}>
@@ -570,7 +663,7 @@ export default function ActivitiesScreen() {
               bg="#eff6ff"
             />
           </View>
-          <Badge label={a.state || 'DRAFT'} color={statusColor} bg={statusBg} />
+          <Badge label={statusLabel} color={statusColor} bg={statusBg} />
         </View>
 
         {/* Title */}

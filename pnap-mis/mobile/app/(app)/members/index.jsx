@@ -17,11 +17,19 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useToast } from '../../../src/components/Toast';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+  subscribeQueue,
+} from '../../../src/services/offlineStorage';
 import { formatCnic, isCompleteCnic } from '../../../src/utils/formatters';
-import { hasPermission } from '../../../src/utils/permissions';
+import { hasPermission, canRegisterMember } from '../../../src/utils/permissions';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import Avatar from '../../../src/components/Avatar';
@@ -107,11 +115,13 @@ export default function MembersScreen() {
     return {};
   })();
 
-  const showRegisterButton = hasPermission(user, 'REGISTER_MEMBER');
+  const { isOnline } = useNetwork();
 
   async function load(pg = 1, refresh = false) {
     if (loading && !refresh) return;
     setLoading(true);
+    const cacheKey = `members_${status}_${q.trim()}`;
+
     try {
       const res = await api.get('/members', {
         params: {
@@ -127,14 +137,30 @@ export default function MembersScreen() {
       const newMeta = res.data?.meta || { page: pg, totalPages: 1, total: newItems.length };
       setMeta(newMeta);
 
+      if (pg === 1) {
+        await setCache(cacheKey, { items: newItems, meta: newMeta });
+      }
+
+      const offlineItems = (pg === 1 || refresh) ? await getOfflineEntities('MEMBER') : [];
+
       if (refresh || pg === 1) {
-        setItems(newItems);
+        setItems([...offlineItems, ...newItems]);
       } else {
         setItems((prev) => [...prev, ...newItems]);
       }
       setPage(pg);
     } catch (e) {
-      toast.error(errorMessage(e));
+      // Offline fallback: load from persistent local cache
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('MEMBER');
+      if (cached) {
+        setItems([...offlineItems, ...(cached.items || [])]);
+        setMeta(cached.meta || { page: 1, totalPages: 1, total: (cached.items || []).length });
+      } else if (offlineItems.length > 0) {
+        setItems(offlineItems);
+      } else {
+        toast.error(errorMessage(e));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -143,6 +169,13 @@ export default function MembersScreen() {
 
   useEffect(() => {
     load(1, true);
+  }, [status]);
+
+  useEffect(() => {
+    const unsub = subscribeQueue(() => {
+      load(1, true);
+    });
+    return unsub;
   }, [status]);
 
   function handleSearchSubmit() {
@@ -326,6 +359,10 @@ export default function MembersScreen() {
         }
       }
 
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/members', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -333,7 +370,58 @@ export default function MembersScreen() {
       setShowCreate(false);
       load(1, true);
     } catch (e) {
-      setModalErr(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const payload = {
+          fullName: form.fullName.trim(),
+          fatherOrHusbandName: form.fatherOrHusbandName.trim(),
+          cnic: form.cnic,
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          dateOfBirth: form.dateOfBirth,
+          gender: form.gender,
+          address: form.address.trim(),
+          basicUnitId: form.basicUnitId,
+        };
+        if (form.bloodGroup) payload.bloodGroup = form.bloodGroup;
+        if (form.education?.trim()) payload.education = form.education.trim();
+        if (form.occupation?.trim()) payload.occupation = form.occupation.trim();
+
+        const files = [];
+        if (photo) {
+          files.push({
+            fieldName: 'photo',
+            name: photo.fileName || photo.name || 'photo.jpg',
+            type: photo.mimeType || photo.type || 'image/jpeg',
+            uri: photo.uri,
+            file: photo.file,
+          });
+        }
+
+        const offlineRecord = {
+          ...payload,
+          status: 'OFFLINE_PENDING',
+          _isOffline: true,
+          createdAt: new Date().toISOString(),
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'MEMBER',
+          action: 'CREATE',
+          endpoint: '/members',
+          method: 'POST',
+          payload,
+          files,
+          displayTitle: `Member: ${payload.fullName} (${payload.cnic})`,
+          localRecord: offlineRecord,
+        });
+
+        toast.success('Offline: Member saved locally. Will sync when online!');
+        setShowCreate(false);
+        load(1, true);
+      } else {
+        setModalErr(errorMessage(e));
+      }
     } finally {
       setSaving(false);
     }
@@ -342,6 +430,8 @@ export default function MembersScreen() {
   const pageTitle = isCentral
     ? 'Province Members'
     : (isHigherAdmin ? 'Members' : (user?.scope?.areaId ? 'Members in your area' : 'Members'));
+
+  const showRegisterButton = canRegisterMember(user);
 
   function renderItem({ item: m }) {
     const unitName = m.basicUnitId?.name || '';
@@ -364,7 +454,11 @@ export default function MembersScreen() {
             </View>
             <Text style={styles.cnicText}>{formatCnic(m.cnic)}</Text>
           </View>
-          <Badge label={m.status?.replace(/_/g, ' ') || '—'} status={m.status} />
+          {m._isOffline ? (
+            <Badge label="OFFLINE (PENDING)" color="#D97706" bg="#FEF3C7" />
+          ) : (
+            <Badge label={m.status?.replace(/_/g, ' ') || '—'} status={m.status} />
+          )}
         </View>
 
         <View style={styles.cardFooter}>
@@ -376,7 +470,13 @@ export default function MembersScreen() {
           </View>
           <TouchableOpacity
             style={styles.viewLink}
-            onPress={() => router.push(`/members/${m._id}`)}
+            onPress={() => {
+              if (m._isOffline) {
+                toast.info('This member registration is stored locally and will sync once connected.');
+                return;
+              }
+              router.push(`/members/${m._id}`);
+            }}
           >
             <Text style={styles.viewLinkText}>View</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
