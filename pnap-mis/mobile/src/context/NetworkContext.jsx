@@ -15,12 +15,18 @@ import {
   subscribeSyncStatus,
   getIsSyncing,
 } from '../services/offlineSync';
+import { setNetworkOnlineState } from '../api/client';
 
 const NetworkContext = createContext(null);
 
 export function NetworkProvider({ children }) {
-  const [isOnline, setIsOnline] = useState(true);
-  const [isInternetReachable, setIsInternetReachable] = useState(true);
+  const initialWebOnline = Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const [isOnline, setIsOnline] = useState(initialWebOnline);
+  const [isInternetReachable, setIsInternetReachable] = useState(initialWebOnline);
+
+  useEffect(() => {
+    setNetworkOnlineState(isOnline);
+  }, [isOnline]);
   const [pendingCount, setPendingCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);

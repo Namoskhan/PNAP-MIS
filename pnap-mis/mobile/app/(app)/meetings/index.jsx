@@ -183,6 +183,18 @@ export default function MeetingsScreen() {
       });
     };
 
+    if (!isOnline) {
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('MEETING');
+      const validOffline = filterOffline(offlineItems);
+      if (cached || validOffline.length > 0) {
+        setItems([...validOffline, ...(cached || [])]);
+      }
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       const qParams = {
         unitLevel: activeLevel,
@@ -312,6 +324,10 @@ export default function MeetingsScreen() {
   }
 
   async function handleExport(type) {
+    if (!isOnline) {
+      toast.info('Exporting requires an active internet connection.');
+      return;
+    }
     if (!ctx && !params.unitId) return;
     if (exporting) return;
     setExporting(type);
@@ -692,30 +708,37 @@ export default function MeetingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{pageTitle}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text style={styles.headerTitle}>{pageTitle}</Text>
+            {!isOnline && (
+              <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.headerSubtitle}>{pageSubtitle}</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
             onPress={() => handleExport('pdf')}
-            disabled={!!exporting}
+            disabled={!isOnline || !!exporting}
           >
             {exporting === 'pdf' ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
+              <Ionicons name="document-text-outline" size={20} color={isOnline ? Colors.primary : Colors.textMuted} />
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
             onPress={() => handleExport('xlsx')}
-            disabled={!!exporting}
+            disabled={!isOnline || !!exporting}
           >
             {exporting === 'xlsx' ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <Ionicons name="grid-outline" size={20} color={Colors.primary} />
+              <Ionicons name="grid-outline" size={20} color={isOnline ? Colors.primary : Colors.textMuted} />
             )}
           </TouchableOpacity>
           {canManage && (

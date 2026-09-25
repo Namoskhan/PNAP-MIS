@@ -11,8 +11,10 @@ import {
   View,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useUnit } from '../../context/UnitContext';
+import { useNetwork } from '../../context/NetworkContext';
 import { api, errorMessage, isNetworkError } from '../../api/client';
 import { useToast } from '../Toast';
 import { getCache, setCache } from '../../services/offlineStorage';
@@ -67,6 +69,7 @@ export default function UnitDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const { ctx, setCtx } = useUnit();
+  const { isOnline } = useNetwork();
   const toast = useToast();
 
   const [data, setData] = useState(null);
@@ -125,6 +128,17 @@ export default function UnitDashboard() {
     } else if (!silent) {
       setLoading(true);
     }
+
+    // IF OFFLINE: Retain cache immediately and do not fire requests to server
+    if (!isOnline) {
+      if (myId === fetchIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+        setLastRefreshed(new Date());
+      }
+      return;
+    }
+
     setRefreshing(true);
 
     const tasks = [
@@ -174,18 +188,24 @@ export default function UnitDashboard() {
 
   useEffect(() => {
     loadData.current(false);
-  }, [ctx?.unitLevel, ctx?.unitId]);
+  }, [ctx?.unitLevel, ctx?.unitId, isOnline]);
 
-  // Polling every 20s
+  // Polling: every 3 minutes, only when online and active
   useEffect(() => {
+    if (!isOnline) return;
     const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       loadData.current(true);
-    }, 20000);
+    }, 180000);
     return () => clearInterval(timer);
-  }, [ctx?.unitLevel, ctx?.unitId]);
+  }, [ctx?.unitLevel, ctx?.unitId, isOnline]);
 
   function onRefresh() {
     setRefreshing(true);
+    if (!isOnline) {
+      loadData.current(false);
+      return;
+    }
     loadData.current(true);
   }
 
@@ -239,6 +259,10 @@ export default function UnitDashboard() {
   }
 
   async function previewSubReport() {
+    if (!isOnline) {
+      toast.show('Offline: report preview requires an active internet connection.', 'info');
+      return;
+    }
     const target = resolveReportTarget();
     if (!target) {
       toast.error('Select a unit first.');
@@ -285,6 +309,10 @@ export default function UnitDashboard() {
   }
 
   async function downloadSubReport(kind, format) {
+    if (!isOnline) {
+      toast.error('Offline: report export requires an active internet connection.');
+      return;
+    }
     const target = resolveReportTarget();
     if (!target) {
       toast.error('Select a unit first.');
@@ -350,10 +378,10 @@ export default function UnitDashboard() {
                     {ctx?.unitLevel ? ctx.unitLevel.replace('_', ' ').toUpperCase() : 'UNIT'}
                   </Text>
                 </View>
-                <View style={styles.liveBadge}>
-                  <View style={[styles.liveDot, refreshing && styles.liveDotPulse]} />
-                  <Text style={styles.liveText}>
-                    {refreshing ? 'Updating…' : lastRefreshed ? `Live · ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Live'}
+                <View style={[styles.liveBadge, !isOnline && { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}>
+                  <View style={[styles.liveDot, refreshing && styles.liveDotPulse, !isOnline && { backgroundColor: '#d97706' }]} />
+                  <Text style={[styles.liveText, !isOnline && { color: '#92400e' }]}>
+                    {!isOnline ? 'Offline (Cached)' : (refreshing ? 'Updating…' : lastRefreshed ? `Live · ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Live')}
                   </Text>
                 </View>
               </View>
@@ -866,14 +894,16 @@ export default function UnitDashboard() {
                 {/* Action buttons */}
                 <View style={styles.reportBtnRow}>
                   <TouchableOpacity
-                    style={styles.previewBtn}
+                    style={[styles.previewBtn, (!isOnline || previewBusy) && { opacity: 0.6 }]}
                     onPress={previewSubReport}
-                    disabled={previewBusy}
+                    disabled={previewBusy || !isOnline}
                   >
                     {previewBusy ? (
                       <ActivityIndicator size="small" color={Colors.primary} />
                     ) : (
-                      <Text style={styles.previewBtnText}>🔍 Preview Report</Text>
+                      <Text style={styles.previewBtnText}>
+                        {!isOnline ? 'Offline (Preview Unavailable)' : '🔍 Preview Report'}
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -884,16 +914,16 @@ export default function UnitDashboard() {
                     <Text style={styles.exportLabel}>Meetings Report:</Text>
                     <View style={styles.exportBtnGroup}>
                       <TouchableOpacity
-                        style={styles.expBtn}
+                        style={[styles.expBtn, (!isOnline || exportBusy) && { opacity: 0.5 }]}
                         onPress={() => downloadSubReport('meetings', 'pdf')}
-                        disabled={exportBusy}
+                        disabled={exportBusy || !isOnline}
                       >
                         <Text style={styles.expBtnText}>📄 PDF</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.expBtn, styles.expBtnSecondary]}
+                        style={[styles.expBtn, styles.expBtnSecondary, (!isOnline || exportBusy) && { opacity: 0.5 }]}
                         onPress={() => downloadSubReport('meetings', 'xlsx')}
-                        disabled={exportBusy}
+                        disabled={exportBusy || !isOnline}
                       >
                         <Text style={styles.expBtnTextSecondary}>📊 Excel</Text>
                       </TouchableOpacity>
@@ -904,16 +934,16 @@ export default function UnitDashboard() {
                     <Text style={styles.exportLabel}>Finance Report:</Text>
                     <View style={styles.exportBtnGroup}>
                       <TouchableOpacity
-                        style={styles.expBtn}
+                        style={[styles.expBtn, (!isOnline || exportBusy) && { opacity: 0.5 }]}
                         onPress={() => downloadSubReport('finance', 'pdf')}
-                        disabled={exportBusy}
+                        disabled={exportBusy || !isOnline}
                       >
                         <Text style={styles.expBtnText}>📄 PDF</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.expBtn, styles.expBtnSecondary]}
+                        style={[styles.expBtn, styles.expBtnSecondary, (!isOnline || exportBusy) && { opacity: 0.5 }]}
                         onPress={() => downloadSubReport('finance', 'xlsx')}
-                        disabled={exportBusy}
+                        disabled={exportBusy || !isOnline}
                       >
                         <Text style={styles.expBtnTextSecondary}>📊 Excel</Text>
                       </TouchableOpacity>

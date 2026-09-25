@@ -150,6 +150,7 @@ export async function syncOfflineQueue(options = {}) {
           data: requestData,
           headers,
           timeout: 25000,
+          skipOfflineCheck: true,
         });
 
         // If this created an entity, record the real ID and update any subsequent queue items

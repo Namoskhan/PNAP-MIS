@@ -113,6 +113,19 @@ export default function MeetingDetailScreen() {
 
   async function load() {
     const cacheKey = `meeting_detail_${id}`;
+    if (!isOnline || String(id).startsWith('offline_')) {
+      const cached = await getCache(cacheKey);
+      if (cached) {
+        setMeeting(cached);
+      } else {
+        const offlineMeetings = await getOfflineEntities('MEETING');
+        const found = offlineMeetings.find((m) => m._id === id);
+        if (found) setMeeting(found);
+      }
+      setLoading(false);
+      return;
+    }
+
     try {
       const r = await api.get(`/meetings/${id}`);
       const data = r.data?.data;
@@ -148,6 +161,29 @@ export default function MeetingDetailScreen() {
     setSupervisorMemberId(meeting?.supervisorMemberId?._id || meeting?.supervisorMemberId || '');
 
     const attendeesCacheKey = `meeting_attendees_${meeting._id}`;
+    if (!isOnline || String(meeting?._id).startsWith('offline_')) {
+      let list = await getCache(attendeesCacheKey);
+      if (!list || !list.length) {
+        list = await getCachedAttendees(meeting.unitLevel, meeting.unitId, meeting.body);
+      }
+      if (list && list.length > 0) {
+        const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
+        const rows = list.map((m) => ({
+          memberId: m._id,
+          name: m.fullName,
+          memberCode: m.memberId,
+          roleText: m.roleText || m.roleCode,
+          status: existingMap.get(String(m._id)) || 'ABSENT',
+        }));
+        setAttendance(rows);
+      }
+      setLoadingAttendees(false);
+      if (meeting?.supervisorAttended) {
+        loadSupervisors();
+      }
+      return;
+    }
+
     try {
       const r = await api.get(`/meetings/${meeting._id}/attendees`);
       const list = r.data.data || [];
@@ -192,6 +228,18 @@ export default function MeetingDetailScreen() {
   async function loadSupervisors() {
     setSupervisorsLoading(true);
     const cacheKey = `meeting_supervisors_${meeting._id}`;
+    if (!isOnline || String(meeting?._id).startsWith('offline_')) {
+      const cached = await getCache(cacheKey);
+      if (cached && cached.length) {
+        setSupervisorCandidates(cached);
+      } else {
+        const fallbackRoles = (await getCache(`roles_${meeting.unitLevel}_${meeting.unitId}`)) || [];
+        setSupervisorCandidates(fallbackRoles);
+      }
+      setSupervisorsLoading(false);
+      return;
+    }
+
     try {
       const r = await api.get(`/meetings/${meeting._id}/supervisor-candidates`);
       const data = r.data.data || [];
@@ -350,7 +398,7 @@ export default function MeetingDetailScreen() {
     let validAssets = [];
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.85,
         exif: true,
@@ -507,6 +555,10 @@ export default function MeetingDetailScreen() {
   }
 
   async function handleExportPdf() {
+    if (!isOnline) {
+      toast.info('Exporting PDF minutes requires an active internet connection.');
+      return;
+    }
     if (!meeting) return;
     try {
       toast.show('Downloading PDF minutes...', 'info');
@@ -608,6 +660,9 @@ export default function MeetingDetailScreen() {
           <View style={styles.badges}>
             <Badge label={streamBadge.label} color={streamBadge.color} bg={streamBadge.bg} />
             <Badge label={m.state || 'SCHEDULED'} color={stateColor} bg={stateBg} />
+            {!isOnline && (
+              <Badge label="Offline (Cached)" color="#DC2626" bg="#FEE2E2" />
+            )}
           </View>
         </Card>
 
@@ -619,8 +674,12 @@ export default function MeetingDetailScreen() {
           <TouchableOpacity style={styles.actionBtn} onPress={() => setShowDocs(true)}>
             <Text style={styles.actionBtnText}>📎 Docs ({documents.length})</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleExportPdf}>
-            <Text style={styles.actionBtnText}>📄 PDF</Text>
+          <TouchableOpacity
+            style={[styles.actionBtn, !isOnline && { opacity: 0.5 }]}
+            onPress={handleExportPdf}
+            disabled={!isOnline}
+          >
+            <Text style={[styles.actionBtnText, !isOnline && { color: Colors.textMuted }]}>📄 PDF</Text>
           </TouchableOpacity>
           {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
             <>

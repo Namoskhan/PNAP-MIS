@@ -17,6 +17,7 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, hasRole } from '../../../src/utils/permissions';
 import { api, errorMessage } from '../../../src/api/client';
+import { useNetwork } from '../../../src/context/NetworkContext';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import Card from '../../../src/components/Card';
 import DatePicker from '../../../src/components/DatePicker';
@@ -130,10 +131,17 @@ export default function ReportsScreen() {
       });
   }, [activeLevel, resolvedUnitId, isCommitteeView, isJirgaView, isCongressView]);
 
+  const { isOnline } = useNetwork();
+
   // Fetch live member report preview
   useEffect(() => {
     if (!memberId) {
       setReport(null);
+      return;
+    }
+    if (!isOnline) {
+      setReport(null);
+      setReportLoading(false);
       return;
     }
     setReportLoading(true);
@@ -148,7 +156,7 @@ export default function ReportsScreen() {
         setError(errorMessage(e));
       })
       .finally(() => setReportLoading(false));
-  }, [memberId, from, to]);
+  }, [memberId, from, to, isOnline]);
 
   function getUnitParams(kind) {
     const p = { unitLevel: activeLevel, unitId: resolvedUnitId || (activeLevel === 'CENTRAL' ? 'CENTRAL' : activeUnitId) };
@@ -177,6 +185,10 @@ export default function ReportsScreen() {
   }
 
   async function handleDownloadUnit(kind, format) {
+    if (!isOnline) {
+      setError('Report generation and exports require an active internet connection.');
+      return;
+    }
     setError('');
     const busyId = `${kind}-${format}`;
     setBusyKey(busyId);
@@ -197,6 +209,10 @@ export default function ReportsScreen() {
 
   async function handleDownloadMember(format) {
     if (!memberId) return;
+    if (!isOnline) {
+      setError('Report generation and exports require an active internet connection.');
+      return;
+    }
     setError('');
     const busyId = `member-${format}`;
     setBusyKey(busyId);
@@ -398,8 +414,24 @@ export default function ReportsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header Banner */}
         <View style={styles.header}>
-          <Text style={styles.pageTitle}>{pageTitle}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text style={styles.pageTitle}>{pageTitle}</Text>
+            {!isOnline && (
+              <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline Mode</Text>
+              </View>
+            )}
+          </View>
         </View>
+
+        {!isOnline && (
+          <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="cloud-offline-outline" size={20} color="#DC2626" />
+            <Text style={{ color: '#991B1B', fontSize: 13, flex: 1, lineHeight: 18 }}>
+              You are currently offline. Report compilation, real-time analytics, and PDF/Excel downloads are disabled until network connectivity is restored.
+            </Text>
+          </View>
+        )}
 
         {/* Unit Context Card */}
         {!isCongressView && (

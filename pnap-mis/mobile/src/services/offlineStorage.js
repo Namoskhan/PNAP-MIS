@@ -8,15 +8,19 @@ const OFFLINE_MEDIA_DIR = `${FileSystem.documentDirectory || ''}pnap_offline_med
 
 // Listeners for queue changes
 const queueListeners = new Set();
+let notifyTimer = null;
 
 function notifyListeners(queue) {
-  queueListeners.forEach((listener) => {
-    try {
-      listener(queue);
-    } catch (e) {
-      console.warn('[OfflineStorage] listener error:', e);
-    }
-  });
+  if (notifyTimer) clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(() => {
+    queueListeners.forEach((listener) => {
+      try {
+        listener(queue);
+      } catch (e) {
+        console.warn('[OfflineStorage] listener error:', e);
+      }
+    });
+  }, 400);
 }
 
 /**

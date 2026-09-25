@@ -63,6 +63,16 @@ export const api = axios.create({
 api.getToken = () => Storage.getItem('pnap_token');
 
 let unauthorizedHandler = null;
+let isAppOnline = true;
+
+export function setNetworkOnlineState(online) {
+  isAppOnline = Boolean(online);
+}
+
+export function getNetworkOnlineState() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  return isAppOnline;
+}
 
 export function setUnauthorizedHandler(fn) {
   unauthorizedHandler = fn;
@@ -70,6 +80,14 @@ export function setUnauthorizedHandler(fn) {
 
 // Attach JWT token and session hints from Storage on every request.
 api.interceptors.request.use(async (config) => {
+  // If explicitly offline and request is not marked to skip offline check:
+  if (!getNetworkOnlineState() && !config.skipOfflineCheck) {
+    const offlineErr = new Error('Device is offline');
+    offlineErr.isOffline = true;
+    offlineErr.code = 'ERR_INTERNET_DISCONNECTED';
+    return Promise.reject(offlineErr);
+  }
+
   try {
     const [token, activeRole, rememberMe] = await Promise.all([
       Storage.getItem('pnap_token'),
@@ -129,14 +147,21 @@ export function unwrap(promise) {
 // Checks if an error is network-related (offline / disconnected / server down)
 export function isNetworkError(err) {
   if (!err) return false;
+  if (err.isOffline || err.code === 'ERR_INTERNET_DISCONNECTED' || err.message === 'OFFLINE_MODE' || err.message === 'Device is offline') return true;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
   if (!err.response && (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || err.message === 'Network Error')) return true;
-  if (!err.response && (err.isAxiosError || String(err).includes('Network Error'))) return true;
+  if (!err.response && (err.isAxiosError || String(err).includes('Network Error') || String(err).includes('ERR_INTERNET_DISCONNECTED'))) return true;
   return false;
 }
 
 // Extracts a user-facing error message from an axios error.
 export function errorMessage(err) {
+  if (isNetworkError(err)) {
+    return 'Device is offline. Using local cache.';
+  }
+  if (err?.response?.status === 429) {
+    return 'Server busy (too many requests). Please wait a moment.';
+  }
   const errObj = err?.response?.data?.error;
   if (!errObj) return err?.message || 'Something went wrong.';
   if (errObj.details?.fieldErrors) {

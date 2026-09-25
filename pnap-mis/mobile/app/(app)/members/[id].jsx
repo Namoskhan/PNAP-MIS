@@ -110,6 +110,11 @@ export default function MemberDetailScreen() {
       }
     } catch {}
 
+    if (!isOnline) {
+      setLoading(false);
+      return;
+    }
+
     api.get(`/members/${id}`)
       .then((r) => {
         if (r.data?.data) {

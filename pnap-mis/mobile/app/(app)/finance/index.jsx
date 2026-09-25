@@ -214,6 +214,29 @@ export default function FinanceScreen() {
       });
     };
 
+    if (!isOnline) {
+      const cached = await getCache(cacheKey);
+      const [offlineDonations, offlineExpenses] = await Promise.all([
+        getOfflineEntities('DONATION'),
+        getOfflineEntities('EXPENSE'),
+      ]);
+
+      const validOfflineDonations = filterOffline(offlineDonations);
+      const validOfflineExpenses = filterOffline(offlineExpenses);
+
+      if (cached) {
+        setDonations([...validOfflineDonations, ...(cached.donations || [])]);
+        setExpenses([...validOfflineExpenses, ...(cached.expenses || [])]);
+        setSummary(cached.summary || null);
+      } else {
+        setDonations(validOfflineDonations);
+        setExpenses(validOfflineExpenses);
+      }
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       const [dRes, eRes, sRes] = await Promise.all([
         api.get('/finance/donations', { params: qParams }),
@@ -264,7 +287,7 @@ export default function FinanceScreen() {
   }
 
   async function loadMonthly() {
-    if (!resolvedUnitId || resolvedUnitId === 'CENTRAL') return;
+    if (!resolvedUnitId || resolvedUnitId === 'CENTRAL' || !isOnline) return;
     try {
       const qParams = {
         unitLevel: activeLevel,
@@ -725,6 +748,10 @@ export default function FinanceScreen() {
   }
 
   async function handleExport(fmt) {
+    if (!isOnline) {
+      toast.info('Exporting requires an active internet connection.');
+      return;
+    }
     if (exporting) return;
     setExporting(fmt);
     try {
@@ -870,6 +897,11 @@ export default function FinanceScreen() {
                 <View style={styles.unitLevelBadge}>
                   <Text style={styles.unitLevelBadgeText}>{activeLevel.replace('_', ' ')}</Text>
                 </View>
+                {!isOnline && (
+                  <View style={[styles.unitLevelBadge, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
+                    <Text style={[styles.unitLevelBadgeText, { color: '#DC2626' }]}>Offline (Cached)</Text>
+                  </View>
+                )}
                 {isJirgaView && (
                   <View style={styles.streamBadgeJirga}>
                     <Text style={styles.streamBadgeTextJirga}>Jirga Ledger</Text>
@@ -895,29 +927,29 @@ export default function FinanceScreen() {
               )}
 
               <TouchableOpacity
-                style={[styles.btnExport, exporting === 'pdf' && { opacity: 0.6 }]}
+                style={[styles.btnExport, (!isOnline || exporting === 'pdf') && { opacity: 0.5 }]}
                 onPress={() => handleExport('pdf')}
-                disabled={!!exporting}
+                disabled={!isOnline || !!exporting}
               >
                 {exporting === 'pdf' ? (
                   <ActivityIndicator size="small" color={Colors.textMuted} />
                 ) : (
-                  <Ionicons name="document-text-outline" size={15} color={Colors.text} />
+                  <Ionicons name="document-text-outline" size={15} color={isOnline ? Colors.text : Colors.textMuted} />
                 )}
-                <Text style={styles.btnExportText}>{isTablet ? 'Export PDF' : 'PDF'}</Text>
+                <Text style={[styles.btnExportText, !isOnline && { color: Colors.textMuted }]}>{isTablet ? 'Export PDF' : 'PDF'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.btnExport, exporting === 'xlsx' && { opacity: 0.6 }]}
+                style={[styles.btnExport, (!isOnline || exporting === 'xlsx') && { opacity: 0.5 }]}
                 onPress={() => handleExport('xlsx')}
-                disabled={!!exporting}
+                disabled={!isOnline || !!exporting}
               >
                 {exporting === 'xlsx' ? (
                   <ActivityIndicator size="small" color={Colors.textMuted} />
                 ) : (
-                  <Ionicons name="stats-chart-outline" size={15} color={Colors.text} />
+                  <Ionicons name="stats-chart-outline" size={15} color={isOnline ? Colors.text : Colors.textMuted} />
                 )}
-                <Text style={styles.btnExportText}>{isTablet ? 'Export Excel' : 'Excel'}</Text>
+                <Text style={[styles.btnExportText, !isOnline && { color: Colors.textMuted }]}>{isTablet ? 'Export Excel' : 'Excel'}</Text>
               </TouchableOpacity>
             </View>
           </View>

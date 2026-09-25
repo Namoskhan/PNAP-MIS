@@ -122,6 +122,20 @@ export default function MembersScreen() {
     setLoading(true);
     const cacheKey = `members_${status}_${q.trim()}`;
 
+    if (!isOnline) {
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('MEMBER');
+      if (cached) {
+        setItems([...offlineItems, ...(cached.items || [])]);
+        setMeta(cached.meta || { page: 1, totalPages: 1, total: (cached.items || []).length });
+      } else {
+        setItems(offlineItems);
+      }
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       const res = await api.get('/members', {
         params: {
@@ -158,7 +172,7 @@ export default function MembersScreen() {
         setMeta(cached.meta || { page: 1, totalPages: 1, total: (cached.items || []).length });
       } else if (offlineItems.length > 0) {
         setItems(offlineItems);
-      } else {
+      } else if (!isNetworkError(e)) {
         toast.error(errorMessage(e));
       }
     } finally {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { Storage } from '../utils/storage';
-import { api, setUnauthorizedHandler } from '../api/client';
+import { api, setUnauthorizedHandler, getNetworkOnlineState } from '../api/client';
 
 // Port of web/src/context/AuthContext.jsx.
 // Uses cross-platform Storage (SecureStore on Native, localStorage on Web).
@@ -148,6 +148,7 @@ export function AuthProvider({ children }) {
   }
 
   async function refreshMe() {
+    if (!getNetworkOnlineState()) return null;
     const token = await Storage.getItem(TOKEN_KEY);
     if (!token) return null;
     try {
@@ -173,7 +174,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (loading) return;
     refreshMe();
-    const poll = setInterval(refreshMe, 60000);
+    const poll = setInterval(() => {
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && document.hidden) return;
+      if (!getNetworkOnlineState()) return;
+      refreshMe();
+    }, 300000); // 5 minutes, online-only
     return () => clearInterval(poll);
   }, [loading]);
 

@@ -124,6 +124,12 @@ export default function ResponsibilitiesScreen() {
       setLoading(true);
     }
 
+    if (!isOnline) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       const qParams = { unitLevel: activeLevel, unitId: resolvedUnitId };
       if (filterState) qParams.state = filterState;
@@ -160,6 +166,8 @@ export default function ResponsibilitiesScreen() {
       if (active && cached?.length > 0) setMembers(cached);
     }).catch(() => {});
 
+    if (!isOnline) return;
+
     api.get('/meetings/eligible-attendees', {
       params: { unitLevel: activeLevel, unitId: resolvedUnitId, body: 'GENERAL_BODY' },
     })
@@ -181,7 +189,7 @@ export default function ResponsibilitiesScreen() {
       });
 
     return () => { active = false; };
-  }, [activeLevel, resolvedUnitId, showCreate]);
+  }, [activeLevel, resolvedUnitId, showCreate, isOnline]);
 
   async function handleCreate() {
     if (!form.title.trim() || !form.assignedToMemberId) {
@@ -449,9 +457,16 @@ export default function ResponsibilitiesScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerScope}>
-              {activeLevel ? `${activeLevel.replace('_', ' ')} RESPONSIBILITIES` : 'RESPONSIBILITIES'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text style={styles.headerScope}>
+                {activeLevel ? `${activeLevel.replace('_', ' ')} RESPONSIBILITIES` : 'RESPONSIBILITIES'}
+              </Text>
+              {!isOnline && (
+                <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.pageTitle}>Responsibilities · {resolvedUnitName}</Text>
           </View>
 

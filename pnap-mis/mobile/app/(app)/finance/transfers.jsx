@@ -279,6 +279,16 @@ export default function TransfersScreen() {
       });
     };
 
+    if (!isOnline) {
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('TRANSFER');
+      const validOffline = filterOffline(offlineItems);
+      setItems([...validOffline, ...(cached || [])]);
+      loadSourceBalance();
+      setLoading(false);
+      return;
+    }
+
     try {
       const q = { unitLevel: activeLevel, unitId: resolvedUnitId, direction: tab, body: targetBody };
       const r = await api.get('/transfers', { params: q });
@@ -296,7 +306,7 @@ export default function TransfersScreen() {
       const validOffline = filterOffline(offlineItems);
       if (cached || validOffline.length > 0) {
         setItems([...validOffline, ...(cached || [])]);
-      } else {
+      } else if (!isNetworkError(err)) {
         toast.error(errorMessage(err));
       }
     } finally {
@@ -484,7 +494,7 @@ export default function TransfersScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
     });
     if (!result.canceled && result.assets?.[0]) {
@@ -733,6 +743,10 @@ export default function TransfersScreen() {
   const [exporting, setExporting] = useState(null);
 
   async function handleExport(fmt) {
+    if (!isOnline) {
+      toast.info('Exporting requires an active internet connection.');
+      return;
+    }
     if (exporting) return;
     setExporting(fmt);
     try {
@@ -839,37 +853,44 @@ export default function TransfersScreen() {
         {/* Header */}
         <View style={[styles.header, isSmall && styles.headerSmall]}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.pageTitle}>{pageTitle}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text style={styles.pageTitle}>{pageTitle}</Text>
+              {!isOnline && (
+                <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.pageSubtitle}>
               {unitDisplayName} · {activeLevel.replace('_', ' ')}
             </Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
               onPress={() => handleExport('pdf')}
-              disabled={!!exporting}
+              disabled={!isOnline || !!exporting}
             >
               {exporting === 'pdf' ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
                 <>
-                  <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
-                  {isTablet && <Text style={styles.iconBtnText}>PDF</Text>}
+                  <Ionicons name="document-text-outline" size={18} color={isOnline ? Colors.primary : Colors.textMuted} />
+                  {isTablet && <Text style={[styles.iconBtnText, !isOnline && { color: Colors.textMuted }]}>PDF</Text>}
                 </>
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
               onPress={() => handleExport('xlsx')}
-              disabled={!!exporting}
+              disabled={!isOnline || !!exporting}
             >
               {exporting === 'xlsx' ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
                 <>
-                  <Ionicons name="grid-outline" size={18} color={Colors.primary} />
-                  {isTablet && <Text style={styles.iconBtnText}>Excel</Text>}
+                  <Ionicons name="grid-outline" size={18} color={isOnline ? Colors.primary : Colors.textMuted} />
+                  {isTablet && <Text style={[styles.iconBtnText, !isOnline && { color: Colors.textMuted }]}>Excel</Text>}
                 </>
               )}
             </TouchableOpacity>

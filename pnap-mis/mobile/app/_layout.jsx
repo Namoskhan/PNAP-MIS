@@ -16,6 +16,7 @@ LogBox.ignoreLogs([
   'props.pointerEvents is deprecated',
   '"shadow*" style props are deprecated',
   '[Reanimated] Reduced motion',
+  'ImagePicker.MediaTypeOptions have been deprecated',
 ]);
 
 if (Platform.OS === 'web' && typeof console !== 'undefined') {
@@ -25,7 +26,8 @@ if (Platform.OS === 'web' && typeof console !== 'undefined') {
     if (
       msg.includes('props.pointerEvents is deprecated') ||
       msg.includes('"shadow*" style props are deprecated') ||
-      msg.includes('[Reanimated] Reduced motion')
+      msg.includes('[Reanimated] Reduced motion') ||
+      msg.includes('ImagePicker.MediaTypeOptions have been deprecated')
     ) {
       return;
     }

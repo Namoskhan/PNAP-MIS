@@ -82,6 +82,16 @@ export default function ActivityDetailScreen() {
       }
     } catch {}
 
+    if (!isOnline || String(id).startsWith('offline_')) {
+      if (!activity) {
+        const offlineActivities = await getOfflineEntities('ACTIVITY');
+        const found = offlineActivities.find((a) => a._id === id);
+        if (found && active) setActivity(found);
+      }
+      if (active) setLoading(false);
+      return;
+    }
+
     try {
       const r = await api.get(`/activities/${id}`);
       if (active && r.data?.data) {
@@ -107,7 +117,7 @@ export default function ActivityDetailScreen() {
     let validAssets = [];
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.85,
         exif: true,
@@ -374,6 +384,9 @@ export default function ActivityDetailScreen() {
                 color={isCompleted ? Colors.success : (isCancelled ? Colors.textMuted : Colors.primary)}
                 bg={isCompleted ? Colors.successBg : (isCancelled ? Colors.surfaceAlt : '#eff6ff')}
               />
+              {!isOnline && (
+                <Badge label="Offline (Cached)" color="#DC2626" bg="#FEE2E2" />
+              )}
               {a._isOffline && (
                 <Badge label="OFFLINE CREATED" color={Colors.warning} bg="rgba(217, 119, 6, 0.15)" />
               )}
