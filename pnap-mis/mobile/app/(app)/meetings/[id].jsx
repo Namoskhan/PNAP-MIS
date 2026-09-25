@@ -301,14 +301,42 @@ export default function MeetingDetailScreen() {
       return;
     }
     setCancelling(true);
+    const payload = { reason: cancelReason.trim() };
     try {
-      await api.post(`/meetings/${meeting._id}/cancel`, { reason: cancelReason.trim() });
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+      await api.post(`/meetings/${meeting._id}/cancel`, payload);
       toast.success('Meeting cancelled.');
       setShowCancel(false);
       setCancelReason('');
       setCancelError('');
       load();
     } catch (e) {
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'MEETING',
+          action: 'UPDATE',
+          endpoint: `/meetings/${meeting._id}/cancel`,
+          method: 'POST',
+          payload,
+          displayTitle: `Cancel Meeting: ${meeting.title || 'Meeting'}`,
+        });
+        const updated = {
+          ...meeting,
+          status: 'CANCELLED',
+          state: 'CANCELLED',
+          notes: (meeting.notes || '') + `\n[CANCELLED] ${payload.reason}`,
+          _isOfflineCancelled: true,
+        };
+        setMeeting(updated);
+        await setCache(`meeting_detail_${meeting._id}`, updated);
+        toast.success('Cancellation saved offline. Will sync when back online.');
+        setShowCancel(false);
+        setCancelReason('');
+        setCancelError('');
+        return;
+      }
       const msg = errorMessage(e);
       setCancelError(msg);
       toast.error(msg);

@@ -14,7 +14,13 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, isNetworkError } from '../../../src/api/client';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+} from '../../../src/services/offlineStorage';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import Avatar from '../../../src/components/Avatar';
@@ -86,17 +92,36 @@ export default function MemberDetailScreen() {
 
   const isOwner = user?.memberId && String(user.memberId) === String(id);
   const isSuper = isSuperAdmin(user);
+  const { isOnline } = useNetwork();
   const isAdmin = (user?.roles || []).some((r) =>
     ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r)
   );
   const canEdit = isOwner || isAdmin;
   const canDecide = isHigherAdmin(user) || isAreaAdmin(user);
 
-  function load() {
+  async function load() {
     setError('');
+    // Load from cache first
+    try {
+      const cached = await getCache(`member_profile_${id}`);
+      if (cached) {
+        setMember(cached);
+        setLoading(false);
+      }
+    } catch {}
+
     api.get(`/members/${id}`)
-      .then((r) => setMember(r.data.data))
-      .catch((e) => setError(errorMessage(e) || 'Could not load member.'))
+      .then((r) => {
+        if (r.data?.data) {
+          setMember(r.data.data);
+          setCache(`member_profile_${id}`, r.data.data).catch(() => {});
+        }
+      })
+      .catch((e) => {
+        if (!member && !isNetworkError(e)) {
+          setError(errorMessage(e) || 'Could not load member.');
+        }
+      })
       .finally(() => setLoading(false));
   }
 
@@ -220,6 +245,10 @@ export default function MemberDetailScreen() {
         }
       }
 
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.patch(`/members/${id}`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -227,7 +256,40 @@ export default function MemberDetailScreen() {
       setShowEdit(false);
       load();
     } catch (e) {
-      setEditErr(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const files = [];
+        if (editPhoto) {
+          files.push({
+            fieldName: 'photo',
+            name: editPhoto.fileName || 'photo.jpg',
+            type: editPhoto.mimeType || 'image/jpeg',
+            uri: editPhoto.uri,
+            file: editPhoto.file,
+          });
+        }
+
+        await enqueueOfflineAction({
+          entityType: 'MEMBER',
+          action: 'UPDATE',
+          endpoint: `/members/${id}`,
+          method: 'PATCH',
+          payload: { ...editForm },
+          files,
+          displayTitle: `Update Profile: ${member?.fullName || 'Member'}`,
+        });
+
+        const updated = {
+          ...member,
+          ...editForm,
+          _isOfflineUpdated: true,
+        };
+        setMember(updated);
+        await setCache(`member_profile_${id}`, updated);
+        toast.success('Profile changes saved offline. Will sync when back online.');
+        setShowEdit(false);
+      } else {
+        setEditErr(errorMessage(e));
+      }
     } finally {
       setBusy(false);
     }

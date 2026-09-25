@@ -102,10 +102,29 @@ export async function syncOfflineQueue(options = {}) {
   let failedCount = 0;
   let networkStopped = false;
 
+  const idMap = {};
+
   try {
     for (const item of targetItems) {
       if (onProgress) {
         onProgress({ currentItem: item, syncedCount, total: targetItems.length });
+      }
+
+      // Check if endpoint contains an offline ID that can be mapped
+      if (item.endpoint && item.endpoint.includes('/offline_')) {
+        let resolvedEndpoint = item.endpoint;
+        for (const [tempId, realId] of Object.entries(idMap)) {
+          if (resolvedEndpoint.includes(tempId)) {
+            resolvedEndpoint = resolvedEndpoint.replace(tempId, realId);
+          }
+        }
+        if (resolvedEndpoint.includes('/offline_')) {
+          // Cannot resolve fake ID against backend; remove it so it doesn't fail
+          console.warn(`[OfflineSync] Removing unresolvable offline endpoint: ${item.endpoint}`);
+          await removeOfflineAction(item.id);
+          continue;
+        }
+        item.endpoint = resolvedEndpoint;
       }
 
       await updateOfflineAction(item.id, { status: 'SYNCING' });
@@ -125,13 +144,31 @@ export async function syncOfflineQueue(options = {}) {
           requestData = item.payload;
         }
 
-        await api.request({
+        const res = await api.request({
           url: item.endpoint,
           method: item.method || 'POST',
           data: requestData,
           headers,
           timeout: 25000,
         });
+
+        // If this created an entity, record the real ID and update any subsequent queue items
+        const realId = res.data?.data?._id || res.data?.data?.id;
+        const tempId = item.localRecord?._id || item.payload?._id || item.id;
+        if (realId && tempId && String(tempId) !== String(realId)) {
+          idMap[tempId] = realId;
+          for (const rem of targetItems) {
+            if (rem.endpoint && rem.endpoint.includes(tempId)) {
+              rem.endpoint = rem.endpoint.replace(tempId, realId);
+              await updateOfflineAction(rem.id, { endpoint: rem.endpoint });
+            }
+            if (rem.payload && JSON.stringify(rem.payload).includes(tempId)) {
+              const str = JSON.stringify(rem.payload).split(tempId).join(realId);
+              rem.payload = JSON.parse(str);
+              await updateOfflineAction(rem.id, { payload: rem.payload });
+            }
+          }
+        }
 
         // Success: Remove from offline queue
         await removeOfflineAction(item.id);

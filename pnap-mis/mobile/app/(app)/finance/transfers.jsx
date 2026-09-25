@@ -170,14 +170,57 @@ export default function TransfersScreen() {
 
   async function loadSourceBalance() {
     if (!activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') return;
+
+    // 1. Read from persistent local cache immediately
+    let initialBal = null;
+    let initialPending = 0;
     try {
-      const q = { unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody };
-      const res = await api.get('/finance/summary', { params: q });
-      if (res.data?.data) {
-        setSourceBalance(res.data.data.availableBalance ?? res.data.data.balance ?? 0);
-        setPendingOutAmount(res.data.data.pendingTransfersOut?.total || 0);
+      const cached = await getCache(`finance_summary_${activeLevel}_${resolvedUnitId}_${targetBody}`);
+      if (cached) {
+        initialBal = cached.availableBalance ?? cached.balance ?? 0;
+        initialPending = cached.pendingTransfersOut?.total || 0;
+      } else {
+        const mainFin = await getCache(`finance_${activeLevel}_${resolvedUnitId}_${targetBody}`);
+        if (mainFin?.summary) {
+          initialBal = mainFin.summary.availableBalance ?? mainFin.summary.balance ?? 0;
+          initialPending = mainFin.summary.pendingTransfersOut?.total || 0;
+        }
       }
     } catch {}
+
+    // 2. Query offline queue for any pending outgoing transfers
+    let localPendingOut = 0;
+    try {
+      const offlineTransfers = await getOfflineEntities('TRANSFER');
+      localPendingOut = (offlineTransfers || []).reduce((acc, t) => {
+        const sId = t.sourceUnitId || t.payload?.sourceUnitId;
+        const amt = parseFloat(t.amount || t.payload?.amount || 0);
+        if (String(sId) === String(resolvedUnitId) && !isNaN(amt)) {
+          return acc + amt;
+        }
+        return acc;
+      }, 0);
+    } catch {}
+
+    if (initialBal !== null) {
+      setSourceBalance(Math.max(0, initialBal - localPendingOut));
+      setPendingOutAmount(initialPending + localPendingOut);
+    }
+
+    // 3. If online, fetch live summary from server
+    if (isOnline) {
+      try {
+        const q = { unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody };
+        const res = await api.get('/finance/summary', { params: q });
+        if (res.data?.data) {
+          await setCache(`finance_summary_${activeLevel}_${resolvedUnitId}_${targetBody}`, res.data.data);
+          const serverBal = res.data.data.availableBalance ?? res.data.data.balance ?? 0;
+          const serverPending = res.data.data.pendingTransfersOut?.total || 0;
+          setSourceBalance(Math.max(0, serverBal - localPendingOut));
+          setPendingOutAmount(serverPending + localPendingOut);
+        }
+      } catch {}
+    }
   }
 
   function openInitiate() {
@@ -345,6 +388,13 @@ export default function TransfersScreen() {
       setPreviewErr('');
       return;
     }
+
+    if (String(picked.id) === String(resolvedUnitId)) {
+      setPreview(null);
+      setPreviewErr('A unit cannot transfer funds to itself. Please select a different destination unit.');
+      return;
+    }
+
     let cancelled = false;
     setPreviewLoading(true);
     setPreviewErr('');
@@ -387,6 +437,21 @@ export default function TransfersScreen() {
   }, [picked, activeLevel, resolvedUnitId]);
 
   async function pickImage() {
+    const isAllowedImage = (filename, mimeType) => {
+      const ext = (filename || '').toLowerCase();
+      const mime = (mimeType || '').toLowerCase();
+      return (
+        mime.includes('jpeg') ||
+        mime.includes('jpg') ||
+        mime.includes('png') ||
+        mime.includes('webp') ||
+        ext.endsWith('.jpg') ||
+        ext.endsWith('.jpeg') ||
+        ext.endsWith('.png') ||
+        ext.endsWith('.webp')
+      );
+    };
+
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
@@ -394,12 +459,19 @@ export default function TransfersScreen() {
       input.onchange = (e) => {
         const file = e.target.files?.[0];
         if (file) {
+          if (!isAllowedImage(file.name, file.type)) {
+            const err = 'Only JPG, PNG, and WebP image formats are supported for payment receipts.';
+            setModalErr(err);
+            toast.error(err);
+            return;
+          }
           setReceipt({
             uri: URL.createObjectURL(file),
             name: file.name,
             type: file.type || 'image/jpeg',
             file: file,
           });
+          if (modalErr) setModalErr('');
         }
       };
       input.click();
@@ -417,18 +489,31 @@ export default function TransfersScreen() {
     });
     if (!result.canceled && result.assets?.[0]) {
       const a = result.assets[0];
+      const filename = a.fileName || 'receipt.jpg';
+      const mime = a.mimeType || 'image/jpeg';
+      if (!isAllowedImage(filename, mime)) {
+        const err = 'Only JPG, PNG, and WebP image formats are supported for payment receipts.';
+        setModalErr(err);
+        toast.error(err);
+        return;
+      }
       setReceipt({
         uri: a.uri,
-        name: a.fileName || 'receipt.jpg',
-        type: a.mimeType || 'image/jpeg',
+        name: filename,
+        type: mime,
       });
+      if (modalErr) setModalErr('');
     }
   }
 
   function handleProceedToConfirm() {
     setModalErr('');
     if (!picked || !preview) {
-      setModalErr('Please select a valid destination unit from the tree.');
+      setModalErr('Please select a valid destination unit.');
+      return;
+    }
+    if (String(preview?.destination?.id) === String(resolvedUnitId) || String(picked?.id) === String(resolvedUnitId)) {
+      setModalErr('A unit cannot transfer funds to itself. Please choose a different destination unit.');
       return;
     }
     const amt = parseFloat(form.amount);
@@ -436,6 +521,19 @@ export default function TransfersScreen() {
       setModalErr('Please enter a valid positive transfer amount.');
       return;
     }
+
+    // Available Balance Validation
+    if (sourceBalance !== null) {
+      if (sourceBalance <= 0) {
+        setModalErr('Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).');
+        return;
+      }
+      if (amt > sourceBalance) {
+        setModalErr(`Transfer amount exceeds the available balance of PKR ${sourceBalance.toLocaleString()}.`);
+        return;
+      }
+    }
+
     if (!receipt) {
       setModalErr('Proof of payment (receipt image) is required.');
       return;
@@ -445,6 +543,28 @@ export default function TransfersScreen() {
 
   async function initiate() {
     if (submitting) return;
+    if (String(preview?.destination?.id) === String(resolvedUnitId) || String(picked?.id) === String(resolvedUnitId)) {
+      setModalErr('A unit cannot transfer funds to itself.');
+      return;
+    }
+    const amt = parseFloat(form.amount);
+    if (!form.amount || isNaN(amt) || amt <= 0) {
+      setModalErr('Please enter a valid positive transfer amount.');
+      return;
+    }
+
+    // Available Balance Validation
+    if (sourceBalance !== null) {
+      if (sourceBalance <= 0) {
+        setModalErr('Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).');
+        return;
+      }
+      if (amt > sourceBalance) {
+        setModalErr(`Transfer amount exceeds the available balance of PKR ${sourceBalance.toLocaleString()}.`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setModalErr('');
     try {
@@ -481,6 +601,10 @@ export default function TransfersScreen() {
       });
       
       const successMsg = `Fund transfer of ${PKR(parseFloat(form.amount))} to ${preview.destination.name} initiated successfully!`;
+      const amtNum = parseFloat(form.amount);
+      setSourceBalance((prev) => (prev !== null ? Math.max(0, prev - amtNum) : 0));
+      setPendingOutAmount((prev) => prev + amtNum);
+
       setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
       setReceipt(null);
       setPicked(null);
@@ -535,6 +659,10 @@ export default function TransfersScreen() {
         });
 
         const successMsg = `Offline: Fund transfer of ${PKR(parseFloat(form.amount))} to ${preview.destination.name} saved locally. Will sync when online!`;
+        const amtNum = parseFloat(form.amount);
+        setSourceBalance((prev) => (prev !== null ? Math.max(0, prev - amtNum) : 0));
+        setPendingOutAmount((prev) => prev + amtNum);
+
         setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
         setReceipt(null);
         setPicked(null);
@@ -1083,6 +1211,14 @@ export default function TransfersScreen() {
                         ⚠️ {PKR(pendingOutAmount)} committed in unacknowledged Outgoing transfers
                       </Text>
                     )}
+                    {sourceBalance !== null && sourceBalance <= 0 && (
+                      <View style={{ backgroundColor: '#fef2f2', borderColor: '#fca5a5', borderWidth: 1, borderRadius: 6, padding: 8, marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="alert-circle" size={16} color={Colors.error} style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '600', flex: 1 }}>
+                          Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -1215,8 +1351,13 @@ export default function TransfersScreen() {
                     <Text style={styles.btnSecondaryText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.primaryBtn, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} 
+                    style={[
+                      styles.primaryBtn, 
+                      { flex: 2, justifyContent: 'center', paddingVertical: 12 },
+                      sourceBalance !== null && sourceBalance <= 0 && { backgroundColor: '#94a3b8', opacity: 0.65 },
+                    ]} 
                     onPress={handleProceedToConfirm}
+                    disabled={sourceBalance !== null && sourceBalance <= 0}
                   >
                     <Text style={[styles.primaryBtnText, { fontSize: FontSize.sm }]}>Proceed to Confirm ➔</Text>
                   </TouchableOpacity>

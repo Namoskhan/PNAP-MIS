@@ -205,6 +205,48 @@ export async function enqueueOfflineAction({
 }) {
   const queue = await getOfflineQueue();
 
+  // If this action targets a locally generated offline ID (e.g. /responsibilities/offline_...):
+  const endpointOfflineIdMatch = endpoint && endpoint.match(/\/([a-zA-Z0-9_-]+)?(offline_[a-zA-Z0-9_.-]+)/);
+  const targetOfflineId = endpointOfflineIdMatch ? endpointOfflineIdMatch[2] : null;
+
+  if (targetOfflineId) {
+    // Look for an existing pending CREATE item for this entity
+    const existingIndex = queue.findIndex(
+      (item) =>
+        item.status === 'PENDING' &&
+        (item.id === targetOfflineId ||
+          item.localRecord?._id === targetOfflineId ||
+          item.payload?._id === targetOfflineId)
+    );
+
+    if (existingIndex !== -1) {
+      if (method === 'DELETE' || action === 'DELETE') {
+        // Entity was created offline and deleted offline before ever syncing to backend:
+        // Simply remove the pending CREATE action from queue!
+        const removed = queue.splice(existingIndex, 1)[0];
+        await AppStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+        notifyListeners(queue);
+        return { cancelled: true, removed };
+      }
+
+      if (method === 'PATCH' || method === 'PUT' || action === 'UPDATE') {
+        // Merge updates directly into the pending CREATE item's payload and localRecord:
+        const existing = queue[existingIndex];
+        const updatedPayload = { ...existing.payload, ...payload };
+        const updatedLocal = existing.localRecord ? { ...existing.localRecord, ...payload } : null;
+        queue[existingIndex] = {
+          ...existing,
+          payload: updatedPayload,
+          localRecord: updatedLocal,
+          displayTitle: displayTitle || existing.displayTitle,
+        };
+        await AppStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+        notifyListeners(queue);
+        return queue[existingIndex];
+      }
+    }
+  }
+
   // Persist any attached files
   const persistedFiles = [];
   if (Array.isArray(files) && files.length > 0) {
@@ -214,10 +256,10 @@ export async function enqueueOfflineAction({
     }
   }
 
-  const id = `offline_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const id = localRecord?._id || `offline_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const item = {
     id,
-    entityType, // 'MEETING' | 'ACTIVITY' | 'DONATION' | 'EXPENSE' | 'TRANSFER' | 'MEMBER'
+    entityType, // 'MEETING' | 'ACTIVITY' | 'DONATION' | 'EXPENSE' | 'TRANSFER' | 'RESPONSIBILITY' | 'MEMBER'
     action,
     endpoint,
     method,

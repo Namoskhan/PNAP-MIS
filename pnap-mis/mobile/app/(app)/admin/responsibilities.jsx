@@ -244,7 +244,7 @@ export default function ResponsibilitiesScreen() {
 
   async function handleUpdateState(id, patch) {
     try {
-      if (!isOnline) {
+      if (!isOnline || String(id).startsWith('offline_')) {
         throw new Error('OFFLINE_MODE');
       }
       await api.patch(`/responsibilities/${id}`, patch);
@@ -280,7 +280,7 @@ export default function ResponsibilitiesScreen() {
       completionNote: completionNote.trim() || undefined,
     };
     try {
-      if (!isOnline) {
+      if (!isOnline || String(completeItem._id).startsWith('offline_')) {
         throw new Error('OFFLINE_MODE');
       }
       await api.patch(`/responsibilities/${completeItem._id}`, patch);
@@ -318,7 +318,7 @@ export default function ResponsibilitiesScreen() {
       `Delete "${item.title}"? This cannot be undone.`,
       async () => {
         try {
-          if (!isOnline) {
+          if (!isOnline || String(item._id).startsWith('offline_')) {
             throw new Error('OFFLINE_MODE');
           }
           await api.delete(`/responsibilities/${item._id}`);

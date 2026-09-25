@@ -313,9 +313,22 @@ export async function syncUserScopeCache(user, ctx, options = {}) {
         await setCache(`responsibilities_${unitLevel}_${unitId}_all`, respList);
         await setCache(`responsibilities_${unitLevel}_${unitId}_`, respList);
       });
+      // 9. Unit Finance Summaries & Available Balances
+      if (onProgress) onProgress({ step: 'FINANCE', message: 'Caching finance summaries...' });
+
+      await safeFetch('Unit Finance Summaries', async () => {
+        for (const b of ['EXECUTIVE', 'COMMITTEE', 'JIRGA']) {
+          try {
+            const res = await api.get('/finance/summary', { params: { unitLevel, unitId, body: b } });
+            if (res.data?.data) {
+              await setCache(`finance_summary_${unitLevel}_${unitId}_${b}`, res.data.data);
+            }
+          } catch {}
+        }
+      });
     }
 
-    // 9. Personal Member Profile (if linked)
+    // 10. Personal Member Profile (if linked)
     if (user?.memberId) {
       await safeFetch('Personal Member Profile', async () => {
         const res = await api.get(`/members/${user.memberId}`);

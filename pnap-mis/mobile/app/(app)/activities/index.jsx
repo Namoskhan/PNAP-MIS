@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter, Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../src/context/AuthContext';
@@ -34,6 +34,7 @@ import {
   enqueueOfflineAction,
   getOfflineEntities,
   subscribeQueue,
+  persistOfflineFile,
 } from '../../../src/services/offlineStorage';
 import Badge from '../../../src/components/Badge';
 import Card from '../../../src/components/Card';
@@ -390,10 +391,42 @@ export default function ActivitiesScreen() {
   async function uploadPhotos(activityId, files) {
     if (!files || !files.length) return;
     setPhotoError('');
-    if (files.length > MAX_PHOTOS) {
+
+    // Format validation: JPG, PNG, WEBP
+    const isAllowedPhoto = (filename, mimeType) => {
+      const ext = (filename || '').toLowerCase();
+      const mime = (mimeType || '').toLowerCase();
+      return (
+        mime.includes('jpeg') ||
+        mime.includes('jpg') ||
+        mime.includes('png') ||
+        mime.includes('webp') ||
+        ext.endsWith('.jpg') ||
+        ext.endsWith('.jpeg') ||
+        ext.endsWith('.png') ||
+        ext.endsWith('.webp')
+      );
+    };
+
+    const validFiles = [];
+    const invalidNames = [];
+    for (const f of files) {
+      if (isAllowedPhoto(f.name || f.fileName || f.uri, f.type || f.mimeType)) {
+        validFiles.push(f);
+      } else {
+        invalidNames.push(f.name || f.fileName || 'file');
+      }
+    }
+
+    if (invalidNames.length > 0) {
+      toast.error(`Only JPG, PNG, and WebP formats are supported. Excluded: ${invalidNames.join(', ')}`);
+      if (validFiles.length === 0) return;
+    }
+
+    if (validFiles.length > MAX_PHOTOS) {
       toast.error(`Only ${MAX_PHOTOS} photos can be uploaded at once. Sending first ${MAX_PHOTOS}.`);
     }
-    const batch = files.slice(0, MAX_PHOTOS);
+    const batch = validFiles.slice(0, MAX_PHOTOS);
     const fd = new FormData();
 
     for (let i = 0; i < batch.length; i++) {
@@ -423,6 +456,10 @@ export default function ActivitiesScreen() {
 
     setUploadingPhotos(true);
     try {
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       const r = await api.post(`/activities/${activityId}/photos`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -440,6 +477,65 @@ export default function ActivitiesScreen() {
         setPhotosFor(data?.activity || { ...photosFor, photos: data?.activity?.photos });
       }
     } catch (e) {
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const persistedFiles = [];
+        for (let i = 0; i < batch.length; i++) {
+          const f = batch[i];
+          const rawFile = (typeof File !== 'undefined' && f.file instanceof File)
+            ? f.file
+            : ((typeof Blob !== 'undefined' && f.file instanceof Blob)
+              ? f.file
+              : (f.file || null));
+          const persisted = await persistOfflineFile({
+            fieldName: 'photos',
+            name: f.name || `photo_${Date.now()}_${i}.jpg`,
+            type: f.type || 'image/jpeg',
+            uri: f.uri,
+            file: rawFile,
+          });
+          if (persisted) persistedFiles.push(persisted);
+        }
+
+        const actItem = items.find((x) => x._id === activityId);
+        await enqueueOfflineAction({
+          entityType: 'ACTIVITY',
+          action: 'UPLOAD_PHOTOS',
+          endpoint: `/activities/${activityId}/photos`,
+          method: 'POST',
+          files: persistedFiles,
+          displayTitle: `Upload Photos: ${actItem?.title || 'Activity'}`,
+        });
+
+        const offlinePhotoEntries = persistedFiles.map((pf) => ({
+          url: pf.dataUrl || pf.uri,
+          filename: pf.name,
+          _isOffline: true,
+          uploadedAt: new Date().toISOString(),
+        }));
+
+        const updatedItems = items.map((item) => {
+          if (item._id === activityId) {
+            return {
+              ...item,
+              photos: [...(item.photos || []), ...offlinePhotoEntries],
+            };
+          }
+          return item;
+        });
+        setItems(updatedItems);
+        const cacheKey = `activities_${activeLevel}_${resolvedUnitId}_${targetBody}`;
+        await setCache(cacheKey, updatedItems);
+
+        if (photosFor && photosFor._id === activityId) {
+          setPhotosFor((prev) => ({
+            ...prev,
+            photos: [...(prev?.photos || []), ...offlinePhotoEntries],
+          }));
+        }
+
+        toast.success(`${persistedFiles.length} photo(s) saved offline. Will sync when online.`);
+        return;
+      }
       const msg = errorMessage(e);
       setPhotoError(msg);
       toast.error(msg);
@@ -493,12 +589,41 @@ export default function ActivitiesScreen() {
   }
 
   async function handleCompleteActivity(a) {
+    const photoCount = (a.photos || []).length;
+    const isPhotoHeavy = ['PROTEST', 'JALSA', 'CAMPAIGN'].includes(a.typeCode || a.type);
+    if (isPhotoHeavy && photoCount < 2) {
+      const msg = `At least 2 photos required to complete ${ACTIVITY_TYPE_LABEL[a.typeCode] || a.type || 'this activity'}. Currently: ${photoCount}.`;
+      toast.error(msg);
+      return;
+    }
+
     const doComplete = async () => {
       try {
+        if (!isOnline) {
+          throw new Error('OFFLINE_MODE');
+        }
         await api.post(`/activities/${a._id}/complete`, {});
         toast.success('Activity marked complete.');
         load(true);
       } catch (e) {
+        if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+          await enqueueOfflineAction({
+            entityType: 'ACTIVITY',
+            action: 'UPDATE',
+            endpoint: `/activities/${a._id}/complete`,
+            method: 'POST',
+            payload: {},
+            displayTitle: `Complete Activity: ${a.title || 'Activity'}`,
+          });
+          const updatedItems = items.map((item) =>
+            item._id === a._id ? { ...item, state: 'COMPLETED', _isOffline: true } : item
+          );
+          setItems(updatedItems);
+          const cacheKey = `activities_${activeLevel}_${resolvedUnitId}_${targetBody}`;
+          await setCache(cacheKey, updatedItems);
+          toast.success('Activity marked complete offline. Will sync when online.');
+          return;
+        }
         toast.error(errorMessage(e));
       }
     };
@@ -516,12 +641,38 @@ export default function ActivitiesScreen() {
   }
 
   async function handleCancelActivity(a) {
+    if (a.state === 'COMPLETED') {
+      toast.error('Cannot cancel a completed activity.');
+      return;
+    }
+
     const doCancel = async () => {
       try {
+        if (!isOnline) {
+          throw new Error('OFFLINE_MODE');
+        }
         await api.post(`/activities/${a._id}/cancel`, {});
         toast.success(`"${a.title || 'Activity'}" cancelled.`);
         load(true);
       } catch (e) {
+        if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+          await enqueueOfflineAction({
+            entityType: 'ACTIVITY',
+            action: 'UPDATE',
+            endpoint: `/activities/${a._id}/cancel`,
+            method: 'POST',
+            payload: {},
+            displayTitle: `Cancel Activity: ${a.title || 'Activity'}`,
+          });
+          const updatedItems = items.map((item) =>
+            item._id === a._id ? { ...item, state: 'CANCELLED', _isOffline: true } : item
+          );
+          setItems(updatedItems);
+          const cacheKey = `activities_${activeLevel}_${resolvedUnitId}_${targetBody}`;
+          await setCache(cacheKey, updatedItems);
+          toast.success(`Activity cancelled offline. Will sync when online.`);
+          return;
+        }
         toast.error(errorMessage(e));
       }
     };
@@ -566,7 +717,13 @@ export default function ActivitiesScreen() {
 
         {/* Title & Arranged By */}
         <View style={[styles.td, { width: 200 }]}>
-          <Text style={styles.tdText} numberOfLines={2}>{a.title || 'Untitled'}</Text>
+          <Link href={`/activities/${a._id}`} asChild>
+            <TouchableOpacity>
+              <Text style={[styles.tdText, { color: Colors.primary, fontWeight: '600' }]} numberOfLines={2}>
+                {a.title || 'Untitled'}
+              </Text>
+            </TouchableOpacity>
+          </Link>
           {a.unitLevel && (
             <View style={{ marginTop: 3 }}>
               <Text style={{ fontSize: 10, color: Colors.textMuted }}>
@@ -611,7 +768,13 @@ export default function ActivitiesScreen() {
         </View>
 
         {/* Actions */}
-        <View style={[styles.td, { width: 240, flexDirection: 'row', gap: 6 }]}>
+        <View style={[styles.td, { width: 240, flexDirection: 'row', gap: 6, alignItems: 'center' }]}>
+          <Link href={`/activities/${a._id}`} asChild>
+            <TouchableOpacity style={styles.rowBtnGhost}>
+              <Ionicons name="eye-outline" size={14} color={Colors.textMuted} />
+              <Text style={styles.rowBtnGhostText}>View</Text>
+            </TouchableOpacity>
+          </Link>
           {canManage && a.state !== 'COMPLETED' && a.state !== 'CANCELLED' && (
             <>
               <TouchableOpacity
@@ -673,7 +836,12 @@ export default function ActivitiesScreen() {
         </View>
 
         {/* Title */}
-        <Text style={styles.cardActivityTitle}>{a.title || 'Untitled Activity'}</Text>
+        <Link href={`/activities/${a._id}`} asChild>
+          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 }}>
+            <Text style={[styles.cardActivityTitle, { flex: 1, marginRight: 8 }]}>{a.title || 'Untitled Activity'}</Text>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        </Link>
 
         {/* Arranged by Unit */}
         {a.unitLevel && (
@@ -749,6 +917,12 @@ export default function ActivitiesScreen() {
           )}
 
           <View style={styles.cardButtonCluster}>
+            <Link href={`/activities/${a._id}`} asChild>
+              <TouchableOpacity style={styles.cardActionBtnSecondary}>
+                <Ionicons name="eye-outline" size={14} color={Colors.text} />
+                <Text style={styles.cardActionBtnSecondaryText}>View</Text>
+              </TouchableOpacity>
+            </Link>
             {canManage && a.state !== 'COMPLETED' && a.state !== 'CANCELLED' && (
               <>
                 <TouchableOpacity

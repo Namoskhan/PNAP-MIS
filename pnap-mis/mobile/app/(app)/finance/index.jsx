@@ -640,11 +640,29 @@ export default function FinanceScreen() {
 
   async function decideExpense(id, decision) {
     try {
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
       await api.post(`/finance/expenses/${id}/decide`, { decision });
       toast.success(`Expense ${decision.toLowerCase()}.`);
       load(true);
     } catch (e) {
-      toast.error(errorMessage(e));
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'EXPENSE',
+          action: 'UPDATE',
+          endpoint: `/finance/expenses/${id}/decide`,
+          method: 'POST',
+          payload: { decision },
+          displayTitle: `${decision === 'APPROVE' ? 'Approve' : 'Reject'} Expense`,
+        });
+        setExpenses((prev) =>
+          prev.map((item) => (item._id === id ? { ...item, status: decision === 'APPROVE' ? 'APPROVED' : 'REJECTED' } : item))
+        );
+        toast.success(`Offline: Expense ${decision.toLowerCase()} saved. Will sync when online.`);
+      } else {
+        toast.error(errorMessage(e));
+      }
     }
   }
 
