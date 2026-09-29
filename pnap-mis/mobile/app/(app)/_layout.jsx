@@ -3,6 +3,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { ActivityIndicator, View, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
+import OfflineBanner from '../../src/components/OfflineBanner';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, isSuperAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
 
 function TabIcon({ name, color, size }) {
@@ -29,8 +30,10 @@ export default function AppLayout() {
   const iconName = isAdminRole ? 'shield-checkmark' : (isMember ? 'apps' : 'briefcase');
 
   return (
-    <Tabs
-      screenOptions={{
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+      <OfflineBanner />
+      <Tabs
+        screenOptions={{
         headerStyle: { backgroundColor: Colors.primary },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: '700' },
@@ -180,5 +183,6 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/units/tier-configs" options={{ href: null, headerTitle: 'Unit Tiers', headerShown: true }} />
       <Tabs.Screen name="admin/units/workflows" options={{ href: null, headerTitle: 'Approval Workflows', headerShown: true }} />
     </Tabs>
+    </View>
   );
 }

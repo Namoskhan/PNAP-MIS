@@ -20,15 +20,23 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { canManageMeetings, isSuperAdmin, isSuperAdminOversight, isCentralAdminOversight } from '../../../src/utils/permissions';
 import { Storage } from '../../../src/utils/storage';
+import {
+  setCache,
+  getCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+} from '../../../src/services/offlineStorage';
+import { getCachedAttendees } from '../../../src/services/scopeDataCache';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import EmptyState from '../../../src/components/EmptyState';
 import Avatar from '../../../src/components/Avatar';
 import { useToast } from '../../../src/components/Toast';
+import { useNetwork } from '../../../src/context/NetworkContext';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 
@@ -55,6 +63,7 @@ export default function MeetingDetailScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
+  const { isOnline } = useNetwork();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -102,11 +111,40 @@ export default function MeetingDetailScreen() {
   const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [finalizingBusy, setFinalizingBusy] = useState(false);
 
-  function load() {
-    api.get(`/meetings/${id}`)
-      .then((r) => setMeeting(r.data.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  async function load() {
+    const cacheKey = `meeting_detail_${id}`;
+    if (!isOnline || String(id).startsWith('offline_')) {
+      const cached = await getCache(cacheKey);
+      if (cached) {
+        setMeeting(cached);
+      } else {
+        const offlineMeetings = await getOfflineEntities('MEETING');
+        const found = offlineMeetings.find((m) => m._id === id);
+        if (found) setMeeting(found);
+      }
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const r = await api.get(`/meetings/${id}`);
+      const data = r.data?.data;
+      if (data) {
+        setMeeting(data);
+        await setCache(cacheKey, data);
+      }
+    } catch {
+      const cached = await getCache(cacheKey);
+      if (cached) {
+        setMeeting(cached);
+      } else {
+        const offlineMeetings = await getOfflineEntities('MEETING');
+        const found = offlineMeetings.find((m) => m._id === id);
+        if (found) setMeeting(found);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -122,9 +160,34 @@ export default function MeetingDetailScreen() {
     setSupervisorAttended(Boolean(meeting?.supervisorAttended));
     setSupervisorMemberId(meeting?.supervisorMemberId?._id || meeting?.supervisorMemberId || '');
 
+    const attendeesCacheKey = `meeting_attendees_${meeting._id}`;
+    if (!isOnline || String(meeting?._id).startsWith('offline_')) {
+      let list = await getCache(attendeesCacheKey);
+      if (!list || !list.length) {
+        list = await getCachedAttendees(meeting.unitLevel, meeting.unitId, meeting.body);
+      }
+      if (list && list.length > 0) {
+        const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
+        const rows = list.map((m) => ({
+          memberId: m._id,
+          name: m.fullName,
+          memberCode: m.memberId,
+          roleText: m.roleText || m.roleCode,
+          status: existingMap.get(String(m._id)) || 'ABSENT',
+        }));
+        setAttendance(rows);
+      }
+      setLoadingAttendees(false);
+      if (meeting?.supervisorAttended) {
+        loadSupervisors();
+      }
+      return;
+    }
+
     try {
       const r = await api.get(`/meetings/${meeting._id}/attendees`);
       const list = r.data.data || [];
+      await setCache(attendeesCacheKey, list);
       const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
       const rows = list.map((m) => {
         const rawStatus = existingMap.get(String(m._id));
@@ -138,7 +201,24 @@ export default function MeetingDetailScreen() {
       });
       setAttendance(rows);
     } catch (e) {
-      toast.error('Could not load attendee roster.');
+      // Offline fallback: load cached meeting attendees or unit attendees
+      let list = await getCache(attendeesCacheKey);
+      if (!list || !list.length) {
+        list = await getCachedAttendees(meeting.unitLevel, meeting.unitId, meeting.body);
+      }
+      if (list && list.length > 0) {
+        const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
+        const rows = list.map((m) => ({
+          memberId: m._id,
+          name: m.fullName,
+          memberCode: m.memberId,
+          roleText: m.roleText || m.roleCode,
+          status: existingMap.get(String(m._id)) || 'ABSENT',
+        }));
+        setAttendance(rows);
+      } else {
+        toast.error('Could not load attendee roster (offline).');
+      }
     } finally {
       setLoadingAttendees(false);
     }
@@ -150,11 +230,32 @@ export default function MeetingDetailScreen() {
 
   async function loadSupervisors() {
     setSupervisorsLoading(true);
+    const cacheKey = `meeting_supervisors_${meeting._id}`;
+    if (!isOnline || String(meeting?._id).startsWith('offline_')) {
+      const cached = await getCache(cacheKey);
+      if (cached && cached.length) {
+        setSupervisorCandidates(cached);
+      } else {
+        const fallbackRoles = (await getCache(`roles_${meeting.unitLevel}_${meeting.unitId}`)) || [];
+        setSupervisorCandidates(fallbackRoles);
+      }
+      setSupervisorsLoading(false);
+      return;
+    }
+
     try {
       const r = await api.get(`/meetings/${meeting._id}/supervisor-candidates`);
-      setSupervisorCandidates(r.data.data || []);
+      const data = r.data.data || [];
+      setSupervisorCandidates(data);
+      await setCache(cacheKey, data);
     } catch {
-      setSupervisorCandidates([]);
+      const cached = await getCache(cacheKey);
+      if (cached && cached.length) {
+        setSupervisorCandidates(cached);
+      } else {
+        const fallbackRoles = (await getCache(`roles_${meeting.unitLevel}_${meeting.unitId}`)) || [];
+        setSupervisorCandidates(fallbackRoles);
+      }
     } finally {
       setSupervisorsLoading(false);
     }
@@ -186,22 +287,54 @@ export default function MeetingDetailScreen() {
       toast.error(msg);
       return;
     }
+    if (!meeting.photos || meeting.photos.length === 0) {
+      const msg = 'At least 1 photo is required to finalize this meeting. Please upload a meeting photo first.';
+      setFinalizeError(msg);
+      toast.error(msg);
+      return;
+    }
     setFinalizingBusy(true);
+    const payload = {
+      decisions: previouswork.trim(),
+      upcomingStrategy: upcomingStrategy.trim() || undefined,
+      notes: notes.trim() || undefined,
+      supervisorAttended,
+      supervisorMemberId: supervisorAttended && supervisorMemberId ? supervisorMemberId : undefined,
+      attendance: attendance.map((r) => ({ memberId: r.memberId, status: r.status })),
+    };
     try {
-      const payload = {
-        decisions: previouswork.trim(),
-        upcomingStrategy: upcomingStrategy.trim() || undefined,
-        notes: notes.trim() || undefined,
-        supervisorAttended,
-        supervisorMemberId: supervisorAttended && supervisorMemberId ? supervisorMemberId : undefined,
-        attendance: attendance.map((r) => ({ memberId: r.memberId, status: r.status })),
-      };
       await api.post(`/meetings/${meeting._id}/finalize`, payload);
       toast.success('Meeting finalized successfully.');
       setShowFinalize(false);
       setFinalizeError('');
       load();
     } catch (e) {
+      if (isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'MEETING',
+          action: 'FINALIZE',
+          endpoint: `/meetings/${meeting._id}/finalize`,
+          method: 'POST',
+          payload,
+          displayTitle: `Finalize Meeting: ${meeting.title || 'Meeting'}`,
+        });
+        const updated = {
+          ...meeting,
+          state: 'FINALIZED',
+          decisions: payload.decisions,
+          upcomingStrategy: payload.upcomingStrategy,
+          notes: payload.notes,
+          supervisorAttended: payload.supervisorAttended,
+          attendance: payload.attendance,
+          _isOfflineFinalized: true,
+        };
+        setMeeting(updated);
+        await setCache(`meeting_detail_${meeting._id}`, updated);
+        toast.success('Finalize saved offline. Will sync when back online.');
+        setShowFinalize(false);
+        setFinalizeError('');
+        return;
+      }
       const msg = errorMessage(e);
       setFinalizeError(msg);
       toast.error(msg);
@@ -219,14 +352,42 @@ export default function MeetingDetailScreen() {
       return;
     }
     setCancelling(true);
+    const payload = { reason: cancelReason.trim() };
     try {
-      await api.post(`/meetings/${meeting._id}/cancel`, { reason: cancelReason.trim() });
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+      await api.post(`/meetings/${meeting._id}/cancel`, payload);
       toast.success('Meeting cancelled.');
       setShowCancel(false);
       setCancelReason('');
       setCancelError('');
       load();
     } catch (e) {
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'MEETING',
+          action: 'UPDATE',
+          endpoint: `/meetings/${meeting._id}/cancel`,
+          method: 'POST',
+          payload,
+          displayTitle: `Cancel Meeting: ${meeting.title || 'Meeting'}`,
+        });
+        const updated = {
+          ...meeting,
+          status: 'CANCELLED',
+          state: 'CANCELLED',
+          notes: (meeting.notes || '') + `\n[CANCELLED] ${payload.reason}`,
+          _isOfflineCancelled: true,
+        };
+        setMeeting(updated);
+        await setCache(`meeting_detail_${meeting._id}`, updated);
+        toast.success('Cancellation saved offline. Will sync when back online.');
+        setShowCancel(false);
+        setCancelReason('');
+        setCancelError('');
+        return;
+      }
       const msg = errorMessage(e);
       setCancelError(msg);
       toast.error(msg);
@@ -237,21 +398,47 @@ export default function MeetingDetailScreen() {
 
   async function handleUploadPhoto() {
     setPhotoError('');
+    let validAssets = [];
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.85,
         exif: true,
       });
       if (result.canceled || !result.assets?.length) return;
 
+      // Validate photo formats (JPEG, PNG, WebP)
+      const invalidNames = [];
+      for (const a of (result.assets || []).slice(0, 10)) {
+        const mime = (a.mimeType || a.type || '').toLowerCase();
+        const ext = (a.fileName || a.name || a.uri || '').toLowerCase();
+        const isJpg = mime.includes('jpeg') || mime.includes('jpg') || ext.endsWith('.jpg') || ext.endsWith('.jpeg');
+        const isPng = mime.includes('png') || ext.endsWith('.png');
+        const isWebp = mime.includes('webp') || ext.endsWith('.webp');
+        if (isJpg || isPng || isWebp) {
+          validAssets.push(a);
+        } else {
+          invalidNames.push(a.fileName || 'file');
+        }
+      }
+
+      if (invalidNames.length > 0) {
+        toast.error(`Only JPG, PNG, and WebP formats are supported. Excluded: ${invalidNames.join(', ')}`);
+        if (validAssets.length === 0) return;
+      }
+
       setUploadingPhoto(true);
+
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       toast.show('Uploading photos...', 'info');
 
       const fd = new FormData();
-      for (let i = 0; i < result.assets.slice(0, 10).length; i++) {
-        const asset = result.assets[i];
+      for (let i = 0; i < validAssets.length; i++) {
+        const asset = validAssets[i];
         if (Platform.OS === 'web') {
           if (asset.file) {
             fd.append('photos', asset.file);
@@ -287,6 +474,44 @@ export default function MeetingDetailScreen() {
       }
       load();
     } catch (e) {
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'MEETING',
+          action: 'UPLOAD_PHOTOS',
+          endpoint: `/meetings/${meeting._id}/photos`,
+          method: 'POST',
+          files: validAssets.map((a, i) => {
+            const rawFile = (typeof File !== 'undefined' && a.file instanceof File)
+              ? a.file
+              : ((typeof Blob !== 'undefined' && a.file instanceof Blob)
+                ? a.file
+                : (a.file || null));
+            return {
+              fieldName: 'photos',
+              uri: a.uri,
+              file: rawFile,
+              name: a.fileName || a.name || `photo_${Date.now()}_${i}.jpg`,
+              type: a.mimeType || a.type || 'image/jpeg',
+            };
+          }),
+          displayTitle: `Upload Photos: ${meeting.title || 'Meeting'}`,
+        });
+
+        // Optimistically record photos on meeting so finalization check passes offline
+        const offlinePhotos = validAssets.map((a, i) => ({
+          url: a.uri,
+          filename: a.fileName || `offline_photo_${i}.jpg`,
+          _isOffline: true,
+        }));
+        const updated = {
+          ...meeting,
+          photos: [...(meeting.photos || []), ...offlinePhotos],
+        };
+        setMeeting(updated);
+        await setCache(`meeting_detail_${meeting._id}`, updated);
+        toast.success(`${validAssets.length} photo(s) saved offline. Will sync when back online.`);
+        return;
+      }
       const msg = errorMessage(e);
       setPhotoError(msg);
       toast.error(msg);
@@ -333,6 +558,10 @@ export default function MeetingDetailScreen() {
   }
 
   async function handleExportPdf() {
+    if (!isOnline) {
+      toast.info('Exporting PDF minutes requires an active internet connection.');
+      return;
+    }
     if (!meeting) return;
     try {
       toast.show('Downloading PDF minutes...', 'info');
@@ -434,6 +663,9 @@ export default function MeetingDetailScreen() {
           <View style={styles.badges}>
             <Badge label={streamBadge.label} color={streamBadge.color} bg={streamBadge.bg} />
             <Badge label={m.state || 'SCHEDULED'} color={stateColor} bg={stateBg} />
+            {!isOnline && (
+              <Badge label="Offline (Cached)" color="#DC2626" bg="#FEE2E2" />
+            )}
           </View>
         </Card>
 
@@ -445,8 +677,12 @@ export default function MeetingDetailScreen() {
           <TouchableOpacity style={styles.actionBtn} onPress={() => setShowDocs(true)}>
             <Text style={styles.actionBtnText}>📎 Docs ({documents.length})</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleExportPdf}>
-            <Text style={styles.actionBtnText}>📄 PDF</Text>
+          <TouchableOpacity
+            style={[styles.actionBtn, !isOnline && { opacity: 0.5 }]}
+            onPress={handleExportPdf}
+            disabled={!isOnline}
+          >
+            <Text style={[styles.actionBtnText, !isOnline && { color: Colors.textMuted }]}>📄 PDF</Text>
           </TouchableOpacity>
           {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
             <>

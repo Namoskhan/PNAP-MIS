@@ -124,13 +124,15 @@ async function shapeUser(user) {
 exports.login = asyncHandler(async (req, res) => {
   const id = (req.body.identifier || req.body.email || req.body.cnic || req.body.username || '').trim();
   const password = req.body.password;
+  const rememberMe = Boolean(req.body.rememberMe || req.body.keepLoggedIn);
   if (!id || !password) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'Login ID and password required');
   }
 
-  if (CNIC_RX.test(id)) return loginByCnic(id, password, res);
-  if (id.includes('@')) return loginByEmail(id.toLowerCase(), password, res);
-  return loginByBootstrapUsername(id.toLowerCase(), password, res);
+  const options = { rememberMe };
+  if (CNIC_RX.test(id)) return loginByCnic(id, password, res, options);
+  if (id.includes('@')) return loginByEmail(id.toLowerCase(), password, res, options);
+  return loginByBootstrapUsername(id.toLowerCase(), password, res, options);
 });
 
 // Username login has been withdrawn: accounts sign in with a CNIC or an
@@ -148,40 +150,40 @@ exports.login = asyncHandler(async (req, res) => {
 // check afterwards: any other account that happens to match by username
 // fails identically to a wrong password, so this cannot be used to
 // discover which usernames exist.
-async function loginByBootstrapUsername(username, password, res) {
+async function loginByBootstrapUsername(username, password, res, options = {}) {
   const user = await User.findOne({ username });
   if (user && user.isActive && await user.verifyPassword(password)) {
     user.lastLoginAt = new Date();
     await user.save();
-    return ok(res, { token: signToken(user), user: await shapeUser(user) });
+    return ok(res, { token: signToken(user, options), user: await shapeUser(user) });
   }
 
   const member = await Member.findOne({ username }).select('+passwordHash');
-  if (member) return _finishMemberLogin(member, password, res);
+  if (member) return _finishMemberLogin(member, password, res, options);
 
   throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
 }
 
-async function loginByEmail(email, password, res) {
+async function loginByEmail(email, password, res, options = {}) {
   const user = await User.findOne({ email });
   if (user && user.isActive && await user.verifyPassword(password)) {
     user.lastLoginAt = new Date();
     await user.save();
-    return ok(res, { token: signToken(user), user: await shapeUser(user) });
+    return ok(res, { token: signToken(user, options), user: await shapeUser(user) });
   }
   // Fall through to Member by email (sparse-indexed, lowercased)
   const member = await Member.findOne({ email }).select('+passwordHash');
-  if (member) return _finishMemberLogin(member, password, res);
+  if (member) return _finishMemberLogin(member, password, res, options);
   throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
 }
 
-async function loginByCnic(cnic, password, res) {
+async function loginByCnic(cnic, password, res, options = {}) {
   // Lazy-load the password (model has select: false for safety).
   const member = await Member.findOne({ cnic }).select('+passwordHash');
   if (!member) {
     throw new ApiError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');
   }
-  return _finishMemberLogin(member, password, res);
+  return _finishMemberLogin(member, password, res, options);
 }
 
 // Shared member-login tail. Verifies password + status, derives
@@ -189,7 +191,7 @@ async function loginByCnic(cnic, password, res) {
 // linked User record, signs a token. Called from both member-capable
 // login branches (CNIC / email) once a Member is resolved — the
 // bootstrap-username branch never reaches a Member.
-async function _finishMemberLogin(member, password, res) {
+async function _finishMemberLogin(member, password, res, options = {}) {
   if (member.status !== 'ACTIVE') {
     throw new ApiError(403, 'NOT_APPROVED',
       'Your application is not yet approved. Please check status with your local Secretary.');
@@ -241,7 +243,7 @@ async function _finishMemberLogin(member, password, res) {
   user.lastLoginAt = new Date();
   await user.save();
 
-  return ok(res, { token: signToken(user), user: await shapeUser(user) });
+  return ok(res, { token: signToken(user, options), user: await shapeUser(user) });
 }
 
 exports.me = asyncHandler(async (req, res) => {

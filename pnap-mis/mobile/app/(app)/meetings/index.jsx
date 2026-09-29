@@ -22,17 +22,26 @@ import * as Sharing from 'expo-sharing';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { api, errorMessage } from '../../../src/api/client';
+import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { canManageMeetings, isPureMember, isHigherAdmin, isSuperAdmin, isSuperAdminOversight, isCentralAdminOversight } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import { Storage } from '../../../src/utils/storage';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+  subscribeQueue,
+} from '../../../src/services/offlineStorage';
 import Badge from '../../../src/components/Badge';
 import Card from '../../../src/components/Card';
 import EmptyState from '../../../src/components/EmptyState';
 import DateTimePicker from '../../../src/components/DateTimePicker';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
-import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 import useEventTypes from '../../../src/hooks/useEventTypes';
+import { getCachedAttendees } from '../../../src/services/scopeDataCache';
+import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 
 const DEFAULT_TYPE_CODE = 'EXC';
 
@@ -55,6 +64,7 @@ const EMPTY_FORM = {
 export default function MeetingsScreen() {
   const { user } = useAuth();
   const { ctx, provinces, setCtx } = useUnit();
+  const { isOnline } = useNetwork();
   const router = useRouter();
   const toast = useToast();
   const params = useLocalSearchParams();
@@ -130,6 +140,8 @@ export default function MeetingsScreen() {
       : (isCommitteeView ? 'COMMITTEE'
       : ((form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') ? 'GENERAL_BODY' : 'EXECUTIVE')));
 
+    const cacheKey = `attendees_${activeLevel}_${resolvedUnitId}_${bodyForAttendees}`;
+
     api.get('/meetings/eligible-attendees', {
       params: {
         unitLevel: activeLevel,
@@ -138,14 +150,51 @@ export default function MeetingsScreen() {
         typeCode: form.typeCode,
       },
     })
-      .then((r) => { if (active) setChairpersonOptions(r.data.data || []); })
-      .catch(() => {})
+      .then((r) => {
+        if (active) {
+          const data = r.data.data || [];
+          setChairpersonOptions(data);
+          setCache(cacheKey, data).catch(() => {});
+        }
+      })
+      .catch(async () => {
+        if (active) {
+          const cached = await getCachedAttendees(activeLevel, resolvedUnitId, bodyForAttendees);
+          if (cached && cached.length > 0) {
+            setChairpersonOptions(cached);
+          }
+        }
+      })
       .finally(() => { if (active) setLoadingChairpersons(false); });
     return () => { active = false; };
   }, [showForm, activeLevel, resolvedUnitId, form.typeCode, isCongressView, isJirgaView, isCommitteeView]);
 
   async function load(silent = false) {
     if (!silent) setLoading(true);
+    const cacheKey = `meetings_${activeLevel}_${resolvedUnitId}_${targetBody}`;
+
+    const filterOffline = (offlineList) => {
+      return (offlineList || []).filter((o) => {
+        const uId = o.unitId || o.payload?.unitId;
+        const body = o.body || o.payload?.body;
+        const matchesUnit = !uId || !resolvedUnitId || uId === resolvedUnitId;
+        const matchesBody = !body || body === targetBody || (targetBody === 'NON_COMMITTEE' && (body === 'EXECUTIVE' || body === 'GENERAL_BODY'));
+        return matchesUnit && matchesBody;
+      });
+    };
+
+    if (!isOnline) {
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('MEETING');
+      const validOffline = filterOffline(offlineItems);
+      if (cached || validOffline.length > 0) {
+        setItems([...validOffline, ...(cached || [])]);
+      }
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       const qParams = {
         unitLevel: activeLevel,
@@ -165,9 +214,20 @@ export default function MeetingsScreen() {
       }
 
       const res = await api.get('/meetings', { params: qParams });
-      setItems(res.data.data || []);
+      const serverItems = res.data.data || [];
+      await setCache(cacheKey, serverItems);
+
+      const offlineItems = await getOfflineEntities('MEETING');
+      const validOffline = filterOffline(offlineItems);
+      setItems([...validOffline, ...serverItems]);
     } catch {
-      // fail silently
+      // Offline fallback: load from persistent local cache
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('MEETING');
+      const validOffline = filterOffline(offlineItems);
+      if (cached || validOffline.length > 0) {
+        setItems([...validOffline, ...(cached || [])]);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -177,6 +237,13 @@ export default function MeetingsScreen() {
   useEffect(() => {
     load();
   }, [activeLevel, resolvedUnitId, isCongressView, isJirgaView, isCommitteeView]);
+
+  useEffect(() => {
+    const unsub = subscribeQueue(() => {
+      load(true);
+    });
+    return unsub;
+  }, [activeLevel, resolvedUnitId, targetBody]);
 
   function onRefresh() {
     setRefreshing(true);
@@ -257,6 +324,10 @@ export default function MeetingsScreen() {
   }
 
   async function handleExport(type) {
+    if (!isOnline) {
+      toast.info('Exporting requires an active internet connection.');
+      return;
+    }
     if (!ctx && !params.unitId) return;
     if (exporting) return;
     setExporting(type);
@@ -347,6 +418,12 @@ export default function MeetingsScreen() {
       toast.error(msg);
       return;
     }
+    if (form.endAt && new Date(form.endAt).getTime() <= new Date(form.startAt).getTime()) {
+      const msg = 'End date/time must be strictly after start date/time.';
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
     if (form.gpsLat === null || form.gpsLat === undefined || form.gpsLat === '' ||
         form.gpsLng === null || form.gpsLng === undefined || form.gpsLng === '') {
       const msg = 'Venue GPS (latitude and longitude) is mandatory for creating meetings.';
@@ -385,6 +462,11 @@ export default function MeetingsScreen() {
         gpsLng: lng,
         gps: { lat, lng },
       };
+
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/meetings', bodyPayload);
       toast.success('Meeting scheduled successfully.');
       setShowForm(false);
@@ -392,9 +474,61 @@ export default function MeetingsScreen() {
       setFormError('');
       load();
     } catch (e) {
-      const msg = errorMessage(e);
-      setFormError(msg);
-      toast.error(msg);
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        // Save locally to offline queue!
+        const targetBodyForCreate = isCongressView ? 'CONGRESS'
+          : (isJirgaView ? 'JIRGA'
+          : (isCommitteeView ? 'COMMITTEE'
+          : ((form.typeCode === 'GBM' || form.typeCode === 'GENERAL_BODY') ? 'GENERAL_BODY' : 'EXECUTIVE')));
+
+        const lat = Number(form.gpsLat);
+        const lng = Number(form.gpsLng);
+        const bodyPayload = {
+          unitLevel: activeLevel,
+          unitId: resolvedUnitId,
+          typeCode: form.typeCode,
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          venue: form.venue.trim(),
+          startAt: form.startAt,
+          endAt: form.endAt || undefined,
+          chairpersonId: form.chairpersonId || undefined,
+          agenda: form.agenda.trim() || undefined,
+          body: targetBodyForCreate,
+          gpsLat: lat,
+          gpsLng: lng,
+          gps: { lat, lng },
+        };
+
+        const offlineRecord = {
+          ...bodyPayload,
+          state: 'OFFLINE_PENDING',
+          attendance: [],
+          photos: [],
+          documents: [],
+          createdAt: new Date().toISOString(),
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'MEETING',
+          action: 'CREATE',
+          endpoint: '/meetings',
+          method: 'POST',
+          payload: bodyPayload,
+          displayTitle: `Meeting: ${bodyPayload.title}`,
+          localRecord: offlineRecord,
+        });
+
+        toast.success('Offline mode: Meeting saved locally. Will sync when online.');
+        setShowForm(false);
+        setForm(EMPTY_FORM);
+        setFormError('');
+        load(true);
+      } else {
+        const msg = errorMessage(e);
+        setFormError(msg);
+        toast.error(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -404,8 +538,9 @@ export default function MeetingsScreen() {
     const isPresent = item.attendance?.some((a) => String(a.memberId?._id || a.memberId) === String(user?.memberId) && a.status === 'PRESENT');
     const isFinalized = item.state === 'FINALIZED';
     const isCancelled = item.state === 'CANCELLED';
-    const statusColor = isCancelled ? Colors.error : (isFinalized ? Colors.success : Colors.warning);
-    const statusBg = isCancelled ? Colors.errorBg : (isFinalized ? Colors.successBg : Colors.warningBg);
+    const statusColor = item._isOffline ? '#D97706' : (isCancelled ? Colors.error : (isFinalized ? Colors.success : Colors.warning));
+    const statusBg = item._isOffline ? '#FEF3C7' : (isCancelled ? Colors.errorBg : (isFinalized ? Colors.successBg : Colors.warningBg));
+    const statusLabel = item._isOffline ? 'OFFLINE (PENDING SYNC)' : item.state;
 
     const isCng = item.body === 'CONGRESS' || item.typeCode === 'CNG' || item.typeCode === 'CONGRESS';
     const isJrg = !isCng && (item.body === 'JIRGA' || item.typeCode === 'JRG' || item.typeCode === 'JIRGA');
@@ -418,7 +553,16 @@ export default function MeetingsScreen() {
       : (isGbm ? 'General Body' : 'Executive')));
 
     return (
-      <TouchableOpacity onPress={() => router.push(`/meetings/${item._id}`)} activeOpacity={0.7}>
+      <TouchableOpacity
+        onPress={() => {
+          if (item._isOffline) {
+            toast.info('This meeting is stored locally and will sync once connected to internet.');
+            return;
+          }
+          router.push(`/meetings/${item._id}`);
+        }}
+        activeOpacity={0.7}
+      >
         <Card style={styles.card}>
           <View style={styles.cardTop}>
             <View style={{ flex: 1 }}>
@@ -427,7 +571,7 @@ export default function MeetingsScreen() {
                 {streamLabel} · {shortDate(item.startAt)} {item.venue ? `· ${item.venue}` : ''}
               </Text>
             </View>
-            <Badge label={item.state} color={statusColor} bg={statusBg} />
+            <Badge label={statusLabel} color={statusColor} bg={statusBg} />
           </View>
 
           {item.description ? (
@@ -564,30 +708,37 @@ export default function MeetingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{pageTitle}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text style={styles.headerTitle}>{pageTitle}</Text>
+            {!isOnline && (
+              <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.headerSubtitle}>{pageSubtitle}</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
             onPress={() => handleExport('pdf')}
-            disabled={!!exporting}
+            disabled={!isOnline || !!exporting}
           >
             {exporting === 'pdf' ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <Ionicons name="document-text-outline" size={20} color={Colors.primary} />
+              <Ionicons name="document-text-outline" size={20} color={isOnline ? Colors.primary : Colors.textMuted} />
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.iconBtn}
+            style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
             onPress={() => handleExport('xlsx')}
-            disabled={!!exporting}
+            disabled={!isOnline || !!exporting}
           >
             {exporting === 'xlsx' ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <Ionicons name="grid-outline" size={20} color={Colors.primary} />
+              <Ionicons name="grid-outline" size={20} color={isOnline ? Colors.primary : Colors.textMuted} />
             )}
           </TouchableOpacity>
           {canManage && (

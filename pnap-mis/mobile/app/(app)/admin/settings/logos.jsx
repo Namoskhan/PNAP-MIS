@@ -109,7 +109,7 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
   async function pickImage() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         quality: 1,
       });

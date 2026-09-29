@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -16,6 +17,7 @@ import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
 import { errorMessage } from '../../src/api/client';
+import { Storage } from '../../src/utils/storage';
 import { useToast } from '../../src/components/Toast';
 import { Colors, FontSize, Radius, Spacing } from '../../src/constants/colors';
 
@@ -27,8 +29,27 @@ export default function LoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  // Pre-load saved remember choice and identifier if remembered
+  useEffect(() => {
+    (async () => {
+      try {
+        const [savedKeep, savedId] = await Promise.all([
+          Storage.getItem('pnap_remember_me'),
+          Storage.getItem('pnap_saved_identifier'),
+        ]);
+        if (savedKeep !== null) {
+          setKeepLoggedIn(savedKeep === 'true');
+        }
+        if (savedId) {
+          setIdentifier(savedId);
+        }
+      } catch {}
+    })();
+  }, []);
 
   async function handleLogin() {
     if (!identifier.trim() || !password) {
@@ -38,7 +59,12 @@ export default function LoginScreen() {
     setErr('');
     setBusy(true);
     try {
-      await login(identifier.trim(), password);
+      await login(identifier.trim(), password, keepLoggedIn);
+      if (keepLoggedIn) {
+        await Storage.setItem('pnap_saved_identifier', identifier.trim());
+      } else {
+        await Storage.removeItem('pnap_saved_identifier');
+      }
       toast.success('Welcome back!');
       router.replace('/');
     } catch (e) {
@@ -119,6 +145,34 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Keep me logged in switch */}
+            <TouchableOpacity
+              style={styles.keepRow}
+              activeOpacity={0.7}
+              onPress={() => setKeepLoggedIn((k) => !k)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: keepLoggedIn }}
+            >
+              <View style={styles.keepInfo}>
+                <View style={styles.keepHeaderRow}>
+                  <Ionicons
+                    name={keepLoggedIn ? 'shield-checkmark' : 'shield-outline'}
+                    size={16}
+                    color={keepLoggedIn ? Colors.primary : Colors.textMuted}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.keepTitle}>Keep me logged in</Text>
+                </View>
+                <Text style={styles.keepSub}>Stay signed in for 7 days (offline ready)</Text>
+              </View>
+              <Switch
+                value={keepLoggedIn}
+                onValueChange={setKeepLoggedIn}
+                trackColor={{ false: Colors.border, true: Colors.primary }}
+                thumbColor={Platform.OS === 'android' ? (keepLoggedIn ? Colors.primaryDark : '#f4f3f4') : '#fff'}
+              />
+            </TouchableOpacity>
 
             <TouchableOpacity style={[styles.btn, busy && styles.btnDisabled]} onPress={handleLogin} disabled={busy}>
               {busy ? (
@@ -261,6 +315,37 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  keepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  keepInfo: {
+    flex: 1,
+    paddingRight: Spacing.sm,
+  },
+  keepHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  keepTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  keepSub: {
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   btn: {
     backgroundColor: Colors.primary,

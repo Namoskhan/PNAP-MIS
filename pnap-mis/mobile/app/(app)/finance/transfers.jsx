@@ -21,7 +21,7 @@ import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
-import { api, errorMessage, resolveMediaUrl } from '../../../src/api/client';
+import { api, errorMessage, resolveMediaUrl, isNetworkError } from '../../../src/api/client';
 import {
   canManageFinance,
   canApproveExpense,
@@ -31,6 +31,14 @@ import {
   isHigherAdmin,
 } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
+import { useNetwork } from '../../../src/context/NetworkContext';
+import {
+  getCache,
+  setCache,
+  enqueueOfflineAction,
+  getOfflineEntities,
+  subscribeQueue,
+} from '../../../src/services/offlineStorage';
 import Badge from '../../../src/components/Badge';
 import OrgTree from '../../../src/components/OrgTree';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
@@ -73,6 +81,7 @@ export default function TransfersScreen() {
   const [tab, setTab] = useState('outgoing');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { isOnline } = useNetwork();
 
   const activeLevel = params.unitLevel || ctx?.unitLevel || 'CENTRAL';
   const rawUnitId = params.unitId || ctx?.unitId || '';
@@ -108,6 +117,16 @@ export default function TransfersScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [modalErr, setModalErr] = useState('');
+
+  // Destination Selector Mode: LIST vs TREE
+  const [destMode, setDestMode] = useState('LIST');
+  const [pickProv, setPickProv] = useState('');
+  const [pickDist, setPickDist] = useState('');
+  const [pickArea, setPickArea] = useState('');
+  const [listProvinces, setListProvinces] = useState([]);
+  const [listDistricts, setListDistricts] = useState([]);
+  const [listAreas, setListAreas] = useState([]);
+  const [listUnits, setListUnits] = useState([]);
 
   // Rejection Modal State
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -151,14 +170,57 @@ export default function TransfersScreen() {
 
   async function loadSourceBalance() {
     if (!activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') return;
+
+    // 1. Read from persistent local cache immediately
+    let initialBal = null;
+    let initialPending = 0;
     try {
-      const q = { unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody };
-      const res = await api.get('/finance/summary', { params: q });
-      if (res.data?.data) {
-        setSourceBalance(res.data.data.availableBalance ?? res.data.data.balance ?? 0);
-        setPendingOutAmount(res.data.data.pendingTransfersOut?.total || 0);
+      const cached = await getCache(`finance_summary_${activeLevel}_${resolvedUnitId}_${targetBody}`);
+      if (cached) {
+        initialBal = cached.availableBalance ?? cached.balance ?? 0;
+        initialPending = cached.pendingTransfersOut?.total || 0;
+      } else {
+        const mainFin = await getCache(`finance_${activeLevel}_${resolvedUnitId}_${targetBody}`);
+        if (mainFin?.summary) {
+          initialBal = mainFin.summary.availableBalance ?? mainFin.summary.balance ?? 0;
+          initialPending = mainFin.summary.pendingTransfersOut?.total || 0;
+        }
       }
     } catch {}
+
+    // 2. Query offline queue for any pending outgoing transfers
+    let localPendingOut = 0;
+    try {
+      const offlineTransfers = await getOfflineEntities('TRANSFER');
+      localPendingOut = (offlineTransfers || []).reduce((acc, t) => {
+        const sId = t.sourceUnitId || t.payload?.sourceUnitId;
+        const amt = parseFloat(t.amount || t.payload?.amount || 0);
+        if (String(sId) === String(resolvedUnitId) && !isNaN(amt)) {
+          return acc + amt;
+        }
+        return acc;
+      }, 0);
+    } catch {}
+
+    if (initialBal !== null) {
+      setSourceBalance(Math.max(0, initialBal - localPendingOut));
+      setPendingOutAmount(initialPending + localPendingOut);
+    }
+
+    // 3. If online, fetch live summary from server
+    if (isOnline) {
+      try {
+        const q = { unitLevel: activeLevel, unitId: resolvedUnitId, body: targetBody };
+        const res = await api.get('/finance/summary', { params: q });
+        if (res.data?.data) {
+          await setCache(`finance_summary_${activeLevel}_${resolvedUnitId}_${targetBody}`, res.data.data);
+          const serverBal = res.data.data.availableBalance ?? res.data.data.balance ?? 0;
+          const serverPending = res.data.data.pendingTransfersOut?.total || 0;
+          setSourceBalance(Math.max(0, serverBal - localPendingOut));
+          setPendingOutAmount(serverPending + localPendingOut);
+        }
+      } catch {}
+    }
   }
 
   function openInitiate() {
@@ -205,13 +267,48 @@ export default function TransfersScreen() {
   async function reload() {
     if (!activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') return;
     setLoading(true);
+    const cacheKey = `transfers_${activeLevel}_${resolvedUnitId}_${tab}_${targetBody}`;
+
+    const filterOffline = (offlineList) => {
+      return (offlineList || []).filter((o) => {
+        const sId = o.sourceUnitId || o.payload?.sourceUnitId;
+        const b = o.body || o.payload?.body;
+        const matchesUnit = !sId || !resolvedUnitId || sId === resolvedUnitId;
+        const matchesBody = !b || b === targetBody;
+        return matchesUnit && matchesBody;
+      });
+    };
+
+    if (!isOnline) {
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('TRANSFER');
+      const validOffline = filterOffline(offlineItems);
+      setItems([...validOffline, ...(cached || [])]);
+      loadSourceBalance();
+      setLoading(false);
+      return;
+    }
+
     try {
       const q = { unitLevel: activeLevel, unitId: resolvedUnitId, direction: tab, body: targetBody };
       const r = await api.get('/transfers', { params: q });
-      setItems(r.data.data || []);
+      const serverItems = r.data.data || [];
+      await setCache(cacheKey, serverItems);
+
+      const offlineItems = await getOfflineEntities('TRANSFER');
+      const validOffline = filterOffline(offlineItems);
+      setItems([...validOffline, ...serverItems]);
       loadSourceBalance();
     } catch (err) {
-      toast.error(errorMessage(err));
+      // Offline fallback: load from persistent local cache
+      const cached = await getCache(cacheKey);
+      const offlineItems = await getOfflineEntities('TRANSFER');
+      const validOffline = filterOffline(offlineItems);
+      if (cached || validOffline.length > 0) {
+        setItems([...validOffline, ...(cached || [])]);
+      } else if (!isNetworkError(err)) {
+        toast.error(errorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -223,6 +320,77 @@ export default function TransfersScreen() {
     }
   }, [tab, activeLevel, resolvedUnitId, targetBody]);
 
+  useEffect(() => {
+    const unsub = subscribeQueue(() => {
+      reload();
+    });
+    return unsub;
+  }, [tab, activeLevel, resolvedUnitId, targetBody]);
+
+  // Load cascading unit lists for destination picker with offline cache
+  useEffect(() => {
+    if (!transferModalOpen) return;
+    (async () => {
+      try {
+        const res = await api.get('/org/provinces');
+        setListProvinces(res.data?.data || []);
+      } catch {
+        const cached = await getCache('org_provinces');
+        if (cached) setListProvinces(cached);
+      }
+    })();
+  }, [transferModalOpen]);
+
+  useEffect(() => {
+    if (!pickProv) {
+      setListDistricts([]);
+      setPickDist('');
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.get('/org/districts', { params: { provinceId: pickProv } });
+        setListDistricts(res.data?.data || []);
+      } catch {
+        const cached = await getCache(`org_districts_${pickProv}`);
+        if (cached) setListDistricts(cached);
+      }
+    })();
+  }, [pickProv]);
+
+  useEffect(() => {
+    if (!pickDist) {
+      setListAreas([]);
+      setPickArea('');
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.get('/org/areas', { params: { districtId: pickDist } });
+        setListAreas(res.data?.data || []);
+      } catch {
+        const cached = await getCache(`org_areas_${pickDist}`);
+        if (cached) setListAreas(cached);
+      }
+    })();
+  }, [pickDist]);
+
+  useEffect(() => {
+    if (!pickArea) {
+      setListUnits([]);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.get('/org/basic-units', { params: { areaId: pickArea } });
+        setListUnits(res.data?.data || []);
+      } catch {
+        const cached = await getCache(`org_basic_units_${pickArea}`);
+        if (cached) setListUnits(cached);
+      }
+    })();
+  }, [pickArea]);
+
   // Preview destination whenever selection changes
   useEffect(() => {
     if (!picked || !activeLevel || !resolvedUnitId || resolvedUnitId === 'CENTRAL') {
@@ -230,6 +398,13 @@ export default function TransfersScreen() {
       setPreviewErr('');
       return;
     }
+
+    if (String(picked.id) === String(resolvedUnitId)) {
+      setPreview(null);
+      setPreviewErr('A unit cannot transfer funds to itself. Please select a different destination unit.');
+      return;
+    }
+
     let cancelled = false;
     setPreviewLoading(true);
     setPreviewErr('');
@@ -247,8 +422,22 @@ export default function TransfersScreen() {
       }
     }).catch((err) => {
       if (!cancelled) {
-        setPreview(null);
-        setPreviewErr(errorMessage(err));
+        if (isNetworkError(err)) {
+          // Offline fallback preview
+          setPreview({
+            destination: {
+              id: picked.id,
+              name: picked.name,
+              level: picked.level,
+            },
+            direction: 'SAME_TIER',
+            path: [{ name: picked.name, level: picked.level }],
+          });
+          setPreviewErr('');
+        } else {
+          setPreview(null);
+          setPreviewErr(errorMessage(err));
+        }
       }
     }).finally(() => {
       if (!cancelled) setPreviewLoading(false);
@@ -258,6 +447,21 @@ export default function TransfersScreen() {
   }, [picked, activeLevel, resolvedUnitId]);
 
   async function pickImage() {
+    const isAllowedImage = (filename, mimeType) => {
+      const ext = (filename || '').toLowerCase();
+      const mime = (mimeType || '').toLowerCase();
+      return (
+        mime.includes('jpeg') ||
+        mime.includes('jpg') ||
+        mime.includes('png') ||
+        mime.includes('webp') ||
+        ext.endsWith('.jpg') ||
+        ext.endsWith('.jpeg') ||
+        ext.endsWith('.png') ||
+        ext.endsWith('.webp')
+      );
+    };
+
     if (Platform.OS === 'web') {
       const input = document.createElement('input');
       input.type = 'file';
@@ -265,12 +469,19 @@ export default function TransfersScreen() {
       input.onchange = (e) => {
         const file = e.target.files?.[0];
         if (file) {
+          if (!isAllowedImage(file.name, file.type)) {
+            const err = 'Only JPG, PNG, and WebP image formats are supported for payment receipts.';
+            setModalErr(err);
+            toast.error(err);
+            return;
+          }
           setReceipt({
             uri: URL.createObjectURL(file),
             name: file.name,
             type: file.type || 'image/jpeg',
             file: file,
           });
+          if (modalErr) setModalErr('');
         }
       };
       input.click();
@@ -283,23 +494,36 @@ export default function TransfersScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.8,
     });
     if (!result.canceled && result.assets?.[0]) {
       const a = result.assets[0];
+      const filename = a.fileName || 'receipt.jpg';
+      const mime = a.mimeType || 'image/jpeg';
+      if (!isAllowedImage(filename, mime)) {
+        const err = 'Only JPG, PNG, and WebP image formats are supported for payment receipts.';
+        setModalErr(err);
+        toast.error(err);
+        return;
+      }
       setReceipt({
         uri: a.uri,
-        name: a.fileName || 'receipt.jpg',
-        type: a.mimeType || 'image/jpeg',
+        name: filename,
+        type: mime,
       });
+      if (modalErr) setModalErr('');
     }
   }
 
   function handleProceedToConfirm() {
     setModalErr('');
     if (!picked || !preview) {
-      setModalErr('Please select a valid destination unit from the tree.');
+      setModalErr('Please select a valid destination unit.');
+      return;
+    }
+    if (String(preview?.destination?.id) === String(resolvedUnitId) || String(picked?.id) === String(resolvedUnitId)) {
+      setModalErr('A unit cannot transfer funds to itself. Please choose a different destination unit.');
       return;
     }
     const amt = parseFloat(form.amount);
@@ -307,6 +531,19 @@ export default function TransfersScreen() {
       setModalErr('Please enter a valid positive transfer amount.');
       return;
     }
+
+    // Available Balance Validation
+    if (sourceBalance !== null) {
+      if (sourceBalance <= 0) {
+        setModalErr('Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).');
+        return;
+      }
+      if (amt > sourceBalance) {
+        setModalErr(`Transfer amount exceeds the available balance of PKR ${sourceBalance.toLocaleString()}.`);
+        return;
+      }
+    }
+
     if (!receipt) {
       setModalErr('Proof of payment (receipt image) is required.');
       return;
@@ -316,6 +553,28 @@ export default function TransfersScreen() {
 
   async function initiate() {
     if (submitting) return;
+    if (String(preview?.destination?.id) === String(resolvedUnitId) || String(picked?.id) === String(resolvedUnitId)) {
+      setModalErr('A unit cannot transfer funds to itself.');
+      return;
+    }
+    const amt = parseFloat(form.amount);
+    if (!form.amount || isNaN(amt) || amt <= 0) {
+      setModalErr('Please enter a valid positive transfer amount.');
+      return;
+    }
+
+    // Available Balance Validation
+    if (sourceBalance !== null) {
+      if (sourceBalance <= 0) {
+        setModalErr('Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).');
+        return;
+      }
+      if (amt > sourceBalance) {
+        setModalErr(`Transfer amount exceeds the available balance of PKR ${sourceBalance.toLocaleString()}.`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setModalErr('');
     try {
@@ -343,11 +602,19 @@ export default function TransfersScreen() {
         });
       }
 
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+
       await api.post('/transfers', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       
       const successMsg = `Fund transfer of ${PKR(parseFloat(form.amount))} to ${preview.destination.name} initiated successfully!`;
+      const amtNum = parseFloat(form.amount);
+      setSourceBalance((prev) => (prev !== null ? Math.max(0, prev - amtNum) : 0));
+      setPendingOutAmount((prev) => prev + amtNum);
+
       setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
       setReceipt(null);
       setPicked(null);
@@ -357,10 +624,69 @@ export default function TransfersScreen() {
       reload();
       toast.success(successMsg);
     } catch (e) {
-      const err = errorMessage(e);
-      setModalErr(err);
-      toast.error(err);
-      setConfirmOpen(false);
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        const files = [];
+        if (receipt) {
+          files.push({
+            fieldName: 'receipt',
+            name: receipt.name || 'receipt.jpg',
+            type: receipt.type || 'image/jpeg',
+            uri: receipt.uri,
+            file: receipt.file,
+          });
+        }
+
+        const payload = {
+          sourceLevel: activeLevel,
+          sourceUnitId: resolvedUnitId,
+          destinationId: preview.destination.id,
+          amount: form.amount,
+          mode: form.mode,
+          reference: form.reference?.trim() || undefined,
+          note: form.note?.trim() || undefined,
+          body: targetBody,
+        };
+
+        const offlineRecord = {
+          ...payload,
+          sourceUnit: { name: ctx?.unitName || 'My Unit', level: activeLevel },
+          destinationUnit: { name: preview?.destination?.name || 'Destination' },
+          direction: 'OUT',
+          state: 'OFFLINE_PENDING',
+          _isOffline: true,
+          createdAt: new Date().toISOString(),
+        };
+
+        await enqueueOfflineAction({
+          entityType: 'TRANSFER',
+          action: 'CREATE',
+          endpoint: '/transfers',
+          method: 'POST',
+          payload,
+          files,
+          displayTitle: `Transfer: ${PKR(parseFloat(form.amount))} to ${preview?.destination?.name || 'Unit'}`,
+          localRecord: offlineRecord,
+        });
+
+        const successMsg = `Offline: Fund transfer of ${PKR(parseFloat(form.amount))} to ${preview.destination.name} saved locally. Will sync when online!`;
+        const amtNum = parseFloat(form.amount);
+        setSourceBalance((prev) => (prev !== null ? Math.max(0, prev - amtNum) : 0));
+        setPendingOutAmount((prev) => prev + amtNum);
+
+        setForm({ amount: '', mode: 'BANK_TRANSFER', reference: '', note: '' });
+        setReceipt(null);
+        setPicked(null);
+        setPreview(null);
+        setConfirmOpen(false);
+        setTransferModalOpen(false);
+        reload();
+        toast.success(successMsg);
+      } else {
+        const err = errorMessage(e);
+        setModalErr(err);
+        toast.error(err);
+        setConfirmOpen(false);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -417,6 +743,10 @@ export default function TransfersScreen() {
   const [exporting, setExporting] = useState(null);
 
   async function handleExport(fmt) {
+    if (!isOnline) {
+      toast.info('Exporting requires an active internet connection.');
+      return;
+    }
     if (exporting) return;
     setExporting(fmt);
     try {
@@ -523,37 +853,44 @@ export default function TransfersScreen() {
         {/* Header */}
         <View style={[styles.header, isSmall && styles.headerSmall]}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.pageTitle}>{pageTitle}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text style={styles.pageTitle}>{pageTitle}</Text>
+              {!isOnline && (
+                <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.pageSubtitle}>
               {unitDisplayName} · {activeLevel.replace('_', ' ')}
             </Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
               onPress={() => handleExport('pdf')}
-              disabled={!!exporting}
+              disabled={!isOnline || !!exporting}
             >
               {exporting === 'pdf' ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
                 <>
-                  <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
-                  {isTablet && <Text style={styles.iconBtnText}>PDF</Text>}
+                  <Ionicons name="document-text-outline" size={18} color={isOnline ? Colors.primary : Colors.textMuted} />
+                  {isTablet && <Text style={[styles.iconBtnText, !isOnline && { color: Colors.textMuted }]}>PDF</Text>}
                 </>
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
               onPress={() => handleExport('xlsx')}
-              disabled={!!exporting}
+              disabled={!isOnline || !!exporting}
             >
               {exporting === 'xlsx' ? (
                 <ActivityIndicator size="small" color={Colors.primary} />
               ) : (
                 <>
-                  <Ionicons name="grid-outline" size={18} color={Colors.primary} />
-                  {isTablet && <Text style={styles.iconBtnText}>Excel</Text>}
+                  <Ionicons name="grid-outline" size={18} color={isOnline ? Colors.primary : Colors.textMuted} />
+                  {isTablet && <Text style={[styles.iconBtnText, !isOnline && { color: Colors.textMuted }]}>Excel</Text>}
                 </>
               )}
             </TouchableOpacity>
@@ -661,7 +998,7 @@ export default function TransfersScreen() {
                     </View>
 
                     <View style={[styles.td, { width: isTablet ? '10%' : 115, justifyContent: 'center' }]}>
-                      <Badge variant={t.state === 'ACKNOWLEDGED' ? 'success' : t.state === 'REJECTED' ? 'error' : (t.state === 'CANCELLED' ? 'muted' : 'warning')} label={t.state} />
+                      <Badge variant={t._isOffline ? 'warning' : (t.state === 'ACKNOWLEDGED' ? 'success' : t.state === 'REJECTED' ? 'error' : (t.state === 'CANCELLED' ? 'muted' : 'warning'))} label={t._isOffline ? 'OFFLINE' : t.state} />
                       {t.state === 'REJECTED' && t.decisionNote && (
                         <Text style={{ fontSize: 10, color: Colors.error, marginTop: 2 }} numberOfLines={2}>
                           {t.decisionNote}
@@ -717,17 +1054,150 @@ export default function TransfersScreen() {
             {/* Modal Body: 2 Columns on Tablet/Desktop, 1 Column on Mobile */}
             <View style={[styles.transferModalLayout, isTablet && styles.transferModalLayoutTablet]}>
               
-              {/* Left Column: Org Tree */}
+              {/* Left Column: Destination Selector (Direct Picker or Org Tree) */}
               <View style={[styles.treeCol, isTablet && styles.treeColTablet]}>
-                <Text style={styles.fieldLabel}>Choose Destination (from Tree) *</Text>
-                <View style={[styles.treeContainer, isTablet && { height: Math.min(520, height * 0.55) }]}>
-                  <OrgTree 
-                    selectedId={picked?.id} 
-                    disabledId={resolvedUnitId} 
-                    source={{ level: activeLevel, unitId: resolvedUnitId }}
-                    onSelect={(node) => setPicked(node)}
-                  />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={styles.fieldLabel}>Choose Destination *</Text>
+                  <View style={styles.destModeToggle}>
+                    <TouchableOpacity
+                      style={[styles.destModeBtn, destMode === 'LIST' && styles.destModeBtnActive]}
+                      onPress={() => setDestMode('LIST')}
+                    >
+                      <Text style={[styles.destModeText, destMode === 'LIST' && styles.destModeTextActive]}>
+                        Direct List
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.destModeBtn, destMode === 'TREE' && styles.destModeBtnActive]}
+                      onPress={() => setDestMode('TREE')}
+                    >
+                      <Text style={[styles.destModeText, destMode === 'TREE' && styles.destModeTextActive]}>
+                        Org Tree
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
+
+                {destMode === 'LIST' ? (
+                  <ScrollView
+                    style={[styles.treeContainer, { padding: 10 }]}
+                    nestedScrollEnabled={true}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                  >
+                    {/* Quick PKNAP Central option */}
+                    <TouchableOpacity
+                      style={[styles.quickDestBtn, picked?.id === 'CENTRAL' && styles.quickDestBtnSelected]}
+                      onPress={() => setPicked({ id: 'CENTRAL', name: 'PKNAP Central', level: 'CENTRAL' })}
+                    >
+                      <Ionicons name="globe-outline" size={16} color={Colors.primary} />
+                      <Text style={styles.quickDestText}>PKNAP Central (قومي مرکز)</Text>
+                    </TouchableOpacity>
+
+                    {/* Province Selection */}
+                    <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>1. Select Province</Text>
+                    <View style={styles.pickerWrap}>
+                      <Picker
+                        selectedValue={pickProv}
+                        onValueChange={(val) => {
+                          setPickProv(val);
+                          if (val) {
+                            const p = listProvinces.find((x) => x._id === val);
+                            if (p) setPicked({ id: p._id, name: p.name, level: 'PROVINCE' });
+                          }
+                        }}
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="-- Choose Province --" value="" />
+                        {listProvinces.map((p) => (
+                          <Picker.Item key={p._id} label={p.name} value={p._id} />
+                        ))}
+                      </Picker>
+                    </View>
+
+                    {/* District Selection */}
+                    {listDistricts.length > 0 && (
+                      <>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>2. Select District</Text>
+                        <View style={styles.pickerWrap}>
+                          <Picker
+                            selectedValue={pickDist}
+                            onValueChange={(val) => {
+                              setPickDist(val);
+                              if (val) {
+                                const d = listDistricts.find((x) => x._id === val);
+                                if (d) setPicked({ id: d._id, name: d.name, level: 'DISTRICT' });
+                              }
+                            }}
+                            style={styles.picker}
+                          >
+                            <Picker.Item label="-- Choose District --" value="" />
+                            {listDistricts.map((d) => (
+                              <Picker.Item key={d._id} label={d.name} value={d._id} />
+                            ))}
+                          </Picker>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Area Selection */}
+                    {listAreas.length > 0 && (
+                      <>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>3. Select Area</Text>
+                        <View style={styles.pickerWrap}>
+                          <Picker
+                            selectedValue={pickArea}
+                            onValueChange={(val) => {
+                              setPickArea(val);
+                              if (val) {
+                                const a = listAreas.find((x) => x._id === val);
+                                if (a) setPicked({ id: a._id, name: a.name, level: 'AREA' });
+                              }
+                            }}
+                            style={styles.picker}
+                          >
+                            <Picker.Item label="-- Choose Area --" value="" />
+                            {listAreas.map((a) => (
+                              <Picker.Item key={a._id} label={a.name} value={a._id} />
+                            ))}
+                          </Picker>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Basic Unit Selection */}
+                    {listUnits.length > 0 && (
+                      <>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>4. Select Basic Unit</Text>
+                        <View style={styles.pickerWrap}>
+                          <Picker
+                            selectedValue={picked?.level === 'BASIC_UNIT' ? picked.id : ''}
+                            onValueChange={(val) => {
+                              if (val) {
+                                const u = listUnits.find((x) => x._id === val);
+                                if (u) setPicked({ id: u._id, name: u.name, level: 'BASIC_UNIT' });
+                              }
+                            }}
+                            style={styles.picker}
+                          >
+                            <Picker.Item label="-- Choose Basic Unit --" value="" />
+                            {listUnits.map((u) => (
+                              <Picker.Item key={u._id} label={u.name} value={u._id} />
+                            ))}
+                          </Picker>
+                        </View>
+                      </>
+                    )}
+                  </ScrollView>
+                ) : (
+                  <View style={[styles.treeContainer, isTablet && { height: Math.min(520, height * 0.55) }]}>
+                    <OrgTree 
+                      selectedId={picked?.id} 
+                      disabledId={resolvedUnitId} 
+                      source={{ level: activeLevel, unitId: resolvedUnitId }}
+                      onSelect={(node) => setPicked(node)}
+                    />
+                  </View>
+                )}
               </View>
 
               {/* Right Column: Form Inputs */}
@@ -761,6 +1231,14 @@ export default function TransfersScreen() {
                       <Text style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
                         ⚠️ {PKR(pendingOutAmount)} committed in unacknowledged Outgoing transfers
                       </Text>
+                    )}
+                    {sourceBalance !== null && sourceBalance <= 0 && (
+                      <View style={{ backgroundColor: '#fef2f2', borderColor: '#fca5a5', borderWidth: 1, borderRadius: 6, padding: 8, marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="alert-circle" size={16} color={Colors.error} style={{ marginRight: 6 }} />
+                        <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '600', flex: 1 }}>
+                          Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).
+                        </Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -894,8 +1372,13 @@ export default function TransfersScreen() {
                     <Text style={styles.btnSecondaryText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.primaryBtn, { flex: 2, justifyContent: 'center', paddingVertical: 12 }]} 
+                    style={[
+                      styles.primaryBtn, 
+                      { flex: 2, justifyContent: 'center', paddingVertical: 12 },
+                      sourceBalance !== null && sourceBalance <= 0 && { backgroundColor: '#94a3b8', opacity: 0.65 },
+                    ]} 
                     onPress={handleProceedToConfirm}
+                    disabled={sourceBalance !== null && sourceBalance <= 0}
                   >
                     <Text style={[styles.primaryBtnText, { fontSize: FontSize.sm }]}>Proceed to Confirm ➔</Text>
                   </TouchableOpacity>
