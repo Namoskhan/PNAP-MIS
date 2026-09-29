@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
+import { changeAppLanguage } from '../i18n';
 
 const AuthContext = createContext(null);
 const ACTIVE_ROLE_KEY = 'pnap_active_role';
@@ -71,6 +72,10 @@ export function AuthProvider({ children }) {
       const fresh = res.data.data;
       setUser(fresh);
       localStorage.setItem('pnap_user', JSON.stringify(fresh));
+      const explicit = localStorage.getItem('pnap_lang');
+      if (!explicit && fresh?.preferredLanguage) {
+        changeAppLanguage(fresh.preferredLanguage, false);
+      }
       return fresh;
     } catch {
       // 401 will already redirect via the api client interceptor; on

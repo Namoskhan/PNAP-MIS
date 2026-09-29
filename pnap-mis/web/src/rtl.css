@@ -1,0 +1,229 @@
+/* ─────────────────────────────────────────────────────────────
+   Localization & RTL Support (Urdu & Pashto)
+   ───────────────────────────────────────────────────────────── */
+
+/* Language Selector Component */
+.lang-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  user-select: none;
+}
+
+.lang-icon {
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+}
+
+.lang-items {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lang-item-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lang-separator {
+  opacity: 0.4;
+  font-size: 11px;
+}
+
+.lang-btn {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: all var(--t-fast);
+  line-height: 1.4;
+}
+
+/* In Topbar */
+.lang-selector-topbar {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+  color: #fff;
+}
+
+.lang-selector-topbar .lang-btn {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.lang-selector-topbar .lang-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.lang-selector-topbar .lang-btn.active {
+  background: rgba(255, 255, 255, 0.32);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* In Login Page */
+.login-header-controls {
+  position: fixed;
+  top: 18px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.login-header-controls > * {
+  pointer-events: auto;
+}
+
+.lang-selector-login {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  color: var(--text);
+}
+
+.lang-selector-login .lang-icon {
+  color: var(--primary);
+}
+
+.lang-selector-login .lang-separator {
+  color: var(--border-strong);
+}
+
+.lang-selector-login .lang-btn {
+  color: var(--muted);
+}
+
+.lang-selector-login .lang-btn:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.lang-selector-login .lang-btn.active {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+/* ── RTL Document & Typography ── */
+[dir="rtl"] {
+  --font-family: 'Noto Naskh Arabic', 'Noto Nastaliq Urdu', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-heading: 'Noto Naskh Arabic', 'Noto Nastaliq Urdu', 'Segoe UI', Tahoma, Arial, sans-serif;
+  font-family: var(--font-family);
+  text-align: right;
+}
+
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] h4,
+[dir="rtl"] h5,
+[dir="rtl"] h6 {
+  font-family: var(--font-heading);
+}
+
+/* Preserve LTR for phone numbers, CNICs, IDs, emails, codes */
+[dir="rtl"] .mixed-input,
+[dir="rtl"] .code,
+[dir="rtl"] .id,
+[dir="rtl"] .cnic,
+[dir="rtl"] .phone,
+[dir="rtl"] .numeric,
+[dir="rtl"] .ltr-text,
+[dir="rtl"] input[type="tel"],
+[dir="rtl"] input[type="email"],
+[dir="rtl"] input[type="password"],
+[dir="rtl"] code,
+[dir="rtl"] pre {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: right;
+}
+
+/* Sidebar in RTL */
+[dir="rtl"] .sidebar {
+  border-left: 1px solid var(--sidebar-border);
+  border-right: none;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, .08);
+}
+
+[dir="rtl"] .sidebar nav a {
+  padding: 9px 16px 9px 12px;
+}
+
+[dir="rtl"] .sidebar nav a:hover {
+  transform: translateX(-2px);
+}
+
+[dir="rtl"] .sidebar nav a.active::before {
+  left: auto;
+  right: 6px;
+}
+
+[dir="rtl"] .nav-collapsible-chevron {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .nav-collapsible-chevron.open {
+  transform: scaleX(-1) rotate(-90deg);
+}
+
+/* Topbar in RTL */
+[dir="rtl"] .topbar {
+  flex-direction: row;
+}
+
+/* Topbar Menus & Popovers in RTL */
+[dir="rtl"] .topbar-menu {
+  left: 0;
+  right: auto;
+}
+
+[dir="rtl"] .bell-pop {
+  left: 0;
+  right: auto;
+  transform-origin: top left;
+}
+
+/* Table Alignment in RTL */
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: right;
+}
+
+/* Form Controls in RTL */
+[dir="rtl"] .field label {
+  text-align: right;
+}
+
+[dir="rtl"] .field .hint {
+  text-align: right;
+}
+
+/* Chevrons & Breadcrumbs in RTL */
+[dir="rtl"] .breadcrumb-sep,
+[dir="rtl"] .scope-crumb-sep {
+  transform: scaleX(-1);
+}
+
+/* Dialog & Modal close button in RTL */
+[dir="rtl"] .dialog-close,
+[dir="rtl"] .modal-close {
+  left: 16px;
+  right: auto;
+}

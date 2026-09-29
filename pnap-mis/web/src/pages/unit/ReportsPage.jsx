@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +31,7 @@ export default function ReportsPage() {
   const isCongressView = queryBody === 'CONGRESS';
   const isJirgaView = queryBody === 'JIRGA';
   const isCommitteeView = queryBody === 'COMMITTEE';
+  const { t } = useTranslation();
   const { user, setActiveRole, allRoles } = useAuth();
   const { ctx, setCtx, provinces, districts, areas, units } = useUnit();
 
@@ -363,7 +365,7 @@ export default function ReportsPage() {
         </div>
 
         {scopeDescription && (
-          <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-soft)', background: 'var(--surface-alt)', padding: '10px 14px', borderRadius: 'var(--radius)', borderLeft: '4px solid var(--primary)' }}>
+          <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-soft)', background: 'var(--surface-alt)', padding: '10px 14px', borderRadius: 'var(--radius)', borderInlineStart: '4px solid var(--primary)' }}>
             📊 <strong>Report Mode:</strong> {scopeDescription}
           </div>
         )}
@@ -380,8 +382,8 @@ export default function ReportsPage() {
               : 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.')}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn" disabled={busy} onClick={() => downloadUnit('meetings', 'pdf')}>Download PDF</button>
-          <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('meetings', 'xlsx')}>Download Excel</button>
+          <button className="btn" disabled={busy} onClick={() => downloadUnit('meetings', 'pdf')}>{t('common.exportPdf', 'Download PDF')}</button>
+          <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('meetings', 'xlsx')}>{t('common.exportCsv', 'Download Excel')}</button>
         </div>
       </div>
 
@@ -392,8 +394,8 @@ export default function ReportsPage() {
           Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn" disabled={busy} onClick={() => downloadUnit('activities', 'pdf')}>Download PDF</button>
-          <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('activities', 'xlsx')}>Download Excel</button>
+          <button className="btn" disabled={busy} onClick={() => downloadUnit('activities', 'pdf')}>{t('common.exportPdf', 'Download PDF')}</button>
+          <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('activities', 'xlsx')}>{t('common.exportCsv', 'Download Excel')}</button>
         </div>
       </div>
 
@@ -408,8 +410,8 @@ export default function ReportsPage() {
               : 'Executive donations ledger, expenses ledger, fund transfers, and net balance for the period.')}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>Download PDF</button>
-          <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('finance', 'xlsx')}>Download Excel</button>
+          <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>{t('common.exportPdf', 'Download PDF')}</button>
+          <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('finance', 'xlsx')}>{t('common.exportCsv', 'Download Excel')}</button>
         </div>
       </div>
 
@@ -438,8 +440,8 @@ export default function ReportsPage() {
             </select>
           </div>
           <div className="field" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn" disabled={busy || !memberId} onClick={downloadMemberPdf}>Download PDF</button>
-            <button className="btn secondary" disabled={busy || !memberId} onClick={downloadMemberXlsx}>Download Excel</button>
+            <button className="btn" disabled={busy || !memberId} onClick={downloadMemberPdf}>{t('common.exportPdf', 'Download PDF')}</button>
+            <button className="btn secondary" disabled={busy || !memberId} onClick={downloadMemberXlsx}>{t('common.exportCsv', 'Download Excel')}</button>
           </div>
         </div>
 

@@ -1,10 +1,12 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { errorMessage } from '../api/client';
 import IdentifierField from '../components/IdentifierField';
 import PasswordField from '../components/PasswordField';
+import LanguageSelector from '../components/LanguageSelector';
 import { useToast } from '../components/Toast';
 
 const PublicRegisterModal = lazy(() => import('../components/PublicRegisterModal'));
@@ -12,6 +14,7 @@ const PublicRegisterModal = lazy(() => import('../components/PublicRegisterModal
 export default function LoginPage() {
   const { login, user } = useAuth();
   const { identity, loginPage, logos } = useBranding();
+  const { t } = useTranslation();
   const nav = useNavigate();
   const toast = useToast();
   const [identifier, setIdentifier] = useState('');
@@ -30,12 +33,12 @@ export default function LoginPage() {
     setBusy(true);
     try {
       await login(identifier, password);
-      toast.success('Welcome back!', { duration: 2500 });
+      toast.success(t('common.welcomeBack', 'Welcome back!'), { duration: 2500 });
       nav('/', { replace: true });
     } catch (e) {
       const msg = errorMessage(e);
       setErr(msg);
-      toast.error(msg, { title: 'Sign-in failed' });
+      toast.error(msg, { title: t('common.signInFailed', 'Sign-in failed') });
     } finally {
       setBusy(false);
     }
@@ -43,23 +46,23 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      <button
-        type="button"
-        className="btn"
-        onClick={() => setRegisterOpen(true)}
-        style={{
-          position: 'fixed',
-          top: 20,
-          right: 24,
-          padding: '8px 16px',
-          fontSize: 13,
-          whiteSpace: 'nowrap',
-          boxShadow: 'var(--shadow-lg)',
-          zIndex: 10,
-        }}
-      >
-        + Register
-      </button>
+      <div className="login-header-controls">
+        <LanguageSelector variant="login" />
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setRegisterOpen(true)}
+          style={{
+            padding: '8px 16px',
+            fontSize: 13,
+            whiteSpace: 'nowrap',
+            boxShadow: 'var(--shadow-md)',
+          }}
+        >
+          {t('auth.registerBtn', '+ Register')}
+        </button>
+      </div>
+
       {/* Optional branded hero banner above the card. Hidden when
           loginPage.heroText is blank. */}
       {loginPage?.heroText && (
@@ -101,7 +104,7 @@ export default function LoginPage() {
         </div>
         {/* Branded title — falls back to the system short name, then
             to the literal 'PKNAP' if nothing has loaded yet. */}
-        <h1>{identity?.loginTitle || identity?.shortName || 'PKNAP'}</h1>
+        <h1>{identity?.loginTitle || identity?.shortName || t('auth.loginTitle', 'PKNAP')}</h1>
         {loginPage?.welcomeMessage && (
           <p className="muted" style={{ textAlign: 'center', marginTop: -8, marginBottom: 16, fontSize: 13 }}>
             {loginPage.welcomeMessage}
@@ -116,17 +119,17 @@ export default function LoginPage() {
             autoComplete="current-password"
             labelAction={
               <Link to="/forgot-password" style={{ fontSize: 12.5 }}>
-                Forgot password?
+                {t('auth.forgotPassword', 'Forgot password?')}
               </Link>
             }
           />
         </div>
         <button className="btn" style={{ marginTop: 18, width: '100%' }} disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign In'}
+          {busy ? t('auth.signingIn', 'Signing in…') : t('auth.signIn', 'Sign In')}
         </button>
         <div className="muted" style={{ marginTop: 14, textAlign: 'center', fontSize: 12.5 }}>
-          Didn't get your confirmation email?{' '}
-          <Link to="/resend-verification">Resend verification</Link>
+          {t('auth.didntGetEmail', "Didn't get your confirmation email?")}{' '}
+          <Link to="/resend-verification">{t('auth.resendVerification', 'Resend verification')}</Link>
         </div>
       </form>
       {registerOpen && (

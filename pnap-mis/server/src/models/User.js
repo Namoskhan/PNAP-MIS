@@ -61,6 +61,7 @@ const userSchema = new mongoose.Schema(
     },
     memberId: { type: mongoose.Schema.Types.ObjectId, ref: 'Member' },
     isActive: { type: Boolean, default: true },
+    preferredLanguage: { type: String, enum: ['en', 'ur', 'ps'], default: 'en' },
     lastLoginAt: Date,
 
     // ── Email verification + password reset ──────────────────────────

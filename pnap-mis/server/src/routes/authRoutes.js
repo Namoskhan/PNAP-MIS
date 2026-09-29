@@ -10,6 +10,7 @@ const {
 
 router.post('/login', ctrl.login);
 router.get('/me', authenticate, ctrl.me);
+router.patch('/language', authenticate, ctrl.updateLanguage);
 
 // ── Account security. All public by design: a locked-out user has no
 // token to authenticate with. Each carries its own rate limiter,

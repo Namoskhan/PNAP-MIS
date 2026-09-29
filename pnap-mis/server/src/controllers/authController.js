@@ -248,6 +248,18 @@ exports.me = asyncHandler(async (req, res) => {
   ok(res, await shapeUser(req.user));
 });
 
+exports.updateLanguage = asyncHandler(async (req, res) => {
+  const language = req.body.language;
+  if (!['en', 'ur', 'ps'].includes(language)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid language selection. Must be en, ur, or ps.');
+  }
+  const user = await User.findById(req.user._id);
+  if (!user) throw new ApiError(404, 'NOT_FOUND', 'User not found');
+  user.preferredLanguage = language;
+  await user.save();
+  return ok(res, { preferredLanguage: user.preferredLanguage });
+});
+
 // ---------------------------------------------------------------------------
 // Account security — email verification + forgot/reset password
 // ---------------------------------------------------------------------------

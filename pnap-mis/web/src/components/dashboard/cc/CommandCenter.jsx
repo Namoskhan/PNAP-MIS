@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import useAnalytics from '../useAnalytics';
 import CountUp from '../../CountUp';
 import { SkeletonKpiGrid, SkeletonCard } from '../../Skeleton';
@@ -113,6 +114,7 @@ function Act({ n, title, lead, children, meta }) {
 
 export default function CommandCenter({ accessScope = null }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const isSuper = user?.roles?.includes('SUPER_ADMIN');
   const initialScope = useMemo(() => {
     if (!accessScope?.level || !accessScope?.unitId) return EMPTY_SCOPE;
@@ -190,7 +192,7 @@ export default function CommandCenter({ accessScope = null }) {
       <header className="cc-masthead">
         <div>
           {!isSuper && <div className="cc-eyebrow">Dashboard</div>}
-          <h2 className="cc-title">{scopeName === 'the whole country' ? 'Command Center' : scopeName}</h2>
+          <h2 className="cc-title">{scopeName === 'the whole country' ? t('nav.commandCenter', 'Command Center') : scopeName}</h2>
         </div>
         <div className="cc-live" title="Totals update every minute">
           <span className="cc-live-dot" aria-hidden="true" />
@@ -204,7 +206,7 @@ export default function CommandCenter({ accessScope = null }) {
             <ScopeBreadcrumb trail={trail} onNavigate={navigateTo} />
           )}
           <button type="button" className="btn secondary sm" onClick={() => navigateTo('NATIONAL')}>
-            Back to all provinces
+            {t('common.back', 'Back')} ({t('nav.provinces', 'Provinces')})
           </button>
         </div>
       )}
@@ -227,18 +229,18 @@ export default function CommandCenter({ accessScope = null }) {
       >
         {summary.loading && !s ? <SkeletonKpiGrid count={5} /> : s && (
           <div className="cc-stats">
-            <Stat delay={0} value={s.membership.total} label="Total members"
+            <Stat delay={0} value={s.membership.total} label={t('members.title', 'Total members')}
               sub={`${num(s.membership.newMembers)} joined in the ${windowLabel}`} />
-            <Stat delay={70} value={o.basicUnits.total} label="Basic units"
+            <Stat delay={70} value={o.basicUnits.total} label={t('units.basicUnit', 'Basic units')}
               sub={`${num(o.basicUnits.active)} active · ${num(o.basicUnits.inactive)} inactive`}
               {...unitStat(o.basicUnits)} />
-            <Stat delay={140} value={o.areas.total} label="Area units"
+            <Stat delay={140} value={o.areas.total} label={t('units.area', 'Area units')}
               sub={`${num(o.areas.active)} active · ${num(o.areas.inactive)} inactive`}
               {...unitStat(o.areas)} />
-            <Stat delay={210} value={o.districts.total} label="District units"
+            <Stat delay={210} value={o.districts.total} label={t('units.district', 'District units')}
               sub={`${num(o.districts.active)} active · ${num(o.districts.inactive)} inactive`}
               {...unitStat(o.districts)} />
-            <Stat delay={280} value={o.provinces.total} label="Provinces"
+            <Stat delay={280} value={o.provinces.total} label={t('nav.provinces', 'Provinces')}
               sub={`${num(o.provinces.active)} active · ${num(o.provinces.inactive)} inactive`}
               {...unitStat(o.provinces)} />
           </div>
@@ -296,7 +298,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 5 — Governance ── */}
       <Act
         n="5"
-        title="Meetings"
+        title={t('meetings.title', 'Meetings')}
         lead="See planned and completed meetings by level, group and year."
         meta={s ? `${num(s.meetings.conducted)} of ${num(s.meetings.total)} held` : null}
       >
@@ -312,7 +314,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 6 — Reports ── */}
       <Act
         n="6"
-        title="Reports"
+        title={t('reports.title', 'Reports')}
         meta={s ? `${num(s.reports.outstanding)} not submitted` : null}
       >
         {secondaryReady ? (
