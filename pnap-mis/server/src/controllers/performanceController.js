@@ -46,14 +46,13 @@ exports.memberPerformance = asyncHandler(async (req, res) => {
   const dateClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
 
   const [
-    meetingsTotal, meetingsPresent, meetingsLate,
+    meetingsTotal, meetingsPresent,
     activitiesAsParticipant, activitiesAsLead,
     donAgg, respPending, respCompleted, respCancelled,
     studyContribs,
   ] = await Promise.all([
     Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...dateClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...dateClause }),
-    Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'LATE' } }, state: 'FINALIZED', ...dateClause }),
     Activity.countDocuments({ participants: m._id, ...dateClause }),
     Activity.countDocuments({ leadMemberId: m._id, ...dateClause }),
     Donation.aggregate([
@@ -88,7 +87,7 @@ exports.memberPerformance = asyncHandler(async (req, res) => {
     },
     range: { from: from || null, to: to || null },
     roles,
-    meetings: { totalRoster: meetingsTotal, present: meetingsPresent, late: meetingsLate, absent: Math.max(0, meetingsTotal - meetingsPresent - meetingsLate), attendanceRate: meetingsTotal ? Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100) : null },
+    meetings: { totalRoster: meetingsTotal, present: meetingsPresent, late: 0, absent: Math.max(0, meetingsTotal - meetingsPresent), attendanceRate: null },
     activities: { participated: activitiesAsParticipant, led: activitiesAsLead },
     donations: { total: donAgg[0]?.total || 0, count: donAgg[0]?.count || 0 },
     responsibilities: { pending: respPending, completed: respCompleted, cancelled: respCancelled, total: respTotal, completionRate: respTotal ? Math.round((respCompleted / respTotal) * 100) : null },

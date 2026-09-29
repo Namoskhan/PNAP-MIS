@@ -699,13 +699,6 @@ export default function ReportsScreen() {
                 </View>
 
                 <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Attendance Rate</Text>
-                  <Text style={styles.kpiValue}>
-                    {report.meetings?.attendanceRate != null ? `${report.meetings.attendanceRate}%` : '—'}
-                  </Text>
-                </View>
-
-                <View style={styles.kpiCard}>
                   <Text style={styles.kpiLabel}>Activities</Text>
                   <Text style={styles.kpiValue}>{report.activities?.participated ?? 0}</Text>
                   <Text style={styles.kpiHint}>{report.activities?.led ?? 0} led</Text>

@@ -135,11 +135,7 @@ export default function PerformancePage() {
           <div className="kpi-grid">
             <Kpi label="Meetings on roster" value={report.meetings.totalRoster} />
             <Kpi label="Present" value={report.meetings.present} accent="good" />
-            <Kpi label="Late" value={report.meetings.late} />
             <Kpi label="Absent" value={report.meetings.absent} accent={report.meetings.absent > 0 ? 'danger' : undefined} />
-            {report.meetings.attendanceRate !== null && (
-              <Kpi label="Attendance Rate" value={`${report.meetings.attendanceRate}%`} accent={report.meetings.attendanceRate >= 70 ? 'good' : 'danger'} />
-            )}
             <Kpi label="Activities Participated" value={report.activities.participated} />
             <Kpi label="Activities Led" value={report.activities.led} />
             <Kpi label="Donations" value={PKR.format(report.donations.total)} sub={`${report.donations.count} donations`} />

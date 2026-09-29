@@ -479,15 +479,10 @@ export default function ReportsPage() {
               <div className="kpi kpi-good">
                 <div className="label">Present</div>
                 <div className="value">{report.meetings.present}</div>
-                {report.meetings.late > 0 && <div className="hint">+{report.meetings.late} late</div>}
               </div>
               <div className="kpi kpi-danger">
                 <div className="label">Absent</div>
                 <div className="value">{report.meetings.absent}</div>
-              </div>
-              <div className="kpi">
-                <div className="label">Attendance Rate</div>
-                <div className="value">{report.meetings.attendanceRate != null ? `${report.meetings.attendanceRate}%` : '—'}</div>
               </div>
               <div className="kpi">
                 <div className="label">Activities</div>

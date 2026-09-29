@@ -33,14 +33,13 @@ async function seedPerformanceRuleSets() {
 
   await PerformanceRuleSet.create({
     name: 'Default Performance Ruleset',
-    description: 'SRS §10 baseline weights. Edit components to tune scoring across the org.',
+    description: 'Balanced scoring model across field activity, assigned tasks, political education and financial support.',
     scope: 'GLOBAL',
     components: [
-      { metric: 'MEETING_ATTENDANCE',         weight: 0.40, params: {} },
-      { metric: 'RESPONSIBILITY_COMPLETION',  weight: 0.25, params: {} },
-      { metric: 'ACTIVITY_PARTICIPATION',     weight: 0.20, params: { targetCount: 5 } },
-      { metric: 'STUDY_CONTRIBUTION',         weight: 0.10, params: { targetCount: 4 } },
-      { metric: 'DONATION_CONTRIBUTION',      weight: 0.05, params: { maxAmount: 50000 } },
+      { metric: 'RESPONSIBILITY_COMPLETION',  weight: 0.35, params: {} },
+      { metric: 'ACTIVITY_PARTICIPATION',     weight: 0.35, params: { targetCount: 5 } },
+      { metric: 'STUDY_CONTRIBUTION',         weight: 0.15, params: { targetCount: 4 } },
+      { metric: 'DONATION_CONTRIBUTION',      weight: 0.15, params: { maxAmount: 50000 } },
     ],
     isSystem: true,
     isActive: true,

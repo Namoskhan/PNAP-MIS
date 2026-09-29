@@ -126,13 +126,16 @@ export default function MeetingDetailScreen() {
       const r = await api.get(`/meetings/${meeting._id}/attendees`);
       const list = r.data.data || [];
       const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
-      const rows = list.map((m) => ({
-        memberId: m._id,
-        name: m.fullName,
-        memberCode: m.memberId,
-        roleText: m.roleText,
-        status: existingMap.get(String(m._id)) || 'ABSENT',
-      }));
+      const rows = list.map((m) => {
+        const rawStatus = existingMap.get(String(m._id));
+        return {
+          memberId: m._id,
+          name: m.fullName,
+          memberCode: m.memberId,
+          roleText: m.roleText,
+          status: rawStatus === 'LATE' ? 'PRESENT' : (rawStatus || 'ABSENT'),
+        };
+      });
       setAttendance(rows);
     } catch (e) {
       toast.error('Could not load attendee roster.');
@@ -537,10 +540,9 @@ export default function MeetingDetailScreen() {
             {attendees.map((a, i) => {
               const safeName = a.memberId?.fullName || a.memberIdCode || a.name || '—';
               const isPresent = a.status === 'PRESENT' || a.present;
-              const isLate = a.status === 'LATE';
-              const badgeLabel = isLate ? 'Late' : (isPresent ? 'Present' : 'Absent');
-              const badgeColor = isLate ? Colors.warning : (isPresent ? Colors.success : Colors.error);
-              const badgeBg = isLate ? Colors.warningBg : (isPresent ? Colors.successBg : Colors.errorBg);
+              const badgeLabel = isPresent ? 'Present' : 'Absent';
+              const badgeColor = isPresent ? Colors.success : Colors.error;
+              const badgeBg = isPresent ? Colors.successBg : Colors.errorBg;
               return (
                 <View key={i} style={styles.attendeeRow}>
                   <Avatar name={safeName === '—' ? '?' : safeName} size={32} />
@@ -849,7 +851,7 @@ export default function MeetingDetailScreen() {
               <View style={{ marginBottom: Spacing.md }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <Text style={styles.sectionTitle}>
-                    Attendance ({attendance.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length} Present / {attendance.length} Total)
+                    Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} Present / {attendance.length} Total)
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
@@ -864,35 +866,32 @@ export default function MeetingDetailScreen() {
                 {loadingAttendees ? (
                   <ActivityIndicator size="small" color={Colors.primary} style={{ padding: 20 }} />
                 ) : (
-                  attendance.map((r) => (
-                    <View key={r.memberId} style={styles.finalizeAttRow}>
-                      <View style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: Colors.text }}>{r.name}</Text>
-                        <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
-                          {r.roleText ? `${r.roleText} · ` : ''}{r.memberCode || ''}
-                        </Text>
+                  attendance.map((r) => {
+                    const isPresent = r.status === 'PRESENT';
+                    return (
+                      <View key={r.memberId} style={styles.finalizeAttRow}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: Colors.text }}>{r.name}</Text>
+                          <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
+                            {r.roleText ? `${r.roleText} · ` : ''}{r.memberCode || ''}
+                          </Text>
+                        </View>
+                        <View style={styles.attOptionsRow}>
+                          <TouchableOpacity
+                            style={[
+                              styles.attOptionPill,
+                              isPresent ? styles.attPillPresent : { backgroundColor: Colors.surfaceAlt, borderColor: Colors.border },
+                            ]}
+                            onPress={() => setAttendanceStatus(r.memberId, isPresent ? 'ABSENT' : 'PRESENT')}
+                          >
+                            <Text style={[styles.attOptionPillText, isPresent ? { color: '#fff', fontWeight: '700' } : { color: Colors.textMuted }]}>
+                              {isPresent ? '✓ Present' : 'Absent'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                      <View style={styles.attOptionsRow}>
-                        {['PRESENT', 'LATE', 'ABSENT'].map((st) => {
-                          const isActive = r.status === st;
-                          return (
-                            <TouchableOpacity
-                              key={st}
-                              style={[
-                                styles.attOptionPill,
-                                isActive && (st === 'PRESENT' ? styles.attPillPresent : (st === 'LATE' ? styles.attPillLate : styles.attPillAbsent)),
-                              ]}
-                              onPress={() => setAttendanceStatus(r.memberId, st)}
-                            >
-                              <Text style={[styles.attOptionPillText, isActive && { color: '#fff' }]}>
-                                {st === 'PRESENT' ? 'Present' : (st === 'LATE' ? 'Late' : 'Absent')}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
               </View>
             </ScrollView>
