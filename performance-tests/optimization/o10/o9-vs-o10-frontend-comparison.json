@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-09-11T15:36:47.852Z",
+  "classification": "MINOR VARIANCE",
+  "bundleComparison": {
+    "initialJs": {
+      "o9": 297242,
+      "o10": 297242,
+      "diff": 0
+    },
+    "initialJsGzip": {
+      "o9": 92870,
+      "o10": 92867,
+      "diff": -3
+    },
+    "totalJs": {
+      "o9": 966031,
+      "o10": 966029,
+      "diff": -2
+    },
+    "largestChunk": {
+      "o9": 297242,
+      "o10": 297242,
+      "diff": 0
+    },
+    "chunkCount": {
+      "o9": 73,
+      "o10": 73
+    }
+  },
+  "lighthouseComparison": {
+    "performanceScore": {
+      "o9": 99,
+      "o10": 100
+    },
+    "fcpMs": {
+      "o9": 1637.6,
+      "o10": 1415.9127000000003
+    },
+    "lcpMs": {
+      "o9": 1637.6,
+      "o10": 1415.9127000000003
+    },
+    "tbtMs": {
+      "o9": 0,
+      "o10": 0
+    },
+    "cls": {
+      "o9": 0.0007,
+      "o10": 0
+    },
+    "speedIndexMs": {
+      "o9": 2180,
+      "o10": 1983.1006179161814
+    }
+  }
+}

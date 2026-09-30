@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -22,6 +23,7 @@ const COLUMNS = [
 
 export default function MemberListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0 });
@@ -99,13 +101,23 @@ export default function MemberListPage() {
     return [...items].sort(sorter);
   }, [items, sort]);
 
+  const colLabelMap = {
+    memberId: t('members.cnic', 'Member ID'),
+    fullName: t('members.fullName', 'Name'),
+    cnic: t('members.cnic', 'CNIC'),
+    phone: t('members.phone', 'Phone'),
+    unit: t('members.unit', 'Unit'),
+    district: t('units.district', 'District'),
+    status: t('common.status', 'Status'),
+  };
+
   return (
     <div>
       <div className="page-header">
         <h2>Members{!isHigherAdmin && user?.scope?.areaId ? ' in your area' : ''}</h2>
         {showRegisterButton && (
           <button className="btn" type="button" onClick={() => setRegisterOpen(true)}>
-            + Register Member
+            {t('members.newMember', '+ Register Member')}
           </button>
         )}
       </div>
@@ -130,7 +142,7 @@ export default function MemberListPage() {
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           {STATUSES.map((s) => <option key={s} value={s}>{s || 'All statuses'}</option>)}
         </select>
-        <button className="btn secondary" type="submit">Search</button>
+        <button className="btn secondary" type="submit">{t('common.search', 'Search')}</button>
       </form>
 
       <table className="smart">
@@ -144,7 +156,7 @@ export default function MemberListPage() {
                   className={`${c.sortable ? 'sortable' : ''}${sorted ? ' sorted' : ''}`}
                   onClick={c.sortable ? () => toggleSort(c.key) : undefined}
                 >
-                  {c.label}
+                  {colLabelMap[c.key] || c.label}
                   {c.sortable && (
                     <span className="sort-arrow">
                       {sorted ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}
@@ -177,7 +189,7 @@ export default function MemberListPage() {
               <td>{m.basicUnitId?.name || <span className="cell-muted">—</span>}</td>
               <td>{m.districtId?.name || <span className="cell-muted">—</span>}</td>
               <td><span className={`badge ${m.status}`}>{m.status}</span></td>
-              <td><Link to={`/members/${m._id}`} style={{ fontWeight: 500 }}>View →</Link></td>
+              <td><Link to={`/members/${m._id}`} style={{ fontWeight: 500 }}>{t('common.view', 'View')} →</Link></td>
             </tr>
           ))}
         </tbody>

@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-09-11T13:56:51.883Z",
+  "status": "DATASETS_VERIFIED_VALID",
+  "allValid": true,
+  "datasets": {
+    "pnap_mis_o7_a": {
+      "members": 500,
+      "expectedMembers": 500,
+      "memberCountMatch": true,
+      "roleAssignments": 261,
+      "provinces": 3,
+      "districts": 9,
+      "areas": 25,
+      "basicUnits": 50
+    },
+    "pnap_mis_o7_b": {
+      "members": 5000,
+      "expectedMembers": 5000,
+      "memberCountMatch": true,
+      "roleAssignments": 2586,
+      "provinces": 28,
+      "districts": 84,
+      "areas": 250,
+      "basicUnits": 500
+    },
+    "pnap_mis_o7_c": {
+      "members": 10000,
+      "expectedMembers": 10000,
+      "memberCountMatch": true,
+      "roleAssignments": 5169,
+      "provinces": 56,
+      "districts": 167,
+      "areas": 500,
+      "basicUnits": 1000
+    },
+    "pnap_mis_o7_d": {
+      "members": 50000,
+      "expectedMembers": 50000,
+      "memberCountMatch": true,
+      "roleAssignments": 25836,
+      "provinces": 278,
+      "districts": 834,
+      "areas": 2500,
+      "basicUnits": 5000
+    }
+  }
+}

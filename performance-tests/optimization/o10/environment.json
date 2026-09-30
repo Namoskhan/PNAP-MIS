@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-09-11T13:55:53.407Z",
+  "os": "Windows_NT 10.0.26200 (win32 x64)",
+  "cpuModel": "Intel(R) Core(TM) i5-8365U CPU @ 1.60GHz",
+  "cpuSpeedMhz": 1896,
+  "logicalProcessors": 8,
+  "totalRamGB": 7.81,
+  "freeRamGB": 0.9,
+  "nodeVersion": "v24.11.0",
+  "npmVersion": "11.6.1",
+  "mongoDbVersion": "8.2.5",
+  "mongoDbGitVersion": "a471a13094434666c48a1f75451f2efa49f8f5df",
+  "mongoDbHost": "127.0.0.1:27017",
+  "mongoDbPath": "C:\\Program Files\\MongoDB\\Server\\8.0\\data\\",
+  "frontendFramework": "React 18.3.1",
+  "bundler": "Vite 5.4.21",
+  "backendPort": 5000,
+  "frontendPreviewPort": 5005,
+  "testServerPort": 5006,
+  "diskDrives": [
+    {
+      "Name": "D",
+      "FreeGB": 63.01,
+      "UsedGB": 77.81
+    },
+    {
+      "Name": "C",
+      "FreeGB": 8.52,
+      "UsedGB": 88.06
+    }
+  ]
+}

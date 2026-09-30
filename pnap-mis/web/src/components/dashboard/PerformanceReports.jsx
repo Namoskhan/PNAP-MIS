@@ -85,7 +85,7 @@ function UnitPerformance({ unitLevel, unitId, from, to }) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9, paddingTop: 4 }}>
-            {(data.components || []).map((c) => (
+            {(data.components || []).filter((c) => c.metric !== 'MEETING_ATTENDANCE').map((c) => (
               <div key={c.metric}>
                 <PctBar
                   value={c.raw}
@@ -320,9 +320,7 @@ function MemberReport({ memberId, from, to, onClear }) {
       }}>
         {stat('Meetings on roster', report.meetings.totalRoster)}
         {stat('Present', report.meetings.present)}
-        {stat('Late', report.meetings.late)}
         {stat('Absent', report.meetings.absent)}
-        {stat('Attendance rate', report.meetings.attendanceRate == null ? '—' : `${report.meetings.attendanceRate}%`)}
         {stat('Activities participated', report.activities.participated)}
         {stat('Activities led', report.activities.led)}
         {stat('Donations', PKR.format(report.donations.total), `${report.donations.count} received`)}

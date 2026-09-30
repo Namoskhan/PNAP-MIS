@@ -1,0 +1,67 @@
+{
+  "performanceScore": 100,
+  "fcpMs": 1415.9127000000003,
+  "lcpMs": 1415.9127000000003,
+  "tbtMs": 0,
+  "cls": 0,
+  "speedIndexMs": 1983.1006179161814,
+  "mainThreadWorkMs": 338.31500000000017,
+  "bootupTimeMs": 103.36200000000004,
+  "runs": [
+    {
+      "run": 1,
+      "performanceScore": 99,
+      "fcpMs": 1415.9127000000003,
+      "lcpMs": 1415.9127000000003,
+      "tbtMs": 0,
+      "cls": 0,
+      "speedIndexMs": 2558.005927501954,
+      "mainThreadWorkMs": 376.35400000000027,
+      "bootupTimeMs": 106.76500000000009
+    },
+    {
+      "run": 2,
+      "performanceScore": 99,
+      "fcpMs": 1467.0902500000002,
+      "lcpMs": 1467.0902500000002,
+      "tbtMs": 0,
+      "cls": 0,
+      "speedIndexMs": 2577.0042229193054,
+      "mainThreadWorkMs": 312.3599999999999,
+      "bootupTimeMs": 101.26100000000014
+    },
+    {
+      "run": 3,
+      "performanceScore": 100,
+      "fcpMs": 1435.9777000000001,
+      "lcpMs": 1435.9777000000001,
+      "tbtMs": 0,
+      "cls": 0.0006943904361588086,
+      "speedIndexMs": 1983.1006179161814,
+      "mainThreadWorkMs": 437.8589999999997,
+      "bootupTimeMs": 152.69700000000017
+    },
+    {
+      "run": 4,
+      "performanceScore": 100,
+      "fcpMs": 1158.5985000000003,
+      "lcpMs": 1158.5985000000003,
+      "tbtMs": 0,
+      "cls": 0,
+      "speedIndexMs": 1849.2360374980465,
+      "mainThreadWorkMs": 320.3680000000003,
+      "bootupTimeMs": 91.12200000000009
+    },
+    {
+      "run": 5,
+      "performanceScore": 100,
+      "fcpMs": 1403.5139499999998,
+      "lcpMs": 1403.5139499999998,
+      "tbtMs": 0,
+      "cls": 0,
+      "speedIndexMs": 1973.2689754130338,
+      "mainThreadWorkMs": 338.31500000000017,
+      "bootupTimeMs": 103.36200000000004
+    }
+  ]
+}

@@ -5,6 +5,8 @@ import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { UnitProvider } from './context/UnitContext.jsx';
 import './styles.css';
+import './rtl.css';
+import './i18n';
 
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {

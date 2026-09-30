@@ -29,21 +29,10 @@ const { ApiError } = require('../utils/response');
 const METRIC_REGISTRY = {
   MEETING_ATTENDANCE: {
     label: 'Meeting attendance',
-    description: 'Percentage of finalized meetings the member attended (PRESENT or LATE).',
+    description: 'Attendance is excluded from performance scoring.',
     defaultParams: {},
-    async compute(memberId, dateClause, params) {
-      const filter = { state: 'FINALIZED', ...(dateClause.startAt ? { startAt: dateClause.startAt } : {}) };
-      const [total, present, late] = await Promise.all([
-        Meeting.countDocuments({ ...filter, 'attendance.memberId': memberId }),
-        Meeting.countDocuments({ ...filter, attendance: { $elemMatch: { memberId, status: 'PRESENT' } } }),
-        Meeting.countDocuments({ ...filter, attendance: { $elemMatch: { memberId, status: 'LATE' } } }),
-      ]);
-      if (total === 0) return { raw: 0, detail: { total: 0, attended: 0 } };
-      const attended = present + late;
-      return {
-        raw: Math.round((attended / total) * 100),
-        detail: { total, attended, present, late },
-      };
+    async compute() {
+      return { raw: 0, detail: { note: 'Attendance excluded from performance' } };
     },
   },
 
@@ -299,9 +288,11 @@ async function computeForUnit(unitLevel, unitId, period, options = {}) {
   // is resolved once and shared rather than counted per metric.
   const memberCount = await Member.countDocuments({ ...scope, status: 'ACTIVE' });
 
+  const activeComponents = (ruleset.components || []).filter((c) => c.metric !== 'MEETING_ATTENDANCE');
+  const sumWeights = activeComponents.reduce((acc, c) => acc + (c.weight || 0), 0) || 1;
   const components = [];
   let total = 0;
-  for (const c of ruleset.components || []) {
+  for (const c of activeComponents) {
     const fn = UNIT_METRICS[c.metric];
     const reg = METRIC_REGISTRY[c.metric];
     if (!fn) {
@@ -313,14 +304,15 @@ async function computeForUnit(unitLevel, unitId, period, options = {}) {
       });
       continue;
     }
+    const scaledWeight = (c.weight || 0) / sumWeights;
     const params = { ...(reg?.defaultParams || {}), ...(c.params || {}) };
     const result = await fn(scope, dateClause, params, memberCount);
-    const weighted = (result.raw || 0) * (c.weight || 0);
+    const weighted = (result.raw || 0) * scaledWeight;
     total += weighted;
     components.push({
       metric: c.metric,
       label: reg?.label || c.metric,
-      weight: c.weight,
+      weight: Math.round(scaledWeight * 100) / 100,
       raw: result.raw,
       weighted: Math.round(weighted * 100) / 100,
       params,
@@ -422,9 +414,11 @@ async function computeForMember(memberOrId, period, options) {
   if (period?.to) dateFilter.$lte = new Date(period.to);
   if (Object.keys(dateFilter).length) dateClause.startAt = dateFilter;
 
+  const activeComponents = (ruleset.components || []).filter((c) => c.metric !== 'MEETING_ATTENDANCE');
+  const sumWeights = activeComponents.reduce((acc, c) => acc + (c.weight || 0), 0) || 1;
   const components = [];
   let total = 0;
-  for (const c of ruleset.components || []) {
+  for (const c of activeComponents) {
     const reg = METRIC_REGISTRY[c.metric];
     if (!reg) {
       // Unknown metric — skip with a warning entry. Shouldn't fire
@@ -432,13 +426,14 @@ async function computeForMember(memberOrId, period, options) {
       components.push({ metric: c.metric, weight: c.weight, raw: 0, weighted: 0, error: 'UNKNOWN_METRIC' });
       continue;
     }
+    const scaledWeight = (c.weight || 0) / sumWeights;
     const params = { ...(reg.defaultParams || {}), ...(c.params || {}) };
     const result = await reg.compute(memberId, dateClause, params);
-    const weighted = (result.raw || 0) * (c.weight || 0);
+    const weighted = (result.raw || 0) * scaledWeight;
     total += weighted;
     components.push({
       metric: c.metric,
-      weight: c.weight,
+      weight: Math.round(scaledWeight * 100) / 100,
       raw: result.raw,
       weighted: Math.round(weighted * 100) / 100,
       params,

@@ -395,57 +395,77 @@ async function officeBearerActivity(level) {
   const codes = KEY_ROLES[level] || [];
   if (codes.length === 0) return new Map();
 
-  const rows = await RoleAssignment.aggregate([
+  // Phase O8 Optimization (Candidate B: Two-step query with Node join)
+  // Eliminates O(N) correlated $lookup subqueries in MongoDB by using two indexed
+  // operations (RoleAssignment IXSCAN + Member $in primary key seek) joined in Node.
+  const assignments = await RoleAssignment.find(
     {
-      $match: {
-        unitLevel: level,
-        roleCode: { $in: codes },
-        state: 'APPROVED',
-        endedAt: { $exists: false },
-      },
+      unitLevel: level,
+      roleCode: { $in: codes },
+      state: 'APPROVED',
+      endedAt: { $exists: false },
     },
-    {
-      // let/pipeline form so only the three fields we need cross the
-      // wire — a plain localField lookup would drag whole member docs.
-      $lookup: {
-        from: Member.collection.name,
-        let: { mid: '$memberId' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$mid'] } } },
-          { $project: { fullName: 1, memberId: 1, phone: 1, lastActivityAt: 1 } },
-        ],
-        as: 'member',
-      },
-    },
-    { $unwind: { path: '$member', preserveNullAndEmptyArrays: false } },
-    {
-      $group: {
-        _id: '$unitId',
-        lastActivityAt: { $max: '$member.lastActivityAt' },
-        officers: {
-          $push: {
-            roleCode: '$roleCode',
-            memberId: '$member._id',
-            memberCode: '$member.memberId',
-            fullName: '$member.fullName',
-            phone: '$member.phone',
-            lastActivityAt: '$member.lastActivityAt',
-          },
-        },
-      },
-    },
-  ]);
+    'unitId memberId roleCode',
+  ).lean();
+
+  if (assignments.length === 0) return new Map();
+
+  const memberIds = [];
+  const seenMembers = new Set();
+  for (let i = 0; i < assignments.length; i++) {
+    const mid = assignments[i].memberId;
+    const midStr = str(mid);
+    if (!seenMembers.has(midStr)) {
+      seenMembers.add(midStr);
+      memberIds.push(mid);
+    }
+  }
+
+  const members = await Member.find(
+    { _id: { $in: memberIds } },
+    'fullName memberId phone lastActivityAt',
+  ).lean();
+
+  const memberMap = new Map();
+  for (let i = 0; i < members.length; i++) {
+    const m = members[i];
+    memberMap.set(str(m._id), m);
+  }
+
+  const unitMap = new Map();
+  for (let i = 0; i < assignments.length; i++) {
+    const a = assignments[i];
+    const uidStr = str(a.unitId);
+    const m = memberMap.get(str(a.memberId));
+    if (!m) continue; // preserve inner-join semantics of $unwind preserveNullAndEmptyArrays: false
+
+    let u = unitMap.get(uidStr);
+    if (!u) {
+      u = { lastActivityAt: null, officers: [] };
+      unitMap.set(uidStr, u);
+    }
+    const act = m.lastActivityAt || null;
+    if (act && (!u.lastActivityAt || act > u.lastActivityAt)) {
+      u.lastActivityAt = act;
+    }
+    u.officers.push({
+      roleCode: a.roleCode,
+      memberId: m._id,
+      memberCode: m.memberId,
+      fullName: m.fullName,
+      phone: m.phone,
+      lastActivityAt: m.lastActivityAt,
+    });
+  }
 
   const map = new Map();
-  for (const r of rows) {
-    const officers = r.officers || [];
-    // Name the most senior bearer as responsible; fall back to
-    // whoever is listed first when none match the priority order.
+  for (const [uidStr, u] of unitMap.entries()) {
+    const officers = u.officers;
     const officer = OFFICER_PRIORITY
       .map((code) => officers.find((o) => o.roleCode === code))
       .find(Boolean) || officers[0] || null;
-    map.set(str(r._id), {
-      lastActivityAt: r.lastActivityAt || null,
+    map.set(uidStr, {
+      lastActivityAt: u.lastActivityAt || null,
       officer,
       officerCount: officers.length,
     });

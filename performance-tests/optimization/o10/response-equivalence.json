@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-09-11T15:43:50.213Z",
+  "status": "ALL_HASHES_MATCH_O8_AUTHORITATIVE",
+  "equivalence": {
+    "10k": {
+      "BASIC_UNIT": {
+        "hash": "6dbe728715fbc12ee706a96edf87393074ba6d38c2aa27394130b61972879043",
+        "o8Expected": "6dbe728715fbc12ee706a96edf87393074ba6d38c2aa27394130b61972879043",
+        "match": true
+      },
+      "AREA": {
+        "hash": "d6cea5ab44dc1c069ce4c5cf82f874de9bd674d5f7f254cf359efe91344e845e",
+        "o8Expected": "d6cea5ab44dc1c069ce4c5cf82f874de9bd674d5f7f254cf359efe91344e845e",
+        "match": true
+      }
+    },
+    "50k": {
+      "BASIC_UNIT": {
+        "hash": "0de9e14231e7a4e22e39d4b90c2f76483792f3bf5e2595bd4f2afdd08af0095f",
+        "o8Expected": "0de9e14231e7a4e22e39d4b90c2f76483792f3bf5e2595bd4f2afdd08af0095f",
+        "match": true
+      },
+      "AREA": {
+        "hash": "4409698280f734759e9434d810052af0960ef1a362c2f7f23a4717f1d42834fe",
+        "o8Expected": "4409698280f734759e9434d810052af0960ef1a362c2f7f23a4717f1d42834fe",
+        "match": true
+      }
+    }
+  }
+}

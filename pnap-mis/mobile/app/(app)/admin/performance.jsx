@@ -135,9 +135,6 @@ export default function PerformanceScreen() {
               <KpiCard label="Meetings" value={report.meetings.totalRoster} icon="📅" color={Colors.primary} />
               <KpiCard label="Present" value={report.meetings.present} icon="✅" color={Colors.success} />
               <KpiCard label="Absent" value={report.meetings.absent} icon="❌" color={report.meetings.absent > 0 ? Colors.error : Colors.textMuted} />
-              {report.meetings.attendanceRate !== null && (
-                <KpiCard label="Attendance" value={`${report.meetings.attendanceRate}%`} icon="📊" color={report.meetings.attendanceRate >= 70 ? Colors.success : Colors.error} />
-              )}
             </View>
 
             <View style={styles.kpiGrid}>

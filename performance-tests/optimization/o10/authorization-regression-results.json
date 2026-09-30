@@ -1,0 +1,59 @@
+{
+  "timestamp": "2026-09-11T15:43:59.019Z",
+  "allPassed": true,
+  "results": [
+    {
+      "scenario": "Unauthenticated Access Blocked",
+      "status": 401,
+      "passed": true,
+      "detail": "Request without token rejected with 401 Unauthorized"
+    },
+    {
+      "scenario": "Regular Member Forbidden From Admin Management",
+      "status": 403,
+      "passed": true,
+      "detail": "MEMBER role forbidden from /api/admin/users with 403 Forbidden"
+    },
+    {
+      "scenario": "Central Super Admin Full Scope Access",
+      "status": 200,
+      "passed": true,
+      "detail": "Super Admin access granted to full organization scope"
+    },
+    {
+      "scenario": "District Admin In-Scope Access Granted",
+      "status": 200,
+      "passed": true,
+      "detail": "District Admin successfully reads meetings inside assigned district"
+    },
+    {
+      "scenario": "Area Admin In-Scope Access Granted",
+      "status": 200,
+      "passed": true,
+      "detail": "Area Admin successfully reads meetings inside assigned area"
+    },
+    {
+      "scenario": "Territorial Scope Violation Blocked (No Leakage)",
+      "status": 403,
+      "passed": true,
+      "detail": "District Admin attempting to read another district rejected with 403 OUT_OF_SCOPE"
+    },
+    {
+      "scenario": "Non-SuperAdmin Blocked From System Audit Logs",
+      "status": 403,
+      "passed": true,
+      "detail": "Province Admin rejected from /api/admin/audit with 403 Forbidden"
+    },
+    {
+      "scenario": "Tampered Scope Isolation",
+      "status": 200,
+      "passed": true,
+      "detail": "Tampered scope returns 0 items, zero territorial leakage"
+    },
+    {
+      "scenario": "Concurrent Isolated Scopes Execution",
+      "passed": true,
+      "detail": "Super Admin, District Admin, and Area Admin concurrent calls resolve cleanly in their respective scopes"
+    }
+  ]
+}

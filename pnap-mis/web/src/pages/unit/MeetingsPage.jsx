@@ -408,7 +408,7 @@ export default function MeetingsPage() {
           cnic: att.cnic,
           roleText: att.roleText,
           unitText: att.unitText,
-          status: existing ? existing.status : 'PRESENT',
+          status: existing ? (existing.status === 'LATE' ? 'PRESENT' : existing.status) : 'ABSENT',
         };
       });
       setFinalizing({
@@ -430,7 +430,7 @@ export default function MeetingsPage() {
           memberId: mem._id,
           fullName: mem.fullName,
           memberIdCode: mem.memberId,
-          status: existing ? existing.status : 'PRESENT',
+          status: existing ? (existing.status === 'LATE' ? 'PRESENT' : existing.status) : 'ABSENT',
         };
       });
       setFinalizing({
@@ -960,13 +960,16 @@ function FinalizeDialog({
         const list = r.data.data || [];
         setEligibleAttendees(list);
         const existingMap = new Map((meeting.attendance || []).map((a) => [String(a.memberId?._id || a.memberId), a.status]));
-        const rows = list.map((m) => ({
-          memberId: m._id,
-          name: m.fullName,
-          memberCode: m.memberId,
-          roleText: m.roleText,
-          status: existingMap.get(String(m._id)) || 'ABSENT',
-        }));
+        const rows = list.map((m) => {
+          const rawStatus = existingMap.get(String(m._id));
+          return {
+            memberId: m._id,
+            name: m.fullName,
+            memberCode: m.memberId,
+            roleText: m.roleText,
+            status: rawStatus === 'LATE' ? 'PRESENT' : (rawStatus || 'ABSENT'),
+          };
+        });
         setAttendance(rows);
       })
       .catch(() => {
@@ -1149,7 +1152,7 @@ function FinalizeDialog({
         </div>
 
         <h4 style={{ marginBottom: 6 }}>
-          Attendance ({attendance.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length} present / {attendance.length})
+          Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} present / {attendance.length})
         </h4>
         <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
           <button type="button" className="btn ghost" onClick={() => markAll('PRESENT')}>Mark all present</button>
@@ -1158,14 +1161,14 @@ function FinalizeDialog({
         <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table className="list" style={{ margin: 0 }}>
             <thead>
-              <tr><th>Attendee / Member</th><th>Present</th><th>Late</th><th>Absent</th></tr>
+              <tr><th>Attendee / Member</th><th style={{ width: 90, textAlign: 'center' }}>Present</th></tr>
             </thead>
             <tbody>
               {loadingAttendees && (
-                <tr><td colSpan="4" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
+                <tr><td colSpan="2" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
               )}
               {!loadingAttendees && attendance.length === 0 && (
-                <tr><td colSpan="4" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'JIRGA' ? 'jirga' : (meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive')} meeting.</td></tr>
+                <tr><td colSpan="2" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'JIRGA' ? 'jirga' : (meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive')} meeting.</td></tr>
               )}
               {!loadingAttendees && attendance.map((r) => (
                 <tr key={r.memberId}>
@@ -1174,9 +1177,14 @@ function FinalizeDialog({
                     {r.memberCode && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>· {r.memberCode}</span>}
                     {r.roleText && <div className="muted" style={{ fontSize: 11 }}>{r.roleText}</div>}
                   </td>
-                  <td><input type="radio" checked={r.status === 'PRESENT'} onChange={() => setStatus(r.memberId, 'PRESENT')} /></td>
-                  <td><input type="radio" checked={r.status === 'LATE'} onChange={() => setStatus(r.memberId, 'LATE')} /></td>
-                  <td><input type="radio" checked={r.status === 'ABSENT'} onChange={() => setStatus(r.memberId, 'ABSENT')} /></td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={r.status === 'PRESENT'}
+                      onChange={(e) => setStatus(r.memberId, e.target.checked ? 'PRESENT' : 'ABSENT')}
+                      style={{ cursor: 'pointer', width: 18, height: 18 }}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

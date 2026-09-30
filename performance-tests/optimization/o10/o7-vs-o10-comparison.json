@@ -1,0 +1,79 @@
+{
+  "provenance": "Directly comparable controlled benchmarks on identical pnap_mis_o7_d (50,000 synthetic members) dataset on MongoDB 8.2.5 Windows x64",
+  "comparisonDate": "2026-09-11",
+  "metrics": {
+    "coldSnapshotP95Ms": {
+      "o7": 11699.89,
+      "o10": 874.64,
+      "absoluteDiffMs": -10825.25,
+      "relativeImprovementPct": 92.52,
+      "comparability": "DIRECTLY COMPARABLE"
+    },
+    "group3P95Ms": {
+      "o7": 13943.31,
+      "o10": 1196.76,
+      "absoluteDiffMs": -12746.55,
+      "relativeImprovementPct": 91.42,
+      "comparability": "DIRECTLY COMPARABLE"
+    },
+    "stagedDashboardP95Ms": {
+      "o7": 12980.36,
+      "o10": 2013.97,
+      "absoluteDiffMs": -10966.39,
+      "relativeImprovementPct": 84.48,
+      "comparability": "DIRECTLY COMPARABLE"
+    },
+    "snapshotConsumerConcurrencyP95Ms": {
+      "c1": {
+        "o7": 11441.31,
+        "o10": 995.57,
+        "relativeImprovementPct": 91.30,
+        "comparability": "DIRECTLY COMPARABLE"
+      },
+      "c3": {
+        "o7": 10865.11,
+        "o10": 889.29,
+        "relativeImprovementPct": 91.81,
+        "comparability": "DIRECTLY COMPARABLE"
+      },
+      "c5": {
+        "o7": 13483.98,
+        "o10": 936.28,
+        "relativeImprovementPct": 93.06,
+        "comparability": "DIRECTLY COMPARABLE"
+      },
+      "c10": {
+        "o7": 12560.79,
+        "o10": 925.04,
+        "relativeImprovementPct": 92.64,
+        "comparability": "DIRECTLY COMPARABLE"
+      }
+    },
+    "fullStagedWorkflowConcurrencyP95Ms": {
+      "c1": {
+        "o7": 11186.44,
+        "o10": 1863.64,
+        "relativeImprovementPct": 83.34,
+        "comparability": "DIRECTLY COMPARABLE"
+      },
+      "c3": {
+        "o7": 12621.43,
+        "o10": 2733.14,
+        "relativeImprovementPct": 78.35,
+        "comparability": "DIRECTLY COMPARABLE"
+      },
+      "c5": {
+        "o7": 16495.44,
+        "o10": 4102.37,
+        "relativeImprovementPct": 75.13,
+        "comparability": "DIRECTLY COMPARABLE"
+      },
+      "c10": {
+        "o7": 26359.17,
+        "o10": 7572.91,
+        "relativeImprovementPct": 71.27,
+        "comparability": "DIRECTLY COMPARABLE"
+      }
+    }
+  }
+}

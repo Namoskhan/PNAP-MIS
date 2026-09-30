@@ -31,3 +31,38 @@ Thumbs.db
 !.vscode/extensions.json
 
 ./pnap-mis/node_modules
+
+# Generated performance-test browser profiles and caches
+performance-tests/**/*chrome-profile*/
+performance-tests/**/*capture-profile*/
+performance-tests/**/test-launch-profile/
+performance-tests/**/temp_chrome*/
+performance-tests/**/Crashpad/
+performance-tests/**/GPUCache/
+performance-tests/**/ShaderCache/
+performance-tests/**/GrShaderCache/
+performance-tests/**/DawnGraphiteCache/
+performance-tests/**/DawnWebGPUCache/
+performance-tests/**/Code Cache/
+performance-tests/**/*.dmp
+performance-tests/**/*.pma
+performance-tests/**/*.crdownload
+
+# Generated Playwright and screenshot output
+performance-tests/**/playwright-report/
+performance-tests/**/blob-report/
+performance-tests/**/test-results/
+performance-tests/**/.playwright/
+performance-tests/**/screenshots/
+
+# Regenerable performance reports, raw captures, and temporary output
+performance-tests/final-management-report/report.html
+performance-tests/**/raw-results/
+performance-tests/**/tmp/
+performance-tests/**/temp/
+performance-tests/**/*-trace.json
+performance-tests/**/*-profile.json
+performance-tests/**/*.cpuprofile
+performance-tests/**/*.heapprofile
+performance-tests/**/*.heapsnapshot
+performance-tests/**/*.log

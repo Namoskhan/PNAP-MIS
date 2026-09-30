@@ -79,6 +79,11 @@ export function canPostAnnouncement(user) {
   if (user?.permissions) return hasPermission(user, 'POST_ANNOUNCEMENT');
   return isHigherAdmin(user) || hasRole(user, 'SENIOR_MAWIN', 'GENERAL_SECRETARY', 'SECRETARY');
 }
+export function canRegisterMember(user) {
+  if (user?.permissions) return hasPermission(user, 'REGISTER_MEMBER');
+  return isHigherAdmin(user)
+    || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN', 'GENERAL_SECRETARY');
+}
 export function canApproveMember(user) { return hasPermission(user, 'APPROVE_MEMBER'); }
 export function canDecideRole(user) { return hasPermission(user, 'DECIDE_ROLE'); }
 export function canInitiateRole(user) { return hasPermission(user, 'INITIATE_ROLE'); }

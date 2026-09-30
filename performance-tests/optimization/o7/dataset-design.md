@@ -1,0 +1,2 @@
+The fixed seed `PNAP-O7-FIXED-SEED-2026` deterministically assigns ten members per basic unit, two basic units per area, three areas per district, and three districts per province (ceilings at boundaries). Three approved, unended officer assignments are created per unit at every tested level. Only users, hierarchy, members, and role assignments were seeded because the snapshot and selected dashboard endpoints tolerate empty unrelated activity collections. Names, CNICs, phones, emails, and IDs are synthetic.
+

@@ -1,0 +1,32 @@
+{
+  "National (Unscoped)": {
+    "status": 200,
+    "totalInactiveUnits": null,
+    "success": true
+  },
+  "Province Scope": {
+    "status": 200,
+    "totalInactiveUnits": null,
+    "success": true
+  },
+  "District Scope": {
+    "status": 200,
+    "totalInactiveUnits": null,
+    "success": true
+  },
+  "Area Scope": {
+    "status": 200,
+    "totalInactiveUnits": null,
+    "success": true
+  },
+  "Basic Unit Scope": {
+    "status": 200,
+    "totalInactiveUnits": null,
+    "success": true
+  },
+  "Tampered Scope": {
+    "status": 200,
+    "totalInactiveUnits": null,
+    "success": true
+  }
+}

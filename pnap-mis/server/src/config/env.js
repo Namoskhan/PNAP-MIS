@@ -16,6 +16,7 @@ const env = {
   MONGO_URI: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/pnap_mis',
   JWT_SECRET: process.env.JWT_SECRET || 'dev-only-secret-change-me',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '12h',
+  JWT_REMEMBER_ME_EXPIRES_IN: process.env.JWT_REMEMBER_ME_EXPIRES_IN || '7d',
   // Comma-separated list of allowed browser origins, or '*' for permissive
   CORS_ORIGIN: (process.env.CORS_ORIGIN || process.env.CLIENT_ORIGIN || '*')
     .split(',')

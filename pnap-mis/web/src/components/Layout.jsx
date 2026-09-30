@@ -18,6 +18,8 @@ import {
   hasPermission,
 } from '../utils/permissions';
 import NotificationBell from './NotificationBell';
+import { useTranslation } from 'react-i18next';
+import LanguageSelector from './LanguageSelector';
 import { useBranding } from '../context/BrandingContext';
 import {
   UsersIcon, FolderIcon, BuildingIcon, GearIcon,
@@ -28,6 +30,15 @@ import {
 const SIDEBAR_KEY = 'pnap_sidebar_collapsed';
 
 // Human-readable label for the role-persona selector.
+function getRoleLabel(user, r, t) {
+  if (t) {
+    const key = `roles.${r}`;
+    const translated = t(key);
+    if (translated && translated !== key) return translated;
+  }
+  return ROLE_DISPLAY[r] || roleLabel(user, r);
+}
+
 const ROLE_DISPLAY = {
   SUPER_ADMIN: 'Super Admin',
   CENTRAL_ADMIN: 'Central Admin',
@@ -54,11 +65,11 @@ const ROLE_DISPLAY = {
 };
 
 // SRS §3.1–§3.4 — the wider consultative body's name changes per tier.
-function committeeLabel(unitLevel) {
-  if (unitLevel === 'AREA') return 'Elaqayi Committee';
-  if (unitLevel === 'DISTRICT') return 'Zilla Committee';
-  if (unitLevel === 'PROVINCE') return 'Sobayi Committee';
-  if (unitLevel === 'CENTRAL') return 'Central Committee';
+function committeeLabel(unitLevel, t) {
+  if (unitLevel === 'AREA') return t ? t('units.elaqayiCommittee', 'Elaqayi Committee') : 'Elaqayi Committee';
+  if (unitLevel === 'DISTRICT') return t ? t('units.zillaCommittee', 'Zilla Committee') : 'Zilla Committee';
+  if (unitLevel === 'PROVINCE') return t ? t('units.sobayiCommittee', 'Sobayi Committee') : 'Sobayi Committee';
+  if (unitLevel === 'CENTRAL') return t ? t('units.centralCommittee', 'Central Committee') : 'Central Committee';
   return '';
 }
 
@@ -94,9 +105,10 @@ function UnitNavLink({ to, body = null, children }) {
 // committee (SRS §3.1, and `committeeController.composition` rejects
 // that level outright), so the whole group is hidden there.
 function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true, fixedTitle = null, fixedLevel = null }) {
+  const { t } = useTranslation();
   const activeLevel = fixedLevel || ctx?.unitLevel;
   if (!activeLevel || activeLevel === 'BASIC_UNIT') return null;
-  const label = fixedTitle || committeeLabel(activeLevel);
+  const label = fixedTitle || committeeLabel(activeLevel, t);
   if (!label) return null;
   return (
     <NavGroup
@@ -106,13 +118,12 @@ function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true, 
       storageKey={`pnap_nav_committee_${activeLevel.toLowerCase()}`}
       defaultOpen={defaultOpen}
     >
-      <UnitNavLink to="/unit/committee">Composition</UnitNavLink>
-      {showEvents && <UnitNavLink to="/unit/meetings" body="COMMITTEE">Committee Meetings</UnitNavLink>}
-      {showEvents && <UnitNavLink to="/unit/activities" body="COMMITTEE">Committee Activities</UnitNavLink>}
-      {canFinance && <UnitNavLink to="/unit/finance" body="COMMITTEE">Committee Finance</UnitNavLink>}
-      {canFinance && <UnitNavLink to="/unit/transfers" body="COMMITTEE">Committee Transfers</UnitNavLink>}
-      {/* Committee-scoped reports — downloads filtered to the committee body */}
-      <UnitNavLink to="/unit/reports" body="COMMITTEE">Committee Reports</UnitNavLink>
+      <UnitNavLink to="/unit/committee">{t('nav.composition', 'Composition')}</UnitNavLink>
+      {showEvents && <UnitNavLink to="/unit/meetings" body="COMMITTEE">{t('nav.committeeMeetings', 'Committee Meetings')}</UnitNavLink>}
+      {showEvents && <UnitNavLink to="/unit/activities" body="COMMITTEE">{t('nav.committeeActivities', 'Committee Activities')}</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/finance" body="COMMITTEE">{t('nav.committeeFinance', 'Committee Finance')}</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/transfers" body="COMMITTEE">{t('nav.committeeTransfers', 'Committee Transfers')}</UnitNavLink>}
+      <UnitNavLink to="/unit/reports" body="COMMITTEE">{t('nav.committeeReports', 'Committee Reports')}</UnitNavLink>
     </NavGroup>
   );
 }
@@ -120,8 +131,9 @@ function CommitteeNav({ ctx, canFinance, showEvents = true, defaultOpen = true, 
 // The Jirga hub — dedicated collapsible group for Qomi Jirga (Central)
 // and Sobayi Jirga (Province), each pinned to ?body=JIRGA.
 function JirgaNav({ ctx, canFinance, showEvents = true, defaultOpen = false }) {
+  const { t } = useTranslation();
   if (!ctx || (ctx.unitLevel !== 'CENTRAL' && ctx.unitLevel !== 'PROVINCE')) return null;
-  const label = ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga' : 'Sobayi Jirga';
+  const label = ctx.unitLevel === 'CENTRAL' ? t('units.qomiJirga', 'Qomi Jirga') : t('units.sobayiJirga', 'Sobayi Jirga');
   return (
     <NavGroup
       label={label}
@@ -130,32 +142,33 @@ function JirgaNav({ ctx, canFinance, showEvents = true, defaultOpen = false }) {
       storageKey={`pnap_nav_jirga_${ctx.unitLevel.toLowerCase()}`}
       defaultOpen={defaultOpen}
     >
-      <UnitNavLink to="/unit/jirga">Composition</UnitNavLink>
-      {showEvents && <UnitNavLink to="/unit/meetings" body="JIRGA">Jirga Meetings</UnitNavLink>}
-      {showEvents && <UnitNavLink to="/unit/activities" body="JIRGA">Jirga Activities</UnitNavLink>}
-      {canFinance && <UnitNavLink to="/unit/finance" body="JIRGA">Jirga Finance</UnitNavLink>}
-      {canFinance && <UnitNavLink to="/unit/transfers" body="JIRGA">Jirga Transfers</UnitNavLink>}
-      <UnitNavLink to="/unit/reports" body="JIRGA">Jirga Reports</UnitNavLink>
+      <UnitNavLink to="/unit/jirga">{t('nav.composition', 'Composition')}</UnitNavLink>
+      {showEvents && <UnitNavLink to="/unit/meetings" body="JIRGA">{t('nav.jirgaMeetings', 'Jirga Meetings')}</UnitNavLink>}
+      {showEvents && <UnitNavLink to="/unit/activities" body="JIRGA">{t('nav.jirgaActivities', 'Jirga Activities')}</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/finance" body="JIRGA">{t('nav.jirgaFinance', 'Jirga Finance')}</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/transfers" body="JIRGA">{t('nav.jirgaTransfers', 'Jirga Transfers')}</UnitNavLink>}
+      <UnitNavLink to="/unit/reports" body="JIRGA">{t('nav.jirgaReports', 'Jirga Reports')}</UnitNavLink>
     </NavGroup>
   );
 }
 
 // National Congress hub — supreme assembly at Central level.
 function CongressNav({ ctx, canFinance, showEvents = true, defaultOpen = false }) {
+  const { t } = useTranslation();
   if (!ctx || ctx.unitLevel !== 'CENTRAL') return null;
   return (
     <NavGroup
-      label="National Congress"
+      label={t('units.nationalCongress', 'National Congress')}
       icon={<CongressIcon size={14} />}
       variant="congress"
       storageKey="pnap_nav_congress"
       defaultOpen={defaultOpen}
     >
-      <UnitNavLink to="/unit/congress">Congress Roster</UnitNavLink>
-      {showEvents && <UnitNavLink to="/unit/meetings" body="CONGRESS">Congress Meetings</UnitNavLink>}
-      {showEvents && <UnitNavLink to="/unit/activities" body="CONGRESS">Congress Activities</UnitNavLink>}
-      {canFinance && <UnitNavLink to="/unit/finance" body="CONGRESS">Congress Finance</UnitNavLink>}
-      <UnitNavLink to="/unit/reports" body="CONGRESS">Congress Reports</UnitNavLink>
+      <UnitNavLink to="/unit/congress">{t('nav.composition', 'Congress Roster')}</UnitNavLink>
+      {showEvents && <UnitNavLink to="/unit/meetings" body="CONGRESS">{t('nav.congressMeetings', 'Congress Meetings')}</UnitNavLink>}
+      {showEvents && <UnitNavLink to="/unit/activities" body="CONGRESS">{t('nav.congressActivities', 'Congress Activities')}</UnitNavLink>}
+      {canFinance && <UnitNavLink to="/unit/finance" body="CONGRESS">{t('nav.congressFinance', 'Congress Finance')}</UnitNavLink>}
+      <UnitNavLink to="/unit/reports" body="CONGRESS">{t('nav.congressReports', 'Congress Reports')}</UnitNavLink>
     </NavGroup>
   );
 }
@@ -164,6 +177,7 @@ export default function Layout() {
   // Two sidebar entries share /admin/users and are distinguished only
   // by their query string, so active-state has to consider it —
   // NavLink matches on pathname alone.
+  const { t } = useTranslation();
   const { search, pathname } = useLocation();
   const { user, logout, allRoles, activeRole, setActiveRole } = useAuth();
   const { ctx } = useUnit();
@@ -652,7 +666,7 @@ export default function Layout() {
               if (switchableRoles.length > 1) {
                 return (
                   <div className="topbar-role">
-                    <span className="topbar-role-label">View as</span>
+                    <span className="topbar-role-label">{t('auth.viewAs', 'View as')}</span>
                     <select
                       className="topbar-role-select"
                       value={activeRole || ''}
@@ -660,7 +674,7 @@ export default function Layout() {
                       title={`You hold ${switchableRoles.length} roles. Switching changes the sidebar & actions.`}
                     >
                       {switchableRoles.map((r) => (
-                        <option key={r} value={r}>{ROLE_DISPLAY[r] || roleLabel(user, r)}</option>
+                        <option key={r} value={r}>{getRoleLabel(user, r, t)}</option>
                       ))}
                     </select>
                   </div>
@@ -668,6 +682,7 @@ export default function Layout() {
               }
               return null;
             })()}
+            <LanguageSelector variant="topbar" />
             <NotificationBell />
             <UserMenu user={user} onLogout={logout} />
           </header>
@@ -711,6 +726,7 @@ function NavGroup({ label, icon, variant = '', children, storageKey, defaultOpen
 }
 
 function UserMenu({ user, onLogout }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -731,8 +747,8 @@ function UserMenu({ user, onLogout }) {
   const initial = (user.fullName || '?').trim().charAt(0).toUpperCase();
   const subtitle = (() => {
     const id = user.email || user.username || user.cnic || '';
-    const role = user.roles?.filter((r) => r !== 'MEMBER').map((r) => ROLE_DISPLAY[r] || roleLabel(user, r)).join(', ')
-      || (user.roles || []).map((r) => ROLE_DISPLAY[r] || roleLabel(user, r)).join(', ');
+    const role = user.roles?.filter((r) => r !== 'MEMBER').map((r) => getRoleLabel(user, r, t)).join(', ')
+      || (user.roles || []).map((r) => getRoleLabel(user, r, t)).join(', ');
     return [id, role].filter(Boolean).join(' · ');
   })();
 
@@ -767,7 +783,7 @@ function UserMenu({ user, onLogout }) {
           {memberRoute && (
             <Link to={memberRoute} className="topbar-menu-item" role="menuitem" onClick={() => setOpen(false)}>
               <span className="topbar-menu-icon"><UserIcon size={15} /></span>
-              <span>My Profile</span>
+              <span>{t('auth.myProfile', 'My Profile')}</span>
             </Link>
           )}
           <button
@@ -777,7 +793,7 @@ function UserMenu({ user, onLogout }) {
             onClick={() => { setOpen(false); onLogout(); }}
           >
             <span className="topbar-menu-icon"><PowerIcon size={15} /></span>
-            <span>Logout</span>
+            <span>{t('auth.logout', 'Logout')}</span>
           </button>
         </div>
       )}

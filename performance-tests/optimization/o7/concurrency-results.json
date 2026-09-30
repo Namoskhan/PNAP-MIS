@@ -1,0 +1,364 @@
+{
+  "snapshotConsumers": [
+    {
+      "level": "A",
+      "members": 500,
+      "consumers": {
+        "1": {
+          "repetitions": 3,
+          "p95Ms": 175.566,
+          "nodeCpuMeanPct": 37.926,
+          "eventLoopP95MeanMs": 15.715,
+          "dbOperationsMean": 9,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "3": {
+          "repetitions": 3,
+          "p95Ms": 175.105,
+          "nodeCpuMeanPct": 38.197,
+          "eventLoopP95MeanMs": 17.026,
+          "dbOperationsMean": 11,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "5": {
+          "repetitions": 3,
+          "p95Ms": 175.753,
+          "nodeCpuMeanPct": 40.378,
+          "eventLoopP95MeanMs": 17.113,
+          "dbOperationsMean": 13,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "10": {
+          "repetitions": 3,
+          "p95Ms": 193.5,
+          "nodeCpuMeanPct": 49.527,
+          "eventLoopP95MeanMs": 19.868,
+          "dbOperationsMean": 18,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        }
+      }
+    },
+    {
+      "level": "B",
+      "members": 5000,
+      "consumers": {
+        "1": {
+          "repetitions": 3,
+          "p95Ms": 2755.06,
+          "nodeCpuMeanPct": 6.218,
+          "eventLoopP95MeanMs": 28.388,
+          "dbOperationsMean": 13,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "3": {
+          "repetitions": 3,
+          "p95Ms": 3364.108,
+          "nodeCpuMeanPct": 6.32,
+          "eventLoopP95MeanMs": 21.119,
+          "dbOperationsMean": 15,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "5": {
+          "repetitions": 3,
+          "p95Ms": 1401.645,
+          "nodeCpuMeanPct": 9.334,
+          "eventLoopP95MeanMs": 16.193,
+          "dbOperationsMean": 17,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "10": {
+          "repetitions": 3,
+          "p95Ms": 3847.343,
+          "nodeCpuMeanPct": 9.203,
+          "eventLoopP95MeanMs": 25.171,
+          "dbOperationsMean": 22,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        }
+      }
+    },
+    {
+      "level": "C",
+      "members": 10000,
+      "consumers": {
+        "1": {
+          "repetitions": 3,
+          "p95Ms": 2003.321,
+          "nodeCpuMeanPct": 6.84,
+          "eventLoopP95MeanMs": 16.157,
+          "dbOperationsMean": 15,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "3": {
+          "repetitions": 3,
+          "p95Ms": 2101.035,
+          "nodeCpuMeanPct": 5.617,
+          "eventLoopP95MeanMs": 16.13,
+          "dbOperationsMean": 17,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "5": {
+          "repetitions": 3,
+          "p95Ms": 2078.544,
+          "nodeCpuMeanPct": 12.378,
+          "eventLoopP95MeanMs": 16.141,
+          "dbOperationsMean": 19,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "10": {
+          "repetitions": 3,
+          "p95Ms": 2118.539,
+          "nodeCpuMeanPct": 9.398,
+          "eventLoopP95MeanMs": 16.138,
+          "dbOperationsMean": 24,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        }
+      }
+    },
+    {
+      "level": "D",
+      "members": 50000,
+      "consumers": {
+        "1": {
+          "repetitions": 3,
+          "p95Ms": 11441.306,
+          "nodeCpuMeanPct": 9.463,
+          "eventLoopP95MeanMs": 16.616,
+          "dbOperationsMean": 29,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "3": {
+          "repetitions": 3,
+          "p95Ms": 10865.111,
+          "nodeCpuMeanPct": 9.224,
+          "eventLoopP95MeanMs": 16.447,
+          "dbOperationsMean": 31,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "5": {
+          "repetitions": 3,
+          "p95Ms": 13483.975,
+          "nodeCpuMeanPct": 10.556,
+          "eventLoopP95MeanMs": 18.683,
+          "dbOperationsMean": 33,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        },
+        "10": {
+          "repetitions": 3,
+          "p95Ms": 12560.788,
+          "nodeCpuMeanPct": 9.891,
+          "eventLoopP95MeanMs": 16.837,
+          "dbOperationsMean": 38,
+          "roleAggregationsMean": 4,
+          "singleFlightObserved": true,
+          "allHttp200": true
+        }
+      }
+    }
+  ],
+  "stagedDashboardWorkflows": [
+    {
+      "level": "B",
+      "members": 5000,
+      "workflows": {
+        "1": {
+          "repetitions": 3,
+          "p95Ms": 1732.444,
+          "p99Ms": 1769.515,
+          "nodeCpuMeanPct": 38.72,
+          "hostCpuMeanPct": 42.994,
+          "eventLoopP95MeanMs": 25.925,
+          "dbOperationsMean": 66,
+          "requestCountMean": 9,
+          "payloadBytesMean": 125841,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "3": {
+          "repetitions": 3,
+          "p95Ms": 1698.484,
+          "p99Ms": 1711.062,
+          "nodeCpuMeanPct": 49.286,
+          "hostCpuMeanPct": 44.435,
+          "eventLoopP95MeanMs": 51.741,
+          "dbOperationsMean": 167.333,
+          "requestCountMean": 27,
+          "payloadBytesMean": 377523,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "5": {
+          "repetitions": 3,
+          "p95Ms": 1784.225,
+          "p99Ms": 1784.307,
+          "nodeCpuMeanPct": 56.851,
+          "hostCpuMeanPct": 36.569,
+          "eventLoopP95MeanMs": 62.631,
+          "dbOperationsMean": 275.333,
+          "requestCountMean": 45,
+          "payloadBytesMean": 629205,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "10": {
+          "repetitions": 3,
+          "p95Ms": 2639.073,
+          "p99Ms": 2664.718,
+          "nodeCpuMeanPct": 72.643,
+          "hostCpuMeanPct": 41.586,
+          "eventLoopP95MeanMs": 116.96,
+          "dbOperationsMean": 514.667,
+          "requestCountMean": 90,
+          "payloadBytesMean": 1258410,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        }
+      }
+    },
+    {
+      "level": "C",
+      "members": 10000,
+      "workflows": {
+        "1": {
+          "repetitions": 3,
+          "p95Ms": 2541.251,
+          "p99Ms": 2562.569,
+          "nodeCpuMeanPct": 26.546,
+          "hostCpuMeanPct": 33.039,
+          "eventLoopP95MeanMs": 22.331,
+          "dbOperationsMean": 71,
+          "requestCountMean": 9,
+          "payloadBytesMean": 237787,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "3": {
+          "repetitions": 3,
+          "p95Ms": 2684.329,
+          "p99Ms": 2684.673,
+          "nodeCpuMeanPct": 41.568,
+          "hostCpuMeanPct": 35.782,
+          "eventLoopP95MeanMs": 32.222,
+          "dbOperationsMean": 179,
+          "requestCountMean": 27,
+          "payloadBytesMean": 713361,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "5": {
+          "repetitions": 3,
+          "p95Ms": 3338.808,
+          "p99Ms": 3376.712,
+          "nodeCpuMeanPct": 45.301,
+          "hostCpuMeanPct": 43.601,
+          "eventLoopP95MeanMs": 51.457,
+          "dbOperationsMean": 271.333,
+          "requestCountMean": 45,
+          "payloadBytesMean": 1188935,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "10": {
+          "repetitions": 3,
+          "p95Ms": 4088.012,
+          "p99Ms": 4088.189,
+          "nodeCpuMeanPct": 67.343,
+          "hostCpuMeanPct": 43.049,
+          "eventLoopP95MeanMs": 89.238,
+          "dbOperationsMean": 543.667,
+          "requestCountMean": 90,
+          "payloadBytesMean": 2377870,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        }
+      }
+    },
+    {
+      "level": "D",
+      "members": 50000,
+      "workflows": {
+        "1": {
+          "repetitions": 3,
+          "p95Ms": 11186.444,
+          "p99Ms": 11189.394,
+          "nodeCpuMeanPct": 20.849,
+          "hostCpuMeanPct": 31.925,
+          "eventLoopP95MeanMs": 16.327,
+          "dbOperationsMean": 107,
+          "requestCountMean": 9,
+          "payloadBytesMean": 1138352,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "3": {
+          "repetitions": 3,
+          "p95Ms": 12621.428,
+          "p99Ms": 12670.814,
+          "nodeCpuMeanPct": 30.573,
+          "hostCpuMeanPct": 37.111,
+          "eventLoopP95MeanMs": 16.387,
+          "dbOperationsMean": 258.333,
+          "requestCountMean": 27,
+          "payloadBytesMean": 3415056,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "5": {
+          "repetitions": 3,
+          "p95Ms": 16495.436,
+          "p99Ms": 16809.422,
+          "nodeCpuMeanPct": 44.079,
+          "hostCpuMeanPct": 46.633,
+          "eventLoopP95MeanMs": 17.269,
+          "dbOperationsMean": 403,
+          "requestCountMean": 45,
+          "payloadBytesMean": 5691760,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        },
+        "10": {
+          "repetitions": 3,
+          "p95Ms": 26359.167,
+          "p99Ms": 26618.034,
+          "nodeCpuMeanPct": 54.951,
+          "hostCpuMeanPct": 74.732,
+          "eventLoopP95MeanMs": 22.058,
+          "dbOperationsMean": 781.333,
+          "requestCountMean": 90,
+          "payloadBytesMean": 11383520,
+          "singleFlightVerified": true,
+          "allHttp200": true
+        }
+      }
+    }
+  ]
+}

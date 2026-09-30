@@ -9,7 +9,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { api, errorMessage } from '../api/client';
+import { api, errorMessage, isNetworkError } from '../api/client';
+import { getCache, setCache } from '../services/offlineStorage';
 import { Colors, FontSize, Spacing, Radius } from '../constants/colors';
 
 const ROOT = '__root__';
@@ -52,38 +53,94 @@ export default function OrgTree({ selectedId, disabledId, source, onSelect }) {
 
   const loadBranch = useCallback(async (parent, page = 1) => {
     const key = parent ? parent.id : ROOT;
+    const branchCacheKey = `org_tree_${key}_${scopeKey}_p${page}`;
+
     setBranches((prev) => {
       const next = new Map(prev);
       next.set(key, { ...(next.get(key) || { ids: [], total: 0 }), loading: true });
       return next;
     });
+
+    let list = [];
+    let total = 0;
+
     try {
       const params = parent
         ? { ...scope, parentId: parent.id, parentLevel: parent.level, page, limit: PAGE_SIZE }
         : { ...scope };
       const r = await api.get('/organization/tree', { params });
-      const list = r.data.data.nodes || [];
-      const total = r.data.meta?.total ?? list.length;
-      absorb(list);
-      
-      setBranches((prev) => {
-        const next = new Map(prev);
-        const existing = page > 1 ? (next.get(key)?.ids || []) : [];
-        const seen = new Set(existing);
-        next.set(key, {
-          ids: [...existing, ...list.map((n) => n.id).filter((id) => !seen.has(id))],
-          total, page, loading: false,
-        });
-        return next;
-      });
+      list = r.data.data.nodes || [];
+      total = r.data.meta?.total ?? list.length;
+      await setCache(branchCacheKey, { list, total });
+      setErr('');
     } catch (e) {
-      setErr(errorMessage(e));
-      setBranches((prev) => {
-        const next = new Map(prev);
-        next.set(key, { ...(next.get(key) || { ids: [], total: 0 }), loading: false });
-        return next;
-      });
+      // Offline fallback: check cached branch first
+      const cached = await getCache(branchCacheKey);
+      if (cached?.list?.length) {
+        list = cached.list;
+        total = cached.total || list.length;
+      } else if (!parent) {
+        // Synthesize root nodes from cached provinces
+        const provs = (await getCache('org_provinces')) || [];
+        list = [
+          { id: 'CENTRAL', name: 'PKNAP Central', level: 'CENTRAL', hasChildren: false },
+          ...provs.map((p) => ({
+            id: p._id,
+            name: p.name,
+            level: 'PROVINCE',
+            hasChildren: true,
+          })),
+        ];
+        total = list.length;
+      } else if (parent.level === 'PROVINCE') {
+        const dists = (await getCache(`org_districts_${parent.id}`)) || [];
+        list = dists.map((d) => ({
+          id: d._id,
+          name: d.name,
+          level: 'DISTRICT',
+          parentId: parent.id,
+          hasChildren: true,
+        }));
+        total = list.length;
+      } else if (parent.level === 'DISTRICT') {
+        const areas = (await getCache(`org_areas_${parent.id}`)) || [];
+        list = areas.map((a) => ({
+          id: a._id,
+          name: a.name,
+          level: 'AREA',
+          parentId: parent.id,
+          hasChildren: true,
+        }));
+        total = list.length;
+      } else if (parent.level === 'AREA') {
+        const bus = (await getCache(`org_basic_units_${parent.id}`)) || [];
+        list = bus.map((u) => ({
+          id: u._id,
+          name: u.name,
+          level: 'BASIC_UNIT',
+          parentId: parent.id,
+          hasChildren: false,
+        }));
+        total = list.length;
+      } else if (!isNetworkError(e)) {
+        setErr(errorMessage(e));
+      }
     }
+
+    absorb(list);
+
+    setBranches((prev) => {
+      const next = new Map(prev);
+      const existing = page > 1 ? next.get(key)?.ids || [] : [];
+      const seen = new Set(existing);
+      next.set(key, {
+        ids: [...existing, ...list.map((n) => n.id).filter((id) => !seen.has(id))],
+        total,
+        page,
+        loading: false,
+      });
+      return next;
+    });
   }, [scopeKey]);
 
   useEffect(() => {

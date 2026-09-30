@@ -3,6 +3,8 @@ import { Storage } from '../utils/storage';
 import { api } from '../api/client';
 import { useAuth } from './AuthContext';
 import { LEVEL_ORDER, homeTierOf, homeUnitIdOf } from '../utils/unitTier';
+import { syncUserScopeCache } from '../services/scopeDataCache';
+import { useNetwork } from './NetworkContext';
 
 const UnitContext = createContext(null);
 const STORAGE_KEY = 'pnap_unit_ctx';
@@ -82,6 +84,7 @@ async function resolveUnitName(unitLevel, unitId, userScope) {
 
 export function UnitProvider({ children }) {
   const { user, activeRole } = useAuth();
+  const { isOnline } = useNetwork();
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [areas, setAreas] = useState([]);
@@ -191,7 +194,17 @@ export function UnitProvider({ children }) {
               }
               return;
             }
-          } catch {}
+          } catch {
+            // Offline fallback: check previously stored context for this user and role
+            const stored = await readStored(user._id);
+            if (stored && (!stored.roleCode || stored.roleCode === targetRole)) {
+              if (!isCancelled) {
+                setCtxRaw(stored);
+                setReady(true);
+              }
+              return;
+            }
+          }
         }
       }
 
@@ -244,6 +257,13 @@ export function UnitProvider({ children }) {
       isCancelled = true;
     };
   }, [user?._id, activeRole, user?.roles?.join(','), user?.memberId]);
+
+  // Trigger background pre-caching of relevant scope data
+  useEffect(() => {
+    if (ready && ctx && user?._id && isOnline) {
+      syncUserScopeCache(user, ctx).catch(() => {});
+    }
+  }, [ready, ctx?.unitLevel, ctx?.unitId, user?._id, isOnline]);
 
   async function setCtx(newCtx) {
     if (typeof newCtx === 'function') {

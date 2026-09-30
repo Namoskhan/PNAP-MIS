@@ -1352,7 +1352,6 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
     { header: 'Chair', key: 'c', width: 24 },
     { header: 'Roster', key: 'r', width: 9 },
     { header: 'Present', key: 'pr', width: 9 },
-    { header: 'Late', key: 'la', width: 8 },
     { header: 'Absent', key: 'ab_count', width: 9 },
     { header: 'Attendance %', key: 'ap', width: 13, style: { numFmt: '0%' } },
     { header: 'Supervisor', key: 'sup', width: 11 },
@@ -1366,7 +1365,6 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
   data.meetings.forEach((m) => {
     const att = m.attendance || [];
     const present = att.filter((x) => x.status === 'PRESENT').length;
-    const late = att.filter((x) => x.status === 'LATE').length;
     const absent = att.filter((x) => x.status === 'ABSENT').length;
     const row = {
       d: m.startAt ? new Date(m.startAt) : null,
@@ -1381,9 +1379,8 @@ exports.unitMeetingsXlsx = asyncHandler(async (req, res) => {
       c: m.chairpersonId?.fullName || '',
       r: att.length,
       pr: present,
-      la: late,
       ab_count: absent,
-      ap: att.length ? (present + late) / att.length : null,
+      ap: att.length ? present / att.length : null,
       sup: m.supervisorAttended ? 'Yes' : 'No',
       p: (m.photos || []).length,
       desc: m.description || '',
@@ -1569,7 +1566,6 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
 
     const att = m.attendance || [];
     const present = att.filter((a) => a.status === 'PRESENT').length;
-    const late = att.filter((a) => a.status === 'LATE').length;
     const absent = att.filter((a) => a.status === 'ABSENT').length;
     _metaLines(doc, [
       ['Arranged By', m.arrangedBy || formatUnitArrangedBy(m, { isCommitteeView: body === 'COMMITTEE' })],
@@ -1579,7 +1575,7 @@ exports.unitMeetingsPdf = asyncHandler(async (req, res) => {
       ['Body', m.body],
       ['Supervisor', m.supervisorAttended ? 'Attended' : null],
       ['Attendance', att.length
-        ? `${present} present, ${late} late, ${absent} absent (of ${att.length} on roster)`
+        ? `${present} present, ${absent} absent (of ${att.length} on roster)`
         : null],
     ]);
 
@@ -2042,10 +2038,9 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
   if (to) dateFilter.$lte = new Date(to);
   const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
 
-  const [meetingsTotal, meetingsPresent, meetingsLate, activitiesPart, activitiesLed, donAgg, respPending, respCompleted] = await Promise.all([
+  const [meetingsTotal, meetingsPresent, activitiesPart, activitiesLed, donAgg, respPending, respCompleted] = await Promise.all([
     Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
-    Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'LATE' } }, state: 'FINALIZED', ...startClause }),
     Activity.countDocuments({ participants: m._id, ...startClause }),
     Activity.countDocuments({ leadMemberId: m._id, ...startClause }),
     Donation.aggregate([
@@ -2064,11 +2059,7 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
     || branding?.theme?.light?.primary
     || '#0a3a6e';
 
-  const absent = Math.max(0, meetingsTotal - meetingsPresent - meetingsLate);
-  // "Attended" counts LATE as attendance — arriving late is still
-  // showing up, and the unit dashboard scores it the same way.
-  const attendanceRate = meetingsTotal
-    ? Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100) : null;
+  const absent = Math.max(0, meetingsTotal - meetingsPresent);
   const respTotal = respPending + respCompleted;
   const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
   const donCount = donAgg[0]?.count || 0;
@@ -2096,10 +2087,7 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
 
   // ─── Headline figures ─────────────────────────────────────────────
   drawKpiBand(doc, [
-    { label: 'Attendance Rate',
-      value: attendanceRate === null ? 'n/a' : `${attendanceRate}%`,
-      color: attendanceRate === null ? '#6b7280'
-        : (attendanceRate >= 75 ? '#00a266' : (attendanceRate >= 50 ? '#e65f00' : '#cf2e2e')) },
+    { label: 'Meetings Attended', value: `${meetingsPresent}/${meetingsTotal}` },
     { label: 'Meetings', value: String(meetingsTotal) },
     { label: 'Activities', value: String(activitiesPart + activitiesLed) },
     { label: 'Donations', value: `PKR ${donTotal.toLocaleString()}` },
@@ -2118,15 +2106,12 @@ exports.memberPerformancePdf = asyncHandler(async (req, res) => {
   } else {
     _statBar(doc, [
       { label: 'Present', value: meetingsPresent, color: '#00a266' },
-      { label: 'Late', value: meetingsLate, color: '#e6a700' },
       { label: 'Absent', value: absent, color: '#cf2e2e' },
     ]);
     _kvTable(doc, [
       ['Finalized meetings on roster', meetingsTotal],
       ['Present', meetingsPresent],
-      ['Late', meetingsLate],
       ['Absent', absent],
-      ['Attendance rate (present + late)', `${attendanceRate}%`],
     ], sectionColor, { headers: ['Measure', 'Value'] });
   }
 
@@ -2195,7 +2180,7 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
   const startClause = (Object.keys(dateFilter).length) ? { startAt: dateFilter } : {};
 
   const [
-    meetingsTotal, meetingsPresent, meetingsLate,
+    meetingsTotal, meetingsPresent,
     activitiesPart, activitiesLed,
     donAgg, respPending, respCompleted, respCancelled,
     homeUnit,
@@ -2203,7 +2188,6 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
   ] = await Promise.all([
     Meeting.countDocuments({ 'attendance.memberId': m._id, state: 'FINALIZED', ...startClause }),
     Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'PRESENT' } }, state: 'FINALIZED', ...startClause }),
-    Meeting.countDocuments({ attendance: { $elemMatch: { memberId: m._id, status: 'LATE' } }, state: 'FINALIZED', ...startClause }),
     Activity.countDocuments({ participants: m._id, ...startClause }),
     Activity.countDocuments({ leadMemberId: m._id, ...startClause }),
     Donation.aggregate([
@@ -2219,9 +2203,7 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
     Responsibility.find({ assignedToMemberId: m._id }).sort({ dueDate: -1 }).limit(100).lean(),
   ]);
 
-  const absent = Math.max(0, meetingsTotal - meetingsPresent - meetingsLate);
-  const attendanceRate = meetingsTotal
-    ? Math.round(((meetingsPresent + meetingsLate) / meetingsTotal) * 100) : null;
+  const absent = Math.max(0, meetingsTotal - meetingsPresent);
   const respTotal = respPending + respCompleted + (respCancelled || 0);
   const completionRate = respTotal ? Math.round((respCompleted / respTotal) * 100) : null;
   const donCount = donAgg[0]?.count || 0;
@@ -2263,9 +2245,7 @@ exports.memberPerformanceXlsx = asyncHandler(async (req, res) => {
     ['─── MEETING ATTENDANCE ───', ''],
     ['Meetings on Roster (Finalized)', meetingsTotal],
     ['Meetings Present', meetingsPresent],
-    ['Meetings Late', meetingsLate],
     ['Meetings Absent', absent],
-    ['Attendance Rate', attendanceRate !== null ? `${attendanceRate}%` : 'N/A'],
     ['', ''],
     ['─── FIELD ACTIVITIES ───', ''],
     ['Activities Participated', activitiesPart],
@@ -2460,10 +2440,9 @@ exports.meetingPdf = asyncHandler(async (req, res) => {
   const att = m.attendance || [];
   if (att.length > 0) {
     const present = att.filter((a) => a.status === 'PRESENT').length;
-    const late = att.filter((a) => a.status === 'LATE').length;
     const absent = att.filter((a) => a.status === 'ABSENT').length;
     doc.font('Helvetica-Bold').fontSize(11).fillColor(sectionColor)
-      .text(`Attendance (${present} present · ${late} late · ${absent} absent · ${att.length} on roster)`);
+      .text(`Attendance (${present} present · ${absent} absent · ${att.length} on roster)`);
     doc.moveDown(0.2);
     doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
     att.forEach((a) => {

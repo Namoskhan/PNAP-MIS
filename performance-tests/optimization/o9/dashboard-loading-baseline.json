@@ -1,0 +1,26 @@
+{
+  "primaryUsableMs": 5102.921699999999,
+  "fullCompletionMs": 5102.921699999999,
+  "runs": [
+    {
+      "primaryUsableMs": 9798.176500000001,
+      "fullCompletionMs": 9798.176500000001
+    },
+    {
+      "primaryUsableMs": 5188.979300000003,
+      "fullCompletionMs": 5188.979300000003
+    },
+    {
+      "primaryUsableMs": 5102.921699999999,
+      "fullCompletionMs": 5102.921699999999
+    },
+    {
+      "primaryUsableMs": 4002.832699999999,
+      "fullCompletionMs": 4002.832699999999
+    },
+    {
+      "primaryUsableMs": 3463.321799999998,
+      "fullCompletionMs": 3463.321799999998
+    }
+  ]
+}

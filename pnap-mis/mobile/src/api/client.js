@@ -62,36 +62,77 @@ export const api = axios.create({
 
 api.getToken = () => Storage.getItem('pnap_token');
 
-// Attach JWT token from Storage on every request.
+let unauthorizedHandler = null;
+let isAppOnline = true;
+
+export function setNetworkOnlineState(online) {
+  isAppOnline = Boolean(online);
+}
+
+export function getNetworkOnlineState() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  return isAppOnline;
+}
+
+export function setUnauthorizedHandler(fn) {
+  unauthorizedHandler = fn;
+}
+
+// Attach JWT token and session hints from Storage on every request.
 api.interceptors.request.use(async (config) => {
+  // If explicitly offline and request is not marked to skip offline check:
+  if (!getNetworkOnlineState() && !config.skipOfflineCheck) {
+    const offlineErr = new Error('Device is offline');
+    offlineErr.isOffline = true;
+    offlineErr.code = 'ERR_INTERNET_DISCONNECTED';
+    return Promise.reject(offlineErr);
+  }
+
   try {
-    const [token, activeRole] = await Promise.all([
+    const [token, activeRole, rememberMe] = await Promise.all([
       Storage.getItem('pnap_token'),
       config.url?.startsWith('/dashboard/')
         ? Storage.getItem('pnap_active_role')
         : Promise.resolve(null),
+      Storage.getItem('pnap_remember_me'),
     ]);
     if (token) config.headers.Authorization = `Bearer ${token}`;
     if (activeRole) config.headers['X-Dashboard-Role'] = activeRole;
+    if (rememberMe === 'true') config.headers['X-Keep-Logged-In'] = 'true';
   } catch {
     // Silently skip if storage fails
   }
   return config;
 });
 
-// Global 401 handler — clear stored credentials and let the AuthContext
-// detect the missing token and redirect to login.
+// Response interceptor:
+// 1. Sliding window renewal: capture renewed JWT if server issued X-Refreshed-Token
+// 2. Global 401 handler: clear stored credentials and notify AuthContext
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    try {
+      const refreshed = res.headers?.['x-refreshed-token'] || res.headers?.['X-Refreshed-Token'];
+      if (refreshed) {
+        Storage.setItem('pnap_token', refreshed).catch(() => {});
+      }
+    } catch {}
+    return res;
+  },
   async (err) => {
     if (err.response?.status === 401) {
       try {
-        await Storage.removeItem('pnap_token');
-        await Storage.removeItem('pnap_user');
-        await Storage.removeItem('pnap_active_role');
-        await Storage.removeItem('pnap_unit_ctx');
+        await Promise.all([
+          Storage.removeItem('pnap_token'),
+          Storage.removeItem('pnap_user'),
+          Storage.removeItem('pnap_active_role'),
+          Storage.removeItem('pnap_unit_ctx'),
+          Storage.removeItem('pnap_session_expiry'),
+        ]);
       } catch {
         // ignore
+      }
+      if (typeof unauthorizedHandler === 'function') {
+        unauthorizedHandler();
       }
     }
     return Promise.reject(err);
@@ -103,8 +144,24 @@ export function unwrap(promise) {
   return promise.then((res) => res.data?.data);
 }
 
+// Checks if an error is network-related (offline / disconnected / server down)
+export function isNetworkError(err) {
+  if (!err) return false;
+  if (err.isOffline || err.code === 'ERR_INTERNET_DISCONNECTED' || err.message === 'OFFLINE_MODE' || err.message === 'Device is offline') return true;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  if (!err.response && (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || err.message === 'Network Error')) return true;
+  if (!err.response && (err.isAxiosError || String(err).includes('Network Error') || String(err).includes('ERR_INTERNET_DISCONNECTED'))) return true;
+  return false;
+}
+
 // Extracts a user-facing error message from an axios error.
 export function errorMessage(err) {
+  if (isNetworkError(err)) {
+    return 'Device is offline. Using local cache.';
+  }
+  if (err?.response?.status === 429) {
+    return 'Server busy (too many requests). Please wait a moment.';
+  }
   const errObj = err?.response?.data?.error;
   if (!errObj) return err?.message || 'Something went wrong.';
   if (errObj.details?.fieldErrors) {
