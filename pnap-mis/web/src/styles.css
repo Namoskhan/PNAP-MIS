@@ -2265,6 +2265,11 @@ html { scroll-behavior: smooth; }
   background: rgba(30, 64, 175, 0.08);
   padding: 3px 8px; border-radius: var(--radius-pill);
 }
+[dir="rtl"] .ann-pin-badge,
+body[dir="rtl"] .ann-pin-badge {
+  right: auto;
+  left: 14px;
+}
 .ann-card-head h3 { margin: 0 0 6px; font-size: 16px; }
 .ann-card-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .ann-body { white-space: pre-wrap; font-size: 14px; line-height: 1.55; margin: 8px 0 12px; color: var(--text); }
