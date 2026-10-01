@@ -29,32 +29,34 @@ import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { shortDate, formatCnic } from '../../../src/utils/formatters';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { useToast } from '../../../src/components/Toast';
 import { isSuperAdmin, isHigherAdmin, isAreaAdmin } from '../../../src/utils/permissions';
 import { Ionicons } from '@expo/vector-icons';
 
-const GENDERS = [
-  { label: 'Male', value: 'MALE' },
-  { label: 'Female', value: 'FEMALE' },
-  { label: 'Prefer not to say', value: 'PREFER_NOT_TO_SAY' },
-];
-
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-function Row({ label, value }) {
+function Row({ label, value, isRTL }) {
   if (!value) return null;
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+    <View style={[styles.infoRow, isRTL && { flexDirection: 'row-reverse' }]}>
+      <Text style={[styles.infoLabel, isRTL && { textAlign: 'right' }]}>{label}</Text>
+      <Text style={[styles.infoValue, isRTL && { textAlign: 'left' }]}>{value}</Text>
     </View>
   );
 }
 
 export default function MemberDetailScreen() {
+  const { t, isRTL } = useLanguage();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
   const toast = useToast();
+
+  const GENDERS = [
+    { label: t('members.male', 'Male'), value: 'MALE' },
+    { label: t('members.female', 'Female'), value: 'FEMALE' },
+    { label: t('members.preferNotToSay', 'Prefer not to say'), value: 'PREFER_NOT_TO_SAY' },
+  ];
 
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -351,7 +353,7 @@ export default function MemberDetailScreen() {
   }
 
   if (error || !member) {
-    return <EmptyState icon="❌" title="Member not found" subtitle={error} />;
+    return <EmptyState icon="❌" title={t('members.memberNotFound', 'Member not found')} subtitle={error} />;
   }
 
   const m = member;
@@ -363,43 +365,43 @@ export default function MemberDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Profile Header */}
         <Card style={styles.profileCard}>
-          <View style={styles.profileHeader}>
+          <View style={[styles.profileHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Avatar name={m.fullName} photoUrl={m.photoUrl} size={72} />
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{m.fullName}</Text>
+            <View style={[styles.profileInfo, isRTL && { alignItems: 'flex-end' }]}>
+              <Text style={[styles.profileName, isRTL && { textAlign: 'right' }]}>{m.fullName}</Text>
               {m.memberId ? (
-                <Text style={styles.profileId}>ID: {m.memberId}</Text>
+                <Text style={[styles.profileId, isRTL && { textAlign: 'right' }]}>{t('members.memberId', 'ID')}: {m.memberId}</Text>
               ) : (
-                <Text style={styles.profileId}>ID: (Issued upon approval)</Text>
+                <Text style={[styles.profileId, isRTL && { textAlign: 'right' }]}>{t('members.issuedUponApproval', 'ID: (Issued upon approval)')}</Text>
               )}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6, marginTop: 4 }]}>
                 <Badge label={m.status?.replace(/_/g, ' ') || '—'} status={m.status} />
                 {m.bloodGroup && (
-                  <Badge label={`Blood: ${m.bloodGroup}`} color="#b91c1c" bg="#fef2f2" />
+                  <Badge label={`${t('members.blood', 'Blood:')} ${m.bloodGroup}`} color="#b91c1c" bg="#fef2f2" />
                 )}
               </View>
             </View>
           </View>
 
           {/* Action Row: Edit Profile */}
-          <View style={styles.headerButtonsRow}>
+          <View style={[styles.headerButtonsRow, isRTL && { flexDirection: 'row-reverse' }]}>
             {canEdit && (
-              <TouchableOpacity style={styles.editBtn} onPress={openEditModal}>
+              <TouchableOpacity style={[styles.editBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={openEditModal}>
                 <Ionicons name="create-outline" size={16} color={Colors.primary} />
-                <Text style={styles.editBtnText}>Edit Profile</Text>
+                <Text style={styles.editBtnText}>{t('members.editProfile', 'Edit Profile')}</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Pending Approval Decisions */}
           {isPending && canDecide && (
-            <View style={styles.approvalActions}>
+            <View style={[styles.approvalActions, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.approveBtn]}
                 onPress={handleApprove}
                 disabled={busy}
               >
-                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.approveText}>Approve Member</Text>}
+                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.approveText}>{t('members.approveMember', 'Approve Member')}</Text>}
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.rejectBtn]}
@@ -410,7 +412,7 @@ export default function MemberDetailScreen() {
                 }}
                 disabled={busy}
               >
-                <Text style={styles.rejectText}>Reject Application</Text>
+                <Text style={styles.rejectText}>{t('members.rejectApplication', 'Reject Application')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -418,44 +420,44 @@ export default function MemberDetailScreen() {
           {/* Status Reasons */}
           {m.statusReason && (
             <View style={[styles.reasonBox, m.status === 'REJECTED' ? styles.rejectReasonBox : styles.expelledReasonBox]}>
-              <Text style={styles.reasonTitle}>
-                {m.status === 'REJECTED' ? 'Rejection Reason:' : 'Status Note:'}
+              <Text style={[styles.reasonTitle, isRTL && { textAlign: 'right' }]}>
+                {m.status === 'REJECTED' ? t('members.rejectionReasonColon', 'Rejection Reason:') : t('members.statusNoteColon', 'Status Note:')}
               </Text>
-              <Text style={styles.reasonText}>{m.statusReason}</Text>
+              <Text style={[styles.reasonText, isRTL && { textAlign: 'right' }]}>{m.statusReason}</Text>
             </View>
           )}
         </Card>
 
         {/* Personal Info */}
         <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <Row label="Full Name" value={m.fullName} />
-          <Row label="Father / Husband" value={m.fatherOrHusbandName || m.fatherName} />
-          <Row label="CNIC" value={m.cnic ? formatCnic(m.cnic) : undefined} />
-          <Row label="Phone" value={m.phone} />
-          <Row label="Email" value={m.email} />
-          <Row label="Date of Birth" value={m.dateOfBirth ? shortDate(m.dateOfBirth) : (m.dob ? shortDate(m.dob) : undefined)} />
-          <Row label="Gender" value={m.gender} />
-          <Row label="Blood Group" value={m.bloodGroup} />
-          <Row label="Address" value={m.address} />
+          <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('members.personalDetails', 'Personal Information')}</Text>
+          <Row label={t('members.fullName', 'Full Name')} value={m.fullName} isRTL={isRTL} />
+          <Row label={t('members.fatherHusbandName', 'Father / Husband')} value={m.fatherOrHusbandName || m.fatherName} isRTL={isRTL} />
+          <Row label={t('members.cnic', 'CNIC')} value={m.cnic ? formatCnic(m.cnic) : undefined} isRTL={isRTL} />
+          <Row label={t('members.phone', 'Phone')} value={m.phone} isRTL={isRTL} />
+          <Row label={t('members.email', 'Email')} value={m.email} isRTL={isRTL} />
+          <Row label={t('members.dateOfBirth', 'Date of Birth')} value={m.dateOfBirth ? shortDate(m.dateOfBirth) : (m.dob ? shortDate(m.dob) : undefined)} isRTL={isRTL} />
+          <Row label={t('members.gender', 'Gender')} value={m.gender} isRTL={isRTL} />
+          <Row label={t('members.bloodGroup', 'Blood Group')} value={m.bloodGroup} isRTL={isRTL} />
+          <Row label={t('members.address', 'Address')} value={m.address} isRTL={isRTL} />
         </Card>
 
         {/* Unit Info */}
         <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Unit Hierarchy</Text>
-          <Row label="Basic Unit" value={m.basicUnitId?.name || (typeof m.basicUnitId === 'string' ? m.basicUnitId : undefined)} />
-          <Row label="Area" value={m.areaId?.name || (typeof m.areaId === 'string' ? m.areaId : undefined)} />
-          <Row label="District" value={m.districtId?.name || (typeof m.districtId === 'string' ? m.districtId : undefined)} />
-          <Row label="Province" value={m.provinceId?.name || (typeof m.provinceId === 'string' ? m.provinceId : undefined)} />
-          <Row label="Registered" value={m.createdAt ? shortDate(m.createdAt) : undefined} />
-          <Row label="Joined Date" value={m.joinedAt || m.dateJoined ? shortDate(m.joinedAt || m.dateJoined) : undefined} />
+          <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('members.unitHierarchy', 'Unit Hierarchy')}</Text>
+          <Row label={t('common.basicUnit', 'Basic Unit')} value={m.basicUnitId?.name || (typeof m.basicUnitId === 'string' ? m.basicUnitId : undefined)} isRTL={isRTL} />
+          <Row label={t('common.area', 'Area')} value={m.areaId?.name || (typeof m.areaId === 'string' ? m.areaId : undefined)} isRTL={isRTL} />
+          <Row label={t('common.district', 'District')} value={m.districtId?.name || (typeof m.districtId === 'string' ? m.districtId : undefined)} isRTL={isRTL} />
+          <Row label={t('common.province', 'Province')} value={m.provinceId?.name || (typeof m.provinceId === 'string' ? m.provinceId : undefined)} isRTL={isRTL} />
+          <Row label={t('members.registered', 'Registered')} value={m.createdAt ? shortDate(m.createdAt) : undefined} isRTL={isRTL} />
+          <Row label={t('members.dateJoined', 'Joined Date')} value={m.joinedAt || m.dateJoined ? shortDate(m.joinedAt || m.dateJoined) : undefined} isRTL={isRTL} />
         </Card>
 
         {/* Roles */}
         {m.roles?.length > 0 && (
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Assigned Roles</Text>
-            <View style={styles.rolePills}>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('members.assignedRoles', 'Assigned Roles')}</Text>
+            <View style={[styles.rolePills, isRTL && { flexDirection: 'row-reverse' }]}>
               {m.roles.map((r, i) => (
                 <Badge key={i} label={r.replace(/_/g, ' ')} color={Colors.primary} bg="#eff6ff" />
               ))}
@@ -466,26 +468,26 @@ export default function MemberDetailScreen() {
         {/* Background / Education / Occupation */}
         {(m.education || m.occupation) && (
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Background & Professional</Text>
-            <Row label="Education" value={m.education} />
-            <Row label="Occupation" value={m.occupation} />
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('members.backgroundProfessional', 'Background & Professional')}</Text>
+            <Row label={t('members.education', 'Education')} value={m.education} isRTL={isRTL} />
+            <Row label={t('members.occupation', 'Occupation')} value={m.occupation} isRTL={isRTL} />
           </Card>
         )}
 
         {/* Super Admin Privileged Tools */}
         {isSuper && (
           <Card style={[styles.sectionCard, styles.superCard]}>
-            <View style={styles.superHeader}>
+            <View style={[styles.superHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="shield-outline" size={20} color={Colors.error} />
-              <Text style={styles.superTitle}>Super Admin Controls</Text>
+              <Text style={styles.superTitle}>{t('admin.superAdminControls', 'Super Admin Controls')}</Text>
             </View>
-            <Text style={styles.superSub}>
-              Privileged actions with audit logging.
+            <Text style={[styles.superSub, isRTL && { textAlign: 'right' }]}>
+              {t('admin.superAdminAuditDesc', 'Privileged actions with audit logging.')}
             </Text>
 
-            <View style={styles.superButtonsRow}>
+            <View style={[styles.superButtonsRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
-                style={styles.resetPwBtn}
+                style={[styles.resetPwBtn, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => {
                   setNewPassword('');
                   setResetPwErr('');
@@ -494,12 +496,12 @@ export default function MemberDetailScreen() {
                 disabled={busy}
               >
                 <Ionicons name="key-outline" size={16} color={Colors.text} />
-                <Text style={styles.resetPwBtnText}>Reset Password</Text>
+                <Text style={styles.resetPwBtnText}>{t('admin.resetPassword', 'Reset Password')}</Text>
               </TouchableOpacity>
 
               {!isExpelled && (
                 <TouchableOpacity
-                  style={styles.removeMemberBtn}
+                  style={[styles.removeMemberBtn, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setRemoveReason('');
                     setRemoveErr('');
@@ -508,7 +510,7 @@ export default function MemberDetailScreen() {
                   disabled={busy}
                 >
                   <Ionicons name="trash-outline" size={16} color={Colors.error} />
-                  <Text style={styles.removeMemberBtnText}>Remove Member</Text>
+                  <Text style={styles.removeMemberBtnText}>{t('admin.removeMember', 'Remove Member')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -520,8 +522,8 @@ export default function MemberDetailScreen() {
       <Modal visible={showEdit} animationType="slide" transparent>
         <SafeAreaView style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.modalTitle}>{t('members.editProfile', 'Edit Profile')}</Text>
               <TouchableOpacity onPress={() => !busy && setShowEdit(false)} disabled={busy}>
                 <Ionicons name="close" size={24} color={Colors.text} />
               </TouchableOpacity>
@@ -529,39 +531,39 @@ export default function MemberDetailScreen() {
 
             <ScrollView contentContainerStyle={styles.modalBody}>
               {editErr ? (
-                <View style={styles.errorBanner}>
-                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 6 }} />
-                  <Text style={styles.errorText}>{editErr}</Text>
+                <View style={[styles.errorBanner, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginHorizontal: 6 }} />
+                  <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{editErr}</Text>
                 </View>
               ) : null}
 
-              <Text style={styles.lockedNote}>
-                Note: Locked identity fields (Full Name, Father Name, CNIC, and Basic Unit) cannot be edited directly.
+              <Text style={[styles.lockedNote, isRTL && { textAlign: 'right' }]}>
+                {t('members.lockedIdentityNote', 'Note: Locked identity fields (Full Name, Father Name, CNIC, and Basic Unit) cannot be edited directly.')}
               </Text>
 
               {/* Photo Upload Section */}
-              <View style={styles.photoUploadRow}>
+              <View style={[styles.photoUploadRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 {editPhoto ? (
                   <Image source={{ uri: editPhoto.uri }} style={styles.editAvatarPreview} />
                 ) : (
                   <Avatar name={member?.fullName || 'M'} photoUrl={member?.photoUrl} size={68} />
                 )}
-                <View style={{ flex: 1, marginLeft: Spacing.md }}>
-                  <Text style={styles.photoHeading}>Profile Picture</Text>
-                  <Text style={styles.photoSub}>Square photo recommended (max 5 MB)</Text>
-                  <TouchableOpacity style={styles.pickPhotoBtn} onPress={pickEditPhoto}>
-                    <Ionicons name="camera-outline" size={16} color={Colors.primary} style={{ marginRight: 5 }} />
+                <View style={{ flex: 1, marginHorizontal: Spacing.md }}>
+                  <Text style={[styles.photoHeading, isRTL && { textAlign: 'right' }]}>{t('members.profilePicture', 'Profile Picture')}</Text>
+                  <Text style={[styles.photoSub, isRTL && { textAlign: 'right' }]}>{t('members.photoSub', 'Square photo recommended (max 5 MB)')}</Text>
+                  <TouchableOpacity style={[styles.pickPhotoBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={pickEditPhoto}>
+                    <Ionicons name="camera-outline" size={16} color={Colors.primary} style={{ marginHorizontal: 5 }} />
                     <Text style={styles.pickPhotoBtnText}>
-                      {editPhoto || member?.photoUrl ? 'Change Photo' : 'Upload Photo'}
+                      {editPhoto || member?.photoUrl ? t('members.changePhoto', 'Change Photo') : t('members.uploadPhoto', 'Upload Photo')}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Phone Number *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('common.phone', 'Phone Number')} *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={editForm.phone}
                   onChangeText={(v) => setEditForm((f) => ({ ...f, phone: v }))}
                   placeholder="03XX-XXXXXXX"
@@ -571,9 +573,9 @@ export default function MemberDetailScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Email Address *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('common.email', 'Email Address')} *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={editForm.email}
                   onChangeText={(v) => setEditForm((f) => ({ ...f, email: v }))}
                   placeholder="member@example.com"
@@ -584,16 +586,16 @@ export default function MemberDetailScreen() {
               </View>
 
               <DatePicker
-                label="Date of Birth"
+                label={t('members.dob', 'Date of Birth')}
                 value={editForm.dateOfBirth}
                 onChange={(v) => setEditForm((f) => ({ ...f, dateOfBirth: v }))}
-                placeholder="Select birth date"
+                placeholder={t('members.selectBirthDate', 'Select birth date')}
                 maxDate={new Date().toISOString().split('T')[0]}
               />
 
               <View style={styles.field}>
-                <Text style={styles.label}>Gender</Text>
-                <View style={styles.chipRow}>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.gender', 'Gender')}</Text>
+                <View style={[styles.chipRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   {GENDERS.map((g) => (
                     <TouchableOpacity
                       key={g.value}
@@ -601,7 +603,7 @@ export default function MemberDetailScreen() {
                       onPress={() => setEditForm((f) => ({ ...f, gender: g.value }))}
                     >
                       <Text style={[styles.chipText, editForm.gender === g.value && styles.chipTextActive]}>
-                        {g.label}
+                        {t(`gender.${g.value}`, g.label)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -609,7 +611,7 @@ export default function MemberDetailScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Blood Group</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.bloodGroup', 'Blood Group')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                   {BLOOD_GROUPS.map((bg) => (
                     <TouchableOpacity
@@ -626,12 +628,12 @@ export default function MemberDetailScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Residential Address *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.residentialAddress', 'Residential Address')} *</Text>
                 <TextInput
-                  style={[styles.input, styles.multiline]}
+                  style={[styles.input, styles.multiline, isRTL && { textAlign: 'right' }]}
                   value={editForm.address}
                   onChangeText={(v) => setEditForm((f) => ({ ...f, address: v }))}
-                  placeholder="Street address, city/village"
+                  placeholder={t('members.addressPlaceholder', 'Street address, city/village')}
                   placeholderTextColor={Colors.textMuted}
                   multiline
                   numberOfLines={2}
@@ -639,42 +641,42 @@ export default function MemberDetailScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Education</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.education', 'Education')}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={editForm.education}
                   onChangeText={(v) => setEditForm((f) => ({ ...f, education: v }))}
-                  placeholder="e.g. Master's in Political Science"
+                  placeholder={t('members.educationPlaceholder', "e.g. Master's in Political Science")}
                   placeholderTextColor={Colors.textMuted}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Occupation</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.occupation', 'Occupation')}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={editForm.occupation}
                   onChangeText={(v) => setEditForm((f) => ({ ...f, occupation: v }))}
-                  placeholder="e.g. Teacher, Advocate, Business"
+                  placeholder={t('members.occupationPlaceholder', 'e.g. Teacher, Advocate, Business')}
                   placeholderTextColor={Colors.textMuted}
                 />
               </View>
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
                 onPress={() => setShowEdit(false)}
                 disabled={busy}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSaveBtn, busy && { opacity: 0.7 }]}
                 onPress={handleSaveEdit}
                 disabled={busy}
               >
-                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalSaveText}>Save Changes</Text>}
+                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalSaveText}>{t('common.saveChanges', 'Save Changes')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -685,41 +687,41 @@ export default function MemberDetailScreen() {
       <Modal visible={showReject} animationType="fade" transparent>
         <SafeAreaView style={styles.promptOverlay}>
           <View style={styles.promptCard}>
-            <Text style={styles.promptTitle}>Reject Member Application</Text>
-            <Text style={styles.promptSub}>
-              Please state the reason for rejecting {member?.fullName}'s application:
+            <Text style={[styles.promptTitle, isRTL && { textAlign: 'right' }]}>{t('members.rejectMemberApplication', 'Reject Member Application')}</Text>
+            <Text style={[styles.promptSub, isRTL && { textAlign: 'right' }]}>
+              {t('members.rejectPrompt', 'Please state the reason for rejecting {{name}}\'s application:', { name: member?.fullName })}
             </Text>
 
             {rejectErr ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{rejectErr}</Text>
+              <View style={[styles.errorBanner, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{rejectErr}</Text>
               </View>
             ) : null}
 
             <TextInput
-              style={[styles.input, styles.multiline, { marginTop: Spacing.sm }]}
+              style={[styles.input, styles.multiline, { marginTop: Spacing.sm }, isRTL && { textAlign: 'right' }]}
               value={rejectReason}
               onChangeText={setRejectReason}
-              placeholder="e.g. Incomplete documentation, outside jurisdiction..."
+              placeholder={t('members.rejectReasonPlaceholder', 'e.g. Incomplete documentation, outside jurisdiction...')}
               placeholderTextColor={Colors.textMuted}
               multiline
               numberOfLines={3}
             />
 
-            <View style={styles.promptFooter}>
+            <View style={[styles.promptFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.promptCancelBtn}
                 onPress={() => setShowReject(false)}
                 disabled={busy}
               >
-                <Text style={styles.promptCancelText}>Cancel</Text>
+                <Text style={styles.promptCancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.promptDangerBtn, busy && { opacity: 0.7 }]}
                 onPress={handleRejectSubmit}
                 disabled={busy}
               >
-                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.promptDangerText}>Confirm Reject</Text>}
+                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.promptDangerText}>{t('members.confirmReject', 'Confirm Reject')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -730,41 +732,41 @@ export default function MemberDetailScreen() {
       <Modal visible={showResetPw} animationType="fade" transparent>
         <SafeAreaView style={styles.promptOverlay}>
           <View style={styles.promptCard}>
-            <Text style={styles.promptTitle}>Reset Login Password</Text>
-            <Text style={styles.promptSub}>
-              Set a new login password for {member?.fullName}:
+            <Text style={[styles.promptTitle, isRTL && { textAlign: 'right' }]}>{t('members.resetLoginPassword', 'Reset Login Password')}</Text>
+            <Text style={[styles.promptSub, isRTL && { textAlign: 'right' }]}>
+              {t('members.resetPwPrompt', 'Set a new login password for {{name}}:', { name: member?.fullName })}
             </Text>
 
             {resetPwErr ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{resetPwErr}</Text>
+              <View style={[styles.errorBanner, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{resetPwErr}</Text>
               </View>
             ) : null}
 
             <TextInput
-              style={[styles.input, { marginTop: Spacing.sm }]}
+              style={[styles.input, { marginTop: Spacing.sm }, isRTL && { textAlign: 'right' }]}
               value={newPassword}
               onChangeText={setNewPassword}
-              placeholder="Minimum 6 characters"
+              placeholder={t('auth.min6Chars', 'Minimum 6 characters')}
               placeholderTextColor={Colors.textMuted}
               secureTextEntry
               autoCapitalize="none"
             />
 
-            <View style={styles.promptFooter}>
+            <View style={[styles.promptFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.promptCancelBtn}
                 onPress={() => setShowResetPw(false)}
                 disabled={busy}
               >
-                <Text style={styles.promptCancelText}>Cancel</Text>
+                <Text style={styles.promptCancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.promptPrimaryBtn, busy && { opacity: 0.7 }]}
                 onPress={handleResetPassword}
                 disabled={busy}
               >
-                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.promptPrimaryText}>Update Password</Text>}
+                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.promptPrimaryText}>{t('members.updatePassword', 'Update Password')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -775,41 +777,41 @@ export default function MemberDetailScreen() {
       <Modal visible={showRemove} animationType="fade" transparent>
         <SafeAreaView style={styles.promptOverlay}>
           <View style={styles.promptCard}>
-            <Text style={[styles.promptTitle, { color: Colors.error }]}>Remove Member Account</Text>
-            <Text style={styles.promptSub}>
-              This will mark {member?.fullName} as EXPELLED, terminate all cabinet & responsibility roles, and deactivate login credentials.
+            <Text style={[styles.promptTitle, { color: Colors.error }, isRTL && { textAlign: 'right' }]}>{t('members.removeMemberAccount', 'Remove Member Account')}</Text>
+            <Text style={[styles.promptSub, isRTL && { textAlign: 'right' }]}>
+              {t('members.removeWarning', 'This will mark {{name}} as EXPELLED, terminate all cabinet & responsibility roles, and deactivate login credentials.', { name: member?.fullName })}
             </Text>
 
             {removeErr ? (
-              <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{removeErr}</Text>
+              <View style={[styles.errorBanner, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{removeErr}</Text>
               </View>
             ) : null}
 
             <TextInput
-              style={[styles.input, styles.multiline, { marginTop: Spacing.sm }]}
+              style={[styles.input, styles.multiline, { marginTop: Spacing.sm }, isRTL && { textAlign: 'right' }]}
               value={removeReason}
               onChangeText={setRemoveReason}
-              placeholder="Reason for removal..."
+              placeholder={t('members.removeReasonPlaceholder', 'Reason for removal...')}
               placeholderTextColor={Colors.textMuted}
               multiline
               numberOfLines={3}
             />
 
-            <View style={styles.promptFooter}>
+            <View style={[styles.promptFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.promptCancelBtn}
                 onPress={() => setShowRemove(false)}
                 disabled={busy}
               >
-                <Text style={styles.promptCancelText}>Cancel</Text>
+                <Text style={styles.promptCancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.promptDangerBtn, busy && { opacity: 0.7 }]}
                 onPress={handleRemoveMember}
                 disabled={busy}
               >
-                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.promptDangerText}>Confirm Removal</Text>}
+                {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.promptDangerText}>{t('members.confirmRemoval', 'Confirm Removal')}</Text>}
               </TouchableOpacity>
             </View>
           </View>

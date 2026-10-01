@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useToast } from '../../../src/components/Toast';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { useNetwork } from '../../../src/context/NetworkContext';
 import {
   getCache,
@@ -74,6 +75,7 @@ const INITIAL_FORM = {
 
 export default function MembersScreen() {
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const toast = useToast();
   const { status: initialStatus } = useLocalSearchParams();
   const [items, setItems] = useState([]);
@@ -83,6 +85,21 @@ export default function MembersScreen() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const statusFilters = useMemo(() => [
+    { label: t('common.all', 'All'), value: '' },
+    { label: t('members.pendingApproval', 'Pending'), value: 'PENDING_APPROVAL' },
+    { label: t('common.active', 'Active'), value: 'ACTIVE' },
+    { label: t('common.rejected', 'Rejected'), value: 'REJECTED' },
+    { label: t('common.inactive', 'Inactive'), value: 'INACTIVE' },
+    { label: t('members.suspended', 'Suspended'), value: 'SUSPENDED' },
+  ], [t]);
+
+  const genders = useMemo(() => [
+    { label: t('members.male', 'Male'), value: 'MALE' },
+    { label: t('members.female', 'Female'), value: 'FEMALE' },
+    { label: t('members.preferNotToSay', 'Prefer not to say'), value: 'PREFER_NOT_TO_SAY' },
+  ], [t]);
 
   // Register Modal state
   const [showCreate, setShowCreate] = useState(false);
@@ -461,7 +478,7 @@ export default function MembersScreen() {
           localRecord: offlineRecord,
         });
 
-        toast.success('Offline: Member saved locally. Will sync when online!');
+        toast.success(t('members.offlineSaved', 'Offline: Member saved locally. Will sync when online!'));
         setShowCreate(false);
         load(1, true);
       } else {
@@ -473,8 +490,8 @@ export default function MembersScreen() {
   }
 
   const pageTitle = isCentral
-    ? 'Province Members'
-    : (isHigherAdmin ? 'Members' : (user?.scope?.areaId ? 'Members in your area' : 'Members'));
+    ? t('members.provinceMembers', 'Province Members')
+    : (isHigherAdmin ? t('members.title', 'Members') : (user?.scope?.areaId ? t('members.membersInArea', 'Members in your area') : t('members.title', 'Members')));
 
   const showRegisterButton = canRegisterMember(user);
 
@@ -486,45 +503,45 @@ export default function MembersScreen() {
 
     return (
       <Card style={styles.card}>
-        <View style={styles.cardHeader}>
+        <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
           <Avatar name={m.fullName} photoUrl={m.photoUrl} size={42} />
-          <View style={styles.cardHeaderInfo}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{m.fullName}</Text>
+          <View style={[styles.cardHeaderInfo, isRTL && { marginRight: Spacing.md, marginLeft: 0 }]}>
+            <View style={[styles.nameRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.name, isRTL && { textAlign: 'right' }]}>{m.fullName}</Text>
               {m.memberId ? (
                 <View style={styles.idPill}>
                   <Text style={styles.idText}>ID: {m.memberId}</Text>
                 </View>
               ) : null}
             </View>
-            <Text style={styles.cnicText}>{formatCnic(m.cnic)}</Text>
+            <Text style={[styles.cnicText, isRTL && { textAlign: 'right' }]}>{formatCnic(m.cnic)}</Text>
           </View>
           {m._isOffline ? (
-            <Badge label="OFFLINE (PENDING)" color="#D97706" bg="#FEF3C7" />
+            <Badge label={t('members.offlinePending', 'OFFLINE (PENDING)')} color="#D97706" bg="#FEF3C7" />
           ) : (
             <Badge label={m.status?.replace(/_/g, ' ') || '—'} status={m.status} />
           )}
         </View>
 
-        <View style={styles.cardFooter}>
-          <View style={styles.locationBox}>
-            <Ionicons name="location-outline" size={13} color={Colors.textMuted} style={{ marginRight: 3 }} />
+        <View style={[styles.cardFooter, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.locationBox, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Ionicons name="location-outline" size={13} color={Colors.textMuted} style={isRTL ? { marginLeft: 3 } : { marginRight: 3 }} />
             <Text style={styles.locationText} numberOfLines={1}>
               {locationParts.length ? locationParts.join(' · ') : '—'}
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.viewLink}
+            style={[styles.viewLink, isRTL && { flexDirection: 'row-reverse' }]}
             onPress={() => {
               if (m._isOffline) {
-                toast.info('This member registration is stored locally and will sync once connected.');
+                toast.info(t('members.offlineNotice', 'This member registration is stored locally and will sync once connected.'));
                 return;
               }
               router.push(`/members/${m._id}`);
             }}
           >
-            <Text style={styles.viewLinkText}>View</Text>
-            <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+            <Text style={styles.viewLinkText}>{t('common.view', 'View')}</Text>
+            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={14} color={Colors.primary} />
           </TouchableOpacity>
         </View>
       </Card>
@@ -534,30 +551,30 @@ export default function MembersScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Search and Action Bar */}
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>{pageTitle}</Text>
-          <Text style={styles.headerSub}>
-            {meta.total ? `${meta.total} registered members` : 'Manage and search members'}
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>{pageTitle}</Text>
+          <Text style={[styles.headerSub, isRTL && { textAlign: 'right' }]}>
+            {meta.total ? t('members.registeredCount', { count: meta.total, defaultValue: `${meta.total} registered members` }) : t('members.manageAndSearch', 'Manage and search members')}
           </Text>
         </View>
         {showRegisterButton && (
           <TouchableOpacity
-            style={styles.registerBtn}
+            style={[styles.registerBtn, isRTL && { flexDirection: 'row-reverse' }]}
             onPress={() => setShowCreate(true)}
           >
-            <Ionicons name="person-add-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.registerBtnText}>Register</Text>
+            <Ionicons name="person-add-outline" size={16} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={styles.registerBtnText}>{t('members.register', 'Register')}</Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={styles.searchBar}>
-        <View style={styles.searchInputWrap}>
-          <Ionicons name="search" size={16} color={Colors.textMuted} style={{ marginRight: 8 }} />
+      <View style={[styles.searchBar, isRTL && { flexDirection: 'row-reverse' }]}>
+        <View style={[styles.searchInputWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Ionicons name="search" size={16} color={Colors.textMuted} style={isRTL ? { marginLeft: 8 } : { marginRight: 8 }} />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Search by name, CNIC, or ID..."
+            style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
+            placeholder={t('members.searchPlaceholder', 'Search by name, CNIC, or ID...')}
             placeholderTextColor={Colors.textMuted}
             value={q}
             onChangeText={setQ}
@@ -571,14 +588,14 @@ export default function MembersScreen() {
           ) : null}
         </View>
         <TouchableOpacity style={styles.searchActionBtn} onPress={handleSearchSubmit}>
-          <Text style={styles.searchActionBtnText}>Filter</Text>
+          <Text style={styles.searchActionBtnText}>{t('common.filter', 'Filter')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Filter Chips */}
       <View style={styles.filterWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {STATUS_FILTERS.map((f) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
+          {statusFilters.map((f) => (
             <TouchableOpacity
               key={f.value}
               style={[styles.filterPill, status === f.value && styles.filterPillActive]}
@@ -606,8 +623,8 @@ export default function MembersScreen() {
           !loading && (
             <EmptyState
               icon="👥"
-              title="No members found"
-              subtitle={q ? `No results matching "${q}"` : 'No members found in this status filter.'}
+              title={t('members.noMembers', 'No members found')}
+              subtitle={q ? t('members.noMatchingMembers', 'No matching members.') : t('members.filterAdjustment', 'Try adjusting your filters.')}
             />
           )
         }
@@ -625,8 +642,8 @@ export default function MembersScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.modalContainer}
           >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Register Member</Text>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.modalTitle}>{t('members.newMember', 'Register Member')}</Text>
               <TouchableOpacity onPress={() => !saving && setShowCreate(false)} disabled={saving}>
                 <Ionicons name="close" size={24} color={Colors.text} />
               </TouchableOpacity>
@@ -634,14 +651,14 @@ export default function MembersScreen() {
 
             <ScrollView contentContainerStyle={styles.modalBody}>
               {modalErr ? (
-                <View style={styles.errorBanner}>
-                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 6 }} />
-                  <Text style={styles.errorText}>{modalErr}</Text>
+                <View style={[styles.errorBanner, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{modalErr}</Text>
                 </View>
               ) : null}
 
               {/* Photo Upload Section */}
-              <View style={styles.photoUploadRow}>
+              <View style={[styles.photoUploadRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 {photo ? (
                   <Image source={{ uri: photo.uri }} style={styles.avatarPreview} />
                 ) : (
@@ -649,22 +666,22 @@ export default function MembersScreen() {
                     <Ionicons name="person" size={32} color={Colors.textMuted} />
                   </View>
                 )}
-                <View style={{ flex: 1, marginLeft: Spacing.md }}>
-                  <Text style={styles.photoHeading}>Member Photo</Text>
-                  <Text style={styles.photoSub}>Optional. Square photo (max 5 MB)</Text>
-                  <TouchableOpacity style={styles.pickPhotoBtn} onPress={pickPhoto}>
-                    <Ionicons name="camera-outline" size={16} color={Colors.primary} style={{ marginRight: 5 }} />
-                    <Text style={styles.pickPhotoBtnText}>{photo ? 'Change Photo' : 'Upload Photo'}</Text>
+                <View style={[{ flex: 1 }, isRTL ? { marginRight: Spacing.md } : { marginLeft: Spacing.md }]}>
+                  <Text style={[styles.photoHeading, isRTL && { textAlign: 'right' }]}>{t('members.memberPhoto', 'Member Photo')}</Text>
+                  <Text style={[styles.photoSub, isRTL && { textAlign: 'right' }]}>{t('members.photoHelp', 'Optional. Square photo (max 5 MB)')}</Text>
+                  <TouchableOpacity style={[styles.pickPhotoBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={pickPhoto}>
+                    <Ionicons name="camera-outline" size={16} color={Colors.primary} style={isRTL ? { marginLeft: 5 } : { marginRight: 5 }} />
+                    <Text style={styles.pickPhotoBtnText}>{photo ? t('members.changePhoto', 'Change Photo') : t('members.uploadPhoto', 'Upload Photo')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <Text style={styles.formSection}>Personal Details</Text>
+              <Text style={[styles.formSection, isRTL && { textAlign: 'right' }]}>{t('members.personalDetails', 'Personal Details')}</Text>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Full Name *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.fullName', 'Full Name')} *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.fullName}
                   onChangeText={(v) => setForm((f) => ({ ...f, fullName: v }))}
                   placeholder="e.g. Ahmad Khan"
@@ -673,9 +690,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Father / Husband Name *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.fatherHusbandName', 'Father / Husband Name')} *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.fatherOrHusbandName}
                   onChangeText={(v) => setForm((f) => ({ ...f, fatherOrHusbandName: v }))}
                   placeholder="e.g. Mehmood Khan"
@@ -684,9 +701,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>CNIC * (13 digits)</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.cnic', 'CNIC')} * (13 digits)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.cnic}
                   onChangeText={(v) => setForm((f) => ({ ...f, cnic: formatCnic(v) }))}
                   placeholder="XXXXX-XXXXXXX-X"
@@ -695,18 +712,18 @@ export default function MembersScreen() {
                   maxLength={15}
                 />
                 {cnicTaken ? (
-                  <Text style={{ color: Colors.error, fontSize: 11, marginTop: 4 }}>A member with this CNIC already exists.</Text>
+                  <Text style={[{ color: Colors.error, fontSize: 11, marginTop: 4 }, isRTL && { textAlign: 'right' }]}>{t('members.cnicTaken', 'A member with this CNIC already exists.')}</Text>
                 ) : isCompleteCnic(form.cnic) && cnicTaken === false ? (
-                  <Text style={{ color: Colors.success, fontSize: 11, marginTop: 4 }}>✓ CNIC available</Text>
+                  <Text style={[{ color: Colors.success, fontSize: 11, marginTop: 4 }, isRTL && { textAlign: 'right' }]}>{t('members.cnicAvailable', '✓ CNIC available')}</Text>
                 ) : (
-                  <Text style={{ color: Colors.textMuted, fontSize: 11, marginTop: 4 }}>Just type digits — dashes are added automatically.</Text>
+                  <Text style={[{ color: Colors.textMuted, fontSize: 11, marginTop: 4 }, isRTL && { textAlign: 'right' }]}>{t('members.cnicHelp', 'Just type digits — dashes are added automatically.')}</Text>
                 )}
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Phone Number *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.phone', 'Phone Number')} *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.phone}
                   onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
                   placeholder="03XX-XXXXXXX"
@@ -716,9 +733,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Email Address *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.email', 'Email Address')} *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.email}
                   onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
                   placeholder="member@example.com"
@@ -729,9 +746,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Initial Password * (min 6 chars)</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.initialPassword', 'Initial Password * (min 6 chars)')}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.password}
                   onChangeText={(v) => setForm((f) => ({ ...f, password: v }))}
                   placeholder="••••••••"
@@ -742,9 +759,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Confirm Password *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.confirmPassword', 'Confirm Password *')}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.passwordConfirm}
                   onChangeText={(v) => setForm((f) => ({ ...f, passwordConfirm: v }))}
                   placeholder="••••••••"
@@ -755,9 +772,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Gender</Text>
-                <View style={styles.chipRow}>
-                  {GENDERS.map((g) => (
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.gender', 'Gender')}</Text>
+                <View style={[styles.chipRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  {genders.map((g) => (
                     <TouchableOpacity
                       key={g.value}
                       style={[styles.chip, form.gender === g.value && styles.chipActive]}
@@ -772,8 +789,8 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Blood Group</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.bloodGroup', 'Blood Group')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={isRTL ? { flexDirection: 'row-reverse' } : undefined}>
                   {BLOOD_GROUPS.map((bg) => (
                     <TouchableOpacity
                       key={bg}
@@ -789,17 +806,17 @@ export default function MembersScreen() {
               </View>
 
               <DatePicker
-                label="Date of Birth *"
+                label={t('members.dateOfBirth', 'Date of Birth') + ' *'}
                 value={form.dateOfBirth}
                 onChange={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))}
-                placeholder="Select birth date"
+                placeholder={t('members.selectBirthDate', 'Select birth date')}
                 maxDate={new Date().toISOString().split('T')[0]}
               />
 
               <View style={styles.field}>
-                <Text style={styles.label}>Residential Address *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.address', 'Residential Address')} *</Text>
                 <TextInput
-                  style={[styles.input, styles.multiline]}
+                  style={[styles.input, styles.multiline, isRTL && { textAlign: 'right' }]}
                   value={form.address}
                   onChangeText={(v) => setForm((f) => ({ ...f, address: v }))}
                   placeholder="Street address, city/village"
@@ -810,9 +827,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Education</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.education', 'Education')}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.education}
                   onChangeText={(v) => setForm((f) => ({ ...f, education: v }))}
                   placeholder="e.g. Master's in Political Science"
@@ -821,9 +838,9 @@ export default function MembersScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Occupation</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('members.occupation', 'Occupation')}</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.occupation}
                   onChangeText={(v) => setForm((f) => ({ ...f, occupation: v }))}
                   placeholder="e.g. Teacher, Advocate, Business"
@@ -831,12 +848,12 @@ export default function MembersScreen() {
                 />
               </View>
 
-              <Text style={[styles.formSection, { marginTop: Spacing.lg }]}>Unit Hierarchy</Text>
+              <Text style={[styles.formSection, isRTL && { textAlign: 'right' }, { marginTop: Spacing.lg }]}>{t('members.unitHierarchy', 'Unit Hierarchy')}</Text>
 
               {/* Province */}
               <View style={styles.field}>
-                <Text style={styles.label}>1. Province *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>1. {t('profile.province', 'Province')} *</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={isRTL ? { flexDirection: 'row-reverse' } : undefined}>
                   {provinces.map((p) => (
                     <TouchableOpacity
                       key={p._id}
@@ -852,8 +869,8 @@ export default function MembersScreen() {
               {/* District */}
               {provinceId ? (
                 <View style={styles.field}>
-                  <Text style={styles.label}>2. District *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                  <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>2. {t('profile.district', 'District')} *</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={isRTL ? { flexDirection: 'row-reverse' } : undefined}>
                     {districts.map((d) => (
                       <TouchableOpacity
                         key={d._id}
@@ -870,8 +887,8 @@ export default function MembersScreen() {
               {/* Area */}
               {districtId ? (
                 <View style={styles.field}>
-                  <Text style={styles.label}>3. Area *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                  <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>3. {t('profile.area', 'Area')} *</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={isRTL ? { flexDirection: 'row-reverse' } : undefined}>
                     {areas.map((a) => (
                       <TouchableOpacity
                         key={a._id}
@@ -888,8 +905,8 @@ export default function MembersScreen() {
               {/* Basic Unit */}
               {areaId ? (
                 <View style={styles.field}>
-                  <Text style={styles.label}>4. Basic Unit *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                  <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>4. {t('profile.basicUnit', 'Basic Unit')} *</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={isRTL ? { flexDirection: 'row-reverse' } : undefined}>
                     {units.map((u) => (
                       <TouchableOpacity
                         key={u._id}
@@ -904,13 +921,13 @@ export default function MembersScreen() {
               ) : null}
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.modalCancelBtn}
                 onPress={() => { if (!saving) setShowCreate(false); }}
                 disabled={saving}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalSaveBtn, saving && { opacity: 0.7 }]}
@@ -920,7 +937,7 @@ export default function MembersScreen() {
                 {saving ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.modalSaveText}>Register Member</Text>
+                  <Text style={styles.modalSaveText}>{t('members.newMember', 'Register Member')}</Text>
                 )}
               </TouchableOpacity>
             </View>

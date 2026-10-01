@@ -57,7 +57,7 @@ export default function MemberListPage() {
       setItems(res.data.data);
       setMeta(res.data.meta);
     } catch (e) {
-      toast.error('Could not load members. Please retry.');
+      toast.error(t('members.couldNotLoad', 'Could not load members. Please retry.'));
     } finally {
       setLoading(false);
     }
@@ -102,19 +102,29 @@ export default function MemberListPage() {
   }, [items, sort]);
 
   const colLabelMap = {
-    memberId: t('members.cnic', 'Member ID'),
+    memberId: t('profile.memberId', 'Member ID'),
     fullName: t('members.fullName', 'Name'),
     cnic: t('members.cnic', 'CNIC'),
     phone: t('members.phone', 'Phone'),
     unit: t('members.unit', 'Unit'),
-    district: t('units.district', 'District'),
-    status: t('common.status', 'Status'),
+    district: t('profile.district', 'District'),
+    status: t('profile.status', 'Status'),
+  };
+
+  const statusLabel = (s) => {
+    if (!s) return t('members.allStatuses', 'All statuses');
+    if (s === 'PENDING_APPROVAL') return t('members.pendingApproval', 'Pending Approval');
+    if (s === 'ACTIVE') return t('members.active', 'Active');
+    if (s === 'REJECTED') return t('members.rejected', 'Rejected');
+    if (s === 'INACTIVE') return t('members.inactive', 'Inactive');
+    if (s === 'SUSPENDED') return t('members.suspended', 'Suspended');
+    return s;
   };
 
   return (
     <div>
       <div className="page-header">
-        <h2>Members{!isHigherAdmin && user?.scope?.areaId ? ' in your area' : ''}</h2>
+        <h2>{!isHigherAdmin && user?.scope?.areaId ? t('members.membersInArea', 'Members in your area') : t('members.title', 'Members')}</h2>
         {showRegisterButton && (
           <button className="btn" type="button" onClick={() => setRegisterOpen(true)}>
             {t('members.newMember', '+ Register Member')}
@@ -134,13 +144,13 @@ export default function MemberListPage() {
 
       <form className="toolbar" onSubmit={onSearch}>
         <input
-          placeholder="Search by name, CNIC, phone, member ID"
+          placeholder={t('members.searchPlaceholder', 'Search by name, CNIC, phone, member ID')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           style={{ minWidth: 280 }}
         />
         <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-          {STATUSES.map((s) => <option key={s} value={s}>{s || 'All statuses'}</option>)}
+          {STATUSES.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
         </select>
         <button className="btn secondary" type="submit">{t('common.search', 'Search')}</button>
       </form>
@@ -174,8 +184,8 @@ export default function MemberListPage() {
               <td colSpan="8" style={{ padding: 0 }}>
                 <div className="empty-smart" style={{ border: 'none', padding: 36 }}>
                   <div className="empty-icon">🔍</div>
-                  <h3>No members found</h3>
-                  <p>{q || status ? 'Try adjusting your filters.' : 'Be the first to register a member.'}</p>
+                  <h3>{t('members.noMembers', 'No members found')}</h3>
+                  <p>{q || status ? t('members.filterAdjustment', 'Try adjusting your filters.') : t('members.firstToRegister', 'Be the first to register a member.')}</p>
                 </div>
               </td>
             </tr>
@@ -188,7 +198,7 @@ export default function MemberListPage() {
               <td>{m.phone}</td>
               <td>{m.basicUnitId?.name || <span className="cell-muted">—</span>}</td>
               <td>{m.districtId?.name || <span className="cell-muted">—</span>}</td>
-              <td><span className={`badge ${m.status}`}>{m.status}</span></td>
+              <td><span className={`badge ${m.status}`}>{statusLabel(m.status)}</span></td>
               <td><Link to={`/members/${m._id}`} style={{ fontWeight: 500 }}>{t('common.view', 'View')} →</Link></td>
             </tr>
           ))}
@@ -196,11 +206,11 @@ export default function MemberListPage() {
       </table>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 14, alignItems: 'center' }}>
-        <button className="btn secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>← Prev</button>
+        <button className="btn secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t('members.prev', '← Prev')}</button>
         <span className="muted" style={{ fontSize: 13 }}>
-          Page <strong>{meta.page}</strong> of <strong>{meta.totalPages}</strong> · <strong>{meta.total}</strong> total
+          {t('members.pageOf', { page: meta.page, totalPages: meta.totalPages, total: meta.total })}
         </span>
-        <button className="btn secondary" disabled={page >= meta.totalPages} onClick={() => setPage(page + 1)}>Next →</button>
+        <button className="btn secondary" disabled={page >= meta.totalPages} onClick={() => setPage(page + 1)}>{t('members.next', 'Next →')}</button>
       </div>
     </div>
   );
