@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
 import { api, errorMessage } from '../../../src/api/client';
@@ -19,14 +20,8 @@ import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { PKR } from '../../../src/utils/formatters';
 
-const CHILD_LABEL = {
-  AREA: 'Basic Units',
-  DISTRICT: 'Areas',
-  PROVINCE: 'Districts',
-  CENTRAL: 'Provinces',
-};
-
 export default function SubordinateBreakdownScreen() {
+  const { t, isRTL } = useLanguage();
   const { ctx } = useUnit();
   const { user } = useAuth();
   const toast = useToast();
@@ -58,7 +53,7 @@ export default function SubordinateBreakdownScreen() {
   if (!ctx) {
     return (
       <SafeAreaView style={styles.safe}>
-        <EmptyState icon="📊" title="Select a unit" subtitle="Please select a unit context from your dashboard or profile." />
+        <EmptyState icon="📊" title={t('common.selectUnitContext', 'Select a unit')} subtitle={t('common.selectUnitSubtitle', 'Please select a unit context from your dashboard or profile.')} />
       </SafeAreaView>
     );
   }
@@ -66,53 +61,59 @@ export default function SubordinateBreakdownScreen() {
   if (ctx.unitLevel === 'BASIC_UNIT') {
     return (
       <SafeAreaView style={styles.safe}>
-        <EmptyState icon="📊" title="No Subordinates" subtitle="Basic Units are the foundational tier and have no subordinate units." />
+        <EmptyState icon="📊" title={t('breakdown.noSubordinates', 'No Subordinates')} subtitle={t('breakdown.noSubordinatesBasicUnit', 'Basic Units are the foundational tier and have no subordinate units.')} />
       </SafeAreaView>
     );
   }
 
-  const childLabel = CHILD_LABEL[ctx.unitLevel] || 'Subordinate Units';
+  const childLabelMap = {
+    AREA: t('units.basicUnits', 'Basic Units'),
+    DISTRICT: t('units.areas', 'Areas'),
+    PROVINCE: t('units.districts', 'Districts'),
+    CENTRAL: t('units.provinces', 'Provinces'),
+  };
+  const childLabel = childLabelMap[ctx.unitLevel] || t('breakdown.subordinateUnits', 'Subordinate Units');
 
   function renderItem({ item: r }) {
     const isNegative = (r.balance || 0) < 0;
     return (
       <Card style={styles.unitCard}>
         {/* Header */}
-        <View style={styles.cardHeader}>
-          <View style={styles.nameBlock}>
-            <Text style={styles.unitName}>{r.name}</Text>
-            {r.code ? <Text style={styles.unitCode}>{r.code}</Text> : null}
+        <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.nameBlock, isRTL && { marginRight: 0, marginLeft: Spacing.sm }]}>
+            <Text style={[styles.unitName, isRTL && { textAlign: 'right' }]}>{r.name}</Text>
+            {r.code ? <Text style={[styles.unitCode, isRTL && { textAlign: 'right' }]}>{r.code}</Text> : null}
           </View>
-          <Badge label={`${r.members || 0} Members`} color={Colors.primary} bg="#eff6ff" />
+          <Badge label={`${r.members || 0} ${t('common.members', 'Members')}`} color={Colors.primary} bg="#eff6ff" />
         </View>
 
         {/* 30-Day Activity Stats */}
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{r.meetings30 || 0}</Text>
-            <Text style={styles.statLabel}>Meetings (30d)</Text>
+            <Text style={styles.statLabel}>{t('breakdown.meetings30', 'Meetings (30d)')}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statValue}>{r.activities30 || 0}</Text>
-            <Text style={styles.statLabel}>Activities (30d)</Text>
+            <Text style={styles.statLabel}>{t('breakdown.activities30', 'Activities (30d)')}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={[styles.statValue, isNegative && { color: Colors.error }]}>
               {PKR(r.balance || 0)}
             </Text>
-            <Text style={styles.statLabel}>Balance</Text>
+            <Text style={styles.statLabel}>{t('finance.balance', 'Balance')}</Text>
           </View>
         </View>
 
         {/* Finance Detail Line */}
-        <View style={styles.finRow}>
+        <View style={[styles.finRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <Text style={styles.finText}>
-            Donations: <Text style={{ color: Colors.success, fontWeight: '600' }}>{PKR(r.donations || 0)}</Text>
+            {t('finance.donations', 'Donations')}: <Text style={{ color: Colors.success, fontWeight: '600' }}>{PKR(r.donations || 0)}</Text>
           </Text>
           <Text style={styles.finText}>
-            Expenses: <Text style={{ color: Colors.error, fontWeight: '600' }}>{PKR(r.expenses || 0)}</Text>
+            {t('finance.expenses', 'Expenses')}: <Text style={{ color: Colors.error, fontWeight: '600' }}>{PKR(r.expenses || 0)}</Text>
           </Text>
         </View>
       </Card>
@@ -122,14 +123,14 @@ export default function SubordinateBreakdownScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Banner */}
-      <View style={styles.banner}>
+      <View style={[styles.banner, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>{childLabel} Breakdown</Text>
-          <Text style={styles.bannerSub}>
-            Overview of all subordinate units under {ctx.unitName}
+          <Text style={[styles.bannerTitle, isRTL && { textAlign: 'right' }]}>{t('breakdown.breakdownTitle', '{{childLabel}} Breakdown', { childLabel })}</Text>
+          <Text style={[styles.bannerSub, isRTL && { textAlign: 'right' }]}>
+            {t('breakdown.overviewUnderUnit', 'Overview of all subordinate units under {{name}}', { name: ctx.unitName })}
           </Text>
         </View>
-        <Badge label={`${rows.length} Total`} color="#fff" bg="rgba(255,255,255,0.2)" />
+        <Badge label={`${rows.length} ${t('common.total', 'Total')}`} color="#fff" bg="rgba(255,255,255,0.2)" />
       </View>
 
       <FlatList
@@ -140,7 +141,13 @@ export default function SubordinateBreakdownScreen() {
         onRefresh={load}
         refreshing={loading}
         ListEmptyComponent={
-          !loading && <EmptyState icon="📊" title={`No ${childLabel.toLowerCase()} found`} subtitle="No subordinate units are currently registered under this level." />
+          !loading && (
+            <EmptyState
+              icon="📊"
+              title={t('breakdown.noChildFound', 'No {{childLabel}} found', { childLabel: childLabel.toLowerCase() })}
+              subtitle={t('breakdown.noSubordinateRegistered', 'No subordinate units are currently registered under this level.')}
+            />
+          )
         }
       />
     </SafeAreaView>

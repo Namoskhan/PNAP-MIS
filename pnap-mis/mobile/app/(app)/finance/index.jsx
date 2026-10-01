@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { api, errorMessage, resolveMediaUrl, isNetworkError } from '../../../src/api/client';
 import {
   canManageFinance,
@@ -85,6 +86,7 @@ const NON_MEMBER_CNIC_THRESHOLD = 50000;
 
 export default function FinanceScreen() {
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
@@ -125,11 +127,17 @@ export default function FinanceScreen() {
   const [tab, setTab] = useState('DONATIONS');
 
   const financeTabs = useMemo(() => {
+    const list = [
+      { label: t('finance.donations', 'Donations'), value: 'DONATIONS', icon: 'cash-outline' },
+      { label: t('finance.expenses', 'Expenses'), value: 'EXPENSES', icon: 'receipt-outline' },
+      { label: t('finance.transfers', 'Transfers'), value: 'TRANSFERS', icon: 'swap-horizontal-outline' },
+      { label: t('finance.monthly', 'Monthly'), value: 'MONTHLY', icon: 'bar-chart-outline' },
+    ];
     if (isCongressView) {
-      return FINANCE_TABS.filter((t) => t.value !== 'TRANSFERS');
+      return list.filter((item) => item.value !== 'TRANSFERS');
     }
-    return FINANCE_TABS;
-  }, [isCongressView]);
+    return list;
+  }, [isCongressView, t]);
 
   useEffect(() => {
     if (isCongressView && tab === 'TRANSFERS') {
@@ -860,12 +868,12 @@ export default function FinanceScreen() {
   }
 
   const pageTitle = isCongressView
-    ? 'National Congress Finance'
+    ? t('finance.nationalCongress', 'National Congress Finance')
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Finance' : 'Sobayi Jirga Finance')
+      ? (activeLevel === 'CENTRAL' ? t('finance.qomiJirga', 'Qomi Jirga Finance') : t('finance.sobayiJirga', 'Sobayi Jirga Finance'))
       : (isCommitteeView
-        ? `Committee Finance · ${ctx?.unitName || 'PKNAP Central'}`
-        : `Finance · ${ctx?.unitName || 'PKNAP Central'}`));
+        ? `${t('finance.committeeFinance', 'Committee Finance')} · ${ctx?.unitName || 'PKNAP Central'}`
+        : `${t('nav.finance', 'Finance')} · ${ctx?.unitName || 'PKNAP Central'}`));
 
   const pageSubtitle = isCongressView
     ? 'PKNAP Central · National Congress fund ledger & transactions'
@@ -874,16 +882,16 @@ export default function FinanceScreen() {
       : `${ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : 'My Unit')} · Inflow, Outflow & Monthly Statements`);
 
   const recordDonationBtnLabel = isCongressView
-    ? '+ Record Congress Donation'
+    ? t('finance.recordCongressDonation', '+ Record Congress Donation')
     : (isJirgaView
-      ? '+ Record Jirga Donation'
-      : (isCommitteeView ? '+ Record Committee Donation' : '+ Record Donation'));
+      ? t('finance.recordJirgaDonation', '+ Record Jirga Donation')
+      : (isCommitteeView ? t('finance.recordCommitteeDonation', '+ Record Committee Donation') : t('finance.recordDonation', '+ Record Donation')));
 
   const recordExpenseBtnLabel = isCongressView
-    ? '+ Record Congress Expense'
+    ? t('finance.recordCongressExpense', '+ Record Congress Expense')
     : (isJirgaView
-      ? '+ Record Jirga Expense'
-      : (isCommitteeView ? '+ Record Committee Expense' : '+ Record Expense'));
+      ? t('finance.recordJirgaExpense', '+ Record Jirga Expense')
+      : (isCommitteeView ? t('finance.recordCommitteeExpense', '+ Record Committee Expense') : t('finance.recordExpense', '+ Record Expense')));
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -891,15 +899,15 @@ export default function FinanceScreen() {
         
         {/* Top Header Card */}
         <View style={[styles.header, isSmall && styles.headerSmall]}>
-          <View style={styles.headerTop}>
+          <View style={[styles.headerTop, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={styles.headerTitleWrap}>
-              <View style={styles.badgeRow}>
+              <View style={[styles.badgeRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.unitLevelBadge}>
                   <Text style={styles.unitLevelBadgeText}>{activeLevel.replace('_', ' ')}</Text>
                 </View>
                 {!isOnline && (
                   <View style={[styles.unitLevelBadge, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
-                    <Text style={[styles.unitLevelBadgeText, { color: '#DC2626' }]}>Offline (Cached)</Text>
+                    <Text style={[styles.unitLevelBadgeText, { color: '#DC2626' }]}>{t('finance.offlineCached', 'Offline (Cached)')}</Text>
                   </View>
                 )}
                 {isJirgaView && (
@@ -908,11 +916,11 @@ export default function FinanceScreen() {
                   </View>
                 )}
               </View>
-              <Text style={styles.pageTitle}>{pageTitle}</Text>
-              <Text style={styles.pageSubtitle}>{pageSubtitle}</Text>
+              <Text style={[styles.pageTitle, isRTL && { textAlign: 'right' }]}>{pageTitle}</Text>
+              <Text style={[styles.pageSubtitle, isRTL && { textAlign: 'right' }]}>{pageSubtitle}</Text>
             </View>
 
-            <View style={styles.headerActionsRow}>
+            <View style={[styles.headerActionsRow, isRTL && { flexDirection: 'row-reverse' }]}>
               {!isCongressView && (
                 <TouchableOpacity
                   style={styles.btnExport}
@@ -922,7 +930,7 @@ export default function FinanceScreen() {
                   })}
                 >
                   <Ionicons name="swap-horizontal-outline" size={15} color={Colors.primary} />
-                  <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>Transfers</Text>
+                  <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>{t('finance.transfers', 'Transfers')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -936,7 +944,7 @@ export default function FinanceScreen() {
                 ) : (
                   <Ionicons name="document-text-outline" size={15} color={isOnline ? Colors.text : Colors.textMuted} />
                 )}
-                <Text style={[styles.btnExportText, !isOnline && { color: Colors.textMuted }]}>{isTablet ? 'Export PDF' : 'PDF'}</Text>
+                <Text style={[styles.btnExportText, !isOnline && { color: Colors.textMuted }]}>{isTablet ? t('finance.downloadPdf', 'Export PDF') : 'PDF'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -949,7 +957,7 @@ export default function FinanceScreen() {
                 ) : (
                   <Ionicons name="stats-chart-outline" size={15} color={isOnline ? Colors.text : Colors.textMuted} />
                 )}
-                <Text style={[styles.btnExportText, !isOnline && { color: Colors.textMuted }]}>{isTablet ? 'Export Excel' : 'Excel'}</Text>
+                <Text style={[styles.btnExportText, !isOnline && { color: Colors.textMuted }]}>{isTablet ? t('finance.downloadExcel', 'Export Excel') : 'Excel'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -962,64 +970,64 @@ export default function FinanceScreen() {
               <ScrollView
                 horizontal={!isTablet}
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[styles.kpiContainer, isTablet && styles.kpiContainerTablet]}
+                contentContainerStyle={[styles.kpiContainer, isTablet && styles.kpiContainerTablet, isRTL && { flexDirection: 'row-reverse' }]}
               >
                 {/* Donations KPI */}
                 <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#16a34a' }]}>
-                  <View style={styles.kpiHeaderRow}>
-                    <Text style={styles.kpiLabel}>Donations</Text>
+                  <View style={[styles.kpiHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.kpiLabel}>{t('finance.donations', 'Donations')}</Text>
                     <View style={[styles.kpiIconBox, { backgroundColor: '#dcfce7' }]}>
                       <Ionicons name="arrow-down-outline" size={14} color="#16a34a" />
                     </View>
                   </View>
-                  <Text style={[styles.kpiValue, { color: '#16a34a' }]}>{PKR(summary.donations?.total || 0)}</Text>
-                  <Text style={styles.kpiHint}>{summary.donations?.count || 0} entries</Text>
+                  <Text style={[styles.kpiValue, { color: '#16a34a' }, isRTL && { textAlign: 'right' }]}>{PKR(summary.donations?.total || 0)}</Text>
+                  <Text style={[styles.kpiHint, isRTL && { textAlign: 'right' }]}>{summary.donations?.count || 0} {t('finance.entries', 'entries')}</Text>
                 </View>
 
                 {/* Approved Expenses KPI */}
                 <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#dc2626' }]}>
-                  <View style={styles.kpiHeaderRow}>
-                    <Text style={styles.kpiLabel}>Approved Expenses</Text>
+                  <View style={[styles.kpiHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.kpiLabel}>{t('finance.approvedExpenses', 'Approved Expenses')}</Text>
                     <View style={[styles.kpiIconBox, { backgroundColor: '#fee2e2' }]}>
                       <Ionicons name="arrow-up-outline" size={14} color="#dc2626" />
                     </View>
                   </View>
-                  <Text style={[styles.kpiValue, { color: '#dc2626' }]}>{PKR(summary.expenses?.total || 0)}</Text>
-                  <Text style={styles.kpiHint}>{summary.expenses?.count || 0} entries</Text>
+                  <Text style={[styles.kpiValue, { color: '#dc2626' }, isRTL && { textAlign: 'right' }]}>{PKR(summary.expenses?.total || 0)}</Text>
+                  <Text style={[styles.kpiHint, isRTL && { textAlign: 'right' }]}>{summary.expenses?.count || 0} {t('finance.entries', 'entries')}</Text>
                 </View>
 
                 {/* Transfers In KPI */}
                 {!isCongressView && summary.transfersIn ? (
                   <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#0284c7' }]}>
-                    <View style={styles.kpiHeaderRow}>
-                      <Text style={styles.kpiLabel}>Transfers In</Text>
+                    <View style={[styles.kpiHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Text style={styles.kpiLabel}>{t('finance.transfersIn', 'Transfers In')}</Text>
                       <View style={[styles.kpiIconBox, { backgroundColor: '#e0f2fe' }]}>
                         <Ionicons name="enter-outline" size={14} color="#0284c7" />
                       </View>
                     </View>
-                    <Text style={[styles.kpiValue, { color: '#0284c7' }]}>{PKR(summary.transfersIn.total)}</Text>
-                    <Text style={styles.kpiHint}>{summary.transfersIn.count} acknowledged</Text>
+                    <Text style={[styles.kpiValue, { color: '#0284c7' }, isRTL && { textAlign: 'right' }]}>{PKR(summary.transfersIn.total)}</Text>
+                    <Text style={[styles.kpiHint, isRTL && { textAlign: 'right' }]}>{summary.transfersIn.count} {t('finance.acknowledged', 'acknowledged')}</Text>
                   </View>
                 ) : null}
 
                 {/* Transfers Out KPI */}
                 {!isCongressView && summary.transfersOut ? (
                   <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: '#d97706' }]}>
-                    <View style={styles.kpiHeaderRow}>
-                      <Text style={styles.kpiLabel}>Transfers Out</Text>
+                    <View style={[styles.kpiHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Text style={styles.kpiLabel}>{t('finance.transfersOut', 'Transfers Out')}</Text>
                       <View style={[styles.kpiIconBox, { backgroundColor: '#fef3c7' }]}>
                         <Ionicons name="exit-outline" size={14} color="#d97706" />
                       </View>
                     </View>
-                    <Text style={[styles.kpiValue, { color: '#d97706' }]}>{PKR(summary.transfersOut.total)}</Text>
-                    <Text style={styles.kpiHint}>{summary.transfersOut.count} acknowledged</Text>
+                    <Text style={[styles.kpiValue, { color: '#d97706' }, isRTL && { textAlign: 'right' }]}>{PKR(summary.transfersOut.total)}</Text>
+                    <Text style={[styles.kpiHint, isRTL && { textAlign: 'right' }]}>{summary.transfersOut.count} {t('finance.acknowledged', 'acknowledged')}</Text>
                   </View>
                 ) : null}
 
                 {/* Available / Net Balance KPI */}
                 <View style={[styles.kpiCard, isTablet && styles.kpiCardTablet, { borderTopColor: (summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#dc2626' : '#16a34a' }]}>
-                  <View style={styles.kpiHeaderRow}>
-                    <Text style={styles.kpiLabel}>Available Balance</Text>
+                  <View style={[styles.kpiHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.kpiLabel}>{t('finance.balance', 'Available Balance')}</Text>
                     <View style={[styles.kpiIconBox, { backgroundColor: (summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#fee2e2' : '#dcfce7' }]}>
                       <Ionicons
                         name="wallet-outline"
@@ -1028,16 +1036,16 @@ export default function FinanceScreen() {
                       />
                     </View>
                   </View>
-                  <Text style={[styles.kpiValue, { color: (summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#dc2626' : '#16a34a' }]}>
+                  <Text style={[styles.kpiValue, { color: (summary.availableBalance ?? summary.balance ?? 0) <= 0 ? '#dc2626' : '#16a34a' }, isRTL && { textAlign: 'right' }]}>
                     {PKR(summary.availableBalance ?? summary.balance ?? 0)}
                   </Text>
                   <View style={{ marginTop: 4 }}>
                     {!isCongressView && summary.pendingTransfersOut?.total > 0 ? (
-                      <Text style={{ fontSize: 10, color: '#d97706', fontWeight: '600' }}>
+                      <Text style={[{ fontSize: 10, color: '#d97706', fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>
                         ⚠️ {PKR(summary.pendingTransfersOut.total)} in pending out
                       </Text>
                     ) : (
-                      <Text style={[styles.kpiHint, { fontWeight: '600', color: (summary.balance || 0) < 0 ? '#dc2626' : '#16a34a' }]}>
+                      <Text style={[styles.kpiHint, { fontWeight: '600', color: (summary.balance || 0) < 0 ? '#dc2626' : '#16a34a' }, isRTL && { textAlign: 'right' }]}>
                         {(summary.balance || 0) < 0 ? 'Deficit' : 'Ready to use'}
                       </Text>
                     )}
@@ -1100,15 +1108,15 @@ export default function FinanceScreen() {
           {/* Monthly Filter Bar */}
           {tab === 'MONTHLY' && (
             <View style={styles.rangeCard}>
-              <View style={styles.rangeHeader}>
+              <View style={[styles.rangeHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Ionicons name="filter-outline" size={16} color={Colors.text} />
-                <Text style={styles.rangeHeaderTitle}>Date Filter & Presets</Text>
+                <Text style={styles.rangeHeaderTitle}>{t('finance.dateFilter', 'Date Filter & Presets')}</Text>
               </View>
-              <View style={styles.rangeInputs}>
+              <View style={[styles.rangeInputs, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.rangeInputCol}>
-                  <Text style={styles.rangeLabel}>From</Text>
+                  <Text style={[styles.rangeLabel, isRTL && { textAlign: 'right' }]}>{t('finance.from', 'From')}</Text>
                   <TextInput
-                    style={styles.rangeInput}
+                    style={[styles.rangeInput, isRTL && { textAlign: 'right' }]}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={Colors.textLight}
                     value={monthFrom}
@@ -1116,9 +1124,9 @@ export default function FinanceScreen() {
                   />
                 </View>
                 <View style={styles.rangeInputCol}>
-                  <Text style={styles.rangeLabel}>To</Text>
+                  <Text style={[styles.rangeLabel, isRTL && { textAlign: 'right' }]}>{t('finance.to', 'To')}</Text>
                   <TextInput
-                    style={styles.rangeInput}
+                    style={[styles.rangeInput, isRTL && { textAlign: 'right' }]}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={Colors.textLight}
                     value={monthTo}
@@ -1126,21 +1134,21 @@ export default function FinanceScreen() {
                   />
                 </View>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRangeScroll}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.quickRangeScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('this')}>
-                  <Text style={styles.rangePillText}>This month</Text>
+                  <Text style={styles.rangePillText}>{t('finance.thisMonth', 'This month')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('last')}>
-                  <Text style={styles.rangePillText}>Last month</Text>
+                  <Text style={styles.rangePillText}>{t('finance.lastMonth', 'Last month')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('3')}>
-                  <Text style={styles.rangePillText}>Last 3 months</Text>
+                  <Text style={styles.rangePillText}>{t('finance.last3Months', 'Last 3 months')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.rangePill} onPress={() => applyQuickRange('ytd')}>
-                  <Text style={styles.rangePillText}>Year-to-date</Text>
+                  <Text style={styles.rangePillText}>{t('finance.ytd', 'Year-to-date')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.rangePill, { backgroundColor: '#f1f5f9' }]} onPress={() => applyQuickRange('all')}>
-                  <Text style={[styles.rangePillText, { color: Colors.textMuted }]}>All time</Text>
+                  <Text style={[styles.rangePillText, { color: Colors.textMuted }]}>{t('finance.allTime', 'All time')}</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>
@@ -1156,20 +1164,20 @@ export default function FinanceScreen() {
               {/* DONATIONS TABLE */}
               {tab === 'DONATIONS' && (
                 <View style={{ minWidth: isTablet ? '100%' : 750, width: isTablet ? '100%' : undefined }}>
-                  <View style={styles.thRow}>
-                    <Text style={[styles.th, { width: isTablet ? '22%' : 150 }]}>Receipt</Text>
-                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }]}>Date</Text>
-                    <Text style={[styles.th, { width: isTablet ? '24%' : 160 }]}>Donor</Text>
-                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }]}>Mode</Text>
-                    <Text style={[styles.th, { width: isTablet ? '10%' : 80, textAlign: 'center' }]}>Proof</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 130, textAlign: 'right' }]}>Amount (PKR)</Text>
+                  <View style={[styles.thRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.th, { width: isTablet ? '22%' : 150 }, isRTL && { textAlign: 'right' }]}>{t('finance.receiptNo', 'Receipt')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{t('finance.date', 'Date')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '24%' : 160 }, isRTL && { textAlign: 'right' }]}>{t('finance.donor', 'Donor')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{t('finance.mode', 'Mode')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '10%' : 80, textAlign: 'center' }]}>{t('finance.receiptImage', 'Proof')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 130, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.amount', 'Amount (PKR)')}</Text>
                   </View>
 
                   {donations.length === 0 && !loading && (
                     <View style={styles.emptyWrap}>
                       <Ionicons name="wallet-outline" size={32} color={Colors.textLight} />
                       <Text style={styles.emptyText}>
-                        No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} donations recorded yet.
+                        {t('finance.noDonationsYet', 'No donations recorded yet.')}
                       </Text>
                     </View>
                   )}
@@ -1180,34 +1188,34 @@ export default function FinanceScreen() {
                       ? members.find((m) => String(m._id) === String(d.donorMemberId))
                       : null;
                     const effectiveDonorName = d.donorType === 'ANONYMOUS'
-                      ? 'Anonymous'
-                      : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
+                      ? t('finance.anonymous', 'Anonymous')
+                      : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? t('finance.member', 'Member') : '—'));
 
                     const isCng = d.body === 'CONGRESS';
                     const isJrg = d.body === 'JIRGA';
                     const isCm = d.body === 'COMMITTEE';
 
                     return (
-                      <View key={d._id} style={styles.tr}>
+                      <View key={d._id} style={[styles.tr, isRTL && { flexDirection: 'row-reverse' }]}>
                         <View style={[styles.td, { width: isTablet ? '22%' : 150 }]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>
                             <Badge
-                              label={d._isOffline ? 'Offline Pending' : (isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive')))}
+                              label={d._isOffline ? 'Offline Pending' : (isCng ? t('units.nationalCongress', 'Congress') : (isJrg ? t('units.jirga', 'Jirga') : (isCm ? t('units.committee', 'Committee') : t('roles.executive', 'Executive'))))}
                               color={d._isOffline ? '#D97706' : (isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569')))}
                               bg={d._isOffline ? '#FEF3C7' : (isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9')))}
                             />
                             <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '700' }}>{d.receiptNo}</Text>
                           </View>
                           {d.unitLevel && (
-                            <Text style={styles.unitArrangedSubText}>
+                            <Text style={[styles.unitArrangedSubText, isRTL && { textAlign: 'right' }]}>
                               {formatUnitArrangedBy(d, { isCommitteeView, isJirgaView, isCongressView })}
                             </Text>
                           )}
                         </View>
 
-                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }]}>{shortDate(d.receivedAt || d.createdAt)}</Text>
-                        <Text style={[styles.td, { width: isTablet ? '24%' : 160 }]} numberOfLines={1}>{effectiveDonorName}</Text>
-                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }]}>{d.paymentMode?.replace('_', ' ')}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{shortDate(d.receivedAt || d.createdAt)}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '24%' : 160 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{effectiveDonorName}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{d.paymentMode?.replace('_', ' ')}</Text>
                         
                         <View style={[styles.td, { width: isTablet ? '10%' : 80, alignItems: 'center', justifyContent: 'center' }]}>
                           {d.receiptUrl || d.receiptImageUrl ? (
@@ -1223,7 +1231,7 @@ export default function FinanceScreen() {
                           )}
                         </View>
 
-                        <Text style={[styles.td, { width: isTablet ? '16%' : 130, textAlign: 'right', fontWeight: '800', color: '#15803d' }]}>
+                        <Text style={[styles.td, { width: isTablet ? '16%' : 130, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#15803d' }]}>
                           {PKR(d.amount)}
                         </Text>
                       </View>
@@ -1235,22 +1243,22 @@ export default function FinanceScreen() {
               {/* EXPENSES TABLE */}
               {tab === 'EXPENSES' && (
                 <View style={{ minWidth: isTablet ? '100%' : 850, width: isTablet ? '100%' : undefined }}>
-                  <View style={styles.thRow}>
-                    <Text style={[styles.th, { width: isTablet ? '12%' : 100 }]}>Date</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 130 }]}>Category</Text>
-                    <Text style={[styles.th, { width: isTablet ? '20%' : 180 }]}>Description</Text>
-                    <Text style={[styles.th, { width: isTablet ? '13%' : 110 }]}>Vendor</Text>
-                    <Text style={[styles.th, { width: isTablet ? '8%' : 70, textAlign: 'center' }]}>Proof</Text>
-                    <Text style={[styles.th, { width: isTablet ? '12%' : 110, textAlign: 'right' }]}>Amount</Text>
-                    <Text style={[styles.th, { width: isTablet ? '9%' : 90 }]}>State</Text>
-                    <Text style={[styles.th, { width: isTablet ? '10%' : 150, textAlign: 'center' }]}>Actions</Text>
+                  <View style={[styles.thRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.th, { width: isTablet ? '12%' : 100 }, isRTL && { textAlign: 'right' }]}>{t('finance.date', 'Date')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 130 }, isRTL && { textAlign: 'right' }]}>{t('finance.category', 'Category')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '20%' : 180 }, isRTL && { textAlign: 'right' }]}>{t('finance.description', 'Description')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '13%' : 110 }, isRTL && { textAlign: 'right' }]}>{t('finance.vendorPayee', 'Vendor')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '8%' : 70, textAlign: 'center' }]}>{t('finance.receiptImage', 'Proof')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '12%' : 110, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.amount', 'Amount')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '9%' : 90 }, isRTL && { textAlign: 'right' }]}>{t('finance.status', 'State')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '10%' : 150, textAlign: 'center' }]}>{t('common.actions', 'Actions')}</Text>
                   </View>
 
                   {expenses.length === 0 && !loading && (
                     <View style={styles.emptyWrap}>
                       <Ionicons name="receipt-outline" size={32} color={Colors.textLight} />
                       <Text style={styles.emptyText}>
-                        No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} expenses recorded yet.
+                        {t('finance.noExpensesYet', 'No expenses recorded yet.')}
                       </Text>
                     </View>
                   )}
@@ -1261,25 +1269,25 @@ export default function FinanceScreen() {
                     const isCm = e.body === 'COMMITTEE';
 
                     return (
-                      <View key={e._id} style={styles.tr}>
-                        <Text style={[styles.td, { width: isTablet ? '12%' : 100 }]}>{shortDate(e.incurredAt || e.createdAt)}</Text>
+                      <View key={e._id} style={[styles.tr, isRTL && { flexDirection: 'row-reverse' }]}>
+                        <Text style={[styles.td, { width: isTablet ? '12%' : 100 }, isRTL && { textAlign: 'right' }]}>{shortDate(e.incurredAt || e.createdAt)}</Text>
                         <View style={[styles.td, { width: isTablet ? '16%' : 130 }]}>
                           <Badge
-                            label={isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
+                            label={isCng ? t('units.nationalCongress', 'Congress') : (isJrg ? t('units.jirga', 'Jirga') : (isCm ? t('units.committee', 'Committee') : t('roles.executive', 'Executive')))}
                             color={isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'))}
                             bg={isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'))}
                           />
-                          <Text style={{ fontSize: 11, color: Colors.text, marginTop: 2, fontWeight: '600' }}>{e.category}</Text>
+                          <Text style={[{ fontSize: 11, color: Colors.text, marginTop: 2, fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>{e.category}</Text>
                         </View>
                         <View style={[styles.td, { width: isTablet ? '20%' : 180 }]}>
-                          <Text style={{ fontSize: 12, color: Colors.text }} numberOfLines={2}>{e.description}</Text>
+                          <Text style={[{ fontSize: 12, color: Colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{e.description}</Text>
                           {e.unitLevel && (
-                            <Text style={styles.unitArrangedSubText}>
+                            <Text style={[styles.unitArrangedSubText, isRTL && { textAlign: 'right' }]}>
                               {formatUnitArrangedBy(e, { isCommitteeView, isJirgaView, isCongressView })}
                             </Text>
                           )}
                         </View>
-                        <Text style={[styles.td, { width: isTablet ? '13%' : 110 }]} numberOfLines={1}>{e.vendor || '—'}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '13%' : 110 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{e.vendor || '—'}</Text>
                         
                         <View style={[styles.td, { width: isTablet ? '8%' : 70, alignItems: 'center', justifyContent: 'center' }]}>
                           {e.evidenceUrl || e.receiptImageUrl ? (
@@ -1295,7 +1303,7 @@ export default function FinanceScreen() {
                           )}
                         </View>
 
-                        <Text style={[styles.td, { width: isTablet ? '12%' : 110, textAlign: 'right', fontWeight: '800', color: '#b91c1c' }]}>
+                        <Text style={[styles.td, { width: isTablet ? '12%' : 110, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#b91c1c' }]}>
                           {PKR(e.amount)}
                         </Text>
                         <View style={[styles.td, { width: isTablet ? '9%' : 90 }]}>
@@ -1310,11 +1318,11 @@ export default function FinanceScreen() {
                             <>
                               <TouchableOpacity style={styles.btnApprove} onPress={() => decideExpense(e._id, 'APPROVED')}>
                                 <Ionicons name="checkmark" size={13} color="#15803d" />
-                                <Text style={styles.btnApproveText}>Approve</Text>
+                                <Text style={styles.btnApproveText}>{t('finance.approve', 'Approve')}</Text>
                               </TouchableOpacity>
                               <TouchableOpacity style={styles.btnDanger} onPress={() => decideExpense(e._id, 'REJECTED')}>
                                 <Ionicons name="close" size={13} color="#b91c1c" />
-                                <Text style={styles.btnDangerText}>Reject</Text>
+                                <Text style={styles.btnDangerText}>{t('finance.reject', 'Reject')}</Text>
                               </TouchableOpacity>
                             </>
                           ) : (
@@ -1330,51 +1338,51 @@ export default function FinanceScreen() {
               {/* MONTHLY STATEMENTS TABLE */}
               {tab === 'MONTHLY' && (
                 <View style={{ minWidth: isTablet ? '100%' : 700, width: isTablet ? '100%' : undefined }}>
-                  <View style={styles.thRow}>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 110 }]}>Month</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Donations</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Transfers In</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Expenses</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: 'right' }]}>Transfers Out</Text>
-                    <Text style={[styles.th, { width: isTablet ? '20%' : 120, textAlign: 'right' }]}>Net Balance</Text>
+                  <View style={[styles.thRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 110 }, isRTL && { textAlign: 'right' }]}>{t('finance.month', 'Month')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.donations', 'Donations')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.transfersIn', 'Transfers In')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.expenses', 'Expenses')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.transfersOut', 'Transfers Out')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '20%' : 120, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.netBalance', 'Net Balance')}</Text>
                   </View>
 
                   {monthly.length === 0 && !loading && (
                     <View style={styles.emptyWrap}>
                       <Ionicons name="calendar-outline" size={32} color={Colors.textLight} />
-                      <Text style={styles.emptyText}>No monthly statements found for this period.</Text>
+                      <Text style={styles.emptyText}>{t('finance.noTransactions', 'No monthly statements found for this period.')}</Text>
                     </View>
                   )}
 
                   {monthly.map((m) => (
-                    <View key={m.month} style={styles.tr}>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 110, fontWeight: '600' }]}>{m.month}</Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#16a34a', fontWeight: '600' }]}>{PKR(m.donations)}</Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#0284c7' }]}>{PKR(m.transfersIn)}</Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#dc2626', fontWeight: '600' }]}>{PKR(m.expenses)}</Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', color: '#d97706' }]}>{PKR(m.transfersOut)}</Text>
-                      <Text style={[styles.td, { width: isTablet ? '20%' : 120, textAlign: 'right', fontWeight: '800', color: m.netBalance < 0 ? '#dc2626' : '#16a34a' }]}>
+                    <View key={m.month} style={[styles.tr, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 110, fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>{m.month}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', color: '#16a34a', fontWeight: '600' }]}>{PKR(m.donations)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', color: '#0284c7' }]}>{PKR(m.transfersIn)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', color: '#dc2626', fontWeight: '600' }]}>{PKR(m.expenses)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', color: '#d97706' }]}>{PKR(m.transfersOut)}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '20%' : 120, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: m.netBalance < 0 ? '#dc2626' : '#16a34a' }]}>
                         {PKR(m.netBalance)}
                       </Text>
                     </View>
                   ))}
 
                   {monthly.length > 0 && (
-                    <View style={[styles.tr, { backgroundColor: '#f8fafc', borderTopWidth: 2, borderTopColor: Colors.border }]}>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 110, fontWeight: '800' }]}>Totals</Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#16a34a' }]}>
+                    <View style={[styles.tr, { backgroundColor: '#f8fafc', borderTopWidth: 2, borderTopColor: Colors.border }, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 110, fontWeight: '800' }, isRTL && { textAlign: 'right' }]}>{t('finance.totals', 'Totals')}</Text>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#16a34a' }]}>
                         {PKR(monthly.reduce((a, m) => a + m.donations, 0))}
                       </Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#0284c7' }]}>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#0284c7' }]}>
                         {PKR(monthly.reduce((a, m) => a + m.transfersIn, 0))}
                       </Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#dc2626' }]}>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#dc2626' }]}>
                         {PKR(monthly.reduce((a, m) => a + m.expenses, 0))}
                       </Text>
-                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: 'right', fontWeight: '800', color: '#d97706' }]}>
+                      <Text style={[styles.td, { width: isTablet ? '16%' : 120, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#d97706' }]}>
                         {PKR(monthly.reduce((a, m) => a + m.transfersOut, 0))}
                       </Text>
-                      <Text style={[styles.td, { width: isTablet ? '20%' : 120, textAlign: 'right', fontWeight: '900', color: '#0f172a' }]}>
+                      <Text style={[styles.td, { width: isTablet ? '20%' : 120, textAlign: isRTL ? 'left' : 'right', fontWeight: '900', color: '#0f172a' }]}>
                         {PKR(monthly.reduce((a, m) => a + m.netBalance, 0))}
                       </Text>
                     </View>
@@ -1390,11 +1398,11 @@ export default function FinanceScreen() {
       <Modal visible={showDonation} animationType="slide" presentationStyle={isTablet ? 'overFullScreen' : 'pageSheet'} transparent={isTablet} onRequestClose={() => setShowDonation(false)}>
         <SafeAreaView style={[styles.modalSafeWrapper, isTablet && styles.modalSafeWrapperTablet]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalCard, isTablet && styles.modalCardTablet]}>
-            <View style={styles.modalHeaderCard}>
+            <View style={[styles.modalHeaderCard, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalHeaderCardTitle}>{recordDonationBtnLabel.replace('+ ', '')}</Text>
-                <Text style={styles.modalHeaderCardSub}>
-                  Fields marked with <Text style={{ color: Colors.error, fontWeight: '700' }}>*</Text> are required
+                <Text style={[styles.modalHeaderCardTitle, isRTL && { textAlign: 'right' }]}>{recordDonationBtnLabel.replace('+ ', '')}</Text>
+                <Text style={[styles.modalHeaderCardSub, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.fieldsMarkedRequired', 'Fields marked * are required.')}
                 </Text>
               </View>
               <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setShowDonation(false)}>
@@ -1404,23 +1412,23 @@ export default function FinanceScreen() {
 
             <ScrollView contentContainerStyle={styles.formScrollBody} keyboardShouldPersistTaps="handled">
               {err ? (
-                <View style={styles.formErrorBox}>
+                <View style={[styles.formErrorBox, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Ionicons name="alert-circle" size={18} color="#b91c1c" />
-                  <Text style={styles.formErrorText}>{err}</Text>
+                  <Text style={[styles.formErrorText, isRTL && { textAlign: 'right' }]}>{err}</Text>
                 </View>
               ) : null}
 
               {/* Amount Field Card */}
               <View style={styles.formCard}>
-                <Text style={styles.cardHeaderLabel}>
-                  Amount & Currency <Text style={{ color: Colors.error }}>*</Text>
+                <Text style={[styles.cardHeaderLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.amountRequired', 'Amount & Currency *')}
                 </Text>
-                <View style={styles.amountInputRow}>
+                <View style={[styles.amountInputRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={styles.currencyPrefixBadge}>
                     <Text style={styles.currencyPrefixText}>PKR</Text>
                   </View>
                   <TextInput
-                    style={styles.amountInput}
+                    style={[styles.amountInput, isRTL && { textAlign: 'right' }]}
                     value={donationForm.amount}
                     onChangeText={(v) => setDonationForm((f) => ({ ...f, amount: v }))}
                     keyboardType="numeric"
@@ -1429,29 +1437,36 @@ export default function FinanceScreen() {
                   />
                 </View>
                 {donationForm.donorType === 'ANONYMOUS' && (
-                  <View style={styles.capNoticeBox}>
+                  <View style={[styles.capNoticeBox, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Ionicons name="information-circle-outline" size={14} color="#d97706" />
-                    <Text style={styles.capNoticeText}>Anonymous donations are capped at {PKR(ANONYMOUS_CAP)}.</Text>
+                    <Text style={[styles.capNoticeText, isRTL && { textAlign: 'right' }]}>Anonymous donations are capped at {PKR(ANONYMOUS_CAP)}.</Text>
                   </View>
                 )}
               </View>
 
               {/* Donor Type & Details Card */}
               <View style={styles.formCard}>
-                <Text style={styles.cardHeaderLabel}>
-                  Donor Information <Text style={{ color: Colors.error }}>*</Text>
+                <Text style={[styles.cardHeaderLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.donor', 'Donor Information')} <Text style={{ color: Colors.error }}>*</Text>
                 </Text>
 
                 {/* Donor Type Pill Selector */}
-                <View style={styles.donorTypePillGrid}>
-                  {DONOR_TYPES.map((t) => {
-                    const isSel = donationForm.donorType === t.code;
+                <View style={[styles.donorTypePillGrid, isRTL && { flexDirection: 'row-reverse' }]}>
+                  {DONOR_TYPES.map((item) => {
+                    const isSel = donationForm.donorType === item.code;
+                    const itemLabel = item.code === 'MEMBER'
+                      ? t('finance.member', 'Member')
+                      : (item.code === 'NON_MEMBER'
+                        ? t('finance.nonMember', 'Non-Member')
+                        : (item.code === 'CORPORATE'
+                          ? t('finance.corporate', 'Corporate')
+                          : t('finance.anonymous', 'Anonymous')));
                     return (
                       <TouchableOpacity
-                        key={t.code}
-                        style={[styles.donorTypeChip, isSel && styles.donorTypeChipActive]}
+                        key={item.code}
+                        style={[styles.donorTypeChip, isSel && styles.donorTypeChipActive, isRTL && { flexDirection: 'row-reverse' }]}
                         onPress={() => {
-                          const nextType = t.code;
+                          const nextType = item.code;
                           const mem = nextType === 'MEMBER' ? members.find((m) => String(m._id) === String(donationForm.donorMemberId)) : null;
                           setDonationForm((f) => ({
                             ...f,
@@ -1463,12 +1478,12 @@ export default function FinanceScreen() {
                         }}
                       >
                         <Ionicons
-                          name={t.icon}
+                          name={item.icon}
                           size={16}
                           color={isSel ? '#1e40af' : '#64748b'}
                         />
                         <Text style={[styles.donorTypeChipText, isSel && styles.donorTypeChipTextActive]}>
-                          {t.label}
+                          {itemLabel}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -1478,7 +1493,7 @@ export default function FinanceScreen() {
                 {/* Member selection dropdown */}
                 {donationForm.donorType === 'MEMBER' && (
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputGroupLabel}>Select Member <Text style={{ color: Colors.error }}>*</Text></Text>
+                    <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.pickMember', 'Select Member')} <Text style={{ color: Colors.error }}>*</Text></Text>
                     <View style={styles.modernPickerWrap}>
                       <Picker
                         selectedValue={donationForm.donorMemberId}
@@ -1492,23 +1507,23 @@ export default function FinanceScreen() {
                           }));
                         }}
                       >
-                        <Picker.Item label="— Choose from registered members —" value="" />
+                        <Picker.Item label={`— ${t('finance.pickMember', 'Choose from registered members')} —`} value="" />
                         {members.map((m) => (
                           <Picker.Item key={m._id} label={`${m.fullName} · ${m.memberId || m.cnic || ''}`} value={m._id} />
                         ))}
                       </Picker>
                     </View>
-                    <Text style={styles.fieldHint}>Linking records this donation on the member's annual performance report.</Text>
+                    <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>Linking records this donation on the member's annual performance report.</Text>
                   </View>
                 )}
 
                 {/* Non-member / Corporate fields */}
                 {(donationForm.donorType === 'NON_MEMBER' || donationForm.donorType === 'CORPORATE') && (
-                  <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                  <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet, isRTL && { flexDirection: 'row-reverse' }]}>
                     <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
-                      <Text style={styles.inputGroupLabel}>Donor Name</Text>
+                      <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.donorName', 'Donor Name')}</Text>
                       <TextInput
-                        style={styles.modernTextInput}
+                        style={[styles.modernTextInput, isRTL && { textAlign: 'right' }]}
                         value={donationForm.donorName}
                         onChangeText={(v) => setDonationForm((f) => ({ ...f, donorName: v }))}
                         placeholder="e.g. Haji Abdul Qadir"
@@ -1517,18 +1532,18 @@ export default function FinanceScreen() {
                     </View>
 
                     <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
-                      <Text style={styles.inputGroupLabel}>
-                        Donor CNIC {donCnicRequired ? <Text style={{ color: Colors.error }}>*</Text> : '(Optional)'}
+                      <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>
+                        {t('finance.donorCnic', 'Donor CNIC')} {donCnicRequired ? <Text style={{ color: Colors.error }}>*</Text> : '(Optional)'}
                       </Text>
                       <TextInput
-                        style={styles.modernTextInput}
+                        style={[styles.modernTextInput, isRTL && { textAlign: 'right' }]}
                         value={donationForm.donorCnic}
                         onChangeText={(v) => setDonationForm((f) => ({ ...f, donorCnic: formatCnic(v) }))}
                         placeholder="42101-1234567-1"
                         placeholderTextColor="#94a3b8"
                         keyboardType="numeric"
                       />
-                      <Text style={styles.fieldHint}>
+                      <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>
                         {donationForm.donorType === 'NON_MEMBER'
                           ? `Required for donations > ${PKR(NON_MEMBER_CNIC_THRESHOLD)}.`
                           : 'Optional for audit documentation.'}
@@ -1540,37 +1555,49 @@ export default function FinanceScreen() {
 
               {/* Payment & Date Card */}
               <View style={styles.formCard}>
-                <Text style={styles.cardHeaderLabel}>
-                  Payment & Transaction Details <Text style={{ color: Colors.error }}>*</Text>
+                <Text style={[styles.cardHeaderLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.paymentMode', 'Payment & Transaction Details')} <Text style={{ color: Colors.error }}>*</Text>
                 </Text>
 
-                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
-                    <Text style={styles.inputGroupLabel}>Payment Mode <Text style={{ color: Colors.error }}>*</Text></Text>
+                    <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.paymentMode', 'Payment Mode')} <Text style={{ color: Colors.error }}>*</Text></Text>
                     <View style={styles.modernPickerWrap}>
                       <Picker
                         selectedValue={donationForm.paymentMode}
                         onValueChange={(itemValue) => setDonationForm((f) => ({ ...f, paymentMode: itemValue }))}
                       >
-                        {PAYMENT_MODES.map((t) => <Picker.Item key={t.code} label={t.label} value={t.code} />)}
+                        {PAYMENT_MODES.map((item) => (
+                          <Picker.Item
+                            key={item.code}
+                            label={item.code === 'CASH'
+                              ? t('finance.cash', 'Cash')
+                              : (item.code === 'BANK_TRANSFER'
+                                ? t('finance.bankTransfer', 'Bank Transfer')
+                                : (item.code === 'MOBILE_WALLET'
+                                  ? t('finance.mobileWallet', 'Mobile Wallet')
+                                  : t('finance.cheque', 'Cheque')))}
+                            value={item.code}
+                          />
+                        ))}
                       </Picker>
                     </View>
                   </View>
 
                   <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
                     <DatePicker
-                      label="Received Date *"
+                      label={`${t('finance.receivedAt', 'Received Date')} *`}
                       value={donationForm.receivedAt}
                       onChange={(v) => setDonationForm((f) => ({ ...f, receivedAt: v }))}
-                      placeholder="Select received date"
+                      placeholder={t('finance.receivedAt', 'Select received date')}
                     />
                   </View>
                 </View>
 
                 {/* Receipt Attachment Box */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Receipt Image or PDF (Optional)</Text>
-                  <TouchableOpacity style={[styles.modernUploadZone, donReceipt && styles.modernUploadZoneActive]} onPress={pickDonReceipt}>
+                  <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.receipt', 'Receipt Image or PDF (Optional)')}</Text>
+                  <TouchableOpacity style={[styles.modernUploadZone, donReceipt && styles.modernUploadZoneActive, isRTL && { flexDirection: 'row-reverse' }]} onPress={pickDonReceipt}>
                     <View style={[styles.uploadIconCircle, donReceipt && { backgroundColor: '#dcfce7' }]}>
                       <Ionicons
                         name={donReceipt ? 'checkmark-circle' : 'cloud-upload'}
@@ -1579,10 +1606,10 @@ export default function FinanceScreen() {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.uploadZoneTitle, donReceipt && { color: '#15803d' }]}>
-                        {donReceipt ? (donReceipt.name || 'Receipt Document Selected') : 'Upload Receipt / Deposit Slip'}
+                      <Text style={[styles.uploadZoneTitle, donReceipt && { color: '#15803d' }, isRTL && { textAlign: 'right' }]}>
+                        {donReceipt ? (donReceipt.name || 'Receipt Document Selected') : t('finance.uploadReceipt', 'Upload Receipt / Deposit Slip')}
                       </Text>
-                      <Text style={styles.uploadZoneSub}>
+                      <Text style={[styles.uploadZoneSub, isRTL && { textAlign: 'right' }]}>
                         {donReceipt ? 'Tap to change attached file' : 'PNG, JPG, or PDF (up to 10MB)'}
                       </Text>
                     </View>
@@ -1591,9 +1618,9 @@ export default function FinanceScreen() {
               </View>
 
               {/* Bottom Actions */}
-              <View style={styles.modalBottomActions}>
+              <View style={[styles.modalBottomActions, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity style={styles.btnModalCancel} onPress={() => setShowDonation(false)}>
-                  <Text style={styles.btnModalCancelText}>Cancel</Text>
+                  <Text style={styles.btnModalCancelText}>{t('common.cancel', 'Cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.btnModalSubmit} onPress={saveDonation} disabled={saving}>
                   {saving ? (
@@ -1601,7 +1628,7 @@ export default function FinanceScreen() {
                   ) : (
                     <>
                       <Ionicons name="checkmark-circle-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                      <Text style={styles.btnModalSubmitText}>Record Donation</Text>
+                      <Text style={styles.btnModalSubmitText}>{t('finance.recordDonation', 'Record Donation')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -1615,11 +1642,11 @@ export default function FinanceScreen() {
       <Modal visible={showExpense} animationType="slide" presentationStyle={isTablet ? 'overFullScreen' : 'pageSheet'} transparent={isTablet} onRequestClose={() => setShowExpense(false)}>
         <SafeAreaView style={[styles.modalSafeWrapper, isTablet && styles.modalSafeWrapperTablet]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalCard, isTablet && styles.modalCardTablet]}>
-            <View style={styles.modalHeaderCard}>
+            <View style={[styles.modalHeaderCard, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalHeaderCardTitle}>{recordExpenseBtnLabel.replace('+ ', '')}</Text>
-                <Text style={styles.modalHeaderCardSub}>
-                  Fields marked with <Text style={{ color: Colors.error, fontWeight: '700' }}>*</Text> are required
+                <Text style={[styles.modalHeaderCardTitle, isRTL && { textAlign: 'right' }]}>{recordExpenseBtnLabel.replace('+ ', '')}</Text>
+                <Text style={[styles.modalHeaderCardSub, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.fieldsMarkedRequired', 'Fields marked * are required.')}
                 </Text>
               </View>
               <TouchableOpacity style={styles.modalCloseCircle} onPress={() => setShowExpense(false)}>
@@ -1629,23 +1656,23 @@ export default function FinanceScreen() {
 
             <ScrollView contentContainerStyle={styles.formScrollBody} keyboardShouldPersistTaps="handled">
               {err ? (
-                <View style={styles.formErrorBox}>
+                <View style={[styles.formErrorBox, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Ionicons name="alert-circle" size={18} color="#b91c1c" />
-                  <Text style={styles.formErrorText}>{err}</Text>
+                  <Text style={[styles.formErrorText, isRTL && { textAlign: 'right' }]}>{err}</Text>
                 </View>
               ) : null}
 
               {/* Amount Field Card */}
               <View style={styles.formCard}>
-                <Text style={styles.cardHeaderLabel}>
-                  Expense Amount <Text style={{ color: Colors.error }}>*</Text>
+                <Text style={[styles.cardHeaderLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.amountRequired', 'Expense Amount *')}
                 </Text>
-                <View style={styles.amountInputRow}>
+                <View style={[styles.amountInputRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={[styles.currencyPrefixBadge, { backgroundColor: '#fee2e2' }]}>
                     <Text style={[styles.currencyPrefixText, { color: '#dc2626' }]}>PKR</Text>
                   </View>
                   <TextInput
-                    style={styles.amountInput}
+                    style={[styles.amountInput, isRTL && { textAlign: 'right' }]}
                     value={expenseForm.amount}
                     onChangeText={(v) => setExpenseForm((f) => ({ ...f, amount: v }))}
                     keyboardType="numeric"
@@ -1657,13 +1684,13 @@ export default function FinanceScreen() {
 
               {/* Category & Description Card */}
               <View style={styles.formCard}>
-                <Text style={styles.cardHeaderLabel}>
-                  Expense Details <Text style={{ color: Colors.error }}>*</Text>
+                <Text style={[styles.cardHeaderLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.expenses', 'Expense Details')} <Text style={{ color: Colors.error }}>*</Text>
                 </Text>
 
-                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
-                    <Text style={styles.inputGroupLabel}>Category <Text style={{ color: Colors.error }}>*</Text></Text>
+                    <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.category', 'Category')} <Text style={{ color: Colors.error }}>*</Text></Text>
                     <View style={styles.modernPickerWrap}>
                       <Picker
                         selectedValue={expenseForm.category}
@@ -1675,9 +1702,9 @@ export default function FinanceScreen() {
                   </View>
 
                   <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
-                    <Text style={styles.inputGroupLabel}>Vendor / Payee</Text>
+                    <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.vendorPayee', 'Vendor / Payee')}</Text>
                     <TextInput
-                      style={styles.modernTextInput}
+                      style={[styles.modernTextInput, isRTL && { textAlign: 'right' }]}
                       value={expenseForm.vendor}
                       onChangeText={(v) => setExpenseForm((f) => ({ ...f, vendor: v }))}
                       placeholder="Supplier or merchant name"
@@ -1687,9 +1714,9 @@ export default function FinanceScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Description <Text style={{ color: Colors.error }}>*</Text></Text>
+                  <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.description', 'Description')} <Text style={{ color: Colors.error }}>*</Text></Text>
                   <TextInput
-                    style={[styles.modernTextInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]}
+                    style={[styles.modernTextInput, { height: 80, textAlignVertical: 'top', paddingTop: 10 }, isRTL && { textAlign: 'right' }]}
                     value={expenseForm.description}
                     onChangeText={(v) => setExpenseForm((f) => ({ ...f, description: v }))}
                     placeholder="Explain purpose of expenditure (minimum 3 characters)"
@@ -1701,37 +1728,49 @@ export default function FinanceScreen() {
 
               {/* Payment & Incurred Date Card */}
               <View style={styles.formCard}>
-                <Text style={styles.cardHeaderLabel}>
-                  Payment & Documentation <Text style={{ color: Colors.error }}>*</Text>
+                <Text style={[styles.cardHeaderLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.paymentMode', 'Payment & Documentation')} <Text style={{ color: Colors.error }}>*</Text>
                 </Text>
 
-                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet]}>
+                <View style={[styles.formRowWrap, isTablet && styles.formRowWrapTablet, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
-                    <Text style={styles.inputGroupLabel}>Payment Mode <Text style={{ color: Colors.error }}>*</Text></Text>
+                    <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.paymentMode', 'Payment Mode')} <Text style={{ color: Colors.error }}>*</Text></Text>
                     <View style={styles.modernPickerWrap}>
                       <Picker
                         selectedValue={expenseForm.paymentMode}
                         onValueChange={(itemValue) => setExpenseForm((f) => ({ ...f, paymentMode: itemValue }))}
                       >
-                        {PAYMENT_MODES.map((t) => <Picker.Item key={t.code} label={t.label} value={t.code} />)}
+                        {PAYMENT_MODES.map((item) => (
+                          <Picker.Item
+                            key={item.code}
+                            label={item.code === 'CASH'
+                              ? t('finance.cash', 'Cash')
+                              : (item.code === 'BANK_TRANSFER'
+                                ? t('finance.bankTransfer', 'Bank Transfer')
+                                : (item.code === 'MOBILE_WALLET'
+                                  ? t('finance.mobileWallet', 'Mobile Wallet')
+                                  : t('finance.cheque', 'Cheque')))}
+                            value={item.code}
+                          />
+                        ))}
                       </Picker>
                     </View>
                   </View>
 
                   <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
                     <DatePicker
-                      label="Incurred Date *"
+                      label={`${t('finance.incurredAt', 'Incurred Date')} *`}
                       value={expenseForm.incurredAt}
                       onChange={(v) => setExpenseForm((f) => ({ ...f, incurredAt: v }))}
-                      placeholder="Select incurred date"
+                      placeholder={t('finance.incurredAt', 'Select incurred date')}
                     />
                   </View>
                 </View>
 
                 {/* Evidence Bill / Voucher Attachment */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputGroupLabel}>Bill or Voucher Receipt (Required for Approval)</Text>
-                  <TouchableOpacity style={[styles.modernUploadZone, expEvidence && styles.modernUploadZoneActive]} onPress={pickExpEvidence}>
+                  <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>{t('finance.billVoucher', 'Bill or Voucher Receipt (Required for Approval)')}</Text>
+                  <TouchableOpacity style={[styles.modernUploadZone, expEvidence && styles.modernUploadZoneActive, isRTL && { flexDirection: 'row-reverse' }]} onPress={pickExpEvidence}>
                     <View style={[styles.uploadIconCircle, expEvidence && { backgroundColor: '#dcfce7' }, { backgroundColor: '#f0fdfa' }]}>
                       <Ionicons
                         name={expEvidence ? 'checkmark-circle' : 'receipt-outline'}
@@ -1740,10 +1779,10 @@ export default function FinanceScreen() {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.uploadZoneTitle, expEvidence && { color: '#15803d' }]}>
-                        {expEvidence ? (expEvidence.name || 'Voucher Attached') : 'Attach Bill or Voucher Image'}
+                      <Text style={[styles.uploadZoneTitle, expEvidence && { color: '#15803d' }, isRTL && { textAlign: 'right' }]}>
+                        {expEvidence ? (expEvidence.name || 'Voucher Attached') : t('finance.billVoucher', 'Attach Bill or Voucher Image')}
                       </Text>
-                      <Text style={styles.uploadZoneSub}>
+                      <Text style={[styles.uploadZoneSub, isRTL && { textAlign: 'right' }]}>
                         {expEvidence ? 'Tap to change attached voucher' : 'Official bill/voucher photo is required'}
                       </Text>
                     </View>
@@ -1752,9 +1791,9 @@ export default function FinanceScreen() {
               </View>
 
               {/* Bottom Actions */}
-              <View style={styles.modalBottomActions}>
+              <View style={[styles.modalBottomActions, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity style={styles.btnModalCancel} onPress={() => setShowExpense(false)}>
-                  <Text style={styles.btnModalCancelText}>Cancel</Text>
+                  <Text style={styles.btnModalCancelText}>{t('common.cancel', 'Cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.btnModalSubmit, { backgroundColor: '#0f766e' }]} onPress={saveExpense} disabled={saving}>
                   {saving ? (
@@ -1762,7 +1801,7 @@ export default function FinanceScreen() {
                   ) : (
                     <>
                       <Ionicons name="send" size={16} color="#fff" style={{ marginRight: 6 }} />
-                      <Text style={styles.btnModalSubmitText}>Submit Expense</Text>
+                      <Text style={styles.btnModalSubmitText}>{t('finance.recordExpense', 'Submit Expense')}</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -1777,8 +1816,8 @@ export default function FinanceScreen() {
         <Modal visible={!!previewDocUrl} transparent animationType="fade" onRequestClose={() => setPreviewDocUrl(null)}>
           <View style={styles.modalBackdrop}>
             <View style={[styles.confirmModal, { maxWidth: 640, width: '94%' }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={styles.confirmTitle}>Receipt / Document Proof</Text>
+              <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Text style={styles.confirmTitle}>{t('finance.receiptImage', 'Receipt / Document Proof')}</Text>
                 <TouchableOpacity onPress={() => setPreviewDocUrl(null)}>
                   <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
@@ -1788,9 +1827,9 @@ export default function FinanceScreen() {
                 style={{ width: '100%', height: Math.min(420, height * 0.5), borderRadius: 8, backgroundColor: '#0f172a' }} 
                 resizeMode="contain" 
               />
-              <View style={{ marginTop: 16, alignItems: 'flex-end' }}>
+              <View style={[{ marginTop: 16, alignItems: 'flex-end' }, isRTL && { alignItems: 'flex-start' }]}>
                 <TouchableOpacity style={styles.btnModalCancel} onPress={() => setPreviewDocUrl(null)}>
-                  <Text style={styles.btnModalCancelText}>Close</Text>
+                  <Text style={styles.btnModalCancelText}>{t('common.close', 'Close')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

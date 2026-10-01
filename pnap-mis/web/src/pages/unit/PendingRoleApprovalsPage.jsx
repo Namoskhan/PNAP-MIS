@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { api, errorMessage } from '../../api/client';
 import { useToast } from '../../components/Toast';
@@ -24,6 +25,7 @@ const ROLE_LABEL = {
 // Secretary / Secretary General initiate; Secretary / President /
 // Chairman / Co-Chairman approve.
 export default function PendingRoleApprovalsPage() {
+  const { t } = useTranslation();
   const { ctx } = useUnit();
   const toast = useToast();
   const [items, setItems] = useState([]);
@@ -40,46 +42,64 @@ export default function PendingRoleApprovalsPage() {
   useEffect(() => { reload(); }, [ctx]);
 
   async function decide(id, decision) {
-    if (!await dialog.confirm(`${decision === 'APPROVED' ? 'Approve' : 'Reject'} this role assignment?`)) return;
+    const actionText = decision === 'APPROVED' ? t('common.approve', 'Approve') : t('common.reject', 'Reject');
+    if (!await dialog.confirm(t('roles.confirmDecision', '{{action}} this role assignment?', { action: actionText }))) return;
     setBusy(true);
     try {
       await api.post(`/roles/${id}/decide`, { decision });
-      toast.success(`Role ${decision.toLowerCase()}.`);
+      toast.success(
+        t('roles.decisionSuccess', 'Role {{status}}.', {
+          status: decision === 'APPROVED' ? t('common.approved', 'approved') : t('common.rejected', 'rejected'),
+        })
+      );
       await reload();
-    } catch (e) { toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} role`, duration: 7000 }); }
-    finally { setBusy(false); }
+    } catch (e) {
+      toast.error(errorMessage(e), {
+        title: t('roles.decisionFailed', 'Could not {{action}} role', { action: decision.toLowerCase() }),
+        duration: 7000,
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) return <p>{t('common.selectUnitContext', 'Select a unit context first.')}</p>;
 
   return (
     <div>
-      <div className="page-header"><h2>Pending Role Approvals · {ctx.unitName}</h2></div>
+      <div className="page-header">
+        <h2>{t('roles.pendingApprovalsHeader', 'Pending Role Approvals · {{unitName}}', { unitName: ctx.unitName })}</h2>
+      </div>
       <p className="muted">
-        Role assignments proposed by the Senior Mawin Secretary (or higher initiator) waiting for your decision.
+        {t('roles.pendingApprovalsSubtitle', 'Role assignments proposed by the Senior Mawin Secretary (or higher initiator) waiting for your decision.')}
       </p>
 
-
       {items.length === 0 ? (
-        <div className="card"><p className="muted" style={{ margin: 0 }}>No proposals waiting. New ones will appear here.</p></div>
+        <div className="card"><p className="muted" style={{ margin: 0 }}>{t('roles.noProposalsWaiting', 'No proposals waiting. New ones will appear here.')}</p></div>
       ) : (
         <table className="list">
           <thead>
-            <tr><th>Role</th><th>Member</th><th>Initiated by</th><th>Proposed at</th><th></th></tr>
+            <tr>
+              <th>{t('common.role', 'Role')}</th>
+              <th>{t('common.member', 'Member')}</th>
+              <th>{t('roles.initiatedBy', 'Initiated by')}</th>
+              <th>{t('roles.proposedAt', 'Proposed at')}</th>
+              <th></th>
+            </tr>
           </thead>
           <tbody>
             {items.map((p) => (
               <tr key={p._id}>
                 <td>
-                  <strong>{ROLE_LABEL[p.roleCode] || p.roleCode}</strong>
+                  <strong>{t(`roles.${p.roleCode.toLowerCase()}`, ROLE_LABEL[p.roleCode] || p.roleCode)}</strong>
                   {p.customRoleName && <span className="muted"> ({p.customRoleName})</span>}
                 </td>
                 <td>{p.memberId?.fullName} <span className="muted">{p.memberId?.memberId || p.memberId?.cnic}</span></td>
                 <td>{p.initiatedBy?.fullName || '—'}</td>
                 <td>{new Date(p.createdAt).toLocaleString()}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button className="btn" disabled={busy} onClick={() => decide(p._id, 'APPROVED')}>Approve</button>{' '}
-                  <button className="btn danger" disabled={busy} onClick={() => decide(p._id, 'REJECTED')}>Reject</button>
+                  <button className="btn" disabled={busy} onClick={() => decide(p._id, 'APPROVED')}>{t('common.approve', 'Approve')}</button>{' '}
+                  <button className="btn danger" disabled={busy} onClick={() => decide(p._id, 'REJECTED')}>{t('common.reject', 'Reject')}</button>
                 </td>
               </tr>
             ))}
