@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
@@ -31,6 +32,7 @@ const OWN_HEADING = {
 };
 
 export default function CommitteePage() {
+  const { t } = useTranslation();
   const { ctx } = useUnit();
   const { user } = useAuth();
   const toast = useToast();
@@ -108,7 +110,7 @@ export default function CommitteePage() {
 
   async function nominate() {
     setErr('');
-    if (!memberId) { setErr('Pick a member.'); return; }
+    if (!memberId) { setErr(t('committee.pickMemberError', 'Pick a member.')); return; }
     try {
       const nominee = members.find((m) => m._id === memberId);
       await api.post('/committee/permanent', {
@@ -119,22 +121,24 @@ export default function CommitteePage() {
       setNominateOpen(false);
       reload();
       toast.success(
-        nominee ? `${nominee.fullName} nominated as a selective member.` : 'Selective member nominated.',
-        { title: 'Nomination recorded' }
+        nominee
+          ? t('committee.nominatedSuccessWithMember', '{{name}} nominated as a selective member.', { name: nominee.fullName })
+          : t('committee.nominatedSuccess', 'Selective member nominated.'),
+        { title: t('committee.nominationRecorded', 'Nomination recorded') }
       );
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not nominate member', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('committee.nominationFailed', 'Could not nominate member'), duration: 7000 });
     }
   }
 
   async function removePerm(id) {
-    if (!await dialog.confirm('Remove this selective member from the committee?')) return;
+    if (!await dialog.confirm(t('committee.confirmRemoveSelective', 'Remove this selective member from the committee?'))) return;
     try {
       await api.post(`/committee/permanent/${id}/remove`);
       reload();
-      toast.success('Selective member removed.');
+      toast.success(t('committee.memberRemovedSuccess', 'Selective member removed.'));
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not remove member', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('committee.removeFailed', 'Could not remove member'), duration: 7000 });
     }
   }
 
@@ -149,12 +153,11 @@ export default function CommitteePage() {
 
   const eligibleMembers = useMemo(() => members.filter((m) => !alreadyInBody.has(String(m._id))), [members, alreadyInBody]);
 
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) return <p>{t('common.selectUnitContext', 'Select a unit context first.')}</p>;
   if (!resolved) {
     return (
       <p className="muted">
-        Loading committee context… Basic Units have no committee of their own — the
-        view is redirected to the parent Area's Elaqayi Committee.
+        {t('committee.loadingContextRedirect', 'Loading committee context… Basic Units have no committee of their own — the view is redirected to the parent Area\'s Elaqayi Committee.')}
       </p>
     );
   }
@@ -166,7 +169,13 @@ export default function CommitteePage() {
     : 0;
 
   const canManage = !!data?.canManage;
-  const committeeTitle = COMMITTEE_LABEL[resolved.unitLevel] || 'Committee';
+  const committeeTitle = resolved ? (
+    resolved.unitLevel === 'AREA' ? t('committee.label_area', t('units.elaqayiCommittee', 'Elaqayi Committee')) :
+    resolved.unitLevel === 'DISTRICT' ? t('committee.label_district', t('units.zillaCommittee', 'Zilla Committee')) :
+    resolved.unitLevel === 'PROVINCE' ? t('committee.label_province', t('units.sobayiCommittee', 'Sobayi Committee')) :
+    resolved.unitLevel === 'CENTRAL' ? t('committee.label_central', t('units.centralCommittee', 'Central Committee')) :
+    (COMMITTEE_LABEL[resolved.unitLevel] || t('committee.title', 'Committee'))
+  ) : t('committee.title', 'Committee');
 
   return (
     <div>
@@ -176,7 +185,7 @@ export default function CommitteePage() {
 
       {ctx.unitLevel === 'BASIC_UNIT' && (
         <div className="alert" style={{ background: 'var(--info-bg)', color: 'var(--info-strong)', border: '1px solid var(--info-border)', marginBottom: 14 }}>
-          You are pinned to a Basic Unit. Showing the parent Area's Elaqayi Committee in <strong>read-only</strong> mode — you are a member of this body via your Basic-Unit role.
+          {t('committee.pinnedBasicUnitNotice', 'You are pinned to a Basic Unit. Showing the parent Area\'s Elaqayi Committee in read-only mode — you are a member of this body via your Basic-Unit role.')}
         </div>
       )}
 
@@ -184,22 +193,22 @@ export default function CommitteePage() {
         <>
           <div className="card" style={{ marginBottom: 14 }}>
             <p className="muted" style={{ margin: 0 }}>
-              <strong>{totalMembers}</strong> total members =
-              {' '}{data.ownCabinet?.length || 0} from Executive Cabinet
-              {' '}+ {(data.subordinates || []).reduce((a, s) => a + (s.roles?.length || 0), 0)} subordinate key office-holders
-              {' '}+ {data.permanentMembers?.length || 0} Selective Members.
+              <strong>{totalMembers}</strong> {t('committee.totalMembersCount', 'total members')} =
+              {' '}{data.ownCabinet?.length || 0} {t('committee.fromCabinet', 'from Executive Cabinet')}
+              {' '}+ {(data.subordinates || []).reduce((a, s) => a + (s.roles?.length || 0), 0)} {t('committee.subordinateHolders', 'subordinate key office-holders')}
+              {' '}+ {data.permanentMembers?.length || 0} {t('committee.selectiveMembers', 'Selective Members')}.
             </p>
           </div>
 
           <div className="card">
-            <h3 style={{ marginTop: 0 }}>{OWN_HEADING[resolved.unitLevel]}</h3>
+            <h3 style={{ marginTop: 0 }}>{t(`committee.heading_${resolved.unitLevel.toLowerCase()}`, OWN_HEADING[resolved.unitLevel])}</h3>
             <table className="list">
-              <thead><tr><th>Role</th><th>Member</th><th>Member ID</th><th>Phone</th></tr></thead>
+              <thead><tr><th>{t('common.role', 'Role')}</th><th>{t('common.member', 'Member')}</th><th>{t('members.memberId', 'Member ID')}</th><th>{t('common.phone', 'Phone')}</th></tr></thead>
               <tbody>
-                {data.ownCabinet.length === 0 && <tr><td colSpan="4" className="muted">Cabinet not formed yet.</td></tr>}
+                {data.ownCabinet.length === 0 && <tr><td colSpan="4" className="muted">{t('committee.cabinetNotFormed', 'Cabinet not formed yet.')}</td></tr>}
                 {data.ownCabinet.map((c) => (
                   <tr key={c._id}>
-                    <td><strong>{c.roleCode}</strong>{c.customRoleName ? ` (${c.customRoleName})` : ''}</td>
+                    <td><strong>{t(`roles.${c.roleCode}`, c.roleCode?.replace(/_/g, ' '))}</strong>{c.customRoleName ? ` (${c.customRoleName})` : ''}</td>
                     <td>{c.memberId?.fullName}</td>
                     <td>{c.memberId?.memberId || '—'}</td>
                     <td>{c.memberId?.phone}</td>
@@ -210,22 +219,22 @@ export default function CommitteePage() {
           </div>
 
           <div className="card" style={{ marginTop: 16 }}>
-            <h3 style={{ marginTop: 0 }}>{SUB_HEADING[resolved.unitLevel]}</h3>
-            {data.subordinates.length === 0 && <p className="muted">No subordinate units yet.</p>}
+            <h3 style={{ marginTop: 0 }}>{t(`committee.subheading_${resolved.unitLevel.toLowerCase()}`, SUB_HEADING[resolved.unitLevel])}</h3>
+            {data.subordinates.length === 0 && <p className="muted">{t('committee.noSubordinates', 'No subordinate units yet.')}</p>}
             {data.subordinates.map((s) => (
               <div key={s.unit._id} style={{ marginBottom: 12 }}>
                 <div className="muted" style={{ fontWeight: 600, marginBottom: 4 }}>
-                  {s.unit.level.replace('_', ' ')} · {s.unit.name}{s.unit.code ? ` (${s.unit.code})` : ''}
+                  {t(`units.${s.unit.level.toLowerCase()}`, s.unit.level.replace('_', ' '))} · {s.unit.name}{s.unit.code ? ` (${s.unit.code})` : ''}
                 </div>
                 {s.roles.length === 0 ? (
-                  <div className="muted small">No key office-holders assigned.</div>
+                  <div className="muted small">{t('committee.noOfficeHoldersAssigned', 'No key office-holders assigned.')}</div>
                 ) : (
                   <table className="list">
-                    <thead><tr><th>Role</th><th>Member</th><th>Phone</th></tr></thead>
+                    <thead><tr><th>{t('common.role', 'Role')}</th><th>{t('common.member', 'Member')}</th><th>{t('common.phone', 'Phone')}</th></tr></thead>
                     <tbody>
                       {s.roles.map((r) => (
                         <tr key={r._id}>
-                          <td>{r.roleCode}</td>
+                          <td>{t(`roles.${r.roleCode}`, r.roleCode?.replace(/_/g, ' '))}</td>
                           <td>{r.memberId?.fullName}</td>
                           <td>{r.memberId?.phone}</td>
                         </tr>
@@ -239,52 +248,52 @@ export default function CommitteePage() {
 
           <div className="card" style={{ marginTop: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h3 style={{ margin: 0 }}>Selective Members</h3>
+              <h3 style={{ margin: 0 }}>{t('committee.selectiveMembers', 'Selective Members')}</h3>
               {canManage && (
-                <button className="btn" onClick={() => setNominateOpen(true)}>+ Nominate</button>
+                <button className="btn" onClick={() => setNominateOpen(true)}>{t('committee.nominateBtn', '+ Nominate')}</button>
               )}
             </div>
             {err && <div className="alert error">{err}</div>}
 
             {canManage && nominateOpen && createPortal((
               <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setNominateOpen(false); }}>
-              <div className="modal" style={{ maxWidth: 560 }} role="dialog" aria-modal="true" aria-label="Nominate Selective Member">
+              <div className="modal" style={{ maxWidth: 560 }} role="dialog" aria-modal="true" aria-label={t('committee.nominateSelectiveModal', 'Nominate Selective Member')}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <h3 style={{ margin: 0 }}>Nominate Selective Member</h3>
-                  <button type="button" className="btn secondary" onClick={() => setNominateOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+                  <h3 style={{ margin: 0 }}>{t('committee.nominateSelectiveModal', 'Nominate Selective Member')}</h3>
+                  <button type="button" className="btn secondary" onClick={() => setNominateOpen(false)} aria-label={t('common.close', 'Close')} style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
                 <div className="form-grid">
                   <div className="field full">
-                    <label>Member *</label>
+                    <label>{t('common.member', 'Member')} *</label>
                     <select value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-                      <option value="">— pick a member —</option>
+                      <option value="">{t('common.pickMemberPlaceholder', '— pick a member —')}</option>
                       {eligibleMembers.map((m) => (
                         <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>
                       ))}
                     </select>
                   </div>
                   <div className="field full">
-                    <label>Nomination Note</label>
+                    <label>{t('committee.nominationNote', 'Nomination Note')}</label>
                     <input value={note} onChange={(e) => setNote(e.target.value)} />
                   </div>
                 </div>
                 <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button className="btn secondary" type="button" onClick={() => setNominateOpen(false)}>Cancel</button>
-                  <button className="btn" disabled={!memberId} onClick={nominate}>Nominate</button>
+                  <button className="btn secondary" type="button" onClick={() => setNominateOpen(false)}>{t('common.cancel', 'Cancel')}</button>
+                  <button className="btn" disabled={!memberId} onClick={nominate}>{t('committee.nominateAction', 'Nominate')}</button>
                 </div>
               </div>
               </div>
             ), document.body)}
             <table className="list" style={{ marginTop: 12 }}>
-              <thead><tr><th>Member</th><th>Phone</th><th>Note</th>{canManage && <th></th>}</tr></thead>
+              <thead><tr><th>{t('common.member', 'Member')}</th><th>{t('common.phone', 'Phone')}</th><th>{t('common.notes', 'Note')}</th>{canManage && <th></th>}</tr></thead>
               <tbody>
-                {data.permanentMembers.length === 0 && <tr><td colSpan={canManage ? 4 : 3} className="muted">None nominated.</td></tr>}
+                {data.permanentMembers.length === 0 && <tr><td colSpan={canManage ? 4 : 3} className="muted">{t('committee.noneNominated', 'None nominated.')}</td></tr>}
                 {data.permanentMembers.map((p) => (
                   <tr key={p._id}>
                     <td>{p.memberId?.fullName}</td>
                     <td>{p.memberId?.phone}</td>
                     <td>{p.nominationNote || '—'}</td>
-                    {canManage && <td><button className="btn danger" onClick={() => removePerm(p._id)}>Remove</button></td>}
+                    {canManage && <td><button className="btn danger" onClick={() => removePerm(p._id)}>{t('common.remove', 'Remove')}</button></td>}
                   </tr>
                 ))}
               </tbody>
