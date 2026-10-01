@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
@@ -9,35 +10,36 @@ import dialog from '../../components/dialog';
 import { XIcon, CongressIcon, BuildingIcon, UsersIcon } from '../../components/icons';
 import { SkeletonRows } from '../../components/Skeleton';
 
-const ROLE_OPTIONS = [
-  { value: 'ALL', label: 'All Roles' },
-  { value: 'GENERAL_SECRETARY', label: 'General Secretary' },
-  { value: 'PRESIDENT', label: 'President / Saddar' },
-  { value: 'SECRETARY', label: 'Secretary' },
-  { value: 'SENIOR_MAWIN', label: 'Senior Mawin Secretary' },
-  { value: 'FINANCE_SECRETARY', label: 'Finance Secretary' },
-  { value: 'SR_VICE_PRESIDENT', label: 'Sr. Vice President' },
-  { value: 'VICE_PRESIDENT', label: 'Vice President' },
-  { value: 'CHAIRMAN', label: 'Chairman' },
-  { value: 'CO_CHAIRMAN', label: 'Co-Chairman' },
-  { value: 'FIRST_SECRETARY', label: 'First Secretary' },
-  { value: 'OTHER', label: 'Other Cabinet Roles' },
-  { value: 'NO_ROLE', label: 'General Workers (No Role)' },
-];
-
-const UNIT_LEVEL_OPTIONS = [
-  { value: 'ALL', label: 'All Tiers' },
-  { value: 'CENTRAL', label: 'Central Tier' },
-  { value: 'PROVINCE', label: 'Province Tier' },
-  { value: 'DISTRICT', label: 'District Tier' },
-  { value: 'AREA', label: 'Area Tier' },
-  { value: 'BASIC_UNIT', label: 'Basic Unit Tier' },
-];
-
 export default function CongressPage() {
+  const { t } = useTranslation();
   const { ctx, provinces, setCtx } = useUnit();
   const { user, setActiveRole, allRoles } = useAuth();
   const toast = useToast();
+
+  const roleOptions = useMemo(() => [
+    { value: 'ALL', label: t('roles.all', 'All Roles') },
+    { value: 'GENERAL_SECRETARY', label: t('roles.GENERAL_SECRETARY', 'General Secretary') },
+    { value: 'PRESIDENT', label: t('roles.PRESIDENT', 'President / Saddar') },
+    { value: 'SECRETARY', label: t('roles.SECRETARY', 'Secretary') },
+    { value: 'SENIOR_MAWIN', label: t('roles.SENIOR_MAWIN', 'Senior Mawin Secretary') },
+    { value: 'FINANCE_SECRETARY', label: t('roles.FINANCE_SECRETARY', 'Finance Secretary') },
+    { value: 'SR_VICE_PRESIDENT', label: t('roles.SR_VICE_PRESIDENT', 'Sr. Vice President') },
+    { value: 'VICE_PRESIDENT', label: t('roles.VICE_PRESIDENT', 'Vice President') },
+    { value: 'CHAIRMAN', label: t('roles.CHAIRMAN', 'Chairman') },
+    { value: 'CO_CHAIRMAN', label: t('roles.CO_CHAIRMAN', 'Co-Chairman') },
+    { value: 'FIRST_SECRETARY', label: t('roles.FIRST_SECRETARY', 'First Secretary') },
+    { value: 'OTHER', label: t('roles.otherCabinetRoles', 'Other Cabinet Roles') },
+    { value: 'NO_ROLE', label: t('roles.generalWorkersNoRole', 'General Workers (No Role)') },
+  ], [t]);
+
+  const unitLevelOptions = useMemo(() => [
+    { value: 'ALL', label: t('units.allTiers', 'All Tiers') },
+    { value: 'CENTRAL', label: t('units.CENTRAL', 'Central Tier') },
+    { value: 'PROVINCE', label: t('units.PROVINCE', 'Province Tier') },
+    { value: 'DISTRICT', label: t('units.DISTRICT', 'District Tier') },
+    { value: 'AREA', label: t('units.AREA', 'Area Tier') },
+    { value: 'BASIC_UNIT', label: t('units.BASIC_UNIT', 'Basic Unit Tier') },
+  ], [t]);
 
   function handleSwitchToCentral() {
     const rolesList = allRoles || user?.allRoles || user?.roles || [];
@@ -168,7 +170,7 @@ export default function CongressPage() {
   // Handle member assignment
   async function handleAssign() {
     if (!selectedMember) {
-      toast.error('Please pick a member to assign.');
+      toast.error(t('congress.pickMemberError', 'Please pick a member to assign.'));
       return;
     }
     setAssigning(true);
@@ -180,15 +182,16 @@ export default function CongressPage() {
         nominationNote: nominationNote.trim() || undefined,
       });
 
-      toast.success(`${selectedMember.fullName} successfully assigned to National Congress.`, {
-        title: 'Congress Member Assigned',
-      });
+      toast.success(
+        t('congress.memberAssignedSuccess', '{{name}} successfully assigned to National Congress.', { name: selectedMember.fullName }),
+        { title: t('congress.memberAssignedTitle', 'Congress Member Assigned') }
+      );
       setSelectedMember(null);
       setNominationNote('');
       setAssignOpen(false);
       reload();
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Assignment Failed', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('congress.assignmentFailed', 'Assignment Failed'), duration: 7000 });
     } finally {
       setAssigning(false);
     }
@@ -197,17 +200,19 @@ export default function CongressPage() {
   // Handle member removal
   async function handleRemove(congressRecordId, memberName) {
     const confirmed = await dialog.confirm(
-      `Are you sure you want to remove ${memberName || 'this member'} from the National Congress?`,
-      { title: 'Remove Congress Member' }
+      t('congress.confirmRemoveMember', 'Are you sure you want to remove {{name}} from the National Congress?', {
+        name: memberName || t('common.thisMember', 'this member'),
+      }),
+      { title: t('congress.removeMemberTitle', 'Remove Congress Member') }
     );
     if (!confirmed) return;
 
     try {
       await api.post(`/congress/members/${congressRecordId}/remove`);
-      toast.success(`${memberName || 'Member'} removed from National Congress.`);
+      toast.success(t('congress.memberRemovedSuccess', '{{name}} removed from National Congress.', { name: memberName || t('common.member', 'Member') }));
       reload();
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not remove member', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('congress.removeFailed', 'Could not remove member'), duration: 7000 });
     }
   }
 
@@ -269,22 +274,22 @@ export default function CongressPage() {
   const canManage = Boolean(data?.canManage);
   const isCentral = ctx && ctx.unitLevel === 'CENTRAL';
 
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) return <p>{t('common.selectUnitContext', 'Select a unit context first.')}</p>;
 
   // If user is at Province, District, Area, or Basic Unit context, explain and offer jump
   if (!isCentral) {
     return (
       <div>
         <div className="page-header">
-          <h2>National Congress · قومي کانګرس</h2>
+          <h2>{t('units.nationalCongress', 'National Congress · قومي کانګرس')}</h2>
         </div>
         <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
             <CongressIcon size={36} />
           </div>
-          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <h3 style={{ marginTop: 0 }}>{t('congress.centralOnlyTitle', 'National Congress operates exclusively at the Central Level')}</h3>
           <p className="muted" style={{ lineHeight: 1.6 }}>
-            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+            {t('congress.centralOnlyText', 'Under the PKNAP constitution, the National Congress (قومي کانګرس) is the supreme representative assembly operating at the Central tier. Lower tiers operate via Sobayi Jirga (Province) and Zilla & Elaqayi Committees (District & Area).')}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
             <button
@@ -292,7 +297,7 @@ export default function CongressPage() {
               className="btn"
               onClick={handleSwitchToCentral}
             >
-              Switch to Central Unit Context →
+              {t('congress.switchToCentral', 'Switch to Central Unit Context →')}
             </button>
           </div>
         </div>
@@ -304,14 +309,14 @@ export default function CongressPage() {
     <div>
       <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>National Congress · قومي کانګرس</h2>
+          <h2 style={{ margin: 0 }}>{t('units.nationalCongress', 'National Congress · قومي کانګرس')}</h2>
           <div className="muted small" style={{ marginTop: 4 }}>
-            Central Supreme Consultative &amp; Representative Assembly of PKNAP
+            {t('congress.subtitle', 'Central Supreme Consultative & Representative Assembly of PKNAP')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
           <Link className="btn secondary small" to="/national" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <BuildingIcon size={13} /> Country Structure
+            <BuildingIcon size={13} /> {t('congress.countryStructure', 'Country Structure')}
           </Link>
           {canManage && (
             <button
@@ -324,7 +329,7 @@ export default function CongressPage() {
                 setAssignOpen(true);
               }}
             >
-              + Assign Members to Congress
+              {t('congress.assignMembersBtn', '+ Assign Members to Congress')}
             </button>
           )}
         </div>
@@ -335,20 +340,20 @@ export default function CongressPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <CongressIcon size={16} />
-            <strong style={{ fontSize: 13 }}>Congress Assembly Hub:</strong>
+            <strong style={{ fontSize: 13 }}>{t('congress.assemblyHub', 'Congress Assembly Hub:')}</strong>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Link className="btn secondary small" to="/unit/meetings?body=CONGRESS">
-              Congress Meetings →
+              {t('nav.congressMeetings', 'Congress Meetings')} →
             </Link>
             <Link className="btn secondary small" to="/unit/activities?body=CONGRESS">
-              Congress Activities →
+              {t('nav.congressActivities', 'Congress Activities')} →
             </Link>
             <Link className="btn secondary small" to="/unit/finance?body=CONGRESS">
-              Congress Finance →
+              {t('nav.congressFinance', 'Congress Finance')} →
             </Link>
             <Link className="btn secondary small" to="/unit/reports?body=CONGRESS">
-              Congress Reports →
+              {t('nav.congressReports', 'Congress Reports')} →
             </Link>
           </div>
         </div>
@@ -359,19 +364,19 @@ export default function CongressPage() {
       {/* KPI Stats */}
       <div className="kpi-grid" style={{ marginBottom: 18 }}>
         <div className="kpi">
-          <div className="label">Total Congress Members</div>
+          <div className="label">{t('congress.totalMembers', 'Total Congress Members')}</div>
           <div className="value">{loading ? '…' : stats.total}</div>
         </div>
         <div className="kpi">
-          <div className="label">Office Holders (Cabinet / Key Roles)</div>
+          <div className="label">{t('congress.officeHolders', 'Office Holders (Cabinet / Key Roles)')}</div>
           <div className="value">{loading ? '…' : stats.officeHolders}</div>
         </div>
         <div className="kpi">
-          <div className="label">General Party Workers</div>
+          <div className="label">{t('congress.generalWorkers', 'General Party Workers')}</div>
           <div className="value">{loading ? '…' : stats.workers}</div>
         </div>
         <div className="kpi">
-          <div className="label">Provinces Represented</div>
+          <div className="label">{t('congress.provincesRepresented', 'Provinces Represented')}</div>
           <div className="value">{loading ? '…' : stats.provinces}</div>
         </div>
       </div>
@@ -379,11 +384,11 @@ export default function CongressPage() {
       {/* Roster Card */}
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-          <h3 style={{ margin: 0 }}>Active Congress Roster</h3>
+          <h3 style={{ margin: 0 }}>{t('congress.activeRoster', 'Active Congress Roster')}</h3>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="text"
-              placeholder="Search member, CNIC, phone, district…"
+              placeholder={t('congress.searchPlaceholder', 'Search member, CNIC, phone, district…')}
               value={rosterSearch}
               onChange={(e) => setRosterSearch(e.target.value)}
               style={{ minWidth: 240, padding: '6px 12px' }}
@@ -394,7 +399,7 @@ export default function CongressPage() {
                 onChange={(e) => setRosterProvFilter(e.target.value)}
                 style={{ padding: '6px 10px' }}
               >
-                <option value="ALL">All Provinces</option>
+                <option value="ALL">{t('common.allProvinces', 'All Provinces')}</option>
                 {provinces.map((p) => (
                   <option key={p._id} value={p.name}>{p.name}</option>
                 ))}
@@ -405,7 +410,7 @@ export default function CongressPage() {
               onChange={(e) => setRosterRoleFilter(e.target.value)}
               style={{ padding: '6px 10px' }}
             >
-              {ROLE_OPTIONS.map((opt) => (
+              {roleOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
@@ -415,7 +420,7 @@ export default function CongressPage() {
         {loading ? (
           <table className="list">
             <thead>
-              <tr><th>Member</th><th>Role &amp; Unit</th><th>Home Hierarchy</th><th>Appointed</th><th>Remarks</th>{canManage && <th></th>}</tr>
+              <tr><th>{t('common.member', 'Member')}</th><th>{t('congress.roleAndUnit', 'Role & Unit')}</th><th>{t('congress.homeHierarchy', 'Home Hierarchy')}</th><th>{t('congress.appointed', 'Appointed')}</th><th>{t('common.notes', 'Remarks')}</th>{canManage && <th></th>}</tr>
             </thead>
             <tbody>
               <SkeletonRows cols={canManage ? 6 : 5} rows={5} />
@@ -425,13 +430,13 @@ export default function CongressPage() {
           <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
             {data?.members?.length === 0 ? (
               <>
-                <p style={{ margin: 0, fontWeight: 500, fontSize: 16 }}>No members assigned to the National Congress yet.</p>
+                <p style={{ margin: 0, fontWeight: 500, fontSize: 16 }}>{t('congress.noMembersAssigned', 'No members assigned to the National Congress yet.')}</p>
                 <p className="small muted" style={{ marginTop: 6 }}>
-                  {canManage ? 'Use the "+ Assign Members to Congress" button above to nominate members with their roles and units.' : 'The Central General Secretary or leadership has not assigned members yet.'}
+                  {canManage ? t('congress.useAssignPrompt', 'Use the "+ Assign Members to Congress" button above to nominate members with their roles and units.') : t('congress.noMembersLeadership', 'The Central General Secretary or leadership has not assigned members yet.')}
                 </p>
               </>
             ) : (
-              <p style={{ margin: 0 }}>No Congress members match your search or filters.</p>
+              <p style={{ margin: 0 }}>{t('congress.noMembersMatch', 'No Congress members match your search or filters.')}</p>
             )}
           </div>
         ) : (
@@ -439,12 +444,12 @@ export default function CongressPage() {
             <table className="list">
               <thead>
                 <tr>
-                  <th>Member</th>
-                  <th>Current Active Role &amp; Unit</th>
-                  <th>Home Unit Hierarchy</th>
-                  <th>Appointed</th>
-                  <th>Notes</th>
-                  {canManage && <th style={{ textAlign: 'right' }}>Actions</th>}
+                  <th>{t('common.member', 'Member')}</th>
+                  <th>{t('congress.activeRoleAndUnit', 'Current Active Role & Unit')}</th>
+                  <th>{t('congress.homeHierarchy', 'Home Unit Hierarchy')}</th>
+                  <th>{t('congress.appointed', 'Appointed')}</th>
+                  <th>{t('common.notes', 'Notes')}</th>
+                  {canManage && <th style={{ textAlign: 'right' }}>{t('common.actions', 'Actions')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -476,10 +481,10 @@ export default function CongressPage() {
                             {m.activeRoles.map((r) => (
                               <div key={r._id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 <span className="badge ACTIVE" style={{ fontSize: 11, padding: '2px 6px', fontWeight: 600 }}>
-                                  {r.customRoleName || r.roleCode.replace(/_/g, ' ')}
+                                  {r.customRoleName || t('roles.' + r.roleCode, r.roleCode.replace(/_/g, ' '))}
                                 </span>
                                 <span className="muted small" style={{ fontSize: 12, fontWeight: 500 }}>
-                                  · {r.unitName} ({r.unitLevel.replace(/_/g, ' ')})
+                                  · {r.unitName} ({t('units.' + r.unitLevel, r.unitLevel.replace(/_/g, ' '))})
                                 </span>
                               </div>
                             ))}
@@ -487,15 +492,15 @@ export default function CongressPage() {
                         ) : m.assignedRoleSnapshot?.roleCode ? (
                           <div>
                             <span className="badge ACTIVE" style={{ fontSize: 11, padding: '2px 6px' }}>
-                              {m.assignedRoleSnapshot.customRoleName || m.assignedRoleSnapshot.roleCode.replace(/_/g, ' ')}
+                              {m.assignedRoleSnapshot.customRoleName || t('roles.' + m.assignedRoleSnapshot.roleCode, m.assignedRoleSnapshot.roleCode.replace(/_/g, ' '))}
                             </span>
                             <span className="muted small" style={{ marginLeft: 6 }}>
-                              · {m.assignedRoleSnapshot.unitName || m.assignedRoleSnapshot.unitLevel}
+                              · {m.assignedRoleSnapshot.unitName || t('units.' + m.assignedRoleSnapshot.unitLevel, m.assignedRoleSnapshot.unitLevel)}
                             </span>
                           </div>
                         ) : (
                           <span className="muted small" style={{ fontStyle: 'italic' }}>
-                            General Party Worker (No cabinet role)
+                            {t('congress.generalPartyWorkerNoRole', 'General Party Worker (No cabinet role)')}
                           </span>
                         )}
                       </td>
@@ -503,16 +508,16 @@ export default function CongressPage() {
                       <td>
                         <div className="small" style={{ lineHeight: 1.4 }}>
                           {m.homeUnit?.provinceName && (
-                            <div><strong>Prov:</strong> {m.homeUnit.provinceName}</div>
+                            <div><strong>{t('common.prov', 'Prov')}:</strong> {m.homeUnit.provinceName}</div>
                           )}
                           {m.homeUnit?.districtName && (
-                            <div><strong>Dist:</strong> {m.homeUnit.districtName}</div>
+                            <div><strong>{t('common.dist', 'Dist')}:</strong> {m.homeUnit.districtName}</div>
                           )}
                           {m.homeUnit?.areaName && (
-                            <div className="muted"><strong>Area:</strong> {m.homeUnit.areaName}</div>
+                            <div className="muted"><strong>{t('common.area', 'Area')}:</strong> {m.homeUnit.areaName}</div>
                           )}
                           {m.homeUnit?.basicUnitName && (
-                            <div className="muted"><strong>BU:</strong> {m.homeUnit.basicUnitName}</div>
+                            <div className="muted"><strong>{t('common.bu', 'BU')}:</strong> {m.homeUnit.basicUnitName}</div>
                           )}
                           {!m.homeUnit?.provinceName && !m.homeUnit?.districtName && (
                             <span className="muted">—</span>
@@ -542,7 +547,7 @@ export default function CongressPage() {
                             style={{ padding: '4px 10px', fontSize: 12 }}
                             onClick={() => handleRemove(m.congressRecordId, m.fullName)}
                           >
-                            Remove
+                            {t('common.remove', 'Remove')}
                           </button>
                         </td>
                       )}
@@ -568,14 +573,14 @@ export default function CongressPage() {
             style={{ maxWidth: 840, width: '92vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
             role="dialog"
             aria-modal="true"
-            aria-label="Assign Members to National Congress"
+            aria-label={t('congress.assignMembersModalTitle', 'Assign Members to National Congress')}
           >
             {/* Modal Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 18 }}>Assign Member to National Congress</h3>
+                <h3 style={{ margin: 0, fontSize: 18 }}>{t('congress.assignMemberModalHeader', 'Assign Member to National Congress')}</h3>
                 <p className="muted small" style={{ margin: '4px 0 0' }}>
-                  Filter party members across units and roles to assign to the National Congress assembly.
+                  {t('congress.modalSubtitle', 'Filter party members across units and roles to assign to the National Congress assembly.')}
                 </p>
               </div>
               <button
@@ -583,7 +588,7 @@ export default function CongressPage() {
                 className="btn secondary"
                 disabled={assigning}
                 onClick={() => setAssignOpen(false)}
-                aria-label="Close"
+                aria-label={t('common.close', 'Close')}
                 style={{ padding: '4px 10px', fontSize: 16, lineHeight: 1 }}
               >
                 <XIcon size={16} />
@@ -595,10 +600,10 @@ export default function CongressPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
                 {/* Search */}
                 <div>
-                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Search Member</label>
+                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>{t('common.searchMember', 'Search Member')}</label>
                   <input
                     type="text"
-                    placeholder="Name, CNIC, Phone, ID…"
+                    placeholder={t('common.searchMemberPlaceholder', 'Name, CNIC, Phone, ID…')}
                     value={candidateSearch}
                     onChange={(e) => setCandidateSearch(e.target.value)}
                     style={{ width: '100%', padding: '6px 10px', fontSize: 13 }}
@@ -607,13 +612,13 @@ export default function CongressPage() {
 
                 {/* Role Filter */}
                 <div>
-                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Filter by Role</label>
+                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>{t('common.filterByRole', 'Filter by Role')}</label>
                   <select
                     value={candidateRole}
                     onChange={(e) => setCandidateRole(e.target.value)}
                     style={{ width: '100%', padding: '6px 10px', fontSize: 13 }}
                   >
-                    {ROLE_OPTIONS.map((opt) => (
+                    {roleOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
@@ -621,13 +626,13 @@ export default function CongressPage() {
 
                 {/* Role Unit Level */}
                 <div>
-                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Role Level</label>
+                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>{t('common.roleLevel', 'Role Level')}</label>
                   <select
                     value={candidateUnitLevel}
                     onChange={(e) => setCandidateUnitLevel(e.target.value)}
                     style={{ width: '100%', padding: '6px 10px', fontSize: 13 }}
                   >
-                    {UNIT_LEVEL_OPTIONS.map((opt) => (
+                    {unitLevelOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
@@ -635,13 +640,13 @@ export default function CongressPage() {
 
                 {/* Province Filter */}
                 <div>
-                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>Province</label>
+                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>{t('common.province', 'Province')}</label>
                   <select
                     value={candidateProvId}
                     onChange={(e) => setCandidateProvId(e.target.value)}
                     style={{ width: '100%', padding: '6px 10px', fontSize: 13 }}
                   >
-                    <option value="">All Provinces</option>
+                    <option value="">{t('common.allProvinces', 'All Provinces')}</option>
                     {(provinces || []).map((p) => (
                       <option key={p._id} value={p._id}>{p.name}</option>
                     ))}
@@ -650,13 +655,13 @@ export default function CongressPage() {
 
                 {/* District Filter */}
                 <div>
-                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>District</label>
+                  <label className="small muted" style={{ display: 'block', marginBottom: 4, fontWeight: 600 }}>{t('common.district', 'District')}</label>
                   <select
                     value={candidateDistId}
                     onChange={(e) => setCandidateDistId(e.target.value)}
                     style={{ width: '100%', padding: '6px 10px', fontSize: 13 }}
                   >
-                    <option value="">All Districts</option>
+                    <option value="">{t('common.allDistricts', 'All Districts')}</option>
                     {districtsList.map((d) => (
                       <option key={d._id} value={d._id}>{d.name}</option>
                     ))}
@@ -673,18 +678,18 @@ export default function CongressPage() {
                 </div>
               ) : candidates.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
-                  <p style={{ margin: 0, fontWeight: 500 }}>No candidates found matching the selected filters.</p>
-                  <p className="small muted" style={{ marginTop: 4 }}>Try clearing search keywords or widening territorial &amp; role filters.</p>
+                  <p style={{ margin: 0, fontWeight: 500 }}>{t('congress.noCandidatesFound', 'No candidates found matching the selected filters.')}</p>
+                  <p className="small muted" style={{ marginTop: 4 }}>{t('congress.tryClearingFilters', 'Try clearing search keywords or widening territorial & role filters.')}</p>
                 </div>
               ) : (
                 <table className="list" style={{ margin: 0 }}>
                   <thead>
                     <tr>
                       <th style={{ width: 40 }}></th>
-                      <th>Candidate</th>
-                      <th>Current Active Role &amp; Unit</th>
-                      <th>Home Territory</th>
-                      <th>Status</th>
+                      <th>{t('common.candidate', 'Candidate')}</th>
+                      <th>{t('congress.activeRoleAndUnit', 'Current Active Role & Unit')}</th>
+                      <th>{t('congress.homeTerritory', 'Home Territory')}</th>
+                      <th>{t('common.status', 'Status')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -725,16 +730,16 @@ export default function CongressPage() {
                                 {c.activeRoles.map((r) => (
                                   <div key={r._id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                     <span className="badge ACTIVE" style={{ fontSize: 10, padding: '1px 5px', fontWeight: 600 }}>
-                                      {r.customRoleName || r.roleCode.replace(/_/g, ' ')}
+                                      {r.customRoleName || t('roles.' + r.roleCode, r.roleCode.replace(/_/g, ' '))}
                                     </span>
                                     <span className="muted small" style={{ fontSize: 11 }}>
-                                      in {r.unitName} ({r.unitLevel.replace(/_/g, ' ')})
+                                      {t('common.inUnit', 'in {{unit}} ({{level}})', { unit: r.unitName, level: t('units.' + r.unitLevel, r.unitLevel.replace(/_/g, ' ')) })}
                                     </span>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <span className="muted small" style={{ fontStyle: 'italic' }}>Party Worker (No role)</span>
+                              <span className="muted small" style={{ fontStyle: 'italic' }}>{t('congress.partyWorkerNoRole', 'Party Worker (No role)')}</span>
                             )}
                           </td>
                           <td>
@@ -747,10 +752,10 @@ export default function CongressPage() {
                           <td>
                             {c.isAssignedToCongress ? (
                               <span className="badge" style={{ background: 'var(--surface-alt)', color: 'var(--text-muted)', fontSize: 11 }}>
-                                In congress
+                                {t('congress.inCongress', 'In congress')}
                               </span>
                             ) : (
-                              <span className="badge ACTIVE" style={{ fontSize: 11 }}>Eligible</span>
+                              <span className="badge ACTIVE" style={{ fontSize: 11 }}>{t('congress.eligible', 'Eligible')}</span>
                             )}
                           </td>
                         </tr>
@@ -766,27 +771,27 @@ export default function CongressPage() {
               {selectedMember && (
                 <div style={{ background: 'var(--surface-alt)', padding: '10px 14px', borderRadius: 6, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                   <div>
-                    <span className="muted small">Selected Candidate: </span>
+                    <span className="muted small">{t('congress.selectedCandidate', 'Selected Candidate:')} </span>
                     <strong style={{ color: 'var(--primary-strong, #15803d)' }}>{selectedMember.fullName}</strong>
                     {selectedMember.primaryRole && (
                       <span className="muted small" style={{ marginLeft: 6 }}>
-                        ({selectedMember.primaryRole.roleCode.replace(/_/g, ' ')} · {selectedMember.primaryRole.unitName})
+                        ({t('roles.' + selectedMember.primaryRole.roleCode, selectedMember.primaryRole.roleCode.replace(/_/g, ' '))} · {selectedMember.primaryRole.unitName})
                       </span>
                     )}
                   </div>
                   <button type="button" className="btn secondary" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => setSelectedMember(null)}>
-                    Clear Selection
+                    {t('common.clearSelection', 'Clear Selection')}
                   </button>
                 </div>
               )}
 
               <div className="field full" style={{ marginBottom: 12 }}>
                 <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                  Nomination Note / Terms (Optional)
+                  {t('congress.nominationNoteLabel', 'Nomination Note / Terms (Optional)')}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Assigned as provincial delegate or special advisor to National Congress…"
+                  placeholder={t('congress.nominationNotePlaceholder', 'e.g. Assigned as provincial delegate or special advisor to National Congress…')}
                   value={nominationNote}
                   onChange={(e) => setNominationNote(e.target.value)}
                   style={{ width: '100%', padding: '7px 10px', fontSize: 13 }}
@@ -801,7 +806,7 @@ export default function CongressPage() {
                   disabled={assigning}
                   onClick={() => setAssignOpen(false)}
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="button"
@@ -809,7 +814,7 @@ export default function CongressPage() {
                   disabled={!selectedMember || assigning}
                   onClick={handleAssign}
                 >
-                  {assigning ? 'Assigning…' : 'Assign to Congress'}
+                  {assigning ? t('common.assigning', 'Assigning…') : t('congress.assignToCongressBtn', 'Assign to Congress')}
                 </button>
               </div>
             </div>

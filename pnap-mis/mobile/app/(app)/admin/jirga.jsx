@@ -16,6 +16,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { api, errorMessage } from '../../../src/api/client';
 import { useToast } from '../../../src/components/Toast';
 import { canManageFinance, isHigherAdmin } from '../../../src/utils/permissions';
@@ -26,34 +27,10 @@ import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Radius, Spacing, Shadow } from '../../../src/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 
-const ROLE_OPTIONS = [
-  { value: 'ALL', label: 'All Roles' },
-  { value: 'GENERAL_SECRETARY', label: 'General Secretary' },
-  { value: 'PRESIDENT', label: 'President / Saddar' },
-  { value: 'SECRETARY', label: 'Secretary' },
-  { value: 'SENIOR_MAWIN', label: 'Senior Mawin Secretary' },
-  { value: 'FINANCE_SECRETARY', label: 'Finance Secretary' },
-  { value: 'SR_VICE_PRESIDENT', label: 'Sr. Vice President' },
-  { value: 'VICE_PRESIDENT', label: 'Vice President' },
-  { value: 'CHAIRMAN', label: 'Chairman' },
-  { value: 'CO_CHAIRMAN', label: 'Co-Chairman' },
-  { value: 'FIRST_SECRETARY', label: 'First Secretary' },
-  { value: 'OTHER', label: 'Other Cabinet Roles' },
-  { value: 'NO_ROLE', label: 'General Workers (No Role)' },
-];
-
-const UNIT_LEVEL_OPTIONS = [
-  { value: 'ALL', label: 'All Tiers' },
-  { value: 'CENTRAL', label: 'Central Tier' },
-  { value: 'PROVINCE', label: 'Province Tier' },
-  { value: 'DISTRICT', label: 'District Tier' },
-  { value: 'AREA', label: 'Area Tier' },
-  { value: 'BASIC_UNIT', label: 'Basic Unit Tier' },
-];
-
 export default function JirgaScreen() {
   const { ctx, setCtx, provinces } = useUnit();
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const toast = useToast();
 
@@ -63,6 +40,31 @@ export default function JirgaScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState('');
+
+  const roleOptions = useMemo(() => [
+    { value: 'ALL', label: t('roles.ALL', t('roles.allRoles', 'All Roles')) },
+    { value: 'GENERAL_SECRETARY', label: t('roles.GENERAL_SECRETARY', t('roles.generalSecretary', 'General Secretary')) },
+    { value: 'PRESIDENT', label: t('roles.PRESIDENT', t('roles.president', 'President / Saddar')) },
+    { value: 'SECRETARY', label: t('roles.SECRETARY', t('roles.secretary', 'Secretary')) },
+    { value: 'SENIOR_MAWIN', label: t('roles.SENIOR_MAWIN', t('roles.seniorMawin', 'Senior Mawin Secretary')) },
+    { value: 'FINANCE_SECRETARY', label: t('roles.FINANCE_SECRETARY', t('roles.financeSecretary', 'Finance Secretary')) },
+    { value: 'SR_VICE_PRESIDENT', label: t('roles.SR_VICE_PRESIDENT', t('roles.srVicePresident', 'Sr. Vice President')) },
+    { value: 'VICE_PRESIDENT', label: t('roles.VICE_PRESIDENT', t('roles.vicePresident', 'Vice President')) },
+    { value: 'CHAIRMAN', label: t('roles.CHAIRMAN', t('roles.chairman', 'Chairman')) },
+    { value: 'CO_CHAIRMAN', label: t('roles.CO_CHAIRMAN', t('roles.coChairman', 'Co-Chairman')) },
+    { value: 'FIRST_SECRETARY', label: t('roles.FIRST_SECRETARY', t('roles.firstSecretary', 'First Secretary')) },
+    { value: 'OTHER', label: t('roles.OTHER', t('roles.otherCabinetRoles', 'Other Cabinet Roles')) },
+    { value: 'NO_ROLE', label: t('roles.NO_ROLE', t('roles.generalWorkers', 'General Workers (No Role)')) },
+  ], [t]);
+
+  const unitLevelOptions = useMemo(() => [
+    { value: 'ALL', label: t('units.allTiers', 'All Tiers') },
+    { value: 'CENTRAL', label: t('units.CENTRAL', t('units.centralTier', 'Central Tier')) },
+    { value: 'PROVINCE', label: t('units.PROVINCE', t('units.provinceTier', 'Province Tier')) },
+    { value: 'DISTRICT', label: t('units.DISTRICT', t('units.districtTier', 'District Tier')) },
+    { value: 'AREA', label: t('units.AREA', t('units.areaTier', 'Area Tier')) },
+    { value: 'BASIC_UNIT', label: t('units.BASIC_UNIT', t('units.basicUnitTier', 'Basic Unit Tier')) },
+  ], [t]);
 
   // Roster Filters
   const [rosterSearch, setRosterSearch] = useState('');
@@ -86,10 +88,10 @@ export default function JirgaScreen() {
   // Filter candidate tier options: remove Central tier when on Provincial Jirga (matching web)
   const candidateTierOptions = useMemo(() => {
     if (ctx?.unitLevel === 'PROVINCE') {
-      return UNIT_LEVEL_OPTIONS.filter((opt) => opt.value !== 'CENTRAL');
+      return unitLevelOptions.filter((opt) => opt.value !== 'CENTRAL');
     }
-    return UNIT_LEVEL_OPTIONS;
-  }, [ctx?.unitLevel]);
+    return unitLevelOptions;
+  }, [ctx?.unitLevel, unitLevelOptions]);
 
   // Load Jirga Composition
   async function reload(silent = false) {
@@ -194,7 +196,7 @@ export default function JirgaScreen() {
   // Assign Member to Jirga
   async function handleAssign() {
     if (!selectedMember) {
-      toast.error('Please pick a member to assign.');
+      toast.error(t('jirga.pickMemberToAssign', 'Please pick a member to assign.'));
       return;
     }
     setAssigning(true);
@@ -206,7 +208,7 @@ export default function JirgaScreen() {
         nominationNote: nominationNote.trim() || undefined,
       });
 
-      toast.success(`${selectedMember.fullName} successfully assigned to ${data?.unit?.jirgaTitle || 'Jirga'}.`);
+      toast.success(t('jirga.assignedToast', '{{name}} successfully assigned to {{title}}.', { name: selectedMember.fullName, title: data?.unit?.jirgaTitle || t('jirga.title', 'Jirga') }));
       setSelectedMember(null);
       setNominationNote('');
       setAssignOpen(false);
@@ -221,13 +223,13 @@ export default function JirgaScreen() {
   // Remove Member from Jirga
   function confirmRemove(jirgaRecordId, memberName) {
     if (!jirgaRecordId) {
-      toast.error('Cannot remove member: missing record ID');
+      toast.error(t('jirga.missingRecordId', 'Cannot remove member: missing record ID'));
       return;
     }
     const doRemove = async () => {
       try {
         await api.post(`/jirga/members/${jirgaRecordId}/remove`);
-        toast.success(`${memberName || 'Member'} removed from Jirga.`);
+        toast.success(t('jirga.removedToast', '{{name}} removed from Jirga.', { name: memberName || 'Member' }));
         reload(true);
       } catch (e) {
         toast.error(errorMessage(e));
@@ -235,16 +237,16 @@ export default function JirgaScreen() {
     };
 
     if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(`Are you sure you want to remove ${memberName || 'this member'} from the Jirga?`)) {
+      if (typeof window !== 'undefined' && window.confirm(t('jirga.removeMemberConfirm', 'Are you sure you want to remove {{name}} from the Jirga?', { name: memberName || 'this member' }))) {
         doRemove();
       }
     } else {
       Alert.alert(
-        'Remove Jirga Member',
-        `Are you sure you want to remove ${memberName || 'this member'} from the Jirga?`,
+        t('jirga.removeMemberTitle', 'Remove Jirga Member'),
+        t('jirga.removeMemberConfirm', 'Are you sure you want to remove {{name}} from the Jirga?', { name: memberName || 'this member' }),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Remove', style: 'destructive', onPress: doRemove },
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+          { text: t('common.remove', 'Remove'), style: 'destructive', onPress: doRemove },
         ]
       );
     }
@@ -308,47 +310,47 @@ export default function JirgaScreen() {
             <View style={styles.guidanceIconBox}>
               <Ionicons name="people-outline" size={40} color={Colors.primary} />
             </View>
-            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
-            <Text style={styles.guidanceText}>
-              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            <Text style={[styles.guidanceTitle, isRTL && { textAlign: 'right' }]}>{t('jirga.onlyAvailableCentralProvince', 'Jirga is only available at Provincial and Central tiers')}</Text>
+            <Text style={[styles.guidanceText, isRTL && { textAlign: 'right' }]}>
+              {t('jirga.guidanceBody', 'Under the party constitution, the Sobayi Jirga (صوبايي جرګه) operates at the Province level, and the Qomi Jirga / National Jirga (قومي جرګه) operates at the Central level. District and Area units operate via Zilla & Elaqayi Committees.')}
             </Text>
 
             <View style={styles.guidanceBtnCol}>
               {isHigherAdmin(user) && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnPrimary}
+                  style={[styles.guidanceBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                   }}
                 >
-                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>{t('jirga.openCentralJirga', 'Open Qomi Jirga (Central)')}</Text>
                 </TouchableOpacity>
               )}
 
               {user?.scope?.provinceId && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnSecondary}
+                  style={[styles.guidanceBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
                   }}
                 >
-                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>{t('jirga.openMySobayiJirga', 'Open My Sobayi Jirga')}</Text>
                 </TouchableOpacity>
               )}
 
               {isHigherAdmin(user) && provinces && provinces.length > 0 && (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
-                  <View style={styles.provGrid}>
+                  <Text style={[styles.guidanceSubHead, isRTL && { textAlign: 'right' }]}>{t('jirga.orSwitchToProvincial', 'OR SWITCH TO PROVINCIAL SOBAYI JIRGA:')}</Text>
+                  <View style={[styles.provGrid, isRTL && { flexDirection: 'row-reverse' }]}>
                     {provinces.map((prov) => (
                       <TouchableOpacity
                         key={prov._id}
                         style={styles.provPillBtn}
                         onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
                       >
-                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                        <Text style={styles.provPillBtnText}>{prov.name} {t('jirga.title', 'Jirga')} →</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -361,10 +363,10 @@ export default function JirgaScreen() {
     );
   }
 
-  const jirgaTitle = data?.unit?.jirgaTitle || (ctx.unitLevel === 'CENTRAL' ? 'National / Qomi Jirga' : 'Sobayi Jirga · صوبايي جرګه');
+  const jirgaTitle = data?.unit?.jirgaTitle || (ctx.unitLevel === 'CENTRAL' ? t('jirga.nationalJirga', 'National / Qomi Jirga') : t('jirga.sobayiJirga', 'Sobayi Jirga · صوبايي جرګه'));
   const unitSubtitle = ctx.unitLevel === 'CENTRAL'
-    ? 'Central Supreme Consultative & Legislative Body'
-    : `Provincial Legislative & Consultative Assembly · ${data?.unit?.unitName || ctx.unitName || 'Province'}`;
+    ? t('jirga.centralSubtitle', 'Central Supreme Consultative & Legislative Body')
+    : t('jirga.provincialSubtitle', 'Provincial Legislative & Consultative Assembly · {{unit}}', { unit: data?.unit?.unitName || ctx.unitName || 'Province' });
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -376,20 +378,20 @@ export default function JirgaScreen() {
       >
         {/* ─── Hero Header ─── */}
         <View style={styles.heroBanner}>
-          <View style={styles.heroTop}>
+          <View style={[styles.heroTop, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={{ flex: 1 }}>
-              <View style={styles.eyebrowBadge}>
-                <Ionicons name="shield-checkmark" size={12} color="#fff" style={{ marginRight: 4 }} />
+              <View style={[styles.eyebrowBadge, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="shield-checkmark" size={12} color="#fff" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
                 <Text style={styles.eyebrowText}>
-                  {ctx.unitLevel === 'CENTRAL' ? 'NATIONAL ASSEMBLY' : 'PROVINCIAL ASSEMBLY'}
+                  {ctx.unitLevel === 'CENTRAL' ? t('jirga.nationalAssembly', 'NATIONAL ASSEMBLY') : t('jirga.provincialAssembly', 'PROVINCIAL ASSEMBLY')}
                 </Text>
               </View>
-              <Text style={styles.heroTitle}>{jirgaTitle}</Text>
-              <Text style={styles.heroSubtitle}>{unitSubtitle}</Text>
+              <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{jirgaTitle}</Text>
+              <Text style={[styles.heroSubtitle, isRTL && { textAlign: 'right' }]}>{unitSubtitle}</Text>
             </View>
             {canManage && (
               <TouchableOpacity
-                style={styles.assignBtn}
+                style={[styles.assignBtn, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => {
                   setSelectedMember(null);
                   setNominationNote('');
@@ -398,7 +400,7 @@ export default function JirgaScreen() {
                 activeOpacity={0.8}
               >
                 <Ionicons name="person-add" size={16} color="#fff" />
-                <Text style={styles.assignBtnText}>+ Nominate</Text>
+                <Text style={styles.assignBtnText}>{t('jirga.nominateBtn', '+ Nominate')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -406,8 +408,8 @@ export default function JirgaScreen() {
 
         {/* ─── Jirga Services & Sub-Navigation Card ─── */}
         <Card style={styles.quickNavCard}>
-          <Text style={styles.quickNavTitle}>Jirga Services & Assembly Modules</Text>
-          <View style={styles.quickNavGrid}>
+          <Text style={[styles.quickNavTitle, isRTL && { textAlign: 'right' }]}>{t('jirga.servicesAssemblyModules', 'Jirga Services & Assembly Modules')}</Text>
+          <View style={[styles.quickNavGrid, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
               style={[styles.quickNavBtn, styles.quickNavBtnActive]}
               activeOpacity={0.9}
@@ -415,7 +417,7 @@ export default function JirgaScreen() {
               <View style={[styles.quickNavIconBox, { backgroundColor: '#eff6ff' }]}>
                 <Ionicons name="people" size={20} color={Colors.primary} />
               </View>
-              <Text style={[styles.quickNavBtnText, { color: Colors.primary, fontWeight: '700' }]}>Roster</Text>
+              <Text style={[styles.quickNavBtnText, { color: Colors.primary, fontWeight: '700' }]}>{t('jirga.roster', 'Roster')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -425,7 +427,7 @@ export default function JirgaScreen() {
               <View style={[styles.quickNavIconBox, { backgroundColor: '#f5f3ff' }]}>
                 <Ionicons name="calendar-outline" size={20} color="#7c3aed" />
               </View>
-              <Text style={styles.quickNavBtnText}>Meetings</Text>
+              <Text style={styles.quickNavBtnText}>{t('meetings.title', 'Meetings')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -435,7 +437,7 @@ export default function JirgaScreen() {
               <View style={[styles.quickNavIconBox, { backgroundColor: '#f0fdf4' }]}>
                 <Ionicons name="flag-outline" size={20} color="#15803d" />
               </View>
-              <Text style={styles.quickNavBtnText}>Activities</Text>
+              <Text style={styles.quickNavBtnText}>{t('activities.title', 'Activities')}</Text>
             </TouchableOpacity>
 
             {canFinance && (
@@ -447,7 +449,7 @@ export default function JirgaScreen() {
                   <View style={[styles.quickNavIconBox, { backgroundColor: '#fefce8' }]}>
                     <Ionicons name="cash-outline" size={20} color="#ca8a04" />
                   </View>
-                  <Text style={styles.quickNavBtnText}>Finance</Text>
+                  <Text style={styles.quickNavBtnText}>{t('finance.title', 'Finance')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -457,7 +459,7 @@ export default function JirgaScreen() {
                   <View style={[styles.quickNavIconBox, { backgroundColor: '#fdf4ff' }]}>
                     <Ionicons name="swap-horizontal-outline" size={20} color="#c026d3" />
                   </View>
-                  <Text style={styles.quickNavBtnText}>Transfers</Text>
+                  <Text style={styles.quickNavBtnText}>{t('finance.transfers', 'Transfers')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -469,7 +471,7 @@ export default function JirgaScreen() {
               <View style={[styles.quickNavIconBox, { backgroundColor: '#f8fafc' }]}>
                 <Ionicons name="bar-chart-outline" size={20} color={Colors.textMuted} />
               </View>
-              <Text style={styles.quickNavBtnText}>Reports</Text>
+              <Text style={styles.quickNavBtnText}>{t('reports.title', 'Reports')}</Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -481,41 +483,41 @@ export default function JirgaScreen() {
         ) : null}
 
         {/* ─── KPI Stats Grid ─── */}
-        <View style={styles.kpiGrid}>
+        <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={styles.kpiCard}>
             <Text style={styles.kpiVal}>{loading ? '…' : stats.total}</Text>
-            <Text style={styles.kpiLabel}>Total Assembly Members</Text>
+            <Text style={[styles.kpiLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.totalAssemblyMembers', 'Total Assembly Members')}</Text>
           </View>
           <View style={styles.kpiCard}>
             <Text style={[styles.kpiVal, { color: Colors.primary }]}>{loading ? '…' : stats.officeHolders}</Text>
-            <Text style={styles.kpiLabel}>Cabinet / Office-Holders</Text>
+            <Text style={[styles.kpiLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.cabinetOfficeHolders', 'Cabinet / Office-Holders')}</Text>
           </View>
           <View style={styles.kpiCard}>
             <Text style={[styles.kpiVal, { color: Colors.success }]}>{loading ? '…' : stats.workers}</Text>
-            <Text style={styles.kpiLabel}>General Party Workers</Text>
+            <Text style={[styles.kpiLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.generalPartyWorkers', 'General Party Workers')}</Text>
           </View>
           <View style={styles.kpiCard}>
             <Text style={[styles.kpiVal, { color: '#d97706' }]}>{loading ? '…' : stats.districts}</Text>
-            <Text style={styles.kpiLabel}>Districts Represented</Text>
+            <Text style={[styles.kpiLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.districtsRepresented', 'Districts Represented')}</Text>
           </View>
         </View>
 
         {/* ─── Roster Section ─── */}
         <Card style={styles.rosterCard}>
-          <View style={styles.rosterHeader}>
+          <View style={[styles.rosterHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <View>
-              <Text style={styles.cardTitle}>Active Jirga Roster</Text>
-              <Text style={styles.cardSub}>{filteredRoster.length} member{filteredRoster.length === 1 ? '' : 's'} listed</Text>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('jirga.activeRoster', 'Active Jirga Roster')}</Text>
+              <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('jirga.membersListed', '{{count}} members listed', { count: filteredRoster.length })}</Text>
             </View>
           </View>
 
           {/* Search & Filter Bar */}
           <View style={styles.searchFilterRow}>
-            <View style={styles.searchInputWrap}>
+            <View style={[styles.searchInputWrap, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="search" size={16} color={Colors.textMuted} style={styles.searchIcon} />
               <TextInput
-                style={styles.searchInput}
-                placeholder="Search by name, CNIC, phone, district…"
+                style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
+                placeholder={t('jirga.searchRosterPlaceholder', 'Search by name, CNIC, phone, district…')}
                 placeholderTextColor={Colors.textMuted}
                 value={rosterSearch}
                 onChangeText={setRosterSearch}
@@ -528,8 +530,8 @@ export default function JirgaScreen() {
             </View>
 
             {/* Role Filter Chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.roleChipsScroll}>
-              {ROLE_OPTIONS.map((opt) => (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.roleChipsScroll, isRTL && { flexDirection: 'row-reverse' }]}>
+              {roleOptions.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
                   style={[styles.roleChip, rosterRoleFilter === opt.value && styles.roleChipActive]}
@@ -547,16 +549,16 @@ export default function JirgaScreen() {
           {loading ? (
             <View style={styles.loaderWrap}>
               <ActivityIndicator size="small" color={Colors.primary} />
-              <Text style={styles.loaderText}>Loading Jirga assembly roster…</Text>
+              <Text style={styles.loaderText}>{t('common.loading', 'Loading…')}</Text>
             </View>
           ) : filteredRoster.length === 0 ? (
             <EmptyState
               icon="people-outline"
-              title="No Jirga members found"
+              title={t('jirga.noMembersFound', 'No Jirga members found')}
               message={
                 data?.members?.length === 0
-                  ? 'No members have been assigned to this Jirga assembly yet.'
-                  : 'No members match your active search or role filter.'
+                  ? t('jirga.noMembersAssignedYet', 'No members have been assigned to this Jirga assembly yet.')
+                  : t('jirga.noMembersMatchFilter', 'No members match your active search or role filter.')
               }
             />
           ) : (
@@ -564,48 +566,48 @@ export default function JirgaScreen() {
               {filteredRoster.map((m, idx) => {
                 const hasRoles = m.activeRoles && m.activeRoles.length > 0;
                 return (
-                  <View key={m.jirgaRecordId || m._id || idx} style={styles.memberRow}>
+                  <View key={m.jirgaRecordId || m._id || idx} style={[styles.memberRow, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Avatar name={m.fullName} url={m.photoUrl} size={42} />
-                    <View style={styles.memberInfo}>
-                      <Text style={styles.memberName}>{m.fullName}</Text>
-                      <Text style={styles.memberMeta}>
+                    <View style={[styles.memberInfo, isRTL && { alignItems: 'flex-end' }]}>
+                      <Text style={[styles.memberName, isRTL && { textAlign: 'right' }]}>{m.fullName}</Text>
+                      <Text style={[styles.memberMeta, isRTL && { textAlign: 'right' }]}>
                         {m.memberId || 'ID —'} · {m.cnic || 'CNIC —'} · {m.phone || 'Phone —'}
                       </Text>
 
                       {/* Active Roles & Units */}
                       {hasRoles ? (
-                        <View style={styles.roleBadgesRow}>
+                        <View style={[styles.roleBadgesRow, isRTL && { flexDirection: 'row-reverse' }]}>
                           {m.activeRoles.map((r, rIdx) => (
                             <View key={r._id || rIdx} style={styles.roleBadge}>
                               <Text style={styles.roleBadgeText}>
-                                {r.customRoleName || r.roleCode?.replace(/_/g, ' ')} · {r.unitName}
+                                {r.customRoleName || t('roles.' + r.roleCode, r.roleCode?.replace(/_/g, ' '))} · {r.unitName}{r.unitLevel ? ` (${t('units.' + r.unitLevel, r.unitLevel.replace(/_/g, ' '))})` : ''}
                               </Text>
                             </View>
                           ))}
                         </View>
                       ) : (
                         <View style={styles.generalWorkerBadge}>
-                          <Text style={styles.generalWorkerText}>General Party Worker</Text>
+                          <Text style={styles.generalWorkerText}>{t('jirga.generalPartyWorker', 'General Party Worker')}</Text>
                         </View>
                       )}
 
                       {/* Home Location & Appointed Date */}
-                      <View style={styles.homeLocationRow}>
+                      <View style={[styles.homeLocationRow, isRTL && { flexDirection: 'row-reverse' }]}>
                         <Text style={styles.homeLocationText}>
                           📍 {m.homeUnit?.districtName ? `${m.homeUnit.districtName} (${m.homeUnit.provinceName || 'Province'})` : 'Home Unit —'}
                         </Text>
                         {m.appointedAt ? (
                           <Text style={styles.appointedText}>
-                            Appointed: {new Date(m.appointedAt).toLocaleDateString()}
+                            {t('jirga.appointed', 'Appointed:')} {new Date(m.appointedAt).toLocaleDateString()}
                           </Text>
                         ) : null}
                       </View>
 
                       {/* Nomination Notes */}
                       {m.nominationNote ? (
-                        <View style={styles.notesBox}>
-                          <Text style={styles.notesLabel}>Notes:</Text>
-                          <Text style={styles.notesText}>{m.nominationNote}</Text>
+                        <View style={[styles.notesBox, isRTL && { alignItems: 'flex-end' }]}>
+                          <Text style={[styles.notesLabel, isRTL && { textAlign: 'right' }]}>{t('common.notes', 'Notes:')}</Text>
+                          <Text style={[styles.notesText, isRTL && { textAlign: 'right' }]}>{m.nominationNote}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -635,10 +637,10 @@ export default function JirgaScreen() {
         onRequestClose={() => setAssignOpen(false)}
       >
         <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <View>
-              <Text style={styles.modalTitle}>Nominate Jirga Member</Text>
-              <Text style={styles.modalSubtitle}>Assign party member to {jirgaTitle}</Text>
+              <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('jirga.nominateMemberModal', 'Nominate Jirga Member')}</Text>
+              <Text style={[styles.modalSubtitle, isRTL && { textAlign: 'right' }]}>{t('jirga.nominateMemberSub', 'Assign party member to {{title}}', { title: jirgaTitle })}</Text>
             </View>
             <TouchableOpacity onPress={() => setAssignOpen(false)} style={styles.closeBtn}>
               <Ionicons name="close" size={24} color={Colors.text} />
@@ -648,11 +650,11 @@ export default function JirgaScreen() {
           <View style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Search Bar */}
-              <View style={styles.modalSearchWrap}>
+              <View style={[styles.modalSearchWrap, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Ionicons name="search" size={16} color={Colors.textMuted} style={styles.searchIcon} />
                 <TextInput
-                  style={styles.modalSearchInput}
-                  placeholder="Search candidate by name, CNIC, phone…"
+                  style={[styles.modalSearchInput, isRTL && { textAlign: 'right' }]}
+                  placeholder={t('jirga.searchCandidatePlaceholder', 'Search candidate by name, CNIC, phone…')}
                   placeholderTextColor={Colors.textMuted}
                   value={candidateSearch}
                   onChangeText={setCandidateSearch}
@@ -660,8 +662,8 @@ export default function JirgaScreen() {
               </View>
 
               {/* Tier Filters */}
-              <Text style={styles.modalFilterLabel}>FILTER BY TIER</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizFilterScroll}>
+              <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.filterByTier', 'FILTER BY TIER')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizFilterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                 {candidateTierOptions.map((opt) => (
                   <TouchableOpacity
                     key={opt.value}
@@ -678,14 +680,14 @@ export default function JirgaScreen() {
               {/* District Filter */}
               {districtsList.length > 0 && (
                 <>
-                  <Text style={styles.modalFilterLabel}>FILTER BY DISTRICT</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizFilterScroll}>
+                  <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.filterByDistrict', 'FILTER BY DISTRICT')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizFilterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                     <TouchableOpacity
                       style={[styles.filterChip, candidateDistId === '' && styles.filterChipActive]}
                       onPress={() => setCandidateDistId('')}
                     >
                       <Text style={[styles.filterChipText, candidateDistId === '' && styles.filterChipTextActive]}>
-                        All Districts
+                        {t('jirga.allDistricts', 'All Districts')}
                       </Text>
                     </TouchableOpacity>
                     {districtsList.map((d) => (
@@ -704,15 +706,15 @@ export default function JirgaScreen() {
               )}
 
               {/* Candidate List */}
-              <Text style={styles.modalFilterLabel}>SELECT CANDIDATE ({candidates.length})</Text>
+              <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.selectCandidate', 'SELECT CANDIDATE ({{count}})', { count: candidates.length })}</Text>
               {candidatesLoading ? (
                 <View style={styles.loaderWrap}>
                   <ActivityIndicator size="small" color={Colors.primary} />
-                  <Text style={styles.loaderText}>Searching eligible candidates…</Text>
+                  <Text style={styles.loaderText}>{t('common.loading', 'Loading…')}</Text>
                 </View>
               ) : candidates.length === 0 ? (
                 <View style={styles.emptyCandidate}>
-                  <Text style={styles.emptyCandidateText}>No eligible candidates found matching filters.</Text>
+                  <Text style={styles.emptyCandidateText}>{t('jirga.noCandidatesMatching', 'No eligible candidates found matching filters.')}</Text>
                 </View>
               ) : (
                 <ScrollView
@@ -726,22 +728,22 @@ export default function JirgaScreen() {
                       return (
                         <TouchableOpacity
                           key={c._id}
-                          style={[styles.candidateRow, isSelected && styles.candidateRowSelected]}
+                          style={[styles.candidateRow, isRTL && { flexDirection: 'row-reverse' }, isSelected && styles.candidateRowSelected]}
                           onPress={() => setSelectedMember(c)}
                           activeOpacity={0.7}
                         >
                           <Avatar name={c.fullName} url={c.photoUrl} size={36} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.candidateName}>{c.fullName}</Text>
-                            <Text style={styles.candidateMeta}>
+                          <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                            <Text style={[styles.candidateName, isRTL && { textAlign: 'right' }]}>{c.fullName}</Text>
+                            <Text style={[styles.candidateMeta, isRTL && { textAlign: 'right' }]}>
                               {c.memberId || 'ID —'} · {c.cnic || 'CNIC —'}
                             </Text>
                             {c.primaryRole ? (
-                              <Text style={styles.candidateRole}>
-                                {c.primaryRole.roleCode?.replace(/_/g, ' ')} ({c.primaryRole.unitName})
+                              <Text style={[styles.candidateRole, isRTL && { textAlign: 'right' }]}>
+                                {t('roles.' + c.primaryRole.roleCode, c.primaryRole.roleCode?.replace(/_/g, ' '))} ({c.primaryRole.unitName})
                               </Text>
                             ) : (
-                              <Text style={styles.candidateWorker}>General Member · {c.districtName || 'District'}</Text>
+                              <Text style={[styles.candidateWorker, isRTL && { textAlign: 'right' }]}>{t('members.generalMember', 'General Member')} · {c.districtName || 'District'}</Text>
                             )}
                           </View>
                           <Ionicons
@@ -759,10 +761,10 @@ export default function JirgaScreen() {
               {/* Nomination Notes */}
               {selectedMember && (
                 <View style={styles.nominationForm}>
-                  <Text style={styles.modalFilterLabel}>NOMINATION REMARKS / JUSTIFICATION (OPTIONAL)</Text>
+                  <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>{t('jirga.nominationRemarks', 'NOMINATION REMARKS / JUSTIFICATION (OPTIONAL)')}</Text>
                   <TextInput
-                    style={styles.textArea}
-                    placeholder="Enter appointment reasoning, elder credentials, background…"
+                    style={[styles.textArea, isRTL && { textAlign: 'right' }]}
+                    placeholder={t('jirga.nominationPlaceholder', 'Enter appointment reasoning, elder credentials, background…')}
                     placeholderTextColor={Colors.textMuted}
                     value={nominationNote}
                     onChangeText={setNominationNote}
@@ -772,7 +774,7 @@ export default function JirgaScreen() {
 
                   {/* Submit Button */}
                   <TouchableOpacity
-                    style={styles.submitAssignBtn}
+                    style={[styles.submitAssignBtn, isRTL && { flexDirection: 'row-reverse' }]}
                     onPress={handleAssign}
                     disabled={assigning}
                     activeOpacity={0.8}
@@ -780,9 +782,12 @@ export default function JirgaScreen() {
                     {assigning ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Text style={styles.submitAssignBtnText}>
-                        Assign {selectedMember.fullName} to Jirga →
-                      </Text>
+                      <>
+                        <Ionicons name="checkmark-circle-outline" size={18} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                        <Text style={styles.submitAssignBtnText}>
+                          {t('jirga.assignMemberAction', 'Assign {{name}} to Jirga →', { name: selectedMember.fullName })}
+                        </Text>
+                      </>
                     )}
                   </TouchableOpacity>
                 </View>
