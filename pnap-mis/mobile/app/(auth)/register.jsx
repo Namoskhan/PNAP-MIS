@@ -13,18 +13,20 @@ import {
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { api, errorMessage } from '../../src/api/client';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { formatCnic, isCompleteCnic } from '../../src/utils/formatters';
 import { useToast } from '../../src/components/Toast';
 import DatePicker from '../../src/components/DatePicker';
 import { Colors, FontSize, Radius, Spacing } from '../../src/constants/colors';
 
 const GENDERS = [
-  { label: 'Male', value: 'MALE' },
-  { label: 'Female', value: 'FEMALE' },
-  { label: 'Other', value: 'PREFER_NOT_TO_SAY' },
+  { labelKey: 'common.male', fallback: 'Male', value: 'MALE' },
+  { labelKey: 'common.female', fallback: 'Female', value: 'FEMALE' },
+  { labelKey: 'common.other', fallback: 'Other', value: 'PREFER_NOT_TO_SAY' },
 ];
 
 export default function RegisterScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const toast = useToast();
 
@@ -88,19 +90,19 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!form.fullName.trim() || !form.fatherOrHusbandName.trim() || !form.cnic || !form.phone || !form.email || !form.basicUnitId) {
-      setErr('Please fill in all required fields (marked *).');
+      setErr(t('register.fillRequired', 'Please fill in all required fields (marked *).'));
       return;
     }
     if (!isCompleteCnic(form.cnic)) {
-      setErr('Please enter a valid 13-digit CNIC.');
+      setErr(t('register.validCnic', 'Please enter a valid 13-digit CNIC.'));
       return;
     }
     if (form.password && form.password.length < 6) {
-      setErr('Password must be at least 6 characters.');
+      setErr(t('auth.errMin6Chars', 'Password must be at least 6 characters.'));
       return;
     }
     if (form.password && form.password !== form.passwordConfirm) {
-      setErr('Passwords do not match.');
+      setErr(t('register.passwordsMismatch', 'Passwords do not match.'));
       return;
     }
 
@@ -120,7 +122,7 @@ export default function RegisterScreen() {
         basicUnitId: form.basicUnitId,
       });
       setSubmitted(true);
-      toast.success('Registration submitted for approval!');
+      toast.success(t('register.submittedSuccess', 'Registration submitted for approval!'));
     } catch (e) {
       const msg = errorMessage(e);
       setErr(msg);
@@ -135,12 +137,12 @@ export default function RegisterScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.successContainer}>
           <Text style={styles.successIcon}>🎉</Text>
-          <Text style={styles.successTitle}>Application Submitted!</Text>
+          <Text style={styles.successTitle}>{t('register.applicationSubmitted', 'Application Submitted!')}</Text>
           <Text style={styles.successText}>
-            Your membership application has been received and is pending approval by your unit secretary.
+            {t('register.pendingSecretaryApproval', 'Your membership application has been received and is pending approval by your unit secretary.')}
           </Text>
           <TouchableOpacity style={styles.btn} onPress={() => router.replace('/login')}>
-            <Text style={styles.btnText}>Back to Sign In</Text>
+            <Text style={styles.btnText}>{t('auth.backToSignIn', 'Back to Sign In')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -152,46 +154,46 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Member Registration</Text>
-            <Text style={styles.headerSub}>Join PNAP as a registered party member</Text>
+            <Text style={styles.headerTitle}>{t('register.memberRegistration', 'Member Registration')}</Text>
+            <Text style={styles.headerSub}>{t('register.joinPnap', 'Join PNAP as a registered party member')}</Text>
           </View>
 
           <View style={styles.card}>
             {err ? (
               <View style={styles.errorBanner}>
-                <Text style={styles.errorText}>{err}</Text>
+                <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{err}</Text>
               </View>
             ) : null}
 
             {/* Personal Details */}
-            <Text style={styles.sectionHeader}>Personal Info</Text>
+            <Text style={[styles.sectionHeader, isRTL && { textAlign: 'right' }]}>{t('register.personalInfo', 'Personal Info')}</Text>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Full Name *</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.fullNameRequired', 'Full Name *')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.fullName}
                 onChangeText={(v) => setForm((f) => ({ ...f, fullName: v }))}
-                placeholder="Full Name"
+                placeholder={t('register.fullName', 'Full Name')}
                 placeholderTextColor={Colors.textLight}
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Father / Husband Name *</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.fatherOrHusbandRequired', 'Father / Husband Name *')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.fatherOrHusbandName}
                 onChangeText={(v) => setForm((f) => ({ ...f, fatherOrHusbandName: v }))}
-                placeholder="Father or Husband Name"
+                placeholder={t('register.fatherOrHusband', 'Father or Husband Name')}
                 placeholderTextColor={Colors.textLight}
               />
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>CNIC *</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.cnicRequired', 'CNIC *')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.cnic}
                 onChangeText={(v) => setForm((f) => ({ ...f, cnic: formatCnic(v) }))}
                 placeholder="XXXXX-XXXXXXX-X"
@@ -202,9 +204,9 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Phone Number *</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.phoneRequired', 'Phone Number *')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.phone}
                 onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
                 placeholder="03XX-XXXXXXX"
@@ -214,9 +216,9 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Email Address *</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.emailRequired', 'Email Address *')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.email}
                 onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
                 placeholder="name@example.com"
@@ -227,8 +229,8 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Gender</Text>
-              <View style={styles.chipRow}>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.gender', 'Gender')}</Text>
+              <View style={[styles.chipRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 {GENDERS.map((g) => (
                   <TouchableOpacity
                     key={g.value}
@@ -236,7 +238,7 @@ export default function RegisterScreen() {
                     onPress={() => setForm((f) => ({ ...f, gender: g.value }))}
                   >
                     <Text style={[styles.chipText, form.gender === g.value && styles.chipTextActive]}>
-                      {g.label}
+                      {t(g.labelKey, g.fallback)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -244,20 +246,20 @@ export default function RegisterScreen() {
             </View>
 
             <DatePicker
-              label="Date of Birth *"
+              label={t('register.dobRequired', 'Date of Birth *')}
               value={form.dateOfBirth}
               onChange={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))}
-              placeholder="Select birth date"
+              placeholder={t('register.selectBirthDate', 'Select birth date')}
               maxDate={new Date().toISOString().split('T')[0]}
             />
 
             <View style={styles.field}>
-              <Text style={styles.label}>Address *</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.addressRequired', 'Address *')}</Text>
               <TextInput
-                style={[styles.input, styles.multiline]}
+                style={[styles.input, styles.multiline, isRTL && { textAlign: 'right' }]}
                 value={form.address}
                 onChangeText={(v) => setForm((f) => ({ ...f, address: v }))}
-                placeholder="Residential Address"
+                placeholder={t('register.residentialAddress', 'Residential Address')}
                 placeholderTextColor={Colors.textLight}
                 multiline
                 numberOfLines={2}
@@ -265,12 +267,12 @@ export default function RegisterScreen() {
             </View>
 
             {/* Unit Selection */}
-            <Text style={[styles.sectionHeader, { marginTop: Spacing.lg }]}>Unit Assignment</Text>
+            <Text style={[styles.sectionHeader, { marginTop: Spacing.lg }, isRTL && { textAlign: 'right' }]}>{t('register.unitAssignment', 'Unit Assignment')}</Text>
 
             {/* Province picker */}
             <View style={styles.field}>
-              <Text style={styles.label}>1. Province *</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.provinceRequired', '1. Province *')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                 {provinces.map((p) => (
                   <TouchableOpacity
                     key={p._id}
@@ -286,8 +288,8 @@ export default function RegisterScreen() {
             {/* District picker */}
             {provinceId ? (
               <View style={styles.field}>
-                <Text style={styles.label}>2. District *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.districtRequired', '2. District *')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                   {districts.map((d) => (
                     <TouchableOpacity
                       key={d._id}
@@ -304,8 +306,8 @@ export default function RegisterScreen() {
             {/* Area picker */}
             {districtId ? (
               <View style={styles.field}>
-                <Text style={styles.label}>3. Area *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.areaRequired', '3. Area *')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                   {areas.map((a) => (
                     <TouchableOpacity
                       key={a._id}
@@ -322,8 +324,8 @@ export default function RegisterScreen() {
             {/* Basic Unit picker */}
             {areaId ? (
               <View style={styles.field}>
-                <Text style={styles.label}>4. Basic Unit *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.basicUnitRequired', '4. Basic Unit *')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.chipScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                   {units.map((u) => (
                     <TouchableOpacity
                       key={u._id}
@@ -338,12 +340,12 @@ export default function RegisterScreen() {
             ) : null}
 
             {/* Password */}
-            <Text style={[styles.sectionHeader, { marginTop: Spacing.lg }]}>Account Password</Text>
+            <Text style={[styles.sectionHeader, { marginTop: Spacing.lg }, isRTL && { textAlign: 'right' }]}>{t('register.accountPassword', 'Account Password')}</Text>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Password (Optional)</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.passwordOptional', 'Password (Optional)')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.password}
                 onChangeText={(v) => setForm((f) => ({ ...f, password: v }))}
                 placeholder="••••••••"
@@ -353,9 +355,9 @@ export default function RegisterScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('register.confirmPassword', 'Confirm Password')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.passwordConfirm}
                 onChangeText={(v) => setForm((f) => ({ ...f, passwordConfirm: v }))}
                 placeholder="••••••••"
@@ -372,13 +374,15 @@ export default function RegisterScreen() {
               {busy ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.btnText}>Submit Registration</Text>
+                <Text style={styles.btnText}>{t('register.submitRegistration', 'Submit Registration')}</Text>
               )}
             </TouchableOpacity>
 
             <Link href="/login" asChild>
               <TouchableOpacity style={styles.backBtn}>
-                <Text style={styles.backBtnText}>Already have an account? <Text style={{ fontWeight: '700', color: Colors.primary }}>Sign In</Text></Text>
+                <Text style={styles.backBtnText}>
+                  {t('register.alreadyHaveAccount', 'Already have an account?')} <Text style={{ fontWeight: '700', color: Colors.primary }}>{t('auth.signIn', 'Sign In')}</Text>
+                </Text>
               </TouchableOpacity>
             </Link>
           </View>

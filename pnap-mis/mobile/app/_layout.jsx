@@ -7,9 +7,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet, Platform, LogBox } from 'react-native';
 import { useEffect, useState } from 'react';
 import { api } from '../src/api/client';
-import { Colors } from '../src/constants/colors';
-
 import { NetworkProvider } from '../src/context/NetworkContext';
+import { LanguageProvider } from '../src/context/LanguageContext';
+import '../src/i18n';
 
 // Suppress non-actionable dev/library warnings (React Navigation web pointerEvents, reanimated reduced motion, etc.)
 LogBox.ignoreLogs([
@@ -147,19 +147,21 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <NetworkProvider>
-        <AuthProvider>
-          <UnitProvider>
-            <ToastProvider>
-              <StatusBar style="light" />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(app)" options={{ headerShown: false }} />
-              </Stack>
-            </ToastProvider>
-          </UnitProvider>
-        </AuthProvider>
-      </NetworkProvider>
+      <LanguageProvider>
+        <NetworkProvider>
+          <AuthProvider>
+            <UnitProvider>
+              <ToastProvider>
+                <StatusBar style="light" />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                </Stack>
+              </ToastProvider>
+            </UnitProvider>
+          </AuthProvider>
+        </NetworkProvider>
+      </LanguageProvider>
     </GestureHandlerRootView>
   );
 }
