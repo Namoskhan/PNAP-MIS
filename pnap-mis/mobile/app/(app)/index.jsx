@@ -14,6 +14,7 @@ import { useAuth } from '../../src/context/AuthContext';
 import { useUnit } from '../../src/context/UnitContext';
 import { api } from '../../src/api/client';
 import { isPureMember } from '../../src/utils/permissions';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { getCache, setCache } from '../../src/services/offlineStorage';
 import Card from '../../src/components/Card';
 import Badge from '../../src/components/Badge';
@@ -25,6 +26,7 @@ import { shortDate, MEETING_TYPE_LABEL } from '../../src/utils/formatters';
 export default function DashboardScreen() {
   const { user } = useAuth();
   const { ctx } = useUnit();
+  const { t, isRTL } = useLanguage();
 
   // Member Portal state
   const isMember = isPureMember(user);
@@ -126,15 +128,15 @@ export default function DashboardScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefreshMember} tintColor={Colors.primary} />}
         >
           {/* Member Banner */}
-          <View style={styles.memberBanner}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.bannerEyebrow}>MEMBER PORTAL</Text>
-              <Text style={styles.bannerName}>Welcome, {firstName}</Text>
+          <View style={[styles.memberBanner, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+              <Text style={styles.bannerEyebrow}>{t('mobile.portal', 'MEMBER PORTAL').toUpperCase()}</Text>
+              <Text style={styles.bannerName}>{t('common.welcomeBack', 'Welcome')}, {firstName}</Text>
               <Text style={styles.bannerUnit}>
-                {me?.basicUnitId?.name ? `Your Unit · ${me.basicUnitId.name}` : 'Your activity at a glance.'}
+                {me?.basicUnitId?.name ? `${t('units.basicUnit', 'Your Unit')} · ${me.basicUnitId.name}` : t('mobile.offlineDesc', 'Your activity at a glance.')}
               </Text>
             </View>
-            <View style={styles.bannerActions}>
+            <View style={[styles.bannerActions, isRTL && { flexDirection: 'row-reverse' }]}>
               <Link href="/announcements" asChild>
                 <TouchableOpacity style={styles.bellBtn}>
                   <Text style={styles.bellIcon}>📣</Text>
@@ -149,26 +151,26 @@ export default function DashboardScreen() {
           </View>
 
           {/* Member Status Cards */}
-          <View style={styles.chipRow}>
-            <View style={styles.statChip}>
+          <View style={[styles.chipRow, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={[styles.statChip, isRTL && { flexDirection: 'row-reverse' }]}>
               <Text style={styles.statChipIcon}>🪪</Text>
-              <View>
+              <View style={isRTL && { alignItems: 'flex-end' }}>
                 <Text style={styles.statChipVal}>{me?.memberId || '—'}</Text>
-                <Text style={styles.statChipLabel}>Member ID</Text>
+                <Text style={styles.statChipLabel}>{t('members.memberId', 'Member ID')}</Text>
               </View>
             </View>
-            <View style={styles.statChip}>
+            <View style={[styles.statChip, isRTL && { flexDirection: 'row-reverse' }]}>
               <Text style={styles.statChipIcon}>●</Text>
-              <View>
+              <View style={isRTL && { alignItems: 'flex-end' }}>
                 <Text style={styles.statChipVal}>{me?.status?.toLowerCase() || 'active'}</Text>
-                <Text style={styles.statChipLabel}>Status</Text>
+                <Text style={styles.statChipLabel}>{t('common.status', 'Status')}</Text>
               </View>
             </View>
           </View>
 
           {/* Profile overview card */}
           <Card style={styles.memberCard}>
-            <Text style={styles.sectionTitle}>My Profile</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('auth.myProfile', 'My Profile')}</Text>
             {loadingMember && !me ? (
               <ActivityIndicator size="small" color={Colors.primary} />
             ) : me ? (

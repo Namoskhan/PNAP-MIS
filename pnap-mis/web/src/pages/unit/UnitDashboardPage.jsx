@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
@@ -48,6 +49,7 @@ function childLevelOf(parentLevel) {
 export default function UnitDashboardPage() {
   const { ctx, setCtx } = useUnit();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -353,12 +355,12 @@ export default function UnitDashboardPage() {
 
   if (!ctx) return (
     <div>
-      <h2>Unit Dashboard</h2>
+      <h2>{t('dashboard.title', 'Unit Dashboard')}</h2>
       {!isPinned && <UnitSwitcher />}
       <p className="muted">
         {isPinned
-          ? 'Loading your unit…'
-          : 'Select a unit context above to load its dashboard.'}
+          ? t('dashboard.loadingUnit', 'Loading your unit…')
+          : t('dashboard.selectUnit', 'Select a unit context above to load its dashboard.')}
       </p>
     </div>
   );
@@ -376,15 +378,15 @@ export default function UnitDashboardPage() {
         eyebrow={ctx.unitLevel.replace('_', ' ').toUpperCase()}
         subtitle={ctx.unitName}
         chips={data ? [
-          { label: 'Members', value: (data.members?.total ?? 0).toLocaleString(), icon: '👥' },
-          { label: 'Meetings (30d)', value: (data.meetings?.last30Days ?? 0).toLocaleString(), icon: '📋' },
-          { label: 'Activities (30d)', value: (data.activities?.last30Days ?? 0).toLocaleString(), icon: '🎯' },
-          { label: 'Net balance', value: PKR.format(data.finance?.balance ?? 0), icon: '💰' },
+          { label: t('dashboard.members', 'Members'), value: (data.members?.total ?? 0).toLocaleString(), icon: '👥' },
+          { label: t('dashboard.meetings30', 'Meetings (30d)'), value: (data.meetings?.last30Days ?? 0).toLocaleString(), icon: '📋' },
+          { label: t('dashboard.activities30', 'Activities (30d)'), value: (data.activities?.last30Days ?? 0).toLocaleString(), icon: '🎯' },
+          { label: t('dashboard.netBalance', 'Net balance'), value: PKR.format(data.finance?.balance ?? 0), icon: '💰' },
         ] : undefined}
         actions={
-          <span className="hero-live-chip" title={lastRefreshed ? `Last updated ${lastRefreshed.toLocaleTimeString()}` : 'Loading…'}>
+          <span className="hero-live-chip" title={lastRefreshed ? `Last updated ${lastRefreshed.toLocaleTimeString()}` : t('common.loading', 'Loading…')}>
             <span className={`hero-live-pulse ${refreshing ? 'refreshing' : ''}`} aria-hidden="true" />
-            {refreshing ? 'Updating…' : lastRefreshed ? `Live · ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Live'}
+            {refreshing ? t('dashboard.updating', 'Updating…') : lastRefreshed ? `${t('dashboard.live', 'Live')} · ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : t('dashboard.live', 'Live')}
           </span>
         }
       />
@@ -398,7 +400,7 @@ export default function UnitDashboardPage() {
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 'var(--radius)', fontSize: 13,
         }}>
-          <span className="muted" style={{ marginRight: 4 }}>Drilled into:</span>
+          <span className="muted" style={{ marginRight: 4 }}>{t('dashboard.drilledInto', 'Drilled into:')}</span>
           <button
             type="button"
             onClick={() => jumpToCrumb(-1)}
@@ -434,7 +436,7 @@ export default function UnitDashboardPage() {
             onClick={returnToHomeUnit}
             style={{ marginLeft: 'auto' }}
           >
-            ← Return to {homeCtx.unitName}
+            ← {t('dashboard.returnTo', 'Return to')} {homeCtx.unitName}
           </button>
         </div>
       )}
@@ -459,14 +461,14 @@ export default function UnitDashboardPage() {
             return (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 9, marginBottom: 11 }}>
                 <SmartKpi
-                  label="Members"
+                  label={t('dashboard.members', 'Members')}
                   value={data.members.active}
                   icon="👥"
                   spark={sparkMembers}
                   format={(v) => `${(v ?? 0).toLocaleString()} / ${data.members.total}`}
                 />
                 <SmartKpi
-                  label="Donations"
+                  label={t('dashboard.donations', 'Donations')}
                   value={data.finance.donations}
                   icon="💰"
                   iconBg={BRAND.pinker}
@@ -475,7 +477,7 @@ export default function UnitDashboardPage() {
                   format={(v) => `Rs. ${fmtShort(v)}`}
                 />
                 <SmartKpi
-                  label="Expenses"
+                  label={t('dashboard.expenses', 'Expenses')}
                   value={data.finance.expenses}
                   icon="🧾"
                   iconBg={BRAND.tint}
@@ -486,7 +488,7 @@ export default function UnitDashboardPage() {
                   format={(v) => `Rs. ${fmtShort(v)}`}
                 />
                 <SmartKpi
-                  label="Meetings (30d)"
+                  label={t('dashboard.meetings30', 'Meetings (30d)')}
                   value={data.meetings.last30Days}
                   icon="📅"
                   iconBg={BRAND.pinker}
@@ -503,30 +505,30 @@ export default function UnitDashboardPage() {
             <div className="chart-card">
               <div className="chart-card-head">
                 <div>
-                  <div className="chart-card-title">Pending approvals</div>
-                  <div className="chart-card-sub">Members awaiting decision</div>
+                  <div className="chart-card-title">{t('dashboard.pendingApprovals', 'Pending approvals')}</div>
+                  <div className="chart-card-sub">{t('dashboard.membersAwaitingReview', 'Members awaiting decision')}</div>
                 </div>
                 <div className="chart-card-meta">{data.members.pending}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <Donut
                   percent={data.members.total > 0 ? Math.round((data.members.pending / data.members.total) * 100) : 0}
-                  label="of total"
+                  label={t('dashboard.pending', 'pending')}
                   size={92}
                   stroke={11}
                 />
                 <div style={{ flex: 1, fontSize: 13, color: 'var(--text-soft)', lineHeight: 1.5 }}>
-                  <div><strong style={{ color: 'var(--text)' }}>{data.members.active}</strong> active</div>
-                  <div><strong style={{ color: BRAND.dark }}>{data.members.pending}</strong> pending</div>
-                  <div><strong style={{ color: 'var(--muted)' }}>{data.members.total}</strong> total roster</div>
+                  <div><strong style={{ color: 'var(--text)' }}>{data.members.active}</strong> {t('dashboard.active', 'active')}</div>
+                  <div><strong style={{ color: BRAND.dark }}>{data.members.pending}</strong> {t('dashboard.pending', 'pending')}</div>
+                  <div><strong style={{ color: 'var(--muted)' }}>{data.members.total}</strong> {t('dashboard.totalRoster', 'total roster')}</div>
                 </div>
               </div>
             </div>
             <div className="chart-card">
               <div className="chart-card-head">
                 <div>
-                  <div className="chart-card-title">Net balance</div>
-                  <div className="chart-card-sub">Donations − Expenses</div>
+                  <div className="chart-card-title">{t('dashboard.netBalance', 'Net balance')}</div>
+                  <div className="chart-card-sub">{t('dashboard.donMinusExp', 'Donations − Expenses')}</div>
                 </div>
                 <div className="chart-card-meta" style={{ color: data.finance.balance < 0 ? 'var(--danger)' : BRAND.dark }}>
                   {PKR.format(data.finance.balance)}
@@ -555,8 +557,8 @@ export default function UnitDashboardPage() {
                   <div className="chart-card">
                     <div className="chart-card-head">
                       <div>
-                        <div className="chart-card-title">Meeting types</div>
-                        <div className="chart-card-sub">Last 30 days</div>
+                        <div className="chart-card-title">{t('dashboard.meetingTypes', 'Meeting types')}</div>
+                        <div className="chart-card-sub">{t('dashboard.last30Days', 'Last 30 days')}</div>
                       </div>
                       <div className="chart-card-meta">{data.meetings.last30Days || 0}</div>
                     </div>
@@ -568,14 +570,14 @@ export default function UnitDashboardPage() {
                       color={BRAND.dark}
                       trackColor={BRAND.tint}
                       height={110}
-                      emptyLabel="No meetings in the last 30 days."
+                      emptyLabel={t('dashboard.noMeetings30d', 'No meetings in the last 30 days.')}
                     />
                   </div>
                   <div className="chart-card">
                     <div className="chart-card-head">
                       <div>
-                        <div className="chart-card-title">Activity types</div>
-                        <div className="chart-card-sub">Last 30 days</div>
+                        <div className="chart-card-title">{t('dashboard.activityTypes', 'Activity types')}</div>
+                        <div className="chart-card-sub">{t('dashboard.last30Days', 'Last 30 days')}</div>
                       </div>
                       <div className="chart-card-meta">{data.activities.last30Days || 0}</div>
                     </div>
@@ -587,14 +589,14 @@ export default function UnitDashboardPage() {
                       color={BRAND.mid}
                       trackColor={BRAND.tint}
                       height={110}
-                      emptyLabel="No activities in the last 30 days."
+                      emptyLabel={t('dashboard.noActivities30d', 'No activities in the last 30 days.')}
                     />
                   </div>
                 </div>
                 <div className="chart-card" style={{ display: 'flex', flexDirection: 'column' }}>
                   <div className="chart-card-head">
-                    <div className="chart-card-title">Engagement quality</div>
-                    <div className="chart-card-sub">{data.analytics.quality.finalizedTotal} finalized</div>
+                    <div className="chart-card-title">{t('dashboard.engagementQuality', 'Engagement quality')}</div>
+                    <div className="chart-card-sub">{data.analytics.quality.finalizedTotal} {t('dashboard.eventsEvaluated', 'finalized')}</div>
                   </div>
                   {(() => {
                     const q = data.analytics.quality;
@@ -604,12 +606,12 @@ export default function UnitDashboardPage() {
                     return (
                       <>
                         <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
-                          <Donut percent={score} label="overall" size={108} stroke={12} />
+                          <Donut percent={score} label={t('dashboard.overallScore', 'overall')} size={108} stroke={12} />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-                          <PctBar label="Attendance" value={q.attendanceRate} threshold={60} />
-                          <PctBar label="Photo coverage" value={q.photoCoveragePct} threshold={50} />
-                          <PctBar label="GPS-tagged" value={q.gpsTaggedPct} threshold={70} />
+                          <PctBar label={t('dashboard.attendanceRate', 'Attendance')} value={q.attendanceRate} threshold={60} />
+                          <PctBar label={t('dashboard.photoCoverage', 'Photo coverage')} value={q.photoCoveragePct} threshold={50} />
+                          <PctBar label={t('dashboard.gpsTaggedLocation', 'GPS-tagged')} value={q.gpsTaggedPct} threshold={70} />
                         </div>
                       </>
                     );
@@ -621,11 +623,11 @@ export default function UnitDashboardPage() {
               <div className="chart-card" style={{ marginBottom: 10 }}>
                 <div className="chart-card-head">
                   <div>
-                    <div className="chart-card-title">Activity trend</div>
-                    <div className="chart-card-sub">Last 6 months</div>
+                    <div className="chart-card-title">{t('dashboard.activityTrend', 'Activity trend')}</div>
+                    <div className="chart-card-sub">{t('dashboard.past6MonthsVelocity', 'Last 6 months')}</div>
                   </div>
                   <div className="chart-card-meta">
-                    {data.analytics.trend.reduce((s, b) => s + (b.meetings || 0) + (b.activities || 0), 0)} total
+                    {data.analytics.trend.reduce((s, b) => s + (b.meetings || 0) + (b.activities || 0), 0)} {t('dashboard.total', 'total')}
                   </div>
                 </div>
                 <AreaChart
@@ -642,8 +644,8 @@ export default function UnitDashboardPage() {
                     <div className="chart-card">
                       <div className="chart-card-head">
                         <div>
-                          <div className="chart-card-title">Meeting type share</div>
-                          <div className="chart-card-sub">Last 30 days · {data.meetings.last30Days || 0} meetings</div>
+                          <div className="chart-card-title">{t('dashboard.meetingShare', 'Meeting type share')}</div>
+                          <div className="chart-card-sub">{t('dashboard.last30Days', 'Last 30 days')} · {data.meetings.last30Days || 0} {t('nav.meetings', 'meetings')}</div>
                         </div>
                       </div>
                       <PieChart
@@ -659,8 +661,8 @@ export default function UnitDashboardPage() {
                     <div className="chart-card">
                       <div className="chart-card-head">
                         <div>
-                          <div className="chart-card-title">Activity type share</div>
-                          <div className="chart-card-sub">Last 30 days · {data.activities.last30Days || 0} activities</div>
+                          <div className="chart-card-title">{t('dashboard.activityShare', 'Activity type share')}</div>
+                          <div className="chart-card-sub">{t('dashboard.last30Days', 'Last 30 days')} · {data.activities.last30Days || 0} {t('nav.activities', 'activities')}</div>
                         </div>
                       </div>
                       <PieChart
@@ -677,22 +679,22 @@ export default function UnitDashboardPage() {
 
               {data.analytics.campaigns && data.analytics.campaigns.total > 0 && (
                 <div className="card" style={{ marginBottom: 16 }}>
-                  <h3 style={{ marginTop: 0 }}>Campaign Performance <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {data.analytics.campaigns.total} campaign{data.analytics.campaigns.total === 1 ? '' : 's'}</span></h3>
+                  <h3 style={{ marginTop: 0 }}>{t('dashboard.campaignPerformance', 'Campaign Performance')} <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>· {data.analytics.campaigns.total} {t('dashboard.activeCampaigns', 'campaigns')}</span></h3>
                   <div className="kpi-grid">
-                    <Kpi label="People Contacted" value={data.analytics.campaigns.peopleContacted.toLocaleString()} />
-                    <Kpi label="Households Visited" value={data.analytics.campaigns.householdsVisited.toLocaleString()} />
-                    <Kpi label="Pamphlets Distributed" value={data.analytics.campaigns.pamphletsDistributed.toLocaleString()} />
-                    <Kpi label="Volunteer Hours" value={data.analytics.campaigns.volunteerHours.toLocaleString()} />
+                    <Kpi label={t('dashboard.peopleContacted', 'People Contacted')} value={data.analytics.campaigns.peopleContacted.toLocaleString()} />
+                    <Kpi label={t('dashboard.households', 'Households Visited')} value={data.analytics.campaigns.householdsVisited.toLocaleString()} />
+                    <Kpi label={t('dashboard.pamphlets', 'Pamphlets Distributed')} value={data.analytics.campaigns.pamphletsDistributed.toLocaleString()} />
+                    <Kpi label={t('dashboard.volHours', 'Volunteer Hours')} value={data.analytics.campaigns.volunteerHours.toLocaleString()} />
                   </div>
                   <div style={{ marginTop: 14, padding: 14, background: 'var(--surface-alt)', borderRadius: 'var(--radius)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                      <span style={{ color: 'var(--text-soft)', fontWeight: 500 }}>Conversion Funnel</span>
+                      <span style={{ color: 'var(--text-soft)', fontWeight: 500 }}>{t('dashboard.conversionFunnel', 'Conversion Funnel')}</span>
                       <span style={{ color: 'var(--muted)' }}>
-                        {data.analytics.campaigns.actualJoiners.toLocaleString()} actual / {data.analytics.campaigns.expectedJoiners.toLocaleString()} expected
+                        {data.analytics.campaigns.actualJoiners.toLocaleString()} / {data.analytics.campaigns.expectedJoiners.toLocaleString()}
                       </span>
                     </div>
                     <PctBar
-                      label="Expected → Actual Joiners"
+                      label={t('dashboard.expectedActualJoiners', 'Expected → Actual Joiners')}
                       value={data.analytics.campaigns.conversionPct}
                       threshold={70}
                     />
@@ -705,26 +707,26 @@ export default function UnitDashboardPage() {
           {!isFinanceOnlyUser && data.subordinateUnits && Object.keys(data.subordinateUnits).length > 0 && (
             <div className="card" style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                <h3 style={{ margin: 0 }}>Subordinate Units & Hierarchical Roll-Up</h3>
+                <h3 style={{ margin: 0 }}>{t('dashboard.subordinateUnits', 'Subordinate Units & Hierarchical Roll-Up')}</h3>
                 <span className="badge ACTIVE" style={{ fontSize: 12 }}>
-                  {ctx.unitLevel.replace('_', ' ')} Hierarchy
+                  {ctx.unitLevel.replace('_', ' ')} {t('dashboard.hierarchy', 'Hierarchy')}
                 </span>
               </div>
 
               {data.rollup && (
                 <div style={{ marginBottom: 16, padding: 14, background: 'var(--surface-alt)', borderRadius: 'var(--radius)' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Aggregated Subtree Roll-Up (All Subordinate Units)
+                    {t('dashboard.aggregatedRollup', 'Aggregated Subtree Roll-Up (All Subordinate Units)')}
                   </div>
                   <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))' }}>
-                    <Kpi label="Total Sub-Units" value={data.rollup.totalUnits} />
-                    <Kpi label="Total Members" value={data.rollup.totalMembers} accent="good" />
-                    <Kpi label="Meetings (30d)" value={data.rollup.meetings30} />
-                    <Kpi label="Activities (30d)" value={data.rollup.activities30} />
-                    <Kpi label="Donations" value={PKR.format(data.rollup.donations)} />
-                    <Kpi label="Expenses" value={PKR.format(data.rollup.expenses)} />
+                    <Kpi label={t('dashboard.subUnits', 'Total Sub-Units')} value={data.rollup.totalUnits} />
+                    <Kpi label={t('dashboard.members', 'Total Members')} value={data.rollup.totalMembers} accent="good" />
+                    <Kpi label={t('dashboard.meetings30', 'Meetings (30d)')} value={data.rollup.meetings30} />
+                    <Kpi label={t('dashboard.activities30', 'Activities (30d)')} value={data.rollup.activities30} />
+                    <Kpi label={t('dashboard.donations', 'Donations')} value={PKR.format(data.rollup.donations)} />
+                    <Kpi label={t('dashboard.expenses', 'Expenses')} value={PKR.format(data.rollup.expenses)} />
                     <Kpi
-                      label="Net Balance"
+                      label={t('dashboard.netBalance', 'Net Balance')}
                       value={PKR.format(data.rollup.balance)}
                       accent={data.rollup.balance < 0 ? 'danger' : 'good'}
                     />
@@ -743,12 +745,12 @@ export default function UnitDashboardPage() {
                     <thead>
                       <tr>
                         <th>{childLabel}</th>
-                        <th style={{ textAlign: 'right' }}>Active Members</th>
-                        <th style={{ textAlign: 'right' }}>Meetings (30d)</th>
-                        <th style={{ textAlign: 'right' }}>Activities (30d)</th>
-                        <th style={{ textAlign: 'right' }}>Donations</th>
-                        <th style={{ textAlign: 'right' }}>Expenses</th>
-                        <th style={{ textAlign: 'right' }}>Balance</th>
+                        <th style={{ textAlign: 'right' }}>{t('dashboard.activeRoster', 'Active Members')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('dashboard.meetings30', 'Meetings (30d)')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('dashboard.activities30', 'Activities (30d)')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('dashboard.donations', 'Donations')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('dashboard.expenses', 'Expenses')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('dashboard.netBalance', 'Balance')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -779,12 +781,12 @@ export default function UnitDashboardPage() {
 
           {!isFinanceOnlyUser && (!isPresidentPersonaUser || ctx.unitLevel === 'CENTRAL') && subordinates.length > 0 && (
             <div className="card" style={{ marginBottom: 16 }}>
-              <h3 style={{ marginTop: 0 }}>Generate Subordinate Report</h3>
+              <h3 style={{ marginTop: 0 }}>{t('dashboard.generateReport', 'Generate Subordinate Report')}</h3>
               <div className="form-grid" style={{ alignItems: 'end' }}>
                 <div className="field">
-                  <label>Unit</label>
+                  <label>{t('profile.workingContext', 'Unit')}</label>
                   <select value={reportSubId} onChange={(e) => setReportSubId(e.target.value)}>
-                    <option value="">— pick a unit —</option>
+                    <option value="">— {t('common.select', 'pick a unit')} —</option>
                     <option value="self">{ctx.unitLevel.replace('_', ' ')} · {ctx.unitName}</option>
                     {subordinates.map((s) => (
                       <option key={s._id} value={s._id}>{s.name}{s.code ? ` · ${s.code}` : ''}</option>
@@ -792,24 +794,24 @@ export default function UnitDashboardPage() {
                   </select>
                 </div>
                 <div className="field">
-                  <label>Month</label>
+                  <label>{t('common.date', 'Month')}</label>
                   <input type="month" value={reportMonth} onChange={(e) => setReportMonth(e.target.value)} />
                 </div>
                 <div className="field" style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                   <button className="btn secondary" disabled={!reportSubId || previewBusy} onClick={previewSubReport}>
-                    {previewBusy ? 'Loading…' : 'Preview'}
+                    {previewBusy ? t('common.loading', 'Loading…') : t('dashboard.previewReport', 'Preview')}
                   </button>
                 </div>
               </div>
 
               <div style={{ marginTop: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span className="muted" style={{ fontSize: 12, marginRight: 4 }}>Meetings:</span>
+                  <span className="muted" style={{ fontSize: 12, marginRight: 4 }}>{t('nav.meetings', 'Meetings')}:</span>
                   <button className="btn" disabled={!reportSubId} onClick={() => downloadSubReport('meetings', 'pdf')}>PDF</button>
                   <button className="btn secondary" disabled={!reportSubId} onClick={() => downloadSubReport('meetings', 'xlsx')}>Excel</button>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span className="muted" style={{ fontSize: 12, marginRight: 4 }}>Finance:</span>
+                  <span className="muted" style={{ fontSize: 12, marginRight: 4 }}>{t('nav.finance', 'Finance')}:</span>
                   <button className="btn" disabled={!reportSubId} onClick={() => downloadSubReport('finance', 'pdf')}>PDF</button>
                   <button className="btn secondary" disabled={!reportSubId} onClick={() => downloadSubReport('finance', 'xlsx')}>Excel</button>
                 </div>
@@ -825,24 +827,24 @@ export default function UnitDashboardPage() {
                   </div>
 
                   <div className="kpi-grid">
-                    <div className="kpi"><div className="label">Meetings</div><div className="value">{reportPreview.counts.meetings}</div></div>
-                    <div className="kpi"><div className="label">Activities</div><div className="value">{reportPreview.counts.activities}</div></div>
-                    <div className="kpi"><div className="label">Donations</div><div className="value">{PKR.format(reportPreview.finance.donationsTotal)}</div><div className="hint">{reportPreview.counts.donations} entries</div></div>
-                    <div className="kpi"><div className="label">Expenses</div><div className="value">{PKR.format(reportPreview.finance.expensesTotal)}</div><div className="hint">{reportPreview.counts.expenses} entries</div></div>
+                    <div className="kpi"><div className="label">{t('nav.meetings', 'Meetings')}</div><div className="value">{reportPreview.counts.meetings}</div></div>
+                    <div className="kpi"><div className="label">{t('nav.activities', 'Activities')}</div><div className="value">{reportPreview.counts.activities}</div></div>
+                    <div className="kpi"><div className="label">{t('dashboard.donations', 'Donations')}</div><div className="value">{PKR.format(reportPreview.finance.donationsTotal)}</div><div className="hint">{reportPreview.counts.donations} entries</div></div>
+                    <div className="kpi"><div className="label">{t('dashboard.expenses', 'Expenses')}</div><div className="value">{PKR.format(reportPreview.finance.expensesTotal)}</div><div className="hint">{reportPreview.counts.expenses} entries</div></div>
                     <div className="kpi"><div className="label">Transfers In</div><div className="value">{PKR.format(reportPreview.finance.transfersIn)}</div></div>
                     <div className="kpi"><div className="label">Transfers Out</div><div className="value">{PKR.format(reportPreview.finance.transfersOut)}</div></div>
                     <div className={`kpi ${reportPreview.finance.balance < 0 ? 'kpi-danger' : 'kpi-good'}`}>
-                      <div className="label">Net Balance</div>
+                      <div className="label">{t('dashboard.netBalance', 'Net Balance')}</div>
                       <div className="value">{PKR.format(reportPreview.finance.balance)}</div>
                     </div>
                   </div>
 
                   {reportPreview.meetings.length > 0 && (
                     <>
-                      <h4 style={{ marginTop: 16, marginBottom: 6 }}>Meetings</h4>
+                      <h4 style={{ marginTop: 16, marginBottom: 6 }}>{t('nav.meetings', 'Meetings')}</h4>
                       <div className="table-responsive">
                       <table className="list">
-                        <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Venue</th><th>State</th></tr></thead>
+                        <thead><tr><th>{t('common.date', 'Date')}</th><th>Type</th><th>Title</th><th>Venue</th><th>{t('common.status', 'State')}</th></tr></thead>
                         <tbody>
                           {reportPreview.meetings.map((m) => (
                             <tr key={m._id}>

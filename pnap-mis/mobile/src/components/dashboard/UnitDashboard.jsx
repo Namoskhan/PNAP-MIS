@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useUnit } from '../../context/UnitContext';
 import { useNetwork } from '../../context/NetworkContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { api, errorMessage, isNetworkError } from '../../api/client';
 import { useToast } from '../Toast';
 import { getCache, setCache } from '../../services/offlineStorage';
@@ -71,6 +72,7 @@ export default function UnitDashboard() {
   const { ctx, setCtx } = useUnit();
   const { isOnline } = useNetwork();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
 
   const [data, setData] = useState(null);
   const [subordinates, setSubordinates] = useState([]);
@@ -356,7 +358,9 @@ export default function UnitDashboard() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Loading {ctx?.unitName || 'Unit'} Dashboard…</Text>
+        <Text style={styles.loadingText}>
+          {t('dashboard.loadingUnit', 'Loading your unit…')}
+        </Text>
       </View>
     );
   }
@@ -370,26 +374,34 @@ export default function UnitDashboard() {
       >
         {/* ─── Hero Banner ─── */}
         <View style={styles.heroBanner}>
-          <View style={styles.heroTop}>
+          <View style={[styles.heroTop, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={{ flex: 1 }}>
-              <View style={styles.eyebrowRow}>
+              <View style={[styles.eyebrowRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.eyebrowBadge}>
                   <Text style={styles.eyebrowText}>
                     {ctx?.unitLevel ? ctx.unitLevel.replace('_', ' ').toUpperCase() : 'UNIT'}
                   </Text>
                 </View>
-                <View style={[styles.liveBadge, !isOnline && { backgroundColor: '#fef3c7', borderColor: '#fde68a' }]}>
+                <View style={[styles.liveBadge, !isOnline && { backgroundColor: '#fef3c7', borderColor: '#fde68a' }, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={[styles.liveDot, refreshing && styles.liveDotPulse, !isOnline && { backgroundColor: '#d97706' }]} />
                   <Text style={[styles.liveText, !isOnline && { color: '#92400e' }]}>
-                    {!isOnline ? 'Offline (Cached)' : (refreshing ? 'Updating…' : lastRefreshed ? `Live · ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Live')}
+                    {!isOnline
+                      ? t('dashboard.offlineCached', 'Offline (Cached)')
+                      : refreshing
+                      ? t('dashboard.updating', 'Updating…')
+                      : lastRefreshed
+                      ? `${t('dashboard.live', 'Live')} · ${lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                      : t('dashboard.live', 'Live')}
                   </Text>
                 </View>
               </View>
-              <Text style={styles.heroName}>Welcome, {firstName}</Text>
-              <Text style={styles.heroUnit} numberOfLines={1}>{ctx?.unitName || 'My Unit'}</Text>
+              <Text style={[styles.heroName, isRTL && { textAlign: 'right' }]}>
+                {t('dashboard.welcome', 'Welcome')}, {firstName}
+              </Text>
+              <Text style={[styles.heroUnit, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{ctx?.unitName || 'My Unit'}</Text>
             </View>
 
-            <View style={styles.headerIcons}>
+            <View style={[styles.headerIcons, isRTL && { flexDirection: 'row-reverse' }]}>
               {canSwitchUnits && (
                 <TouchableOpacity
                   style={styles.iconBtn}
@@ -414,33 +426,33 @@ export default function UnitDashboard() {
 
           {/* Metric Chips in Hero */}
           {data && (
-            <View style={styles.heroChipsGrid}>
-              <View style={styles.heroChip}>
+            <View style={[styles.heroChipsGrid, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={[styles.heroChip, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Text style={styles.heroChipIcon}>👥</Text>
                 <View>
-                  <Text style={styles.heroChipVal}>{(data.members?.total ?? 0).toLocaleString()}</Text>
-                  <Text style={styles.heroChipLabel}>Members</Text>
+                  <Text style={[styles.heroChipVal, isRTL && { textAlign: 'right' }]}>{(data.members?.total ?? 0).toLocaleString()}</Text>
+                  <Text style={[styles.heroChipLabel, isRTL && { textAlign: 'right' }]}>{t('dashboard.members', 'Members')}</Text>
                 </View>
               </View>
-              <View style={styles.heroChip}>
+              <View style={[styles.heroChip, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Text style={styles.heroChipIcon}>📋</Text>
                 <View>
-                  <Text style={styles.heroChipVal}>{(data.meetings?.last30Days ?? 0).toLocaleString()}</Text>
-                  <Text style={styles.heroChipLabel}>Meetings (30d)</Text>
+                  <Text style={[styles.heroChipVal, isRTL && { textAlign: 'right' }]}>{(data.meetings?.last30Days ?? 0).toLocaleString()}</Text>
+                  <Text style={[styles.heroChipLabel, isRTL && { textAlign: 'right' }]}>{t('dashboard.meetings30', 'Meetings (30d)')}</Text>
                 </View>
               </View>
-              <View style={styles.heroChip}>
+              <View style={[styles.heroChip, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Text style={styles.heroChipIcon}>🎯</Text>
                 <View>
-                  <Text style={styles.heroChipVal}>{(data.activities?.last30Days ?? 0).toLocaleString()}</Text>
-                  <Text style={styles.heroChipLabel}>Activities (30d)</Text>
+                  <Text style={[styles.heroChipVal, isRTL && { textAlign: 'right' }]}>{(data.activities?.last30Days ?? 0).toLocaleString()}</Text>
+                  <Text style={[styles.heroChipLabel, isRTL && { textAlign: 'right' }]}>{t('dashboard.activities30', 'Activities (30d)')}</Text>
                 </View>
               </View>
-              <View style={styles.heroChip}>
+              <View style={[styles.heroChip, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Text style={styles.heroChipIcon}>💰</Text>
                 <View>
-                  <Text style={styles.heroChipVal}>{formatPkr(data.finance?.balance ?? 0)}</Text>
-                  <Text style={styles.heroChipLabel}>Net Balance</Text>
+                  <Text style={[styles.heroChipVal, isRTL && { textAlign: 'right' }]}>{formatPkr(data.finance?.balance ?? 0)}</Text>
+                  <Text style={[styles.heroChipLabel, isRTL && { textAlign: 'right' }]}>{t('dashboard.netBalance', 'Net Balance')}</Text>
                 </View>
               </View>
             </View>
@@ -474,7 +486,9 @@ export default function UnitDashboard() {
               ))}
             </View>
             <TouchableOpacity style={styles.returnBtn} onPress={returnToHomeUnit}>
-              <Text style={styles.returnBtnText}>← Return to {homeCtx.unitName}</Text>
+              <Text style={styles.returnBtnText}>
+                {isRTL ? `← ${t('dashboard.returnTo', 'Return to')} ${homeCtx.unitName}` : `← ${t('dashboard.returnTo', 'Return to')} ${homeCtx.unitName}`}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -482,19 +496,19 @@ export default function UnitDashboard() {
         {/* ─── 4 Primary Smart KPI Cards ─── */}
         {data && (
           <>
-            <View style={styles.kpiRow}>
+            <View style={[styles.kpiRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <SmartKpi
-                label="Members"
+                label={t('dashboard.members', 'Members')}
                 value={data.members?.active}
                 icon="👥"
                 iconBg="#eff6ff"
                 iconColor="#1e40af"
                 spark={(data.analytics?.trend || []).map((b) => b.members || 0)}
                 format={(v) => `${(v ?? 0).toLocaleString()} / ${data.members?.total ?? 0}`}
-                subLabel="Active roster"
+                subLabel={t('dashboard.activeRoster', 'Active roster')}
               />
               <SmartKpi
-                label="Donations"
+                label={t('dashboard.donations', 'Donations')}
                 value={data.finance?.donations}
                 icon="💰"
                 iconBg="#dcfce7"
@@ -502,12 +516,12 @@ export default function UnitDashboard() {
                 sparkColor="#15803d"
                 spark={(data.analytics?.trend || []).map((b) => b.donations || 0)}
                 format={(v) => formatPkr(v)}
-                subLabel="Total income"
+                subLabel={t('dashboard.totalIncome', 'Total income')}
               />
             </View>
-            <View style={styles.kpiRow}>
+            <View style={[styles.kpiRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <SmartKpi
-                label="Expenses"
+                label={t('dashboard.expenses', 'Expenses')}
                 value={data.finance?.expenses}
                 icon="🧾"
                 iconBg="#fee2e2"
@@ -515,10 +529,10 @@ export default function UnitDashboard() {
                 sparkColor="#b91c1c"
                 spark={(data.analytics?.trend || []).map((b) => b.expenses || 0)}
                 format={(v) => formatPkr(v)}
-                subLabel="Approved spent"
+                subLabel={t('dashboard.approvedSpent', 'Approved spent')}
               />
               <SmartKpi
-                label="Meetings (30d)"
+                label={t('dashboard.meetings30', 'Meetings (30d)')}
                 value={data.meetings?.last30Days}
                 icon="📅"
                 iconBg="#fef3c7"
@@ -526,7 +540,7 @@ export default function UnitDashboard() {
                 sparkColor="#b45309"
                 spark={(data.analytics?.trend || []).map((b) => b.meetings || 0)}
                 format={(v) => (v ?? 0).toLocaleString()}
-                subLabel="Last 30 days"
+                subLabel={t('dashboard.last30Days', 'Last 30 days')}
               />
             </View>
 
@@ -534,31 +548,31 @@ export default function UnitDashboard() {
             <View style={styles.cardsRow}>
               {/* Pending Approvals Card */}
               <Card style={styles.secondaryCard}>
-                <View style={styles.cardHeader}>
+                <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View>
-                    <Text style={styles.cardTitle}>Pending Approvals</Text>
-                    <Text style={styles.cardSub}>Members awaiting review</Text>
+                    <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.pendingApprovals', 'Pending Approvals')}</Text>
+                    <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.membersAwaitingReview', 'Members awaiting review')}</Text>
                   </View>
                   <Text style={styles.metaBadge}>{data.members?.pending || 0}</Text>
                 </View>
-                <View style={styles.donutRow}>
+                <View style={[styles.donutRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Donut
                     percent={data.members?.total > 0 ? Math.round(((data.members?.pending || 0) / data.members.total) * 100) : 0}
-                    label="pending"
+                    label={t('dashboard.pending', 'pending')}
                     size={84}
                     stroke={10}
                     color="#f59e0b"
                     trackColor="#fef3c7"
                   />
-                  <View style={styles.donutLegend}>
-                    <Text style={styles.legendLine}>
-                      <Text style={styles.boldText}>{data.members?.active || 0}</Text> active
+                  <View style={[styles.donutLegend, isRTL && { alignItems: 'flex-end' }]}>
+                    <Text style={[styles.legendLine, isRTL && { textAlign: 'right' }]}>
+                      <Text style={styles.boldText}>{data.members?.active || 0}</Text> {t('dashboard.active', 'active')}
                     </Text>
-                    <Text style={styles.legendLine}>
-                      <Text style={[styles.boldText, { color: '#d97706' }]}>{data.members?.pending || 0}</Text> pending
+                    <Text style={[styles.legendLine, isRTL && { textAlign: 'right' }]}>
+                      <Text style={[styles.boldText, { color: '#d97706' }]}>{data.members?.pending || 0}</Text> {t('dashboard.pending', 'pending')}
                     </Text>
-                    <Text style={styles.legendLine}>
-                      <Text style={[styles.boldText, { color: Colors.textMuted }]}>{data.members?.total || 0}</Text> total roster
+                    <Text style={[styles.legendLine, isRTL && { textAlign: 'right' }]}>
+                      <Text style={[styles.boldText, { color: Colors.textMuted }]}>{data.members?.total || 0}</Text> {t('dashboard.totalRoster', 'total roster')}
                     </Text>
                   </View>
                 </View>
@@ -566,10 +580,10 @@ export default function UnitDashboard() {
 
               {/* Net Balance Card */}
               <Card style={styles.secondaryCard}>
-                <View style={styles.cardHeader}>
+                <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View>
-                    <Text style={styles.cardTitle}>Net Balance</Text>
-                    <Text style={styles.cardSub}>Donations − Expenses</Text>
+                    <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.netBalance', 'Net Balance')}</Text>
+                    <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.donMinusExp', 'Donations − Expenses')}</Text>
                   </View>
                   <Text style={[styles.metaBadge, { color: (data.finance?.balance || 0) < 0 ? Colors.error : Colors.success }]}>
                     {formatPkr(data.finance?.balance || 0)}
@@ -589,15 +603,15 @@ export default function UnitDashboard() {
             {/* ─── Analytics & Performance ─── */}
             {data.analytics && (
               <>
-                <Text style={styles.sectionHeading}>Organizational Analytics</Text>
+                <Text style={[styles.sectionHeading, isRTL && { textAlign: 'right' }]}>{t('dashboard.orgAnalytics', 'Organizational Analytics')}</Text>
 
                 {/* Meeting & Activity Breakdown VBars */}
                 <View style={styles.cardsRow}>
                   <Card style={styles.secondaryCard}>
-                    <View style={styles.cardHeader}>
+                    <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                       <View>
-                        <Text style={styles.cardTitle}>Meeting Types</Text>
-                        <Text style={styles.cardSub}>Last 30 days</Text>
+                        <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.meetingTypes', 'Meeting Types')}</Text>
+                        <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.last30Days', 'Last 30 days')}</Text>
                       </View>
                       <Text style={styles.metaBadge}>{data.meetings?.last30Days || 0}</Text>
                     </View>
@@ -608,15 +622,15 @@ export default function UnitDashboard() {
                         color: BRAND.dark,
                       }))}
                       height={95}
-                      emptyLabel="No meetings logged in 30d."
+                      emptyLabel={t('dashboard.noMeetings30d', 'No meetings logged in 30d.')}
                     />
                   </Card>
 
                   <Card style={styles.secondaryCard}>
-                    <View style={styles.cardHeader}>
+                    <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                       <View>
-                        <Text style={styles.cardTitle}>Activity Types</Text>
-                        <Text style={styles.cardSub}>Last 30 days</Text>
+                        <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.activityTypes', 'Activity Types')}</Text>
+                        <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.last30Days', 'Last 30 days')}</Text>
                       </View>
                       <Text style={styles.metaBadge}>{data.activities?.last30Days || 0}</Text>
                     </View>
@@ -627,23 +641,23 @@ export default function UnitDashboard() {
                         color: BRAND.mid,
                       }))}
                       height={95}
-                      emptyLabel="No activities logged in 30d."
+                      emptyLabel={t('dashboard.noActivities30d', 'No activities logged in 30d.')}
                     />
                   </Card>
                 </View>
 
                 {/* Engagement Quality Card */}
                 <Card style={styles.fullCard}>
-                  <View style={styles.cardHeader}>
+                  <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                     <View>
-                      <Text style={styles.cardTitle}>Engagement Quality</Text>
-                      <Text style={styles.cardSub}>
-                        {data.analytics.quality?.finalizedTotal || 0} finalized events evaluated
+                      <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.engagementQuality', 'Engagement Quality')}</Text>
+                      <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>
+                        {data.analytics.quality?.finalizedTotal || 0} {t('dashboard.eventsEvaluated', 'finalized events evaluated')}
                       </Text>
                     </View>
-                    <Badge label="Audit Passed" color={Colors.success} bg="#dcfce7" />
+                    <Badge label={t('dashboard.auditPassed', 'Audit Passed')} color={Colors.success} bg="#dcfce7" />
                   </View>
-                  <View style={styles.qualityContainer}>
+                  <View style={[styles.qualityContainer, isRTL && { flexDirection: 'row-reverse' }]}>
                     {(() => {
                       const q = data.analytics.quality || {};
                       const score = (q.attendanceRate != null || q.photoCoveragePct != null || q.gpsTaggedPct != null)
@@ -652,12 +666,12 @@ export default function UnitDashboard() {
                       return (
                         <>
                           <View style={styles.qualityDonutBox}>
-                            <Donut percent={score} label="overall score" size={96} stroke={10} color={BRAND.dark} />
+                            <Donut percent={score} label={t('dashboard.overallScore', 'overall score')} size={96} stroke={10} color={BRAND.dark} />
                           </View>
                           <View style={styles.qualityBars}>
-                            <PctBar label="Attendance Rate" value={q.attendanceRate} threshold={60} />
-                            <PctBar label="Photo Coverage" value={q.photoCoveragePct} threshold={50} />
-                            <PctBar label="GPS-Tagged Location" value={q.gpsTaggedPct} threshold={70} />
+                            <PctBar label={t('dashboard.attendanceRate', 'Attendance Rate')} value={q.attendanceRate} threshold={60} />
+                            <PctBar label={t('dashboard.photoCoverage', 'Photo Coverage')} value={q.photoCoveragePct} threshold={50} />
+                            <PctBar label={t('dashboard.gpsTaggedLocation', 'GPS-Tagged Location')} value={q.gpsTaggedPct} threshold={70} />
                           </View>
                         </>
                       );
@@ -667,13 +681,13 @@ export default function UnitDashboard() {
 
                 {/* Activity Trend (6 Months) */}
                 <Card style={styles.fullCard}>
-                  <View style={styles.cardHeader}>
+                  <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                     <View>
-                      <Text style={styles.cardTitle}>Activity Trend</Text>
-                      <Text style={styles.cardSub}>Past 6 months event velocity</Text>
+                      <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.activityTrend', 'Activity Trend')}</Text>
+                      <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.past6MonthsVelocity', 'Past 6 months event velocity')}</Text>
                     </View>
                     <Text style={styles.metaBadge}>
-                      {(data.analytics.trend || []).reduce((s, b) => s + (b.meetings || 0) + (b.activities || 0), 0)} total
+                      {(data.analytics.trend || []).reduce((s, b) => s + (b.meetings || 0) + (b.activities || 0), 0)} {t('dashboard.total', 'total')}
                     </Text>
                   </View>
                   <AreaTrendChart trend={data.analytics.trend || []} height={120} barColor={BRAND.dark} />
@@ -685,8 +699,8 @@ export default function UnitDashboard() {
                   <View style={styles.cardsRow}>
                     {data.analytics.meetingsByType && data.analytics.meetingsByType.length > 0 && (
                       <Card style={styles.secondaryCard}>
-                        <Text style={styles.cardTitle}>Meeting Share</Text>
-                        <Text style={[styles.cardSub, { marginBottom: 10 }]}>30 days composition</Text>
+                        <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.meetingShare', 'Meeting Share')}</Text>
+                        <Text style={[styles.cardSub, { marginBottom: 10 }, isRTL && { textAlign: 'right' }]}>{t('dashboard.composition30d', '30 days composition')}</Text>
                         <PieChart
                           segments={data.analytics.meetingsByType.map((r) => ({
                             label: MEETING_TYPE_LABEL[r.type] || r.type,
@@ -697,8 +711,8 @@ export default function UnitDashboard() {
                     )}
                     {data.analytics.activitiesByType && data.analytics.activitiesByType.length > 0 && (
                       <Card style={styles.secondaryCard}>
-                        <Text style={styles.cardTitle}>Activity Share</Text>
-                        <Text style={[styles.cardSub, { marginBottom: 10 }]}>30 days composition</Text>
+                        <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.activityShare', 'Activity Share')}</Text>
+                        <Text style={[styles.cardSub, { marginBottom: 10 }, isRTL && { textAlign: 'right' }]}>{t('dashboard.composition30d', '30 days composition')}</Text>
                         <PieChart
                           segments={data.analytics.activitiesByType.map((r) => ({
                             label: ACTIVITY_TYPE_LABEL[r.type] || r.type,
@@ -713,42 +727,42 @@ export default function UnitDashboard() {
                 {/* Campaign Performance (if present) */}
                 {data.analytics.campaigns && data.analytics.campaigns.total > 0 && (
                   <Card style={styles.fullCard}>
-                    <View style={styles.cardHeader}>
+                    <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                       <View>
-                        <Text style={styles.cardTitle}>Campaign Performance</Text>
-                        <Text style={styles.cardSub}>
-                          {data.analytics.campaigns.total} active campaign{data.analytics.campaigns.total === 1 ? '' : 's'}
+                        <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.campaignPerformance', 'Campaign Performance')}</Text>
+                        <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>
+                          {data.analytics.campaigns.total} {t('dashboard.activeCampaigns', 'active campaigns')}
                         </Text>
                       </View>
-                      <Badge label="Campaign Active" color="#2563eb" bg="#eff6ff" />
+                      <Badge label={t('dashboard.campaignActive', 'Campaign Active')} color="#2563eb" bg="#eff6ff" />
                     </View>
-                    <View style={styles.campaignKpiGrid}>
+                    <View style={[styles.campaignKpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
                       <View style={styles.campKpiBox}>
                         <Text style={styles.campKpiVal}>{data.analytics.campaigns.peopleContacted?.toLocaleString() || 0}</Text>
-                        <Text style={styles.campKpiLabel}>People Contacted</Text>
+                        <Text style={styles.campKpiLabel}>{t('dashboard.peopleContacted', 'People Contacted')}</Text>
                       </View>
                       <View style={styles.campKpiBox}>
                         <Text style={styles.campKpiVal}>{data.analytics.campaigns.householdsVisited?.toLocaleString() || 0}</Text>
-                        <Text style={styles.campKpiLabel}>Households</Text>
+                        <Text style={styles.campKpiLabel}>{t('dashboard.households', 'Households')}</Text>
                       </View>
                       <View style={styles.campKpiBox}>
                         <Text style={styles.campKpiVal}>{data.analytics.campaigns.pamphletsDistributed?.toLocaleString() || 0}</Text>
-                        <Text style={styles.campKpiLabel}>Pamphlets</Text>
+                        <Text style={styles.campKpiLabel}>{t('dashboard.pamphlets', 'Pamphlets')}</Text>
                       </View>
                       <View style={styles.campKpiBox}>
                         <Text style={styles.campKpiVal}>{data.analytics.campaigns.volunteerHours?.toLocaleString() || 0}</Text>
-                        <Text style={styles.campKpiLabel}>Vol. Hours</Text>
+                        <Text style={styles.campKpiLabel}>{t('dashboard.volHours', 'Vol. Hours')}</Text>
                       </View>
                     </View>
                     <View style={styles.funnelBox}>
-                      <View style={styles.funnelHeader}>
-                        <Text style={styles.funnelLabel}>Conversion Funnel</Text>
+                      <View style={[styles.funnelHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+                        <Text style={styles.funnelLabel}>{t('dashboard.conversionFunnel', 'Conversion Funnel')}</Text>
                         <Text style={styles.funnelMeta}>
-                          {data.analytics.campaigns.actualJoiners?.toLocaleString() || 0} actual / {data.analytics.campaigns.expectedJoiners?.toLocaleString() || 0} expected
+                          {data.analytics.campaigns.actualJoiners?.toLocaleString() || 0} / {data.analytics.campaigns.expectedJoiners?.toLocaleString() || 0}
                         </Text>
                       </View>
                       <PctBar
-                        label="Expected → Actual Joiners"
+                        label={t('dashboard.expectedActualJoiners', 'Expected → Actual Joiners')}
                         value={data.analytics.campaigns.conversionPct}
                         threshold={70}
                       />
@@ -761,51 +775,51 @@ export default function UnitDashboard() {
             {/* ─── Subordinate Units & Hierarchical Roll-Up ─── */}
             {!isFinanceOnlyUser && data.subordinateUnits && Object.keys(data.subordinateUnits).length > 0 && (
               <Card style={styles.fullCard}>
-                <View style={styles.cardHeader}>
+                <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View>
-                    <Text style={styles.cardTitle}>Subordinate Units & Roll-Up</Text>
-                    <Text style={styles.cardSub}>Hierarchical breakdown under {ctx?.unitName}</Text>
+                    <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.subordinateUnits', 'Subordinate Units & Roll-Up')}</Text>
+                    <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.hierarchicalBreakdown', 'Hierarchical breakdown under')} {ctx?.unitName}</Text>
                   </View>
-                  <Badge label={`${ctx?.unitLevel?.replace('_', ' ')} Hierarchy`} color={Colors.primary} bg="#eff6ff" />
+                  <Badge label={`${ctx?.unitLevel?.replace('_', ' ')} ${t('dashboard.hierarchy', 'Hierarchy')}`} color={Colors.primary} bg="#eff6ff" />
                 </View>
 
                 {/* Aggregated Rollup Box */}
                 {data.rollup && (
                   <View style={styles.rollupBox}>
-                    <Text style={styles.rollupTitle}>AGGREGATED SUBTREE ROLL-UP</Text>
-                    <View style={styles.rollupGrid}>
+                    <Text style={[styles.rollupTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.aggregatedRollup', 'AGGREGATED SUBTREE ROLL-UP')}</Text>
+                    <View style={[styles.rollupGrid, isRTL && { flexDirection: 'row-reverse' }]}>
                       <View style={styles.rollupKpi}>
                         <Text style={styles.rollupKpiVal}>{data.rollup.totalUnits || 0}</Text>
-                        <Text style={styles.rollupKpiLabel}>Sub-Units</Text>
+                        <Text style={styles.rollupKpiLabel}>{t('dashboard.subUnits', 'Sub-Units')}</Text>
                       </View>
                       <View style={styles.rollupKpi}>
                         <Text style={[styles.rollupKpiVal, { color: Colors.success }]}>{data.rollup.totalMembers || 0}</Text>
-                        <Text style={styles.rollupKpiLabel}>Members</Text>
+                        <Text style={styles.rollupKpiLabel}>{t('dashboard.members', 'Members')}</Text>
                       </View>
                       <View style={styles.rollupKpi}>
                         <Text style={styles.rollupKpiVal}>{data.rollup.meetings30 || 0}</Text>
-                        <Text style={styles.rollupKpiLabel}>Meetings</Text>
+                        <Text style={styles.rollupKpiLabel}>{t('nav.meetings', 'Meetings')}</Text>
                       </View>
                       <View style={styles.rollupKpi}>
                         <Text style={styles.rollupKpiVal}>{data.rollup.activities30 || 0}</Text>
-                        <Text style={styles.rollupKpiLabel}>Activities</Text>
+                        <Text style={styles.rollupKpiLabel}>{t('nav.activities', 'Activities')}</Text>
                       </View>
                       <View style={styles.rollupKpi}>
                         <Text style={styles.rollupKpiVal}>{formatPkr(data.rollup.donations)}</Text>
-                        <Text style={styles.rollupKpiLabel}>Donations</Text>
+                        <Text style={styles.rollupKpiLabel}>{t('dashboard.donations', 'Donations')}</Text>
                       </View>
                       <View style={styles.rollupKpi}>
                         <Text style={styles.rollupKpiVal}>{formatPkr(data.rollup.expenses)}</Text>
-                        <Text style={styles.rollupKpiLabel}>Expenses</Text>
+                        <Text style={styles.rollupKpiLabel}>{t('dashboard.expenses', 'Expenses')}</Text>
                       </View>
                     </View>
                   </View>
                 )}
 
                 {/* Subordinate Count Badges */}
-                <View style={styles.subCountChips}>
+                <View style={[styles.subCountChips, isRTL && { flexDirection: 'row-reverse' }]}>
                   {Object.entries(data.subordinateUnits).map(([k, v]) => (
-                    <View key={k} style={styles.subChip}>
+                    <View key={k} style={[styles.subChip, isRTL && { flexDirection: 'row-reverse' }]}>
                       <Text style={styles.subChipLabel}>
                         {k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())}
                       </Text>
@@ -817,21 +831,21 @@ export default function UnitDashboard() {
                 {/* Subordinate Units List with Drill-Down */}
                 {subordinates.length > 0 && (
                   <View style={styles.subList}>
-                    <Text style={styles.subListHeading}>
-                      {childLabel}s Directory · Tap to drill into dashboard
+                    <Text style={[styles.subListHeading, isRTL && { textAlign: 'right' }]}>
+                      {childLabel}s {t('dashboard.directoryTap', 'Directory · Tap to drill into dashboard')}
                     </Text>
                     {subordinates.map((s) => (
                       <TouchableOpacity
                         key={s._id}
-                        style={styles.subRow}
+                        style={[styles.subRow, isRTL && { flexDirection: 'row-reverse' }]}
                         onPress={() => drillIntoSubordinate(s)}
                         activeOpacity={0.7}
                       >
-                        <View style={styles.subRowLeft}>
-                          <Text style={styles.subRowName}>{s.name}</Text>
+                        <View style={[styles.subRowLeft, isRTL && { alignItems: 'flex-end' }]}>
+                          <Text style={[styles.subRowName, isRTL && { textAlign: 'right' }]}>{s.name}</Text>
                           {s.code && <Text style={styles.subRowCode}>· {s.code}</Text>}
                         </View>
-                        <View style={styles.subRowStats}>
+                        <View style={[styles.subRowStats, isRTL && { flexDirection: 'row-reverse' }]}>
                           <View style={styles.subStatItem}>
                             <Text style={styles.subStatVal}>{s.members}</Text>
                             <Text style={styles.subStatLabel}>Mbrs</Text>
@@ -850,7 +864,7 @@ export default function UnitDashboard() {
                             </Text>
                             <Text style={styles.subStatLabel}>Bal</Text>
                           </View>
-                          <Text style={styles.chevron}>›</Text>
+                          <Text style={styles.chevron}>{isRTL ? '‹' : '›'}</Text>
                         </View>
                       </TouchableOpacity>
                     ))}
@@ -862,13 +876,13 @@ export default function UnitDashboard() {
             {/* ─── Generate Subordinate Report ─── */}
             {!isFinanceOnlyUser && (!isPresidentPersonaUser || ctx?.unitLevel === 'CENTRAL') && (
               <Card style={styles.fullCard}>
-                <Text style={styles.cardTitle}>Generate Subordinate Report</Text>
-                <Text style={styles.cardSub}>Export filtered meeting and finance records</Text>
+                <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.generateReport', 'Generate Subordinate Report')}</Text>
+                <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>Export filtered meeting and finance records</Text>
 
                 {/* Unit Selector Chips */}
                 <View style={{ marginTop: 12 }}>
-                  <Text style={styles.inputLabel}>SELECT UNIT</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.unitPickerScroll}>
+                  <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>{t('common.select', 'SELECT UNIT')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.unitPickerScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                     <TouchableOpacity
                       style={[styles.unitPickChip, reportSubId === 'self' && styles.unitPickChipActive]}
                       onPress={() => setReportSubId('self')}
@@ -892,7 +906,7 @@ export default function UnitDashboard() {
                 </View>
 
                 {/* Action buttons */}
-                <View style={styles.reportBtnRow}>
+                <View style={[styles.reportBtnRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <TouchableOpacity
                     style={[styles.previewBtn, (!isOnline || previewBusy) && { opacity: 0.6 }]}
                     onPress={previewSubReport}
@@ -902,17 +916,17 @@ export default function UnitDashboard() {
                       <ActivityIndicator size="small" color={Colors.primary} />
                     ) : (
                       <Text style={styles.previewBtnText}>
-                        {!isOnline ? 'Offline (Preview Unavailable)' : '🔍 Preview Report'}
+                        {!isOnline ? 'Offline (Preview Unavailable)' : `🔍 ${t('dashboard.previewReport', 'Preview Report')}`}
                       </Text>
                     )}
                   </TouchableOpacity>
                 </View>
 
                 {/* Export Buttons */}
-                <View style={styles.exportSection}>
+                <View style={[styles.exportSection, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={styles.exportCol}>
-                    <Text style={styles.exportLabel}>Meetings Report:</Text>
-                    <View style={styles.exportBtnGroup}>
+                    <Text style={[styles.exportLabel, isRTL && { textAlign: 'right' }]}>{t('nav.meetings', 'Meetings')} Report:</Text>
+                    <View style={[styles.exportBtnGroup, isRTL && { flexDirection: 'row-reverse' }]}>
                       <TouchableOpacity
                         style={[styles.expBtn, (!isOnline || exportBusy) && { opacity: 0.5 }]}
                         onPress={() => downloadSubReport('meetings', 'pdf')}
@@ -931,8 +945,8 @@ export default function UnitDashboard() {
                   </View>
 
                   <View style={styles.exportCol}>
-                    <Text style={styles.exportLabel}>Finance Report:</Text>
-                    <View style={styles.exportBtnGroup}>
+                    <Text style={[styles.exportLabel, isRTL && { textAlign: 'right' }]}>{t('nav.finance', 'Finance')} Report:</Text>
+                    <View style={[styles.exportBtnGroup, isRTL && { flexDirection: 'row-reverse' }]}>
                       <TouchableOpacity
                         style={[styles.expBtn, (!isOnline || exportBusy) && { opacity: 0.5 }]}
                         onPress={() => downloadSubReport('finance', 'pdf')}
@@ -957,28 +971,28 @@ export default function UnitDashboard() {
                     <Text style={styles.previewHeading}>
                       {reportPreview.sub.name} · {reportPreview.from} → {reportPreview.to}
                     </Text>
-                    <View style={styles.previewKpis}>
+                    <View style={[styles.previewKpis, isRTL && { flexDirection: 'row-reverse' }]}>
                       <View style={styles.prevKpiBox}>
                         <Text style={styles.prevKpiVal}>{reportPreview.counts.meetings}</Text>
-                        <Text style={styles.prevKpiLabel}>Meetings</Text>
+                        <Text style={styles.prevKpiLabel}>{t('nav.meetings', 'Meetings')}</Text>
                       </View>
                       <View style={styles.prevKpiBox}>
                         <Text style={styles.prevKpiVal}>{reportPreview.counts.activities}</Text>
-                        <Text style={styles.prevKpiLabel}>Activities</Text>
+                        <Text style={styles.prevKpiLabel}>{t('nav.activities', 'Activities')}</Text>
                       </View>
                       <View style={styles.prevKpiBox}>
                         <Text style={styles.prevKpiVal}>{formatPkr(reportPreview.finance.donationsTotal)}</Text>
-                        <Text style={styles.prevKpiLabel}>Donations</Text>
+                        <Text style={styles.prevKpiLabel}>{t('dashboard.donations', 'Donations')}</Text>
                       </View>
                       <View style={styles.prevKpiBox}>
                         <Text style={styles.prevKpiVal}>{formatPkr(reportPreview.finance.expensesTotal)}</Text>
-                        <Text style={styles.prevKpiLabel}>Expenses</Text>
+                        <Text style={styles.prevKpiLabel}>{t('dashboard.expenses', 'Expenses')}</Text>
                       </View>
                       <View style={styles.prevKpiBox}>
                         <Text style={[styles.prevKpiVal, { color: reportPreview.finance.balance < 0 ? Colors.error : Colors.success }]}>
                           {formatPkr(reportPreview.finance.balance)}
                         </Text>
-                        <Text style={styles.prevKpiLabel}>Net Balance</Text>
+                        <Text style={styles.prevKpiLabel}>{t('dashboard.netBalance', 'Net Balance')}</Text>
                       </View>
                     </View>
                   </View>

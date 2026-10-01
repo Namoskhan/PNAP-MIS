@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import useAnalytics from '../hooks/useAnalytics';
 import { Colors, FontSize, Radius, Spacing } from '../constants/colors';
 import Card from './Card';
@@ -54,24 +55,25 @@ const num = (v) => (v ?? 0).toLocaleString();
  * Shows clear functioning units vs total with a progress bar and status badge
  */
 function UnitTierCard({ title, active = 0, total = 0, noun = 'units' }) {
+  const { t, isRTL } = useLanguage();
   const p = total > 0 ? Math.round((active / total) * 100) : 0;
   const isGood = p >= 50;
   const silent = Math.max(0, total - active);
 
   return (
     <View style={styles.unitTierCard}>
-      <View style={styles.unitTierTop}>
-        <Text style={styles.unitTierTitle} numberOfLines={1}>{title}</Text>
+      <View style={[styles.unitTierTop, isRTL && { flexDirection: 'row-reverse' }]}>
+        <Text style={[styles.unitTierTitle, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{title}</Text>
         <View style={[styles.unitTierBadge, { backgroundColor: isGood ? 'rgba(22, 163, 74, 0.12)' : 'rgba(217, 119, 6, 0.12)' }]}>
           <Text style={[styles.unitTierBadgeText, { color: isGood ? Colors.success : Colors.warning }]}>
-            {total > 0 ? `${p}% active` : '0%'}
+            {total > 0 ? t('commandCenter.activePercent', { percent: p }) : '0%'}
           </Text>
         </View>
       </View>
 
-      <View style={styles.unitTierNumberRow}>
+      <View style={[styles.unitTierNumberRow, isRTL && { flexDirection: 'row-reverse' }]}>
         <Text style={styles.unitTierActive}>{num(active)}</Text>
-        <Text style={styles.unitTierTotal}> of {num(total)}</Text>
+        <Text style={styles.unitTierTotal}> {t('commandCenter.activeOfTotal', { active: '', total: num(total) })}</Text>
       </View>
 
       <View style={styles.unitProgressBar}>
@@ -86,8 +88,8 @@ function UnitTierCard({ title, active = 0, total = 0, noun = 'units' }) {
         />
       </View>
 
-      <Text style={styles.unitTierSub} numberOfLines={1}>
-        {num(active)} active · {num(silent)} inactive
+      <Text style={[styles.unitTierSub, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+        {t('commandCenter.activeInactive', { active: num(active), silent: num(silent) })}
       </Text>
     </View>
   );
@@ -105,20 +107,21 @@ function SectionCard({
   meta,
   children,
 }) {
+  const { isRTL } = useLanguage();
   return (
     <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionHeaderLeft}>
+      <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+        <View style={[styles.sectionHeaderLeft, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={styles.sectionIconBadge}>
             <Text style={styles.sectionIconText}>{icon}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <View style={styles.sectionTitleRow}>
+            <View style={[styles.sectionTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Text style={styles.sectionNumber}>{number}.</Text>
-              <Text style={styles.sectionTitle} numberOfLines={1}>{title}</Text>
+              <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{title}</Text>
             </View>
             {subtitle ? (
-              <Text style={styles.sectionSubtitle} numberOfLines={1}>{subtitle}</Text>
+              <Text style={[styles.sectionSubtitle, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{subtitle}</Text>
             ) : null}
           </View>
         </View>
@@ -139,6 +142,7 @@ function SectionCard({
 
 export default function CommandCenter({ accessScope = null }) {
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const isSuper = user?.roles?.includes('SUPER_ADMIN');
   const scrollViewRef = useRef(null);
 
@@ -215,8 +219,8 @@ export default function CommandCenter({ accessScope = null }) {
       <SafeAreaView style={styles.safe}>
         <EmptyState
           icon="🛡️"
-          title="Access Denied"
-          subtitle="You do not have permission to view the Command Center."
+          title={t('common.error', 'Access Denied')}
+          subtitle={t('nav.noAccess', 'You do not have permission to view the Command Center.')}
         />
       </SafeAreaView>
     );
@@ -228,9 +232,9 @@ export default function CommandCenter({ accessScope = null }) {
   const trail = isCentralDashboard
     ? scopeInfo.data?.trail?.filter((item) => item.level !== 'NATIONAL')
     : scopeInfo.data?.trail;
-  const scopeName = trail?.length ? trail[trail.length - 1].name : 'the whole country';
-  const windowLabel = `last ${filters.days} days`;
-  const childNoun = LEVEL_NOUN[org.data?.level] || 'Province';
+  const scopeName = trail?.length ? trail[trail.length - 1].name : t('commandCenter.theWholeCountry');
+  const windowLabel = t('dashboard.lastDays', { days: filters.days });
+  const childNoun = LEVEL_NOUN[org.data?.level] || t('profile.province');
 
   const periodFrom = (() => {
     const d = new Date();
@@ -251,17 +255,17 @@ export default function CommandCenter({ accessScope = null }) {
   return (
     <SafeAreaView style={styles.safe}>
       {/* ── Banner / Masthead ── */}
-      <View style={styles.banner}>
+      <View style={[styles.banner, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          {!isCentralDashboard ? <Text style={styles.bannerEyebrow}>Dashboard</Text> : null}
-          <Text style={styles.bannerTitle} numberOfLines={1}>
-            {scopeName === 'the whole country' ? 'Command Center' : scopeName}
+          {!isCentralDashboard ? <Text style={[styles.bannerEyebrow, isRTL && { textAlign: 'right' }]}>{t('nav.dashboard')}</Text> : null}
+          <Text style={[styles.bannerTitle, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+            {scopeName === t('commandCenter.theWholeCountry') ? t('commandCenter.title') : scopeName}
           </Text>
         </View>
-        <View style={styles.bannerActions}>
-          <View style={styles.liveBadge}>
+        <View style={[styles.bannerActions, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.liveBadge, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>Live</Text>
+            <Text style={styles.liveText}>{t('dashboard.live')}</Text>
           </View>
         </View>
       </View>
@@ -288,22 +292,22 @@ export default function CommandCenter({ accessScope = null }) {
               style={styles.backNationalBtn}
               onPress={() => navigateTo('NATIONAL')}
             >
-              <Text style={styles.backNationalText}>Back to all provinces</Text>
+              <Text style={styles.backNationalText}>{t('commandCenter.backToProvinces')}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
 
         {/* ── Compact Filter Summary Bar (De-cluttered) ── */}
-        <View style={styles.filterSummaryBar}>
-          <View style={styles.filterSummaryPills}>
+        <View style={[styles.filterSummaryBar, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.filterSummaryPills, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={styles.filterChip}>
               <Text style={styles.filterChipText}>
-                ⏱️ {filters.days === 365 ? 'Past 1 Year' : `Past ${filters.days} Days`}
+                ⏱️ {filters.days === 365 ? t('commandCenter.past1Year') : t('commandCenter.pastDays', { days: filters.days })}
               </Text>
             </View>
             <View style={styles.filterChip}>
               <Text style={styles.filterChipText} numberOfLines={1}>
-                📍 {scope.provinceId ? scopeName : 'All provinces'}
+                📍 {scope.provinceId ? scopeName : t('commandCenter.allProvinces')}
               </Text>
             </View>
             {isFiltered && (
@@ -314,7 +318,7 @@ export default function CommandCenter({ accessScope = null }) {
                   setFilters({ days: 365, memberStatus: '', orgStatus: '' });
                 }}
               >
-                <Text style={styles.filterResetMiniText}>Reset</Text>
+                <Text style={styles.filterResetMiniText}>{t('commandCenter.reset')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -324,7 +328,7 @@ export default function CommandCenter({ accessScope = null }) {
             onPress={() => setShowFilters((v) => !v)}
           >
             <Text style={styles.filterToggleText}>
-              {showFilters ? 'Hide Filters ▴' : 'Filters ⚙️'}
+              {showFilters ? t('commandCenter.hideFilters') : t('commandCenter.showFilters')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -353,55 +357,55 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="📊"
           number="1"
-          title="Members and units"
+          title={t('dashboard.membersAndUnits', 'Members and units')}
         >
           {summary.loading && !s ? (
             <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
           ) : s && o ? (
             <View style={{ gap: Spacing.sm }}>
               {/* Highlight Card: Total Membership */}
-              <View style={styles.memberHighlightCard}>
-                <View style={styles.memberHighlightLeft}>
-                  <Text style={styles.memberHighlightLabel}>TOTAL REGISTERED MEMBERS</Text>
+              <View style={[styles.memberHighlightCard, isRTL && { flexDirection: 'row-reverse' }]}>
+                <View style={[styles.memberHighlightLeft, isRTL && { alignItems: 'flex-end' }]}>
+                  <Text style={[styles.memberHighlightLabel, isRTL && { textAlign: 'right' }]}>{t('commandCenter.totalMembers').toUpperCase()}</Text>
                   <Text style={styles.memberHighlightVal}>{num(s.membership?.total)}</Text>
-                  <Text style={styles.memberHighlightSub}>
-                    {num(s.membership?.newMembers)} joined in the {windowLabel}
+                  <Text style={[styles.memberHighlightSub, isRTL && { textAlign: 'right' }]}>
+                    {num(s.membership?.newMembers)} {t('commandCenter.joinedInThe')} {windowLabel}
                   </Text>
                 </View>
                 <View style={styles.memberHighlightRight}>
                   <View style={styles.newMemberBadge}>
                     <Text style={styles.newMemberIcon}>✨</Text>
                     <Text style={styles.newMemberCount}>+{num(s.membership?.newMembers)}</Text>
-                    <Text style={styles.newMemberLabel}>new in {windowLabel}</Text>
+                    <Text style={styles.newMemberLabel}>{t('commandCenter.newIn')} {windowLabel}</Text>
                   </View>
                 </View>
               </View>
 
               {/* 2x2 Unit Tier Cards (De-cluttered Grid) */}
-              <View style={styles.tierGridRow}>
+              <View style={[styles.tierGridRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <UnitTierCard
-                  title="Provinces"
+                  title={t('profile.province', 'Provinces')}
                   active={o.provinces?.active}
                   total={o.provinces?.total}
                   noun="parties"
                 />
                 <UnitTierCard
-                  title="District Units"
+                  title={t('profile.district', 'District Units')}
                   active={o.districts?.active}
                   total={o.districts?.total}
                   noun="districts"
                 />
               </View>
 
-              <View style={styles.tierGridRow}>
+              <View style={[styles.tierGridRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <UnitTierCard
-                  title="Area Units"
+                  title={t('profile.area', 'Area Units')}
                   active={o.areas?.active}
                   total={o.areas?.total}
                   noun="areas"
                 />
                 <UnitTierCard
-                  title="Basic Units"
+                  title={t('profile.basicUnit', 'Basic Units')}
                   active={o.basicUnits?.active}
                   total={o.basicUnits?.total}
                   noun="units"
@@ -416,9 +420,9 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="🏛️"
           number="2"
-          title={`${childNoun} comparison`}
-          subtitle={lockedScope ? 'Records from units that belong to your unit.' : 'Tap a name to view details.'}
-          meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
+          title={t('commandCenter.comparison', { noun: childNoun })}
+          subtitle={lockedScope ? t('commandCenter.subordinateRecords') : t('commandCenter.drillHint')}
+          meta={org.data?.rows ? `${org.data.rows.length}` : null}
         >
           {org.loading && !org.data ? (
             <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 12 }} />
@@ -439,8 +443,8 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="👥"
           number="3"
-          title="New and active members"
-          meta={s ? `${num(s.membership?.newMembers)} new` : null}
+          title={t('dashboard.newAndActiveMembers', 'New and active members')}
+          meta={s ? `${num(s.membership?.newMembers)}` : null}
         >
           <MembershipAnalytics
             params={params}
@@ -453,8 +457,8 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="📢"
           number="4"
-          title="Campaigns"
-          meta={s ? `${num(s.campaigns?.running)} running` : null}
+          title={t('dashboard.campaigns', 'Campaigns')}
+          meta={s ? `${num(s.campaigns?.running)}` : null}
         >
           <CampaignsAnalytics params={params} windowLabel={windowLabel} showResults={!isSuper} />
         </SectionCard>
@@ -463,9 +467,9 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="📅"
           number="5"
-          title="Meetings"
-          subtitle="See planned and completed meetings by level, group and year."
-          meta={s ? `${num(s.meetings?.conducted)} of ${num(s.meetings?.total)} held` : null}
+          title={t('nav.meetings', 'Meetings')}
+          subtitle={t('dashboard.meetingsLead', 'See planned and completed meetings by level, group and year.')}
+          meta={s ? `${num(s.meetings?.conducted)} / ${num(s.meetings?.total)}` : null}
         >
           <MeetingsAnalytics params={params} windowLabel={windowLabel} />
         </SectionCard>
@@ -474,8 +478,8 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="📑"
           number="6"
-          title="Reports"
-          meta={s ? `${num(s.reports?.outstanding)} owed` : null}
+          title={t('nav.reports', 'Reports')}
+          meta={s ? `${num(s.reports?.outstanding)}` : null}
         >
           <ReportsAnalytics
             params={params}
@@ -489,8 +493,8 @@ export default function CommandCenter({ accessScope = null }) {
         <SectionCard
           icon="⚠️"
           number="7"
-          title="Needs attention"
-          subtitle="See inactive units and the officers in charge."
+          title={t('dashboard.needsAttention', 'Needs attention')}
+          subtitle={t('dashboard.needsAttentionLead', 'See inactive units and the officers in charge.')}
         >
           <View style={{ gap: Spacing.md }}>
             <InactiveUnitsTable params={params} />

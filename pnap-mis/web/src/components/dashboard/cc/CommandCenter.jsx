@@ -225,23 +225,23 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 1 — Standing ── */}
       <Act
         n="1"
-        title="Members and units"
+        title={t('dashboard.membersAndUnits', 'Members and units')}
       >
         {summary.loading && !s ? <SkeletonKpiGrid count={5} /> : s && (
           <div className="cc-stats">
-            <Stat delay={0} value={s.membership.total} label={t('members.title', 'Total members')}
-              sub={`${num(s.membership.newMembers)} joined in the ${windowLabel}`} />
+            <Stat delay={0} value={s.membership.total} label={t('dashboard.totalMembers', 'Total members')}
+              sub={`${num(s.membership.newMembers)} ${t('dashboard.joinedInThe', 'joined in the')} ${windowLabel}`} />
             <Stat delay={70} value={o.basicUnits.total} label={t('units.basicUnit', 'Basic units')}
-              sub={`${num(o.basicUnits.active)} active · ${num(o.basicUnits.inactive)} inactive`}
+              sub={`${num(o.basicUnits.active)} ${t('dashboard.active', 'active')} · ${num(o.basicUnits.inactive)} ${t('dashboard.inactive', 'inactive')}`}
               {...unitStat(o.basicUnits)} />
             <Stat delay={140} value={o.areas.total} label={t('units.area', 'Area units')}
-              sub={`${num(o.areas.active)} active · ${num(o.areas.inactive)} inactive`}
+              sub={`${num(o.areas.active)} ${t('dashboard.active', 'active')} · ${num(o.areas.inactive)} ${t('dashboard.inactive', 'inactive')}`}
               {...unitStat(o.areas)} />
             <Stat delay={210} value={o.districts.total} label={t('units.district', 'District units')}
-              sub={`${num(o.districts.active)} active · ${num(o.districts.inactive)} inactive`}
+              sub={`${num(o.districts.active)} ${t('dashboard.active', 'active')} · ${num(o.districts.inactive)} ${t('dashboard.inactive', 'inactive')}`}
               {...unitStat(o.districts)} />
             <Stat delay={280} value={o.provinces.total} label={t('nav.provinces', 'Provinces')}
-              sub={`${num(o.provinces.active)} active · ${num(o.provinces.inactive)} inactive`}
+              sub={`${num(o.provinces.active)} ${t('dashboard.active', 'active')} · ${num(o.provinces.inactive)} ${t('dashboard.inactive', 'inactive')}`}
               {...unitStat(o.provinces)} />
           </div>
         )}
@@ -250,8 +250,8 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 2 — Provinces ── */}
       <Act
         n="2"
-        title={`${childNoun} comparison`}
-        lead={lockedScope ? 'Records from units that belong to your unit.' : 'Click a name to view details.'}
+        title={`${childNoun} ${t('dashboard.comparison', 'comparison')}`}
+        lead={lockedScope ? t('dashboard.subordinateRecords', 'Records from units that belong to your unit.') : t('dashboard.drillHint', 'Click a name to view details.')}
         meta={org.data?.rows ? `${org.data.rows.length} ${childNoun.toLowerCase()}s` : null}
       >
         {org.loading && !org.data ? <SkeletonCard lines={5} />
@@ -268,7 +268,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 3 — People ── */}
       <Act
         n="3"
-        title="New and active members"
+        title={t('dashboard.newAndActiveMembers', 'New and active members')}
         meta={s ? `${num(s.membership.newMembers)} new` : null}
       >
         {secondaryReady ? (
@@ -283,7 +283,7 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 4 — Work ── */}
       <Act
         n="4"
-        title="Campaigns"
+        title={t('dashboard.campaigns', 'Campaigns')}
         meta={s ? `${num(s.campaigns.running)} running` : null}
       >
         {secondaryReady ? (
@@ -299,7 +299,7 @@ export default function CommandCenter({ accessScope = null }) {
       <Act
         n="5"
         title={t('meetings.title', 'Meetings')}
-        lead="See planned and completed meetings by level, group and year."
+        lead={t('dashboard.meetingsLead', 'See planned and completed meetings by level, group and year.')}
         meta={s ? `${num(s.meetings.conducted)} of ${num(s.meetings.total)} held` : null}
       >
         {secondaryReady ? (
@@ -329,8 +329,8 @@ export default function CommandCenter({ accessScope = null }) {
       {/* ── ACT 7 — Attention ── */}
       <Act
         n="7"
-        title="Needs attention"
-        lead="See inactive units and the officers in charge."
+        title={t('dashboard.needsAttention', 'Needs attention')}
+        lead={t('dashboard.needsAttentionLead', 'See inactive units and the officers in charge.')}
       >
         <div style={{ display: 'grid', gap: 16 }}>
           {secondaryReady ? (
