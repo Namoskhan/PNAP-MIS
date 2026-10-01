@@ -309,12 +309,12 @@ export default function Layout() {
         {isSuperAdmin && (
           <>
             <NavGroup
-              label="Super Administration"
+              label={t('nav.superAdmin', 'Super Administration')}
               icon={<ShieldIcon size={14} />}
               storageKey="pnap_nav_super_admin"
               defaultOpen
             >
-              <NavLink to="/" end>Dashboard</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               {/* Lands on the user directory pre-filtered to the tier
                   Super Admin is responsible for; the create action for
                   this role lives there too, since a Central Admin has
@@ -324,63 +324,63 @@ export default function Layout() {
                 className={({ isActive }) => (
                   isActive && search.includes('role=CENTRAL_ADMIN') ? 'active' : undefined
                 )}
-              >Central Admins</NavLink>
+              >{t('nav.centralAdmins', 'Central Admins')}</NavLink>
               {/* Province management is SHARED with the Central Admin,
                   not delegated away from Super Admin. Both tiers create
                   provinces; only Super Admin can delete one, and only
                   Super Admin can walk the whole hierarchy from here —
                   hence "Units" rather than "Provinces". */}
-              <NavLink to="/admin/manage-org">Manage Units</NavLink>
-              <NavLink to="/members">All Members</NavLink>
-              <NavLink to="/admin/pending-approvals">Pending Role Approvals</NavLink>
-              <NavLink to="/admin/finance-overview">Finance Overview</NavLink>
+              <NavLink to="/admin/manage-org">{t('nav.manageUnits', 'Manage Units')}</NavLink>
+              <NavLink to="/members">{t('nav.allMembers', 'All Members')}</NavLink>
+              <NavLink to="/admin/pending-approvals">{t('nav.pendingRoleApprovals', 'Pending Role Approvals')}</NavLink>
+              <NavLink to="/admin/finance-overview">{t('nav.financeOverview', 'Finance Overview')}</NavLink>
             </NavGroup>
-            <NavGroup label="User Manager" icon={<UsersIcon size={14} />} storageKey="pnap_nav_user_manager" defaultOpen>
-              <NavLink to="/admin/roles">Role Management</NavLink>
+            <NavGroup label={t('nav.userManager', 'User Manager')} icon={<UsersIcon size={14} />} storageKey="pnap_nav_user_manager" defaultOpen>
+              <NavLink to="/admin/roles">{t('nav.roleManagement', 'Role Management')}</NavLink>
               {/* Same page as the Central Admins entry above but with
                   no role filter — so its active state must exclude the
                   filtered URL, otherwise both light up at once. */}
               <NavLink
                 to="/admin/users"
                 className={({ isActive }) => (isActive && !search ? 'active' : undefined)}
-              >All Users &amp; Credentials</NavLink>
-              <NavLink to="/admin/audit">Audit Log</NavLink>
+              >{t('nav.allUsers', 'All Users & Credentials')}</NavLink>
+              <NavLink to="/admin/audit">{t('nav.auditLogs', 'Audit Log')}</NavLink>
             </NavGroup>
-            <NavGroup label="Event Manager" icon={<FolderIcon size={14} />} storageKey="pnap_nav_event_manager">
-              <NavLink to="/admin/events/meeting-types">Meeting Types</NavLink>
-              <NavLink to="/admin/events/activity-types">Activity Types</NavLink>
-              <NavLink to="/admin/events/fields">Field Library</NavLink>
+            <NavGroup label={t('nav.eventManager', 'Event Manager')} icon={<FolderIcon size={14} />} storageKey="pnap_nav_event_manager">
+              <NavLink to="/admin/events/meeting-types">{t('nav.meetingTypes', 'Meeting Types')}</NavLink>
+              <NavLink to="/admin/events/activity-types">{t('nav.activityTypes', 'Activity Types')}</NavLink>
+              <NavLink to="/admin/events/fields">{t('nav.fieldLibrary', 'Field Library')}</NavLink>
             </NavGroup>
-            <NavGroup label="Unit Management" icon={<BuildingIcon size={14} />} storageKey="pnap_nav_unit_mgmt">
-              <NavLink to="/admin/units" end>Overview</NavLink>
-              <NavLink to="/admin/units/tier-configs">Unit Type Manager</NavLink>
-              <NavLink to="/admin/units/cabinet-templates">Cabinet Structure</NavLink>
-              <NavLink to="/admin/units/policies">Unit Policies</NavLink>
-              <NavLink to="/admin/units/workflows">Workflow Manager</NavLink>
-              <NavLink to="/admin/units/responsibility-templates">Responsibility Manager</NavLink>
-              <NavLink to="/admin/units/performance-rulesets">Performance Rules</NavLink>
-              <NavLink to="/admin/units/report-templates">Report Templates</NavLink>
+            <NavGroup label={t('nav.unitManagement', 'Unit Management')} icon={<BuildingIcon size={14} />} storageKey="pnap_nav_unit_mgmt">
+              <NavLink to="/admin/units" end>{t('nav.unitOverview', 'Overview')}</NavLink>
+              <NavLink to="/admin/units/tier-configs">{t('nav.unitTiers', 'Unit Type Manager')}</NavLink>
+              <NavLink to="/admin/units/cabinet-templates">{t('nav.cabinetTemplates', 'Cabinet Structure')}</NavLink>
+              <NavLink to="/admin/units/policies">{t('nav.unitPolicies', 'Unit Policies')}</NavLink>
+              <NavLink to="/admin/units/workflows">{t('nav.workflows', 'Workflow Manager')}</NavLink>
+              <NavLink to="/admin/units/responsibility-templates">{t('nav.taskTemplates', 'Responsibility Manager')}</NavLink>
+              <NavLink to="/admin/units/performance-rulesets">{t('nav.performanceRules', 'Performance Rules')}</NavLink>
+              <NavLink to="/admin/units/report-templates">{t('nav.reportTemplates', 'Report Templates')}</NavLink>
             </NavGroup>
-            <NavGroup label="Settings" icon={<GearIcon size={14} />} storageKey="pnap_nav_settings">
-              <NavLink to="/admin/settings" end>Branding Overview</NavLink>
-              <NavLink to="/admin/settings/identity">System Identity</NavLink>
-              <NavLink to="/admin/settings/logos">Logo Manager</NavLink>
-              <NavLink to="/admin/settings/theme">Theme Manager</NavLink>
-              <NavLink to="/admin/settings/typography">Typography</NavLink>
-              <NavLink to="/admin/settings/dashboard">UI Preferences</NavLink>
-              <NavLink to="/admin/settings/reports">Report Branding</NavLink>
-              <NavLink to="/admin/settings/login">Login Customization</NavLink>
-              <NavLink to="/admin/settings/history">Settings History</NavLink>
+            <NavGroup label={t('nav.settings', 'Settings')} icon={<GearIcon size={14} />} storageKey="pnap_nav_settings">
+              <NavLink to="/admin/settings" end>{t('nav.brandingOverview', 'Branding Overview')}</NavLink>
+              <NavLink to="/admin/settings/identity">{t('nav.systemIdentity', 'System Identity')}</NavLink>
+              <NavLink to="/admin/settings/logos">{t('nav.logoManager', 'Logo Manager')}</NavLink>
+              <NavLink to="/admin/settings/theme">{t('nav.themeManager', 'Theme Manager')}</NavLink>
+              <NavLink to="/admin/settings/typography">{t('nav.typography', 'Typography')}</NavLink>
+              <NavLink to="/admin/settings/dashboard">{t('nav.dashboardSettings', 'UI Preferences')}</NavLink>
+              <NavLink to="/admin/settings/reports">{t('nav.reportBranding', 'Report Branding')}</NavLink>
+              <NavLink to="/admin/settings/login">{t('nav.loginSettings', 'Login Customization')}</NavLink>
+              <NavLink to="/admin/settings/history">{t('nav.settingsHistory', 'Settings History')}</NavLink>
             </NavGroup>
-            <NavGroup label="Central Tier" icon={<GlobeIcon size={14} />} storageKey="pnap_nav_central_tier" defaultOpen={false}>
-              <NavLink to="/unit" end>Central Dashboard</NavLink>
-              <NavLink to="/unit/cabinet">Central Cabinet</NavLink>
-              <UnitNavLink to="/unit/meetings">Central Meetings</UnitNavLink>
-              <UnitNavLink to="/unit/activities">Central Activities</UnitNavLink>
-              <NavLink to="/unit/responsibilities">Central Responsibilities</NavLink>
-              <UnitNavLink to="/unit/finance">Central Finance</UnitNavLink>
-              <UnitNavLink to="/unit/transfers">Central Fund Transfers</UnitNavLink>
-              <UnitNavLink to="/unit/reports">Central Reports</UnitNavLink>
+            <NavGroup label={t('nav.centralTier', 'Central Tier')} icon={<GlobeIcon size={14} />} storageKey="pnap_nav_central_tier" defaultOpen={false}>
+              <NavLink to="/unit" end>{t('nav.centralDashboard', 'Central Dashboard')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.centralCabinet', 'Central Cabinet')}</NavLink>
+              <UnitNavLink to="/unit/meetings">{t('nav.centralMeetings', 'Central Meetings')}</UnitNavLink>
+              <UnitNavLink to="/unit/activities">{t('nav.centralActivities', 'Central Activities')}</UnitNavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.centralResponsibilities', 'Central Responsibilities')}</NavLink>
+              <UnitNavLink to="/unit/finance">{t('nav.centralFinance', 'Central Finance')}</UnitNavLink>
+              <UnitNavLink to="/unit/transfers">{t('nav.centralTransfers', 'Central Fund Transfers')}</UnitNavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.centralReports', 'Central Reports')}</UnitNavLink>
             </NavGroup>
           </>
         )}
@@ -388,69 +388,66 @@ export default function Layout() {
 
         {isAreaAdmin && (
           <>
-            <div className="nav-group">My Area</div>
+            <div className="nav-group">{t('nav.myArea', 'My Area')}</div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
-              <NavLink to="/admin/manage-org">Manage Basic Units</NavLink>
-              <NavLink to="/members/pending" end>Member Approvals</NavLink>
-              {/* "/members" is a prefix of "/members/pending", so a plain
-                  NavLink lights up alongside Member Approvals. Stay active
-                  on the list + member detail pages, but never on /pending. */}
+              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/admin/manage-org">{t('nav.manageBasicUnits', 'Manage Basic Units')}</NavLink>
+              <NavLink to="/members/pending" end>{t('nav.memberApprovals', 'Member Approvals')}</NavLink>
               <NavLink
                 to="/members"
                 className={({ isActive }) => (
                   isActive && pathname !== '/members/pending' ? 'active' : undefined
                 )}
-              >All Members</NavLink>
-              <NavLink to="/unit/cabinet">Assign Cabinet Roles</NavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              <NavLink to="/unit/breakdown">Basic Unit Breakdown</NavLink>
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              >{t('nav.allMembers', 'All Members')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.assignCabinetRoles', 'Assign Cabinet Roles')}</NavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+              <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'Basic Unit Breakdown')}</NavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
           </>
         )}
 
         {isCentralAdmin && (
           <>
-            <div className="nav-group">My Organization</div>
+            <div className="nav-group">{t('nav.myOrganization', 'My Organization')}</div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
-              <NavLink to="/admin/manage-org">Manage Provinces</NavLink>
-              <NavLink to="/members">Province Members</NavLink>
-              <NavLink to="/unit/cabinet">Assign Province Cabinet Roles</NavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              <NavLink to="/unit/breakdown">Province Breakdown</NavLink>
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/admin/manage-org">{t('nav.manageProvinces', 'Manage Provinces')}</NavLink>
+              <NavLink to="/members">{t('nav.provinceMembers', 'Province Members')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.assignCabinetRoles', 'Assign Province Cabinet Roles')}</NavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+              <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'Province Breakdown')}</NavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
           </>
         )}
 
         {isDistrictAdmin && (
           <>
-            <div className="nav-group">My District</div>
+            <div className="nav-group">{t('nav.myDistrict', 'My District')}</div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
-              <NavLink to="/admin/manage-org">Manage Areas</NavLink>
-              <NavLink to="/members">Members</NavLink>
-              <NavLink to="/unit/cabinet">Assign Area Cabinet Roles</NavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              <NavLink to="/unit/breakdown">Area Breakdown</NavLink>
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/admin/manage-org">{t('nav.manageAreas', 'Manage Areas')}</NavLink>
+              <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.assignCabinetRoles', 'Assign Area Cabinet Roles')}</NavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+              <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'Area Breakdown')}</NavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
           </>
         )}
 
         {isProvinceAdmin && (
           <>
-            <div className="nav-group">My Province</div>
+            <div className="nav-group">{t('nav.myProvince', 'My Province')}</div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
-              <NavLink to="/admin/manage-org">Manage Districts</NavLink>
-              <NavLink to="/members">All Province Members</NavLink>
-              <NavLink to="/unit/cabinet">Assign District Cabinet Roles</NavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              <NavLink to="/unit/breakdown">District Breakdown</NavLink>
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/admin/manage-org">{t('nav.manageDistricts', 'Manage Districts')}</NavLink>
+              <NavLink to="/members">{t('nav.allMembers', 'All Province Members')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.assignCabinetRoles', 'Assign District Cabinet Roles')}</NavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+              <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'District Breakdown')}</NavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
           </>
         )}
@@ -458,18 +455,18 @@ export default function Layout() {
         {isSeniorMawin && (
           <>
             <div className="nav-group">
-              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
             </div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
-              <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
-              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
-              <NavLink to="/unit/performance">Member Performance</NavLink>
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.cabinetAndRoles', 'Cabinet & Roles')}</NavLink>
+              <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
+              <UnitNavLink to="/unit/activities">{t('nav.activities', 'Activities')}</UnitNavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+              {canFinance && <UnitNavLink to="/unit/finance">{t('nav.finance', 'Finance')}</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/transfers">{t('nav.fundTransfers', 'Fund Transfers')}</UnitNavLink>}
+              <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
             <CongressNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
@@ -480,18 +477,18 @@ export default function Layout() {
         {isSecretary && (
           <>
             <div className="nav-group">
-              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
             </div>
             <nav>
-              <NavLink to="/unit" end>Dashboard</NavLink>
-              <NavLink to="/members">Members</NavLink>
-              <NavLink to="/unit/cabinet">Cabinet</NavLink>
-              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              <NavLink to="/unit/performance">Member Performance</NavLink>
-              {canFinance && <UnitNavLink to="/unit/finance">Finance Summary</UnitNavLink>}
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.cabinet', 'Cabinet')}</NavLink>
+              <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
+              <UnitNavLink to="/unit/activities">{t('nav.activities', 'Activities')}</UnitNavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+              <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
+              {canFinance && <UnitNavLink to="/unit/finance">{t('nav.financeSummary', 'Finance Summary')}</UnitNavLink>}
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
             {/* Secretary saw the committee at AREA, DISTRICT, PROVINCE, CENTRAL. */}
             {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
@@ -505,23 +502,23 @@ export default function Layout() {
         {isFinanceSecretary && (
           <>
             <div className="nav-group">
-              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
             </div>
             <nav>
               <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
-                {user?.canViewExecutiveDashboard && !user?.dashboardScope ? 'Central Dashboard' : 'Dashboard'}
+                {user?.canViewExecutiveDashboard && !user?.dashboardScope ? t('nav.centralDashboard', 'Central Dashboard') : t('nav.dashboard', 'Dashboard')}
               </NavLink>
-              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
-              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/finance">{t('nav.finance', 'Finance')}</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/transfers">{t('nav.fundTransfers', 'Fund Transfers')}</UnitNavLink>}
               {/* Not gated on MANAGE_MEETINGS: this persona cannot ASSIGN
                   a responsibility, but a Senior Mawin can assign one TO
                   them, and they need a way to open it and mark it done.
                   The page hides every write control by itself. */}
-              <NavLink to="/unit/responsibilities">My Responsibilities</NavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.myResponsibilities', 'My Responsibilities')}</NavLink>
               {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
-                <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
+                <NavLink to="/unit/breakdown">{t('nav.subordinateBreakdown', 'Subordinate Breakdown')}</NavLink>
               )}
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
             {/* The Finance Secretary keeps the unit's books for Executive, Committee, Jirga, and Congress bodies */}
             <CommitteeNav ctx={ctx} canFinance={canFinance} showEvents={false} />
@@ -532,17 +529,17 @@ export default function Layout() {
 
         {isMember && (
           <>
-            <div className="nav-group">My Unit</div>
+            <div className="nav-group">{t('nav.myUnit', 'My Unit')}</div>
             <nav>
-              <NavLink to="/" end>My Dashboard</NavLink>
+              <NavLink to="/" end>{t('nav.myDashboard', 'My Dashboard')}</NavLink>
               {/* No committee group for a pure member, but these stay
                   body-aware so the entry doesn't stay lit if one lands
                   on a ?body=COMMITTEE URL from elsewhere. */}
-              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-              <NavLink to="/unit/responsibilities">My Responsibilities</NavLink>
+              <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
+              <UnitNavLink to="/unit/activities">{t('nav.activities', 'Activities')}</UnitNavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.myResponsibilities', 'My Responsibilities')}</NavLink>
               {user?.memberId && (
-                <NavLink to={`/members/${user.memberId}`}>My Profile</NavLink>
+                <NavLink to={`/members/${user.memberId}`}>{t('auth.myProfile', 'My Profile')}</NavLink>
               )}
             </nav>
           </>
@@ -551,21 +548,21 @@ export default function Layout() {
         {isPresident && (
           <>
             <div className="nav-group">
-              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Province'}
+              {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('nav.myProvince', 'Province')}
             </div>
             <nav>
               <NavLink to={user?.canViewExecutiveDashboard ? '/' : '/unit'} end>
-                {user?.canViewExecutiveDashboard && !user?.dashboardScope ? 'Central Dashboard' : 'Dashboard'}
+                {user?.canViewExecutiveDashboard && !user?.dashboardScope ? t('nav.centralDashboard', 'Central Dashboard') : t('nav.dashboard', 'Dashboard')}
               </NavLink>
-              <NavLink to="/members">Members</NavLink>
-              <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-              <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-              <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-              <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-              {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
-              {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
-              <NavLink to="/unit/performance">Member Performance</NavLink>
-              <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+              <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
+              <NavLink to="/unit/cabinet">{t('nav.cabinetAndRoles', 'Cabinet & Roles')}</NavLink>
+              <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
+              <UnitNavLink to="/unit/activities">{t('nav.activities', 'Activities')}</UnitNavLink>
+              <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+              {canFinance && <UnitNavLink to="/unit/finance">{t('nav.finance', 'Finance')}</UnitNavLink>}
+              {canFinance && <UnitNavLink to="/unit/transfers">{t('nav.fundTransfers', 'Fund Transfers')}</UnitNavLink>}
+              <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
+              <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
             <CongressNav ctx={ctx} canFinance={canFinance} />
@@ -581,40 +578,40 @@ export default function Layout() {
                   {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'CENTRAL · PKNAP Central'}
                 </div>
                 <nav>
-                  <NavLink to="/" end>Central Dashboard</NavLink>
-                  <NavLink to="/members">Members</NavLink>
-                  {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
-                  {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
-                  <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-                  <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-                  <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-                  <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-                  <NavLink to="/unit/performance">Member Performance</NavLink>
-                  {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
-                  {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
-                  <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+                  <NavLink to="/" end>{t('nav.centralDashboard', 'Central Dashboard')}</NavLink>
+                  <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
+                  {canRegister && <NavLink to="/members/new">{t('nav.registerMember', 'Register Member')}</NavLink>}
+                  {canApproveMembers && <NavLink to="/members/pending">{t('nav.approvalQueue', 'Approval Queue')}</NavLink>}
+                  <NavLink to="/unit/cabinet">{t('nav.cabinetAndRoles', 'Cabinet & Roles')}</NavLink>
+                  <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
+                  <UnitNavLink to="/unit/activities">{t('nav.activities', 'Activities')}</UnitNavLink>
+                  <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+                  <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
+                  {canFinance && <UnitNavLink to="/unit/finance">{t('nav.finance', 'Finance')}</UnitNavLink>}
+                  {canFinance && <UnitNavLink to="/unit/transfers">{t('nav.fundTransfers', 'Fund Transfers')}</UnitNavLink>}
+                  <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
                 </nav>
               </>
             ) : (
               <>
                 <div className="nav-group">
-                  {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : 'Unit'}
+                  {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
                 </div>
                 <nav>
-                  <NavLink to="/unit" end>Dashboard</NavLink>
-                  <NavLink to="/members">Members</NavLink>
-                  {canRegister && <NavLink to="/members/new">Register Member</NavLink>}
-                  {canApproveMembers && <NavLink to="/members/pending">Approval Queue</NavLink>}
-                  <NavLink to="/unit/cabinet">Cabinet & Roles</NavLink>
-                  <UnitNavLink to="/unit/meetings">Meetings</UnitNavLink>
-                  <UnitNavLink to="/unit/activities">Activities</UnitNavLink>
-                  <NavLink to="/unit/responsibilities">Responsibilities</NavLink>
-                  <NavLink to="/unit/performance">Member Performance</NavLink>
-                  {canFinance && <UnitNavLink to="/unit/finance">Finance</UnitNavLink>}
-                  {canFinance && <UnitNavLink to="/unit/transfers">Fund Transfers</UnitNavLink>}
-                  <UnitNavLink to="/unit/reports">Reports</UnitNavLink>
+                  <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+                  <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
+                  {canRegister && <NavLink to="/members/new">{t('nav.registerMember', 'Register Member')}</NavLink>}
+                  {canApproveMembers && <NavLink to="/members/pending">{t('nav.approvalQueue', 'Approval Queue')}</NavLink>}
+                  <NavLink to="/unit/cabinet">{t('nav.cabinetAndRoles', 'Cabinet & Roles')}</NavLink>
+                  <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
+                  <UnitNavLink to="/unit/activities">{t('nav.activities', 'Activities')}</UnitNavLink>
+                  <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
+                  <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
+                  {canFinance && <UnitNavLink to="/unit/finance">{t('nav.finance', 'Finance')}</UnitNavLink>}
+                  {canFinance && <UnitNavLink to="/unit/transfers">{t('nav.fundTransfers', 'Fund Transfers')}</UnitNavLink>}
+                  <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
                   {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
-                    <NavLink to="/unit/breakdown">Subordinate Breakdown</NavLink>
+                    <NavLink to="/unit/breakdown">{t('nav.subordinateBreakdown', 'Subordinate Breakdown')}</NavLink>
                   )}
                 </nav>
               </>
@@ -626,10 +623,10 @@ export default function Layout() {
         )}
 
         {/* Communication — visible to every authenticated persona */}
-        <div className="nav-group">Communication</div>
+        <div className="nav-group">{t('nav.communication', 'Communication')}</div>
         <nav>
-          <NavLink to="/notifications">Notifications</NavLink>
-          <NavLink to="/announcements">Announcements</NavLink>
+          <NavLink to="/notifications">{t('nav.notifications', 'Notifications')}</NavLink>
+          <NavLink to="/announcements">{t('nav.announcements', 'Announcements')}</NavLink>
         </nav>
 
       </aside>

@@ -1,25 +1,24 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import AuthShell from '../../components/AuthShell';
 import { checkResetToken, resetPassword, authErrorMessage } from '../../api/authClient';
 
 const MIN_PASSWORD = 8;
 
-// Mirrors passwordResetService.passwordProblem on the server. The server
-// is the authority — this copy exists only so the user is told about a
-// weak password before submitting, not after.
-function localProblem(password, confirm) {
-  if (password.length < MIN_PASSWORD) return `Password must be at least ${MIN_PASSWORD} characters.`;
-  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-    return 'Password must contain at least one letter and one number.';
-  }
-  if (password !== confirm) return 'Passwords do not match.';
-  return null;
-}
-
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   const { token } = useParams();
   const nav = useNavigate();
+
+  function localProblem(password, confirm) {
+    if (password.length < MIN_PASSWORD) return t('auth.errMin8Chars', 'Password must be at least 8 characters.');
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return t('auth.errLetterNumber', 'Password must contain at least one letter and one number.');
+    }
+    if (password !== confirm) return t('auth.errPasswordsDoNotMatch', 'Passwords do not match.');
+    return null;
+  }
 
   // The link is validated BEFORE the form is shown. Discovering a link
   // expired only after typing a new password twice is a small cruelty
@@ -64,15 +63,15 @@ export default function ResetPasswordPage() {
   }
 
   if (check.status === 'checking') {
-    return <AuthShell title="Checking your link…" subtitle="One moment." footer={<span />} />;
+    return <AuthShell title={t('auth.checkingLink', 'Checking your link…')} subtitle={t('auth.oneMoment', 'One moment.')} footer={<span />} />;
   }
 
   if (check.status === 'invalid') {
     return (
       <AuthShell
-        title="Link no longer valid"
-        subtitle="Reset links expire after one hour and can only be used once. Requesting a new link also cancels any earlier one."
-        footer={<Link to="/login">Back to sign in</Link>}
+        title={t('auth.linkInvalid', 'Link no longer valid')}
+        subtitle={t('auth.linkExpiredBody', 'Reset links expire after one hour and can only be used once. Requesting a new link also cancels any earlier one.')}
+        footer={<Link to="/login">{t('auth.backToSignIn', 'Back to sign in')}</Link>}
       >
         <div className="alert error" style={{ marginBottom: 0 }}>
           {check.message}
@@ -82,7 +81,7 @@ export default function ResetPasswordPage() {
           className="btn"
           style={{ marginTop: 16, width: '100%', display: 'block', textAlign: 'center' }}
         >
-          Request a new link
+          {t('auth.requestNewLink', 'Request a new link')}
         </Link>
       </AuthShell>
     );
@@ -91,12 +90,12 @@ export default function ResetPasswordPage() {
   if (done) {
     return (
       <AuthShell
-        title="Password updated"
-        subtitle="You can now sign in with your new password. Taking you to the sign-in page…"
-        footer={<Link to="/login">Go to sign in now</Link>}
+        title={t('auth.passwordUpdated', 'Password updated')}
+        subtitle={t('auth.passwordUpdatedBody', 'You can now sign in with your new password. Taking you to the sign-in page…')}
+        footer={<Link to="/login">{t('auth.goToSignIn', 'Go to sign in now')}</Link>}
       >
         <div className="alert success" style={{ marginBottom: 0 }}>
-          Your password has been changed.
+          {t('auth.passwordChangedSuccess', 'Your password has been changed.')}
         </div>
       </AuthShell>
     );
@@ -104,17 +103,17 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthShell
-      title="Choose a new password"
+      title={t('auth.chooseNewPassword', 'Choose a new password')}
       subtitle={
         check.fullName
-          ? `Setting a new password for ${check.fullName}.`
-          : 'Enter a new password for your account.'
+          ? t('auth.settingPasswordFor', 'Setting a new password for {{name}}.', { name: check.fullName })
+          : t('auth.enterNewPassword', 'Enter a new password for your account.')
       }
     >
       <form onSubmit={submit}>
         {err && <div className="alert error">{err}</div>}
         <div className="field">
-          <label>New password</label>
+          <label>{t('auth.newPassword', 'New password')}</label>
           <input
             type="password"
             value={password}
@@ -124,11 +123,11 @@ export default function ResetPasswordPage() {
             required
           />
           <div className="hint">
-            At least {MIN_PASSWORD} characters, including a letter and a number.
+            {t('auth.passwordRuleHint', 'At least 8 characters, including a letter and a number.')}
           </div>
         </div>
         <div className="field" style={{ marginTop: 12 }}>
-          <label>Confirm new password</label>
+          <label>{t('auth.confirmNewPassword', 'Confirm new password')}</label>
           <input
             type="password"
             value={confirm}
@@ -138,7 +137,7 @@ export default function ResetPasswordPage() {
           />
         </div>
         <button className="btn" style={{ marginTop: 18, width: '100%' }} disabled={busy}>
-          {busy ? 'Updating…' : 'Update password'}
+          {busy ? t('auth.updatingPassword', 'Updating password…') : t('auth.updatePassword', 'Update password')}
         </button>
       </form>
     </AuthShell>

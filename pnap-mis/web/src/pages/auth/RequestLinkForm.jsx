@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import AuthShell from '../../components/AuthShell';
 import IdentifierField from '../../components/IdentifierField';
 import { authErrorMessage } from '../../api/authClient';
@@ -8,12 +9,6 @@ import { authErrorMessage } from '../../api/authClient';
 // resend verification. They are the same interaction (identify yourself,
 // we mail you something) and only differ in wording and endpoint, so the
 // behaviour lives here once.
-//
-// Note the success state: it is deliberately NOT a confirmation that an
-// account was found. The server answers identically whether or not the
-// identifier matches anything, and this screen has to preserve that —
-// "we've sent you an email" here would turn the page into an account-
-// existence oracle that the API carefully avoids being.
 export default function RequestLinkForm({
   title,
   subtitle,
@@ -24,6 +19,7 @@ export default function RequestLinkForm({
   onSubmit,
   footer,
 }) {
+  const { t } = useTranslation();
   const [identifier, setIdentifier] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -47,8 +43,7 @@ export default function RequestLinkForm({
     return (
       <AuthShell title={successTitle} subtitle={successBody} footer={footer}>
         <div className="alert" style={{ marginBottom: 0 }}>
-          Check your inbox — and your spam folder, which is where these
-          messages most often end up.
+          {t('auth.checkInboxSpam', 'Check your inbox — and your spam folder, which is where these messages most often end up.')}
         </div>
         <button
           type="button"
@@ -59,7 +54,7 @@ export default function RequestLinkForm({
             setIdentifier('');
           }}
         >
-          Use a different email or CNIC
+          {t('auth.useDifferentId', 'Use a different email or CNIC')}
         </button>
       </AuthShell>
     );
@@ -80,9 +75,10 @@ export default function RequestLinkForm({
 
 /** The footer both pages share: back to sign in, plus a link to the other flow. */
 export function AuthFooter({ otherTo, otherLabel }) {
+  const { t } = useTranslation();
   return (
     <>
-      <Link to="/login">Back to sign in</Link>
+      <Link to="/login">{t('auth.backToSignIn', 'Back to sign in')}</Link>
       {otherTo && (
         <>
           <span className="muted" style={{ margin: '0 8px' }}>

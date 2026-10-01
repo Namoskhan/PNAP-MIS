@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../api/client';
 import { useToast } from '../components/Toast';
 
-const SEV_LABEL = { INFO: 'Info', SUCCESS: 'Success', WARNING: 'Warning', DANGER: 'Critical' };
+const SEV_KEY = { INFO: 'info', SUCCESS: 'success', WARNING: 'warning', DANGER: 'critical' };
 
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('all');
@@ -68,18 +70,18 @@ export default function NotificationsPage() {
     try {
       await api.post('/notifications/mark-all-read');
       load();
-      toast.success('All notifications marked as read.');
+      toast.success(t('notifications.markedAllRead', 'All notifications marked as read.'));
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not mark all read', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('notifications.couldNotMarkAllRead', 'Could not mark all read'), duration: 7000 });
     }
   }
   async function remove(id) {
     try {
       await api.delete(`/notifications/${id}`);
       setItems((prev) => prev.filter((x) => x._id !== id));
-      toast.success('Notification deleted.');
+      toast.success(t('notifications.deleted', 'Notification deleted.'));
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not delete notification', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('notifications.couldNotDelete', 'Could not delete notification'), duration: 7000 });
     }
   }
 
@@ -89,41 +91,44 @@ export default function NotificationsPage() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Notifications</h2>
-          <div className="subtitle">{unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}</div>
+          <h2>{t('notifications.title', 'Notifications')}</h2>
+          <div className="subtitle">{unreadCount > 0 ? t('notifications.unreadCount', { count: unreadCount }) : t('notifications.allCaughtUp', 'All caught up')}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className={`btn ${filter === 'all' ? '' : 'secondary'}`} onClick={() => setFilter('all')}>All</button>
-          <button className={`btn ${filter === 'unread' ? '' : 'secondary'}`} onClick={() => setFilter('unread')}>Unread</button>
-          {unreadCount > 0 && <button className="btn secondary" onClick={markAllRead}>Mark all read</button>}
+          <button className={`btn ${filter === 'all' ? '' : 'secondary'}`} onClick={() => setFilter('all')}>{t('notifications.all', 'All')}</button>
+          <button className={`btn ${filter === 'unread' ? '' : 'secondary'}`} onClick={() => setFilter('unread')}>{t('notifications.unread', 'Unread')}</button>
+          {unreadCount > 0 && <button className="btn secondary" onClick={markAllRead}>{t('notifications.markAllRead', 'Mark all read')}</button>}
         </div>
       </div>
 
       {err && <div className="alert error">{err}</div>}
 
-      {busy && <p className="muted">Loading…</p>}
+      {busy && <p className="muted">{t('common.loading', 'Loading…')}</p>}
       {!busy && visibleItems.length === 0 && (
         <div className="empty-smart">
           <div className="empty-icon">🔔</div>
-          <h3>No notifications</h3>
-          <p>You'll see system alerts and announcements here.</p>
+          <h3>{t('notifications.noNotifications', 'No notifications')}</h3>
+          <p>{t('notifications.emptySubtitle', "You'll see system alerts and announcements here.")}</p>
         </div>
       )}
 
       <div className="notif-list">
-        {visibleItems.map((n) => (
-          <div key={n._id} className={`notif-row ${n.read ? '' : 'unread'} sev-${n.severity || 'INFO'}`}>
-            <div className="notif-row-main" onClick={() => open(n)} role="button" tabIndex={0}>
-              <div className="notif-row-title">{n.title}</div>
-              {n.body && <div className="notif-row-body">{n.body}</div>}
-              <div className="notif-row-meta">
-                <span className={`badge ${(n.severity || 'INFO').toLowerCase()}`}>{SEV_LABEL[n.severity] || 'Info'}</span>
-                <span className="muted">{new Date(n.createdAt).toLocaleString()}</span>
+        {visibleItems.map((n) => {
+          const sevKey = SEV_KEY[n.severity] || 'info';
+          return (
+            <div key={n._id} className={`notif-row ${n.read ? '' : 'unread'} sev-${n.severity || 'INFO'}`}>
+              <div className="notif-row-main" onClick={() => open(n)} role="button" tabIndex={0}>
+                <div className="notif-row-title">{n.title}</div>
+                {n.body && <div className="notif-row-body">{n.body}</div>}
+                <div className="notif-row-meta">
+                  <span className={`badge ${(n.severity || 'INFO').toLowerCase()}`}>{t(`notifications.${sevKey}`, n.severity || 'Info')}</span>
+                  <span className="muted">{new Date(n.createdAt).toLocaleString()}</span>
+                </div>
               </div>
+              <button className="btn ghost" onClick={() => remove(n._id)} title={t('notifications.dismiss', 'Dismiss')}>✕</button>
             </div>
-            <button className="btn ghost" onClick={() => remove(n._id)} title="Dismiss">✕</button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
