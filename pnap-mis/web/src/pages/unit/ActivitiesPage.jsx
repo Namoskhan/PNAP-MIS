@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin } from '../../utils/permissions';
@@ -24,6 +25,7 @@ const DEFAULT_TYPE_CODE = 'CAMPAIGN';
 const MAX_PHOTOS = 10;
 
 export default function ActivitiesPage() {
+  const { t } = useTranslation();
   const { ctx, setCtx } = useUnit();
   const { user, setActiveRole, allRoles } = useAuth();
   const toast = useToast();
@@ -252,22 +254,22 @@ export default function ActivitiesPage() {
     downloadAuthed(`/api/exports/unit/activities/xlsx?${exportParams()}`, exportName('xlsx')).catch(() => toast.error('Export failed.', { title: 'Could not export' }));
   }
 
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) return <p>{t('units.selectUnit', 'Select a unit context first.')}</p>;
 
   // If user opened Congress stream but is below Central tier, show guidance card
   if (isCongressView && ctx?.unitLevel !== 'CENTRAL') {
     return (
       <div>
         <div className="page-header">
-          <h2>National Congress Activities · قومي کانګرس</h2>
+          <h2>{t('activities.nationalCongress', 'National Congress Activities')} · قومي کانګرس</h2>
         </div>
         <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
             <CongressIcon size={36} />
           </div>
-          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <h3 style={{ marginTop: 0 }}>{t('activities.congressCentralOnlyTitle', 'National Congress operates exclusively at the Central Level')}</h3>
           <p className="muted" style={{ lineHeight: 1.6 }}>
-            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+            {t('activities.congressCentralOnlyText', 'Under the PKNAP constitution, the National Congress is the supreme representative assembly operating at the Central tier. Lower tiers operate via Sobayi Jirga and Zilla & Elaqayi Committees.')}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
             <button
@@ -275,7 +277,7 @@ export default function ActivitiesPage() {
               className="btn"
               onClick={handleSwitchToCentral}
             >
-              Switch to Central Unit Context →
+              {t('activities.switchToCentral', 'Switch to Central Unit Context →')}
             </button>
           </div>
         </div>
@@ -288,17 +290,17 @@ export default function ActivitiesPage() {
       <div className="page-header">
         <h2>
           {isCongressView
-            ? 'National Congress Activities · PKNAP Central'
+            ? `${t('activities.nationalCongress', 'National Congress Activities')} · PKNAP Central`
             : (isJirgaView
-              ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Activities' : `Sobayi Jirga Activities · ${ctx.unitName}`)
-              : (isCommitteeView ? `Committee Activities · ${ctx.unitName}` : `Executive Activities · ${ctx.unitName}`))}
+              ? (ctx.unitLevel === 'CENTRAL' ? t('activities.qomiJirga', 'Qomi Jirga Activities') : `${t('activities.sobayiJirga', 'Sobayi Jirga Activities')} · ${ctx.unitName}`)
+              : (isCommitteeView ? `${t('activities.committeeActivities', 'Committee Activities')} · ${ctx.unitName}` : `${t('activities.executiveActivities', 'Executive Activities')} · ${ctx.unitName}`))}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
-          <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
+          <button className="btn secondary" onClick={exportPdf}>{t('activities.exportPdf', 'Export PDF')}</button>
+          <button className="btn secondary" onClick={exportXlsx}>{t('activities.exportExcel', 'Export Excel')}</button>
           {canManage && (
             <button className="btn" onClick={openCreate}>
-              {isCongressView ? '+ Record Congress Activity' : (isJirgaView ? '+ Record Jirga Activity' : (isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity'))}
+              {isCongressView ? t('activities.recordCongress', '+ Record Congress Activity') : (isJirgaView ? t('activities.recordJirga', '+ Record Jirga Activity') : (isCommitteeView ? t('activities.recordCommittee', '+ Record Committee Activity') : t('activities.recordActivity', '+ Record Activity')))}
             </button>
           )}
         </div>
@@ -306,16 +308,16 @@ export default function ActivitiesPage() {
 
       {show && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShow(false); }}>
-          <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Activity">
+          <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label={t('activities.recordActivity', 'Record Activity')}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <h3 style={{ margin: 0 }}>
-                {isCongressView ? 'Record Congress Activity' : (isJirgaView ? 'Record Jirga Activity' : (isCommitteeView ? 'Record Committee Activity' : 'Record Activity'))}
+                {isCongressView ? t('activities.recordCongress', 'Record Congress Activity') : (isJirgaView ? t('activities.recordJirga', 'Record Jirga Activity') : (isCommitteeView ? t('activities.recordCommittee', 'Record Committee Activity') : t('activities.newActivity', 'Record Activity')))}
               </h3>
               <button
                 type="button"
                 className="btn secondary"
                 onClick={() => setShow(false)}
-                aria-label="Close"
+                aria-label={t('common.close', 'Close')}
                 style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}
               >
                 <XIcon size={16} />
@@ -323,48 +325,48 @@ export default function ActivitiesPage() {
             </div>
             <div className="form-grid">
               <div className="field">
-                <label>Type</label>
+                <label>{t('activities.activityType', 'Type')}</label>
                 <select
                   value={form.typeCode}
                   onChange={(e) => setForm({ ...form, typeCode: e.target.value, dynamicData: {} })}
                 >
-                  {availableTypes.length === 0 && <option value="">— Loading types —</option>}
-                  {availableTypes.map((t) => <option key={t.code} value={t.code}>{t.label}</option>)}
+                  {availableTypes.length === 0 && <option value="">— {t('common.loading', 'Loading types…')} —</option>}
+                  {availableTypes.map((tItem) => <option key={tItem.code} value={tItem.code}>{tItem.label}</option>)}
                 </select>
               </div>
               <div className="field">
-                <label>Title</label>
+                <label>{t('activities.activityTitle', 'Title')}</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               </div>
               <div className="field">
-                <label>Start</label>
+                <label>{t('activities.startAt', 'Start')}</label>
                 <input type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
               </div>
               <div className="field">
-                <label>End</label>
+                <label>{t('activities.endAt', 'End')}</label>
                 <input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} />
               </div>
               <div className="field full">
-                <label>Venue</label>
+                <label>{t('activities.venue', 'Venue')}</label>
                 <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
               </div>
               <div className="field full">
-                <label>Description</label>
+                <label>{t('activities.description', 'Description')}</label>
                 <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
               {form.typeCode === 'CAMPAIGN' && (
                 <>
-                  <div className="field"><label>Households Visited</label>
+                  <div className="field"><label>{t('activities.householdsVisited', 'Households Visited')}</label>
                     <input type="number" value={form.campaign_householdsVisited} onChange={(e) => setForm({ ...form, campaign_householdsVisited: e.target.value })} /></div>
-                  <div className="field"><label>People Contacted</label>
+                  <div className="field"><label>{t('activities.peopleContacted', 'People Contacted')}</label>
                     <input type="number" value={form.campaign_peopleContacted} onChange={(e) => setForm({ ...form, campaign_peopleContacted: e.target.value })} /></div>
-                  <div className="field"><label>Pamphlets Distributed</label>
+                  <div className="field"><label>{t('activities.pamphletsDistributed', 'Pamphlets Distributed')}</label>
                     <input type="number" value={form.campaign_pamphletsDistributed} onChange={(e) => setForm({ ...form, campaign_pamphletsDistributed: e.target.value })} /></div>
-                  <div className="field"><label>Expected Joiners</label>
+                  <div className="field"><label>{t('activities.expectedJoiners', 'Expected Joiners')}</label>
                     <input type="number" value={form.campaign_expectedJoiners} onChange={(e) => setForm({ ...form, campaign_expectedJoiners: e.target.value })} /></div>
-                  <div className="field"><label>Actual Joiners</label>
+                  <div className="field"><label>{t('activities.actualJoiners', 'Actual Joiners')}</label>
                     <input type="number" value={form.campaign_actualJoiners} onChange={(e) => setForm({ ...form, campaign_actualJoiners: e.target.value })} /></div>
-                  <div className="field"><label>Volunteer Hours</label>
+                  <div className="field"><label>{t('activities.volunteerHours', 'Volunteer Hours')}</label>
                     <input type="number" step="0.5" value={form.campaign_volunteerHours} onChange={(e) => setForm({ ...form, campaign_volunteerHours: e.target.value })} /></div>
                 </>
               )}
@@ -374,7 +376,7 @@ export default function ActivitiesPage() {
             {selectedType && (selectedType.fields || []).length > 0 && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
                 <div className="muted" style={{ fontSize: 12, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>
-                  {selectedType.label} fields
+                  {selectedType.label} {t('common.fields', 'fields')}
                 </div>
                 <DynamicForm
                   snapshot={selectedType}
@@ -385,8 +387,8 @@ export default function ActivitiesPage() {
               </div>
             )}
             <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="btn secondary" type="button" onClick={() => setShow(false)}>Cancel</button>
-              <button className="btn" onClick={create}>Save Activity</button>
+              <button className="btn secondary" type="button" onClick={() => setShow(false)}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn" onClick={create}>{t('activities.saveActivity', 'Save Activity')}</button>
             </div>
           </div>
         </div>
@@ -395,13 +397,21 @@ export default function ActivitiesPage() {
       <div className="table-responsive">
       <table className="list">
         <thead>
-          <tr><th>When</th><th>Type</th><th>Title</th><th>Venue</th><th>State</th><th>Photos</th><th></th></tr>
+          <tr>
+            <th>{t('activities.when', 'When')}</th>
+            <th>{t('activities.type', 'Type')}</th>
+            <th>{t('activities.titleCol', 'Title')}</th>
+            <th>{t('activities.venue', 'Venue')}</th>
+            <th>{t('activities.state', 'State')}</th>
+            <th>{t('activities.photos', 'Photos')}</th>
+            <th>{t('common.actions', 'Actions')}</th>
+          </tr>
         </thead>
         <tbody>
           {displayedItems.length === 0 && (
             <tr>
               <td colSpan="7" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} activities recorded yet.
+                {t('activities.noActivities', 'No activities recorded yet.')}
               </td>
             </tr>
           )}
@@ -424,7 +434,7 @@ export default function ActivitiesPage() {
                     fontSize: 11,
                   }}
                 >
-                  {isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
+                  {isCng ? t('meetings.nationalCongress', 'Congress') : (isJrg ? t('common.jirga', 'Jirga') : (isCm ? t('common.committee', 'Committee') : t('meetings.executive', 'Executive')))}
                 </span>
                 {a.type}
               </td>
@@ -445,16 +455,12 @@ export default function ActivitiesPage() {
                 {canManage && a.state !== 'COMPLETED' && a.state !== 'CANCELLED' && (
                   <>
                     <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                      Photos
+                      {t('activities.photos', 'Photos')}
                       <input
                         type="file"
                         accept="image/*"
                         multiple
                         hidden
-                        // Snapshot to an array BEFORE clearing value:
-                        // resetting the input empties its live FileList.
-                        // The reset is what lets the same file be picked
-                        // again after a rejection.
                         onChange={(e) => {
                           const picked = Array.from(e.target.files || []);
                           e.target.value = '';
@@ -462,8 +468,8 @@ export default function ActivitiesPage() {
                         }}
                       />
                     </label>{' '}
-                    <button className="btn" onClick={() => complete(a._id)}>Complete</button>{' '}
-                    <button className="btn danger" onClick={() => cancelActivity(a)}>Cancel</button>
+                    <button className="btn" onClick={() => complete(a._id)}>{t('activities.complete', 'Complete')}</button>{' '}
+                    <button className="btn danger" onClick={() => cancelActivity(a)}>{t('activities.cancel', 'Cancel')}</button>
                   </>
                 )}
               </td>

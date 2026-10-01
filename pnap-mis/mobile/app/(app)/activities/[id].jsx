@@ -29,15 +29,16 @@ import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
 import EmptyState from '../../../src/components/EmptyState';
 import { useToast } from '../../../src/components/Toast';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { shortDate, ACTIVITY_TYPE_LABEL } from '../../../src/utils/formatters';
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, isRTL }) {
   if (!value) return null;
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+    <View style={[styles.row, isRTL && { flexDirection: 'row-reverse' }]}>
+      <Text style={[styles.rowLabel, isRTL && { textAlign: 'right' }]}>{label}</Text>
+      <Text style={[styles.rowValue, isRTL ? { textAlign: 'left' } : { textAlign: 'right' }]}>{value}</Text>
     </View>
   );
 }
@@ -47,6 +48,7 @@ export default function ActivityDetailScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { isOnline } = useNetwork();
+  const { t, isRTL } = useLanguage();
   const toast = useToast();
 
   const [activity, setActivity] = useState(null);
@@ -360,7 +362,7 @@ export default function ActivityDetailScreen() {
     );
   }
 
-  if (!activity) return <EmptyState icon="❌" title="Activity not found" />;
+  if (!activity) return <EmptyState icon="❌" title={t('activities.notFound', 'Activity not found')} />;
 
   const a = activity;
   const photos = a.photos || [];
@@ -373,51 +375,51 @@ export default function ActivityDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Title and Badges */}
         <Card style={{ marginBottom: Spacing.md }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.sm }}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.aTitle}>{a.title || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode}</Text>
-              <Text style={styles.aSub}>{shortDate(a.startAt)} · {a.venue || 'No venue'}</Text>
+          <View style={[{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing.sm }, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+              <Text style={[styles.aTitle, isRTL && { textAlign: 'right' }]}>{a.title || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode}</Text>
+              <Text style={[styles.aSub, isRTL && { textAlign: 'right' }]}>{shortDate(a.startAt)} · {a.venue || t('common.noVenue', 'No venue')}</Text>
             </View>
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <View style={[{ alignItems: 'flex-end', gap: 4 }, isRTL && { alignItems: 'flex-start' }]}>
               <Badge
-                label={isCompleted ? 'COMPLETED' : (isCancelled ? 'CANCELLED' : (a.state || 'SCHEDULED'))}
+                label={isCompleted ? t('status.completed', 'COMPLETED') : (isCancelled ? t('status.cancelled', 'CANCELLED') : t(`status.${a.state || 'SCHEDULED'}`, a.state || 'SCHEDULED'))}
                 color={isCompleted ? Colors.success : (isCancelled ? Colors.textMuted : Colors.primary)}
                 bg={isCompleted ? Colors.successBg : (isCancelled ? Colors.surfaceAlt : '#eff6ff')}
               />
               {!isOnline && (
-                <Badge label="Offline (Cached)" color="#DC2626" bg="#FEE2E2" />
+                <Badge label={t('common.offlineCached', 'Offline (Cached)')} color="#DC2626" bg="#FEE2E2" />
               )}
               {a._isOffline && (
-                <Badge label="OFFLINE CREATED" color={Colors.warning} bg="rgba(217, 119, 6, 0.15)" />
+                <Badge label={t('common.offlineCreated', 'OFFLINE CREATED')} color={Colors.warning} bg="rgba(217, 119, 6, 0.15)" />
               )}
             </View>
           </View>
         </Card>
 
         {/* Action Buttons Bar */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => setShowPhotos(true)}>
+        <View style={[styles.actionRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <TouchableOpacity style={[styles.actionBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => setShowPhotos(true)}>
             <Text style={styles.actionBtnIcon}>📷</Text>
-            <Text style={styles.actionBtnText}>Photos ({photos.length})</Text>
+            <Text style={styles.actionBtnText}>{t('activities.photosWithCount', 'Photos ({{count}})', { count: photos.length })}</Text>
           </TouchableOpacity>
 
           {canEditState && (
             <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: Colors.success, backgroundColor: Colors.successBg }]}
+              style={[styles.actionBtn, { borderColor: Colors.success, backgroundColor: Colors.successBg }, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => setShowComplete(true)}
             >
               <Text style={styles.actionBtnIcon}>✅</Text>
-              <Text style={[styles.actionBtnText, { color: Colors.success }]}>Complete</Text>
+              <Text style={[styles.actionBtnText, { color: Colors.success }]}>{t('activities.complete', 'Complete')}</Text>
             </TouchableOpacity>
           )}
 
           {canEditState && (
             <TouchableOpacity
-              style={[styles.actionBtn, { borderColor: Colors.error, backgroundColor: Colors.errorBg }]}
+              style={[styles.actionBtn, { borderColor: Colors.error, backgroundColor: Colors.errorBg }, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => setShowCancel(true)}
             >
               <Text style={styles.actionBtnIcon}>✕</Text>
-              <Text style={[styles.actionBtnText, { color: Colors.error }]}>Cancel</Text>
+              <Text style={[styles.actionBtnText, { color: Colors.error }]}>{t('common.cancel', 'Cancel')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -425,13 +427,13 @@ export default function ActivityDetailScreen() {
         {/* Photo Thumbnail Strip */}
         {photos.length > 0 && (
           <Card style={{ marginBottom: Spacing.md }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
-              <Text style={styles.sectionTitle}>Photographs ({photos.length})</Text>
+            <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.sectionTitle}>{t('activities.photographs', 'Photographs ({{count}})', { count: photos.length })}</Text>
               <TouchableOpacity onPress={() => setShowPhotos(true)}>
-                <Text style={styles.linkText}>View all →</Text>
+                <Text style={styles.linkText}>{t('activities.viewAll', 'View all →')}</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[{ gap: Spacing.sm }, isRTL && { flexDirection: 'row-reverse' }]}>
               {photos.map((p, i) => (
                 <TouchableOpacity key={i} onPress={() => setShowPhotos(true)}>
                   <Image
@@ -447,40 +449,40 @@ export default function ActivityDetailScreen() {
 
         {/* Details Card */}
         <Card style={{ marginBottom: Spacing.md }}>
-          <Text style={styles.sectionTitle}>Activity Details</Text>
-          <InfoRow label="Activity Type" value={ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode} />
-          <InfoRow label="Start Time" value={a.startAt ? new Date(a.startAt).toLocaleString('en-PK') : undefined} />
-          <InfoRow label="End Time" value={a.endAt ? new Date(a.endAt).toLocaleString('en-PK') : undefined} />
-          <InfoRow label="Venue" value={a.venue} />
-          <InfoRow label="Unit" value={a.unitId?.name || a.unitName} />
-          {a.leadMemberId?.fullName && <InfoRow label="Lead Officer" value={a.leadMemberId.fullName} />}
+          <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('activities.activityDetails', 'Activity Details')}</Text>
+          <InfoRow label={t('activities.activityType', 'Activity Type')} value={ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode} isRTL={isRTL} />
+          <InfoRow label={t('activities.startTime', 'Start Time')} value={a.startAt ? new Date(a.startAt).toLocaleString() : undefined} isRTL={isRTL} />
+          <InfoRow label={t('activities.endTime', 'End Time')} value={a.endAt ? new Date(a.endAt).toLocaleString() : undefined} isRTL={isRTL} />
+          <InfoRow label={t('activities.venue', 'Venue')} value={a.venue} isRTL={isRTL} />
+          <InfoRow label={t('activities.unit', 'Unit')} value={a.unitId?.name || a.unitName} isRTL={isRTL} />
+          {a.leadMemberId?.fullName && <InfoRow label={t('activities.leadOfficer', 'Lead Officer')} value={a.leadMemberId.fullName} isRTL={isRTL} />}
         </Card>
 
         {/* Campaign Metrics (if applicable) */}
         {a.typeCode === 'CAMPAIGN' && (
           <Card style={{ marginBottom: Spacing.md }}>
-            <Text style={styles.sectionTitle}>Campaign Metrics</Text>
-            {a.campaign_householdsVisited != null && <InfoRow label="Households Visited" value={String(a.campaign_householdsVisited)} />}
-            {a.campaign_peopleContacted != null && <InfoRow label="People Contacted" value={String(a.campaign_peopleContacted)} />}
-            {a.campaign_pamphletsDistributed != null && <InfoRow label="Pamphlets Distributed" value={String(a.campaign_pamphletsDistributed)} />}
-            {a.campaign_actualJoiners != null && <InfoRow label="New Members / Joiners" value={String(a.campaign_actualJoiners)} />}
-            {a.campaign_volunteerHours != null && <InfoRow label="Volunteer Hours" value={String(a.campaign_volunteerHours)} />}
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('activities.campaignMetrics', 'Campaign Metrics')}</Text>
+            {a.campaign_householdsVisited != null && <InfoRow label={t('activities.householdsVisited', 'Households Visited')} value={String(a.campaign_householdsVisited)} isRTL={isRTL} />}
+            {a.campaign_peopleContacted != null && <InfoRow label={t('activities.peopleContacted', 'People Contacted')} value={String(a.campaign_peopleContacted)} isRTL={isRTL} />}
+            {a.campaign_pamphletsDistributed != null && <InfoRow label={t('activities.pamphletsDistributed', 'Pamphlets Distributed')} value={String(a.campaign_pamphletsDistributed)} isRTL={isRTL} />}
+            {a.campaign_actualJoiners != null && <InfoRow label={t('activities.newMembersJoiners', 'New Members / Joiners')} value={String(a.campaign_actualJoiners)} isRTL={isRTL} />}
+            {a.campaign_volunteerHours != null && <InfoRow label={t('activities.volunteerHours', 'Volunteer Hours')} value={String(a.campaign_volunteerHours)} isRTL={isRTL} />}
           </Card>
         )}
 
         {/* Description */}
         {a.description ? (
           <Card style={{ marginBottom: Spacing.md }}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.bodyText}>{a.description}</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('activities.description', 'Description')}</Text>
+            <Text style={[styles.bodyText, isRTL && { textAlign: 'right' }]}>{a.description}</Text>
           </Card>
         ) : null}
 
         {/* Outcome Notes / Cancellation Reason */}
         {a.outcomeNotes ? (
           <Card style={{ marginBottom: Spacing.md }}>
-            <Text style={styles.sectionTitle}>Outcome Notes / Resolution</Text>
-            <Text style={styles.bodyText}>{a.outcomeNotes}</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('activities.outcomeNotesResolution', 'Outcome Notes / Resolution')}</Text>
+            <Text style={[styles.bodyText, isRTL && { textAlign: 'right' }]}>{a.outcomeNotes}</Text>
           </Card>
         ) : null}
       </ScrollView>
@@ -488,21 +490,21 @@ export default function ActivityDetailScreen() {
       {/* ================= PHOTOS MODAL ================= */}
       <Modal visible={showPhotos} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPhotos(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity onPress={() => setShowPhotos(false)}>
-              <Text style={styles.modalCancel}>Close</Text>
+              <Text style={styles.modalCancel}>{t('common.close', 'Close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Photos ({photos.length})</Text>
+            <Text style={styles.modalTitle}>{t('activities.photosWithCount', 'Photos ({{count}})', { count: photos.length })}</Text>
             {canEditState ? (
               <TouchableOpacity onPress={handleUploadPhoto} disabled={uploadingPhoto}>
-                {uploadingPhoto ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>+ Add</Text>}
+                {uploadingPhoto ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>{t('common.add', '+ Add')}</Text>}
               </TouchableOpacity>
             ) : <View style={{ width: 40 }} />}
           </View>
 
           {photoError ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{photoError}</Text>
+            <View style={[styles.errorBox, isRTL && { alignItems: 'flex-end' }]}>
+              <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{photoError}</Text>
             </View>
           ) : null}
 
@@ -510,9 +512,9 @@ export default function ActivityDetailScreen() {
             {photos.length === 0 ? (
               <EmptyState
                 icon="📷"
-                title="No photos yet"
-                message="Upload EXIF/GPS photos to document this activity."
-                actionLabel={canEditState ? "Upload Photos" : undefined}
+                title={t('activities.noPhotosYet', 'No photos yet')}
+                message={t('activities.noPhotosSub', 'Upload EXIF/GPS photos to document this activity.')}
+                actionLabel={canEditState ? t('activities.uploadPhotos', 'Upload Photos') : undefined}
                 onAction={canEditState ? handleUploadPhoto : undefined}
               />
             ) : (
@@ -523,10 +525,10 @@ export default function ActivityDetailScreen() {
                     style={{ width: '100%', height: 260 }}
                     resizeMode="cover"
                   />
-                  <View style={{ padding: Spacing.sm }}>
+                  <View style={[{ padding: Spacing.sm }, isRTL && { alignItems: 'flex-end' }]}>
                     <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
-                      Photo {i + 1} {p.capturedAt ? `· Captured ${shortDate(p.capturedAt)}` : ''}
-                      {p._isOffline ? ' · (Offline Pending Sync)' : ''}
+                      {t('activities.photoIndex', 'Photo {{current}}', { current: i + 1 })} {p.capturedAt ? `· ${t('activities.captured', 'Captured {{date}}', { date: shortDate(p.capturedAt) })}` : ''}
+                      {p._isOffline ? ` · ${t('common.offlinePendingSync', '(Offline Pending Sync)')}` : ''}
                     </Text>
                   </View>
                 </Card>
@@ -540,32 +542,32 @@ export default function ActivityDetailScreen() {
       <Modal visible={showComplete} animationType="slide" transparent onRequestClose={() => setShowComplete(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalBoxTitle}>Complete Activity</Text>
-            <Text style={styles.modalBoxSub}>
-              Record outcome notes and complete this event. Photos uploaded: {photos.length}.
+            <Text style={[styles.modalBoxTitle, isRTL && { textAlign: 'right' }]}>{t('activities.completeActivity', 'Complete Activity')}</Text>
+            <Text style={[styles.modalBoxSub, isRTL && { textAlign: 'right' }]}>
+              {t('activities.completeSub', 'Record outcome notes and complete this event. Photos uploaded: {{count}}.', { count: photos.length })}
             </Text>
 
             {completeError ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{completeError}</Text>
+              <View style={[styles.errorBox, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{completeError}</Text>
               </View>
             ) : null}
 
-            <Text style={styles.fieldLabel}>Outcome Notes / Observations</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('activities.outcomeNotesObservations', 'Outcome Notes / Observations')}</Text>
             <TextInput
-              style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
-              placeholder="e.g. Activity conducted successfully with 50 attendees..."
+              style={[styles.input, { height: 90, textAlignVertical: 'top' }, isRTL && { textAlign: 'right' }]}
+              placeholder={t('activities.outcomePlaceholder', 'e.g. Activity conducted successfully with 50 attendees...')}
               value={outcomeNotes}
               onChangeText={setOutcomeNotes}
               multiline
             />
 
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowComplete(false)} disabled={completingBusy}>
-                <Text style={styles.modalSecondaryBtnText}>Cancel</Text>
+                <Text style={styles.modalSecondaryBtnText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalPrimaryBtn} onPress={submitComplete} disabled={completingBusy}>
-                {completingBusy ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalPrimaryBtnText}>Mark Complete</Text>}
+                {completingBusy ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalPrimaryBtnText}>{t('activities.markComplete', 'Mark Complete')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -576,36 +578,36 @@ export default function ActivityDetailScreen() {
       <Modal visible={showCancel} animationType="slide" transparent onRequestClose={() => setShowCancel(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalBoxTitle}>Cancel Activity</Text>
-            <Text style={styles.modalBoxSub}>
-              Provide a clear reason for cancellation.
+            <Text style={[styles.modalBoxTitle, isRTL && { textAlign: 'right' }]}>{t('activities.cancelActivity', 'Cancel Activity')}</Text>
+            <Text style={[styles.modalBoxSub, isRTL && { textAlign: 'right' }]}>
+              {t('activities.cancelSub', 'Provide a clear reason for cancellation.')}
             </Text>
 
             {cancelError ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{cancelError}</Text>
+              <View style={[styles.errorBox, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{cancelError}</Text>
               </View>
             ) : null}
 
-            <Text style={styles.fieldLabel}>Reason for Cancellation *</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('activities.reasonForCancellation', 'Reason for Cancellation')} *</Text>
             <TextInput
-              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-              placeholder="e.g. Postponed due to heavy rain..."
+              style={[styles.input, { height: 80, textAlignVertical: 'top' }, isRTL && { textAlign: 'right' }]}
+              placeholder={t('activities.cancelReasonPlaceholder', 'e.g. Postponed due to heavy rain...')}
               value={cancelReason}
               onChangeText={setCancelReason}
               multiline
             />
 
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowCancel(false)} disabled={cancellingBusy}>
-                <Text style={styles.modalSecondaryBtnText}>Close</Text>
+                <Text style={styles.modalSecondaryBtnText}>{t('common.close', 'Close')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalPrimaryBtn, { backgroundColor: Colors.error }]}
                 onPress={submitCancel}
                 disabled={cancellingBusy}
               >
-                {cancellingBusy ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalPrimaryBtnText}>Cancel Activity</Text>}
+                {cancellingBusy ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalPrimaryBtnText}>{t('activities.cancelActivityBtn', 'Cancel Activity')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
