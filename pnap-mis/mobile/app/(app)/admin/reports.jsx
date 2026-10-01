@@ -15,6 +15,7 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, hasRole } from '../../../src/utils/permissions';
 import { api, errorMessage } from '../../../src/api/client';
 import { useNetwork } from '../../../src/context/NetworkContext';
@@ -39,6 +40,7 @@ const COMMITTEE_TIER_LABELS = {
 export default function ReportsScreen() {
   const { user } = useAuth();
   const { ctx, provinces, setCtx } = useUnit();
+  const { t, isRTL } = useLanguage();
   const params = useLocalSearchParams();
 
   const queryBody = params.body || '';
@@ -186,7 +188,7 @@ export default function ReportsScreen() {
 
   async function handleDownloadUnit(kind, format) {
     if (!isOnline) {
-      setError('Report generation and exports require an active internet connection.');
+      setError(t('reports.offlineMsg', 'Report generation and exports require an active internet connection.'));
       return;
     }
     setError('');
@@ -201,7 +203,7 @@ export default function ReportsScreen() {
 
       await downloadAndShare(`/exports/unit/${kind}/${format}`, filename, qParams);
     } catch (e) {
-      setError('Export failed: ' + (e.message || 'unknown'));
+      setError(t('reports.exportFailed', 'Export failed: {{msg}}', { msg: e.message || 'unknown' }));
     } finally {
       setBusyKey(null);
     }
@@ -210,7 +212,7 @@ export default function ReportsScreen() {
   async function handleDownloadMember(format) {
     if (!memberId) return;
     if (!isOnline) {
-      setError('Report generation and exports require an active internet connection.');
+      setError(t('reports.offlineMsg', 'Report generation and exports require an active internet connection.'));
       return;
     }
     setError('');
@@ -225,7 +227,7 @@ export default function ReportsScreen() {
       const filename = `member-${safeMember}-performance.${format}`;
       await downloadAndShare(`/exports/member/${memberId}/${format}`, filename, p);
     } catch (e) {
-      setError('Export failed: ' + (e.message || 'unknown'));
+      setError(t('reports.exportFailed', 'Export failed: {{msg}}', { msg: e.message || 'unknown' }));
     } finally {
       setBusyKey(null);
     }
@@ -239,70 +241,70 @@ export default function ReportsScreen() {
   const unitDisplayName = activeUnitName;
 
   const scopeDescription = isCongressView ? (
-    'National Congress Assembly Records (Central)'
+    t('reports.nationalCongressAssemblyRecords', 'National Congress Assembly Records (Central)')
   ) : (isJirgaView ? (
-    scope === 'subtree' ? `Aggregated ${jirgaTier} Report` : `${jirgaTier} Direct Records`
+    scope === 'subtree' ? t('reports.aggregatedJirgaReport', 'Aggregated {{tier}} Report (Including all subordinate tiers)', { tier: jirgaTier }) : t('reports.directJirgaRecordsOnly', '{{tier}} Direct Records Only', { tier: jirgaTier })
   ) : (isCommitteeView ? {
-    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
-    AREA: scope === 'subtree' ? 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)' : 'Elaqai Committee Level Only (Records authored directly at Elaqai)',
-    DISTRICT: scope === 'subtree' ? 'Aggregated Zilla Committee Report (Roll-up of all subordinate Elaqai Committees & Basic Units + Zilla Committee activities)' : 'Zilla Committee Level Only (Records authored directly at Zilla)',
-    PROVINCE: scope === 'subtree' ? 'Aggregated Sobayi Committee Report (Roll-up of all subordinate Zilla, Elaqai Committees & Basic Units + Sobayi Committee activities)' : 'Sobayi Committee Level Only (Records authored directly at Sobayi)',
-    CENTRAL: scope === 'subtree' ? 'Aggregated Central Committee Report (Nationwide roll-up across all subordinate Sobayi, Zilla, and Elaqai Committees)' : 'Central Committee Level Only (Records authored directly at Central)',
+    BASIC_UNIT: t('reports.basicUnitDirect', 'Basic Unit Level (Direct unit records)'),
+    AREA: scope === 'subtree' ? t('reports.aggElaqai', 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)') : t('reports.directElaqai', 'Elaqai Committee Level Only (Records authored directly at Elaqai)'),
+    DISTRICT: scope === 'subtree' ? t('reports.aggZilla', 'Aggregated Zilla Committee Report (Roll-up of all subordinate Elaqai Committees & Basic Units + Zilla Committee activities)') : t('reports.directZilla', 'Zilla Committee Level Only (Records authored directly at Zilla)'),
+    PROVINCE: scope === 'subtree' ? t('reports.aggSobayi', 'Aggregated Sobayi Committee Report (Roll-up of all subordinate Zilla, Elaqai Committees & Basic Units + Sobayi Committee activities)') : t('reports.directSobayi', 'Sobayi Committee Level Only (Records authored directly at Sobayi)'),
+    CENTRAL: scope === 'subtree' ? t('reports.aggCentral', 'Aggregated Central Committee Report (Nationwide roll-up across all subordinate Sobayi, Zilla, and Elaqai Committees)') : t('reports.directCentral', 'Central Committee Level Only (Records authored directly at Central)'),
   }[activeLevel] || '' : {
-    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
-    AREA: scope === 'subtree' ? 'Aggregated Area Report (Roll-up of all subordinate Basic Units + Area activities)' : 'Area Level Only (Records authored directly at Area)',
-    DISTRICT: scope === 'subtree' ? 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)' : 'District Level Only (Records authored directly at District)',
-    PROVINCE: scope === 'subtree' ? 'Aggregated Province Report (Roll-up of all subordinate Districts, Areas & Basic Units + Province activities)' : 'Province Level Only (Records authored directly at Province)',
-    CENTRAL: scope === 'subtree' ? 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)' : 'Central Level Only (Records authored directly at Central)',
+    BASIC_UNIT: t('reports.basicUnitDirect', 'Basic Unit Level (Direct unit records)'),
+    AREA: scope === 'subtree' ? t('reports.aggArea', 'Aggregated Area Report (Roll-up of all subordinate Basic Units + Area activities)') : t('reports.directArea', 'Area Level Only (Records authored directly at Area)'),
+    DISTRICT: scope === 'subtree' ? t('reports.aggDistrict', 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)') : t('reports.directDistrict', 'District Level Only (Records authored directly at District)'),
+    PROVINCE: scope === 'subtree' ? t('reports.aggProvince', 'Aggregated Province Report (Roll-up of all subordinate Districts, Areas & Basic Units + Province activities)') : t('reports.directProvince', 'Province Level Only (Records authored directly at Province)'),
+    CENTRAL: scope === 'subtree' ? t('reports.aggOrgCentral', 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)') : t('reports.directOrgCentral', 'Central Level Only (Records authored directly at Central)'),
   }[activeLevel] || ''));
 
   const pageTitle = isCongressView
-    ? 'National Congress Reports · PKNAP Central'
+    ? t('reports.nationalCongressTitle', 'National Congress Reports · PKNAP Central')
     : (isJirgaView
-      ? `${jirgaTier} Reports · ${unitDisplayName}`
+      ? `${jirgaTier} ${t('reports.reports', 'Reports')} · ${unitDisplayName}`
       : (isCommitteeView
-        ? `${committeeTierFormatted} Reports · ${unitDisplayName}`
-        : `Reports · ${unitDisplayName}`));
+        ? `${committeeTierFormatted} ${t('reports.reports', 'Reports')} · ${unitDisplayName}`
+        : `${t('reports.reports', 'Reports')} · ${unitDisplayName}`));
 
   const meetingsReportTitle = isCongressView
-    ? 'National Congress Meetings & Activities Report'
+    ? t('reports.congressMeetingsReport', 'National Congress Meetings & Activities Report')
     : (isJirgaView
-      ? `${jirgaTier} Meetings & Activities Report`
+      ? `${jirgaTier} ${t('reports.meetingsAndActivitiesReport', 'Meetings & Activities Report')}`
       : (isCommitteeView
-        ? `${committeeTierFormatted} Meetings & Activities Report`
-        : 'Meetings & Activities Report'));
+        ? `${committeeTierFormatted} ${t('reports.meetingsAndActivitiesReport', 'Meetings & Activities Report')}`
+        : t('reports.meetingsAndActivitiesReport', 'Meetings & Activities Report')));
 
   const meetingsDesc = isCongressView
-    ? 'National Congress meetings (with embedded photos), congress activities, and responsibilities.'
+    ? t('reports.congressMeetingsDesc', 'National Congress meetings (with embedded photos), congress activities, and responsibilities.')
     : (isCommitteeView
-      ? 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.'
-      : 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.');
+      ? t('reports.committeeMeetingsDesc', 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.')
+      : t('reports.executiveMeetingsDesc', 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.'));
 
   const financeReportTitle = isCongressView
-    ? 'National Congress Finance Report'
+    ? t('reports.congressFinanceReport', 'National Congress Finance Report')
     : (isJirgaView
-      ? `${jirgaTier} Finance Report`
+      ? `${jirgaTier} ${t('reports.financeReport', 'Finance Report')}`
       : (isCommitteeView
-        ? `${committeeTierFormatted} Finance Report`
-        : 'Finance Report'));
+        ? `${committeeTierFormatted} ${t('reports.financeReport', 'Finance Report')}`
+        : t('reports.financeReport', 'Finance Report')));
 
   const financeDesc = isCongressView
-    ? 'National Congress donations ledger, expenses ledger, and congress net balance for the period.'
+    ? t('reports.congressFinanceDesc', 'National Congress donations ledger, expenses ledger, and congress net balance for the period.')
     : (isCommitteeView
-      ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'
-      : 'Executive donations ledger, expenses ledger, and the executive net balance for the period.');
+      ? t('reports.committeeFinanceDesc', 'Committee donations ledger, expenses ledger, and the committee net balance for the period.')
+      : t('reports.executiveFinanceDesc', 'Executive donations ledger, expenses ledger, and the executive net balance for the period.'));
 
   const memberReportTitle = isCongressView
-    ? 'Congress Member Performance Report'
+    ? t('reports.congressMemberPerfTitle', 'Congress Member Performance Report')
     : (isCommitteeView
-      ? 'Committee Member Performance Report'
-      : 'Individual Performance Report');
+      ? t('reports.committeeMemberPerfTitle', 'Committee Member Performance Report')
+      : t('reports.memberPerformanceTitle', 'Individual Performance Report'));
 
   const memberDesc = isCongressView
-    ? 'Performance scorecard and attendance report for National Congress members.'
+    ? t('reports.congressMemberPerfDesc', 'Performance scorecard and attendance report for National Congress members.')
     : (isCommitteeView
-      ? 'Performance scorecard and attendance report for committee members.'
-      : 'Performance scorecard and attendance report for executive committee and subordinate members.');
+      ? t('reports.committeeMemberPerfDesc', 'Performance scorecard and attendance report for committee members.')
+      : t('reports.executiveMemberPerfDesc', 'Performance scorecard and attendance report for executive committee and subordinate members.'));
 
   const selectedMember = members.find((m) => m._id === memberId);
   const filteredMembers = members.filter((m) => {
@@ -325,20 +327,20 @@ export default function ReportsScreen() {
             <View style={styles.guidanceIconBox}>
               <Ionicons name="people-outline" size={40} color={Colors.primary} />
             </View>
-            <Text style={styles.guidanceTitle}>National Congress operates exclusively at the Central Level</Text>
-            <Text style={styles.guidanceText}>
-              Under the PKNAP constitution, the <Text style={{ fontWeight: '700' }}>National Congress (قومي کانګرس)</Text> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <Text style={{ fontWeight: '700' }}>Sobayi Jirga</Text> (Province) and <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text> (District & Area).
+            <Text style={[styles.guidanceTitle, isRTL && { textAlign: 'center' }]}>{t('congress.centralOnlyTitle', 'National Congress operates exclusively at the Central Level')}</Text>
+            <Text style={[styles.guidanceText, isRTL && { textAlign: 'center' }]}>
+              {t('congress.centralOnlyText', 'Under the PKNAP constitution, the National Congress (قومي کانګرس) is the supreme representative assembly operating at the Central tier. Lower tiers operate via Sobayi Jirga (Province) and Zilla & Elaqayi Committees (District & Area).')}
             </Text>
 
             <View style={styles.guidanceBtnCol}>
               <TouchableOpacity
-                style={styles.guidanceBtnPrimary}
+                style={[styles.guidanceBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => {
                   setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                 }}
               >
-                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.guidanceBtnPrimaryText}>Switch to Central Unit Context →</Text>
+                <Ionicons name="globe-outline" size={18} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                <Text style={styles.guidanceBtnPrimaryText}>{t('congress.switchToCentral', 'Switch to Central Unit Context →')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -356,39 +358,39 @@ export default function ReportsScreen() {
             <View style={styles.guidanceIconBox}>
               <Ionicons name="people-outline" size={40} color={Colors.primary} />
             </View>
-            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
-            <Text style={styles.guidanceText}>
-              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            <Text style={[styles.guidanceTitle, isRTL && { textAlign: 'center' }]}>{t('activities.jirgaProvincialOnlyTitle', 'Jirga is only available at Provincial and Central tiers')}</Text>
+            <Text style={[styles.guidanceText, isRTL && { textAlign: 'center' }]}>
+              {t('activities.jirgaProvincialOnlyText', 'Under the party constitution, the Sobayi Jirga (صوبايي جرګه) operates at the Province level, and the Qomi Jirga / National Jirga (قومي جرګه) operates at the Central level. District and Area units operate via Zilla & Elaqayi Committees.')}
             </Text>
 
             <View style={styles.guidanceBtnCol}>
               {isHigherAdmin(user) && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnPrimary}
+                  style={[styles.guidanceBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                   }}
                 >
-                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>{t('activities.openQomiJirga', 'Open Qomi Jirga (Central)')}</Text>
                 </TouchableOpacity>
               )}
 
               {user?.scope?.provinceId && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnSecondary}
+                  style={[styles.guidanceBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
                   }}
                 >
-                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>{t('activities.openMySobayiJirga', 'Open My Sobayi Jirga')}</Text>
                 </TouchableOpacity>
               )}
 
               {isHigherAdmin(user) && provinces && provinces.length > 0 && (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <Text style={[styles.guidanceSubHead, isRTL && { textAlign: 'right' }]}>{t('activities.orSwitchProvincialJirga', 'OR SWITCH TO PROVINCIAL SOBAYI JIRGA:')}</Text>
                   <View style={styles.provGrid}>
                     {provinces.map((prov) => (
                       <TouchableOpacity
@@ -396,7 +398,7 @@ export default function ReportsScreen() {
                         style={styles.provPillBtn}
                         onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
                       >
-                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                        <Text style={styles.provPillBtnText}>{prov.name} {t('finance.sobayiJirga', 'Sobayi Jirga')} →</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -414,21 +416,21 @@ export default function ReportsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header Banner */}
         <View style={styles.header}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text style={styles.pageTitle}>{pageTitle}</Text>
+          <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={[styles.pageTitle, isRTL && { textAlign: 'right' }]}>{pageTitle}</Text>
             {!isOnline && (
               <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline Mode</Text>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>{t('common.offlineMode', 'Offline Mode')}</Text>
               </View>
             )}
           </View>
         </View>
 
         {!isOnline && (
-          <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={[{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8 }, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="cloud-offline-outline" size={20} color="#DC2626" />
-            <Text style={{ color: '#991B1B', fontSize: 13, flex: 1, lineHeight: 18 }}>
-              You are currently offline. Report compilation, real-time analytics, and PDF/Excel downloads are disabled until network connectivity is restored.
+            <Text style={[{ color: '#991B1B', fontSize: 13, flex: 1, lineHeight: 18 }, isRTL && { textAlign: 'right' }]}>
+              {t('reports.offlineMsg', 'You are currently offline. Report compilation, real-time analytics, and PDF/Excel downloads are disabled until network connectivity is restored.')}
             </Text>
           </View>
         )}
@@ -436,42 +438,42 @@ export default function ReportsScreen() {
         {/* Unit Context Card */}
         {!isCongressView && (
           <Card style={[styles.card, styles.unitContextCard]}>
-            <View style={styles.unitContextRow}>
+            <View style={[styles.unitContextRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={styles.unitContextIconBox}>
                 <Ionicons name="business" size={20} color={Colors.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.unitContextLabel}>ACTIVE REPORTING UNIT</Text>
-                <Text style={styles.unitContextName}>{activeUnitName}</Text>
-                <Text style={styles.unitContextTier}>{activeLevel.replace('_', ' ')} TIER</Text>
+              <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={[styles.unitContextLabel, isRTL && { textAlign: 'right' }]}>{t('reports.activeReportingUnit', 'ACTIVE REPORTING UNIT')}</Text>
+                <Text style={[styles.unitContextName, isRTL && { textAlign: 'right' }]}>{activeUnitName}</Text>
+                <Text style={[styles.unitContextTier, isRTL && { textAlign: 'right' }]}>{t('reports.tierSuffix', '{{tier}} TIER', { tier: t('units.' + activeLevel.toLowerCase(), activeLevel.replace('_', ' ')) })}</Text>
               </View>
               <TouchableOpacity
-                style={styles.switchUnitBtn}
+                style={[styles.switchUnitBtn, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => setUnitSwitcherVisible(true)}
               >
-                <Ionicons name="swap-horizontal" size={16} color={Colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.switchUnitBtnText}>Switch</Text>
+                <Ionicons name="swap-horizontal" size={16} color={Colors.primary} style={{ marginHorizontal: 4 }} />
+                <Text style={styles.switchUnitBtnText}>{t('reports.switch', 'Switch')}</Text>
               </TouchableOpacity>
             </View>
           </Card>
         )}
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{error}</Text> : null}
 
         {/* Scope & Period Filter Card */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Report Scope & Period Filter</Text>
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('reports.scopeAndPeriodFilter', 'Report Scope & Period Filter')}</Text>
           
           {activeLevel !== 'BASIC_UNIT' && !isCongressView ? (
             <View style={{ marginBottom: Spacing.md }}>
-              <Text style={styles.label}>Data Aggregation Scope</Text>
-              <View style={styles.scopeTabs}>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('reports.dataAggregationScope', 'Data Aggregation Scope')}</Text>
+              <View style={[styles.scopeTabs, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity 
                   style={[styles.scopeTab, scope === 'subtree' && styles.scopeTabActive]}
                   onPress={() => setScope('subtree')}
                 >
                   <Text style={[styles.scopeTabText, scope === 'subtree' && styles.scopeTabTextActive]}>
-                    Aggregated (Include all subordinate units roll-up)
+                    {t('reports.aggregatedRollup', 'Aggregated (Include all subordinate units roll-up)')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
@@ -479,7 +481,7 @@ export default function ReportsScreen() {
                   onPress={() => setScope('own')}
                 >
                   <Text style={[styles.scopeTabText, scope === 'own' && styles.scopeTabTextActive]}>
-                    This unit tier only
+                    {t('reports.thisUnitTierOnly', 'This unit tier only')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -488,49 +490,49 @@ export default function ReportsScreen() {
 
           {/* Date Presets */}
           <View style={{ marginBottom: Spacing.sm }}>
-            <Text style={styles.label}>Quick Date Range</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetScroll}>
+            <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('reports.quickDateRange', 'Quick Date Range')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.presetScroll, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('THIS_MONTH')}>
-                <Text style={styles.presetBtnText}>This Month</Text>
+                <Text style={styles.presetBtnText}>{t('reports.thisMonth', 'This Month')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('LAST_MONTH')}>
-                <Text style={styles.presetBtnText}>Last Month</Text>
+                <Text style={styles.presetBtnText}>{t('reports.lastMonth', 'Last Month')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('30_DAYS')}>
-                <Text style={styles.presetBtnText}>Last 30 Days</Text>
+                <Text style={styles.presetBtnText}>{t('reports.last30Days', 'Last 30 Days')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.presetBtn} onPress={() => applyDatePreset('YTD')}>
-                <Text style={styles.presetBtnText}>Year to Date</Text>
+                <Text style={styles.presetBtnText}>{t('reports.ytd', 'Year to Date')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.presetBtn, { backgroundColor: '#fee2e2' }]} onPress={() => applyDatePreset('CLEAR')}>
-                <Text style={[styles.presetBtnText, { color: Colors.error }]}>Clear</Text>
+                <Text style={[styles.presetBtnText, { color: Colors.error }]}>{t('common.clear', 'Clear')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
 
-          <View style={styles.dateRow}>
+          <View style={[styles.dateRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={styles.dateField}>
               <DatePicker
-                label="From Date"
+                label={t('reports.fromDate', 'From Date')}
                 value={from}
                 onChange={setFrom}
-                placeholder="Start Date"
+                placeholder={t('reports.startDate', 'Start Date')}
               />
             </View>
             <View style={styles.dateField}>
               <DatePicker
-                label="To Date"
+                label={t('reports.toDate', 'To Date')}
                 value={to}
                 onChange={setTo}
-                placeholder="End Date"
+                placeholder={t('reports.endDate', 'End Date')}
               />
             </View>
           </View>
 
           {scopeDescription ? (
             <View style={styles.scopeBadge}>
-              <Text style={styles.scopeBadgeText}>
-                📊 <Text style={{ fontWeight: '700' }}>Report Mode:</Text> {scopeDescription}
+              <Text style={[styles.scopeBadgeText, isRTL && { textAlign: 'right' }]}>
+                📊 <Text style={{ fontWeight: '700' }}>{t('reports.reportMode', 'Report Mode:')}</Text> {scopeDescription}
               </Text>
             </View>
           ) : null}
@@ -538,9 +540,9 @@ export default function ReportsScreen() {
 
         {/* Meetings & Activities Report Card */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>{meetingsReportTitle}</Text>
-          <Text style={styles.cardDesc}>{meetingsDesc}</Text>
-          <View style={styles.btnRow}>
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{meetingsReportTitle}</Text>
+          <Text style={[styles.cardDesc, isRTL && { textAlign: 'right' }]}>{meetingsDesc}</Text>
+          <View style={[styles.btnRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
               style={styles.btnPrimary}
               onPress={() => handleDownloadUnit('meetings', 'pdf')}
@@ -549,7 +551,7 @@ export default function ReportsScreen() {
               {busyKey === 'meetings-pdf' ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.btnPrimaryText}>Download PDF</Text>
+                <Text style={styles.btnPrimaryText}>{t('common.downloadPdf', 'Download PDF')}</Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -560,7 +562,7 @@ export default function ReportsScreen() {
               {busyKey === 'meetings-xlsx' ? (
                 <ActivityIndicator size="small" color={Colors.text} />
               ) : (
-                <Text style={styles.btnSecondaryText}>Download Excel</Text>
+                <Text style={styles.btnSecondaryText}>{t('common.downloadExcel', 'Download Excel')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -568,11 +570,11 @@ export default function ReportsScreen() {
 
         {/* Activities & Field Operations Report Card */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Activities & Field Operations Report</Text>
-          <Text style={styles.cardDesc}>
-            Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('reports.activitiesReportTitle', 'Activities & Field Operations Report')}</Text>
+          <Text style={[styles.cardDesc, isRTL && { textAlign: 'right' }]}>
+            {t('reports.activitiesReportDesc', 'Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.')}
           </Text>
-          <View style={styles.btnRow}>
+          <View style={[styles.btnRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
               style={styles.btnPrimary}
               onPress={() => handleDownloadUnit('activities', 'pdf')}
@@ -581,7 +583,7 @@ export default function ReportsScreen() {
               {busyKey === 'activities-pdf' ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.btnPrimaryText}>Download PDF</Text>
+                <Text style={styles.btnPrimaryText}>{t('common.downloadPdf', 'Download PDF')}</Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -592,7 +594,7 @@ export default function ReportsScreen() {
               {busyKey === 'activities-xlsx' ? (
                 <ActivityIndicator size="small" color={Colors.text} />
               ) : (
-                <Text style={styles.btnSecondaryText}>Download Excel</Text>
+                <Text style={styles.btnSecondaryText}>{t('common.downloadExcel', 'Download Excel')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -601,9 +603,9 @@ export default function ReportsScreen() {
         {/* Finance Report Card */}
         {canManageFinance(user) && (
           <Card style={styles.card}>
-            <Text style={styles.cardTitle}>{financeReportTitle}</Text>
-            <Text style={styles.cardDesc}>{financeDesc}</Text>
-            <View style={styles.btnRow}>
+            <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{financeReportTitle}</Text>
+            <Text style={[styles.cardDesc, isRTL && { textAlign: 'right' }]}>{financeDesc}</Text>
+            <View style={[styles.btnRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.btnPrimary}
                 onPress={() => handleDownloadUnit('finance', 'pdf')}
@@ -612,7 +614,7 @@ export default function ReportsScreen() {
                 {busyKey === 'finance-pdf' ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.btnPrimaryText}>Download PDF</Text>
+                  <Text style={styles.btnPrimaryText}>{t('common.downloadPdf', 'Download PDF')}</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
@@ -623,7 +625,7 @@ export default function ReportsScreen() {
                 {busyKey === 'finance-xlsx' ? (
                   <ActivityIndicator size="small" color={Colors.text} />
                 ) : (
-                  <Text style={styles.btnSecondaryText}>Download Excel</Text>
+                  <Text style={styles.btnSecondaryText}>{t('common.downloadExcel', 'Download Excel')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -632,26 +634,26 @@ export default function ReportsScreen() {
 
         {/* Member Performance Report Card */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>{memberReportTitle}</Text>
-          <Text style={styles.cardDesc}>{memberDesc}</Text>
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{memberReportTitle}</Text>
+          <Text style={[styles.cardDesc, isRTL && { textAlign: 'right' }]}>{memberDesc}</Text>
 
           {/* Member Picker */}
           <View style={styles.field}>
-            <Text style={styles.label}>{isCongressView ? 'Congress Member' : (isCommitteeView ? 'Committee Member' : 'Member')}</Text>
+            <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{isCongressView ? t('reports.congressMember', 'Congress Member') : (isCommitteeView ? t('reports.committeeMember', 'Committee Member') : t('reports.member', 'Member'))}</Text>
             <TouchableOpacity
-              style={styles.pickerButton}
+              style={[styles.pickerButton, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => setMemberModalOpen(true)}
             >
-              <Text style={[styles.pickerButtonText, !selectedMember && { color: Colors.textMuted }]}>
+              <Text style={[styles.pickerButtonText, !selectedMember && { color: Colors.textMuted }, isRTL && { textAlign: 'right' }]}>
                 {selectedMember
                   ? `${selectedMember.fullName} · ${selectedMember.memberId || selectedMember.cnic}${selectedMember.roleText ? ` (${selectedMember.roleText})` : ''}`
-                  : '— pick a member —'}
+                  : t('reports.pickMember', '— pick a member —')}
               </Text>
               <Ionicons name="chevron-down" size={18} color={Colors.textMuted} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.btnRow}>
+          <View style={[styles.btnRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
               style={[styles.btnPrimary, !memberId && { opacity: 0.5 }]}
               onPress={() => handleDownloadMember('pdf')}
@@ -660,7 +662,7 @@ export default function ReportsScreen() {
               {busyKey === 'member-pdf' ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.btnPrimaryText}>Download PDF</Text>
+                <Text style={styles.btnPrimaryText}>{t('common.downloadPdf', 'Download PDF')}</Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -671,7 +673,7 @@ export default function ReportsScreen() {
               {busyKey === 'member-xlsx' ? (
                 <ActivityIndicator size="small" color={Colors.text} />
               ) : (
-                <Text style={styles.btnSecondaryText}>Download Excel</Text>
+                <Text style={styles.btnSecondaryText}>{t('common.downloadExcel', 'Download Excel')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -680,27 +682,27 @@ export default function ReportsScreen() {
           {memberId && reportLoading ? (
             <View style={{ paddingVertical: Spacing.lg, alignItems: 'center' }}>
               <ActivityIndicator size="small" color={Colors.primary} />
-              <Text style={styles.loadingText}>Loading preview…</Text>
+              <Text style={styles.loadingText}>{t('reports.loadingPreview', 'Loading preview…')}</Text>
             </View>
           ) : null}
 
           {memberId && !reportLoading && report ? (
             <View style={styles.previewContainer}>
               {/* Member Profile Row */}
-              <View style={styles.memberProfileRow}>
+              <View style={[styles.memberProfileRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Avatar name={report.member?.fullName} size={54} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.memberProfileName}>{report.member?.fullName}</Text>
-                  <Text style={styles.memberProfileMeta}>
+                <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                  <Text style={[styles.memberProfileName, isRTL && { textAlign: 'right' }]}>{report.member?.fullName}</Text>
+                  <Text style={[styles.memberProfileMeta, isRTL && { textAlign: 'right' }]}>
                     {report.member?.memberId || '—'} · {report.member?.cnic}
                     {report.member?.phone ? ` · ${report.member.phone}` : ''}
                   </Text>
                   {report.roles && report.roles.length > 0 ? (
-                    <View style={styles.roleBadgesRow}>
+                    <View style={[styles.roleBadgesRow, isRTL && { flexDirection: 'row-reverse' }]}>
                       {report.roles.map((r, i) => (
                         <Badge
                           key={i}
-                          label={`${r.customRoleName || r.roleCode} @ ${r.unitLevel}`}
+                          label={`${r.customRoleName || t('roles.' + r.roleCode, r.roleCode)} @ ${t('units.' + (r.unitLevel?.toLowerCase() || ''), r.unitLevel)}`}
                           status="ACTIVE"
                         />
                       ))}
@@ -712,50 +714,50 @@ export default function ReportsScreen() {
               {/* KPI Scorecards Grid */}
               <View style={styles.kpiGrid}>
                 <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Meetings (roster)</Text>
+                  <Text style={styles.kpiLabel}>{t('reports.meetingsRoster', 'Meetings (roster)')}</Text>
                   <Text style={styles.kpiValue}>{report.meetings?.totalRoster ?? 0}</Text>
-                  <Text style={styles.kpiHint}>finalized in range</Text>
+                  <Text style={styles.kpiHint}>{t('reports.finalizedInRange', 'finalized in range')}</Text>
                 </View>
 
                 <View style={[styles.kpiCard, { borderColor: Colors.success, borderWidth: 1 }]}>
-                  <Text style={styles.kpiLabel}>Present</Text>
+                  <Text style={styles.kpiLabel}>{t('status.present', 'Present')}</Text>
                   <Text style={[styles.kpiValue, { color: Colors.success }]}>{report.meetings?.present ?? 0}</Text>
                   {Boolean(report.meetings?.late && report.meetings.late > 0) ? (
-                    <Text style={styles.kpiHint}>+{report.meetings.late} late</Text>
+                    <Text style={styles.kpiHint}>{t('status.lateCount', '+{{count}} late', { count: report.meetings.late })}</Text>
                   ) : null}
                 </View>
 
                 <View style={[styles.kpiCard, { borderColor: Colors.error, borderWidth: 1 }]}>
-                  <Text style={styles.kpiLabel}>Absent</Text>
+                  <Text style={styles.kpiLabel}>{t('status.absent', 'Absent')}</Text>
                   <Text style={[styles.kpiValue, { color: Colors.error }]}>{report.meetings?.absent ?? 0}</Text>
                 </View>
 
                 <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Activities</Text>
+                  <Text style={styles.kpiLabel}>{t('activities.activities', 'Activities')}</Text>
                   <Text style={styles.kpiValue}>{report.activities?.participated ?? 0}</Text>
-                  <Text style={styles.kpiHint}>{report.activities?.led ?? 0} led</Text>
+                  <Text style={styles.kpiHint}>{t('reports.ledCount', '{{count}} led', { count: report.activities?.led ?? 0 })}</Text>
                 </View>
 
                 <View style={styles.kpiCard}>
-                  <Text style={styles.kpiLabel}>Donations Collected</Text>
+                  <Text style={styles.kpiLabel}>{t('reports.donationsCollected', 'Donations Collected')}</Text>
                   <Text style={styles.kpiValue}>{PKR(report.donations?.total ?? 0)}</Text>
-                  <Text style={styles.kpiHint}>{report.donations?.count ?? 0} entries</Text>
+                  <Text style={styles.kpiHint}>{t('reports.entriesCount', '{{count}} entries', { count: report.donations?.count ?? 0 })}</Text>
                 </View>
 
                 <View style={[styles.kpiCard, { width: '100%' }]}>
-                  <Text style={styles.kpiLabel}>Responsibilities</Text>
+                  <Text style={styles.kpiLabel}>{t('reports.responsibilities', 'Responsibilities')}</Text>
                   <Text style={styles.kpiValue}>
                     {report.responsibilities?.completed ?? 0}/{report.responsibilities?.total ?? 0}
                   </Text>
                   <Text style={styles.kpiHint}>
-                    {report.responsibilities?.completionRate != null ? `${report.responsibilities.completionRate}% done` : '—'} · {report.responsibilities?.pending ?? 0} pending
+                    {report.responsibilities?.completionRate != null ? `${report.responsibilities.completionRate}% ${t('reports.done', 'done')}` : '—'} · {t('reports.pendingCount', '{{count}} pending', { count: report.responsibilities?.pending ?? 0 })}
                   </Text>
                 </View>
               </View>
 
               {(report.range?.from || report.range?.to) ? (
-                <Text style={styles.rangeFooter}>
-                  Range: {report.range.from || '—'} → {report.range.to || 'today'}
+                <Text style={[styles.rangeFooter, isRTL && { textAlign: 'right' }]}>
+                  {t('reports.range', 'Range: {{from}} → {{to}}', { from: report.range.from || '—', to: report.range.to || t('common.today', 'today') })}
                 </Text>
               ) : null}
             </View>
@@ -766,17 +768,17 @@ export default function ReportsScreen() {
       {/* Member Picker Modal */}
       <Modal visible={memberModalOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMemberModalOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select Member</Text>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={styles.modalTitle}>{t('reports.selectMember', 'Select Member')}</Text>
             <TouchableOpacity onPress={() => setMemberModalOpen(false)}>
-              <Text style={styles.modalCancel}>Done</Text>
+              <Text style={styles.modalCancel}>{t('common.done', 'Done')}</Text>
             </TouchableOpacity>
           </View>
           
           <View style={{ padding: Spacing.md }}>
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search by name, member ID, CNIC..."
+              style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
+              placeholder={t('reports.searchMemberPlaceholder', 'Search by name, member ID, CNIC...')}
               placeholderTextColor={Colors.textMuted}
               value={memberSearch}
               onChangeText={setMemberSearch}
@@ -790,16 +792,16 @@ export default function ReportsScreen() {
               const active = item._id === memberId;
               return (
                 <TouchableOpacity
-                  style={[styles.memberItem, active && styles.memberItemActive]}
+                  style={[styles.memberItem, active && styles.memberItemActive, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setMemberId(item._id);
                     setMemberModalOpen(false);
                   }}
                 >
                   <Avatar name={item.fullName} size={36} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.memberName}>{item.fullName}</Text>
-                    <Text style={styles.memberSub}>
+                  <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end', marginHorizontal: Spacing.sm }]}>
+                    <Text style={[styles.memberName, isRTL && { textAlign: 'right' }]}>{item.fullName}</Text>
+                    <Text style={[styles.memberSub, isRTL && { textAlign: 'right' }]}>
                       {item.memberId || item.cnic}{item.roleText ? ` · ${item.roleText}` : ''}
                     </Text>
                   </View>
@@ -808,7 +810,7 @@ export default function ReportsScreen() {
               );
             }}
             ListEmptyComponent={
-              <Text style={styles.emptyMembers}>No eligible members found</Text>
+              <Text style={[styles.emptyMembers, isRTL && { textAlign: 'right' }]}>{t('reports.noEligibleMembers', 'No eligible members found')}</Text>
             }
           />
         </SafeAreaView>
