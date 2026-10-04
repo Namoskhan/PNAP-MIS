@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
@@ -14,6 +15,7 @@ const CARD_STYLES = [
 ];
 
 export default function LoginCustomizationScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -49,7 +51,7 @@ export default function LoginCustomizationScreen() {
     setSaving(true); setErr('');
     try {
       await api.patch('/settings', { loginPage: form, changeNote: 'Updated login customization' });
-      toast.success('Login customization saved.');
+      toast.success(t('admin.settings.loginSaved', 'Login customization saved.'));
     } catch (e) {
       setErr(errorMessage(e));
       toast.error(errorMessage(e));
@@ -61,33 +63,33 @@ export default function LoginCustomizationScreen() {
   if (busy) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading login customization...</Text>
+        <Text style={styles.loadingText}>{t('common.loading', 'Loading login customization...')}</Text>
       </View>
     );
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <View style={styles.heroHeader}>
-          <View style={styles.heroIconBg}>
+      <View style={[styles.hero, isRTL && { flexDirection: 'row-reverse' }]}>
+        <View style={[styles.heroHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.heroIconBg, isRTL ? { marginLeft: Spacing.md, marginRight: 0 } : { marginRight: Spacing.md }]}>
             <Ionicons name="log-in" size={24} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>Login Customization</Text>
-            <Text style={styles.heroSub}>
-              Customize the title, welcome message, slogan, and card style. Visible immediately on the login page.
+            <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.loginCustomization', 'Login Customization')}</Text>
+            <Text style={[styles.heroSub, isRTL && { textAlign: 'right' }]}>
+              {t('admin.settings.loginCustomizationSub', 'Customize the title, welcome message, slogan, and card style. Visible immediately on the login page.')}
             </Text>
           </View>
         </View>
-        <View style={styles.heroActions}>
-          <TouchableOpacity style={styles.btnOutline} onPress={() => router.back()} disabled={saving}>
-            <Ionicons name="arrow-back" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-            <Text style={styles.btnOutlineText}>Back</Text>
+        <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
+          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={saving}>
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={styles.btnOutlineText}>{t('admin.settings.backToSettings', 'Back')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnOutline} onPress={load} disabled={saving}>
-            <Ionicons name="refresh" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-            <Text style={styles.btnOutlineText}>Refresh</Text>
+          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={load} disabled={saving}>
+            <Ionicons name="refresh" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={styles.btnOutlineText}>{t('common.refresh', 'Refresh')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -97,73 +99,77 @@ export default function LoginCustomizationScreen() {
       {form && (
         <>
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="image-outline" size={18} color={Colors.textLight} style={{ marginRight: Spacing.sm }} />
-              <Text style={styles.cardTitle}>Hero</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Ionicons name="image-outline" size={18} color={Colors.textLight} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.hero', 'Hero')}</Text>
             </View>
             <View style={styles.cardBody}>
               
-              <Text style={styles.fieldLabel}>Hero text</Text>
+              <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('admin.settings.heroText', 'Hero text')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.heroText}
                 onChangeText={(val) => setForm(p => ({ ...p, heroText: val }))}
-                placeholder="e.g., Manage your organization with confidence"
+                placeholder={t('admin.settings.heroTextPlaceholder', 'e.g., Manage your organization with confidence')}
                 editable={canWrite}
                 maxLength={300}
               />
-              <Text style={styles.hint}>Shown above the login form. Leave blank to hide.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.heroTextHelp', 'Shown above the login form. Leave blank to hide.')}</Text>
 
-              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Welcome message</Text>
+              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.welcomeMessage', 'Welcome message')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.welcomeMessage}
                 onChangeText={(val) => setForm(p => ({ ...p, welcomeMessage: val }))}
-                placeholder="Sign in to continue"
+                placeholder={t('admin.settings.welcomeMessagePlaceholder', 'Sign in to continue')}
                 editable={canWrite}
                 maxLength={200}
               />
-              <Text style={styles.hint}>Greeting displayed above the credentials input.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.welcomeMessage', 'Welcome message')}</Text>
 
-              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Slogan / tagline</Text>
+              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.slogan', 'Slogan / tagline')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.slogan}
                 onChangeText={(val) => setForm(p => ({ ...p, slogan: val }))}
-                placeholder="Your organization's slogan"
+                placeholder={t('admin.settings.sloganPlaceholder', "Your organization's slogan")}
                 editable={canWrite}
                 maxLength={200}
               />
-              <Text style={styles.hint}>Secondary text displayed under the welcome message.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.slogan', 'Slogan / tagline')}</Text>
 
-              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Background image URL (optional)</Text>
+              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.backgroundUrl', 'Background image URL (optional)')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.backgroundUrl}
                 onChangeText={(val) => setForm(p => ({ ...p, backgroundUrl: val }))}
-                placeholder="https://..."
+                placeholder={t('admin.settings.backgroundUrlPlaceholder', 'https://...')}
                 editable={canWrite}
                 maxLength={500}
                 autoCapitalize="none"
               />
-              <Text style={styles.hint}>Until the upload pipeline ships, paste a CDN URL here.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.backgroundUrlHelp', 'Until the upload pipeline ships, paste a CDN URL here.')}</Text>
 
             </View>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="options-outline" size={18} color={Colors.textLight} style={{ marginRight: Spacing.sm }} />
-              <Text style={styles.cardTitle}>Card style</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Ionicons name="options-outline" size={18} color={Colors.textLight} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.cardStyle', 'Card style')}</Text>
             </View>
             <View style={styles.cardBody}>
               {CARD_STYLES.map((s, idx) => {
                 const on = form.cardStyle === s.value;
+                const labelText = s.value === 'SOLID'
+                  ? t('admin.settings.cardStyleSolid', 'SOLID — opaque card with sharp edges')
+                  : t('admin.settings.cardStyleGlass', 'GLASS — translucent card with backdrop blur');
                 return (
                   <TouchableOpacity
                     key={s.value}
                     style={[
                       styles.radioCard,
+                      isRTL && { flexDirection: 'row-reverse' },
                       on && styles.radioCardActive,
                       !canWrite && { opacity: 0.5 },
                       idx > 0 && { marginTop: Spacing.sm }
@@ -171,10 +177,10 @@ export default function LoginCustomizationScreen() {
                     onPress={() => setForm(p => ({ ...p, cardStyle: s.value }))}
                     disabled={!canWrite}
                   >
-                    <View style={[styles.radioDot, on && styles.radioDotActive]} />
+                    <View style={[styles.radioDot, on && styles.radioDotActive, isRTL ? { marginLeft: Spacing.md, marginRight: 0 } : { marginRight: Spacing.md }]} />
                     <View style={styles.radioInfo}>
-                      <Text style={[styles.radioLabel, on && styles.radioLabelActive]}>{s.label}</Text>
-                      <Text style={styles.radioDesc}>{s.description}</Text>
+                      <Text style={[styles.radioLabel, on && styles.radioLabelActive, isRTL && { textAlign: 'right' }]}>{s.label}</Text>
+                      <Text style={[styles.radioDesc, isRTL && { textAlign: 'right' }]}>{labelText}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -183,12 +189,12 @@ export default function LoginCustomizationScreen() {
           </View>
 
           {canWrite && (
-            <View style={styles.footer}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push('/admin/settings')} disabled={saving}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+            <View style={[styles.footer, isRTL && { flexDirection: 'row-reverse' }]}>
+              <TouchableOpacity style={[styles.cancelBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.push('/admin/settings')} disabled={saving}>
+                <Text style={styles.cancelBtnText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={save} disabled={saving}>
-                <Text style={styles.saveBtnText}>{saving ? 'Saving...' : '✓ Save changes'}</Text>
+              <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled, isRTL && { flexDirection: 'row-reverse' }]} onPress={save} disabled={saving}>
+                <Text style={styles.saveBtnText}>{saving ? t('common.saving', 'Saving...') : `✓ ${t('admin.settings.saveLogin', 'Save changes')}`}</Text>
               </TouchableOpacity>
             </View>
           )}

@@ -5,23 +5,25 @@ import {
 } from 'react-native';
 import { api } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { hasPermission } from '../../../src/utils/permissions';
 import Card from '../../../src/components/Card';
 import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Spacing } from '../../../src/constants/colors';
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, isRTL }) {
   if (!value) return null;
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+    <View style={[styles.row, isRTL && { flexDirection: 'row-reverse' }]}>
+      <Text style={[styles.rowLabel, isRTL && { textAlign: 'right' }]}>{label}</Text>
+      <Text style={[styles.rowValue, isRTL ? { textAlign: 'left' } : { textAlign: 'right' }]}>{value}</Text>
     </View>
   );
 }
 
 export default function SystemSettingsScreen() {
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const canRead = hasPermission(user, 'VIEW_SYSTEM_BRANDING') || hasPermission(user, 'MANAGE_SYSTEM_BRANDING');
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export default function SystemSettingsScreen() {
   if (!canRead) {
     return (
       <SafeAreaView style={styles.safe}>
-        <EmptyState icon="🔒" title="Access Restricted" subtitle="You need VIEW_SYSTEM_BRANDING or MANAGE_SYSTEM_BRANDING to view settings." />
+        <EmptyState icon="🔒" title={t('admin.accessRestricted')} subtitle={t('admin.onlySuperAdmins')} />
       </SafeAreaView>
     );
   }
@@ -54,40 +56,40 @@ export default function SystemSettingsScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Banner */}
-        <View style={styles.banner}>
+        <View style={[styles.banner, isRTL && { flexDirection: 'row-reverse' }]}>
           <Text style={styles.bannerIcon}>⚙️</Text>
           <View style={styles.bannerText}>
-            <Text style={styles.bannerTitle}>System Settings</Text>
-            <Text style={styles.bannerSub}>Configuration v{v} · Read-only on mobile</Text>
+            <Text style={[styles.bannerTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.systemSettings')}</Text>
+            <Text style={[styles.bannerSub, isRTL && { textAlign: 'right' }]}>v{v} · {t('admin.readOnlyOnMobile')}</Text>
           </View>
         </View>
 
         <View style={styles.readOnlyBar}>
-          <Text style={styles.readOnlyText}>
-            ℹ️  To edit branding, theme, logos, or typography, open the web admin panel on a desktop browser.
+          <Text style={[styles.readOnlyText, isRTL && { textAlign: 'right' }]}>
+            ℹ️  {t('admin.openWebToEditSettings')}
           </Text>
         </View>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>System Identity</Text>
-          <InfoRow label="System Name" value={identity.systemName} />
-          <InfoRow label="Short Name" value={identity.shortName} />
-          <InfoRow label="Organization" value={identity.organizationName} />
-          <InfoRow label="Browser Tab Title" value={identity.browserTabTitle} />
-          <InfoRow label="Footer Text" value={identity.footerText} />
+          <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.systemIdentity')}</Text>
+          <InfoRow label={t('admin.systemName')} value={identity.systemName} isRTL={isRTL} />
+          <InfoRow label={t('admin.shortName')} value={identity.shortName} isRTL={isRTL} />
+          <InfoRow label={t('admin.organization')} value={identity.organizationName} isRTL={isRTL} />
+          <InfoRow label={t('admin.browserTabTitle')} value={identity.browserTabTitle} isRTL={isRTL} />
+          <InfoRow label={t('admin.footerText')} value={identity.footerText} isRTL={isRTL} />
         </Card>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Theme & Appearance</Text>
-          <InfoRow label="Preset" value={theme.presetName} />
-          <InfoRow label="Mode" value={theme.activeMode} />
-          <InfoRow label="Primary Color" value={theme.overrides?.colorPrimary} />
+          <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('admin.themeAndAppearance')}</Text>
+          <InfoRow label={t('admin.preset')} value={theme.presetName} isRTL={isRTL} />
+          <InfoRow label={t('admin.mode')} value={theme.activeMode} isRTL={isRTL} />
+          <InfoRow label={t('admin.primaryColor')} value={theme.overrides?.colorPrimary} isRTL={isRTL} />
         </Card>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <InfoRow label="Settings Version" value={`v${v}`} />
-          <InfoRow label="Last Updated" value={settings?.updatedAt ? new Date(settings.updatedAt).toLocaleDateString('en-PK') : undefined} />
+          <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('admin.about')}</Text>
+          <InfoRow label={t('admin.settingsVersion')} value={`v${v}`} isRTL={isRTL} />
+          <InfoRow label={t('admin.lastUpdated')} value={settings?.updatedAt ? new Date(settings.updatedAt).toLocaleDateString('en-PK') : undefined} isRTL={isRTL} />
         </Card>
       </ScrollView>
     </SafeAreaView>
