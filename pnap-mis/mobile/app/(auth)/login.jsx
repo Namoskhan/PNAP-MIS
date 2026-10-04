@@ -129,7 +129,22 @@ export default function LoginScreen() {
 
             <View style={styles.field}>
               <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('auth.passwordLabel', 'Password')}</Text>
-              <View style={[styles.passwordRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={styles.passwordRow}>
+                {isRTL && (
+                  <TouchableOpacity
+                    onPress={() => setShowPassword((s) => !s)}
+                    style={styles.eyeBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                )}
                 <TextInput
                   style={[styles.passwordInput, isRTL && { textAlign: 'right' }]}
                   value={password}
@@ -141,19 +156,21 @@ export default function LoginScreen() {
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword((s) => !s)}
-                  style={styles.eyeBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={Colors.textMuted}
-                  />
-                </TouchableOpacity>
+                {!isRTL && (
+                  <TouchableOpacity
+                    onPress={() => setShowPassword((s) => !s)}
+                    style={styles.eyeBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 

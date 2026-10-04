@@ -13,6 +13,7 @@ import Card from '../../../../src/components/Card';
 import Badge from '../../../../src/components/Badge';
 import EmptyState from '../../../../src/components/EmptyState';
 import { Colors, FontSize, Spacing } from '../../../../src/constants/colors';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 
 const CREATABLE_CATEGORIES = [
   { value: 'CUSTOM', label: 'Custom (general)' },
@@ -27,6 +28,7 @@ export default function RolesScreen() {
   const { user } = useAuth();
   const toast = useToast();
   const router = useRouter();
+  const { t, isRTL } = useLanguage();
   const canWrite = isSuperAdmin(user);
 
   const [roles, setRoles] = useState([]);
@@ -110,37 +112,37 @@ export default function RolesScreen() {
     const permCount = (r.permissions || []).length;
     return (
       <Card style={styles.roleCard}>
-        <View style={styles.roleRow}>
+        <View style={[styles.roleRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={[styles.avatar, { backgroundColor: locked ? '#94a3b8' : Colors.primary }]}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
-          <View style={styles.roleMeta}>
-            <View style={styles.roleNameRow}>
+          <View style={[styles.roleMeta, isRTL && { alignItems: 'flex-end' }]}>
+            <View style={[styles.roleNameRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Text style={styles.roleName}>{r.label}</Text>
-              {!r.isSystem && <Badge label="Custom" color="#7c3aed" bg="#f3e8ff" />}
-              {!r.isActive && <Badge label="Inactive" color={Colors.textMuted} bg={Colors.borderLight} />}
+              {!r.isSystem && <Badge label={t('admin.custom') || 'Custom'} color="#7c3aed" bg="#f3e8ff" />}
+              {!r.isActive && <Badge label={t('admin.inactiveStatus') || 'Inactive'} color={Colors.textMuted} bg={Colors.borderLight} />}
             </View>
             <Text style={styles.roleCode}>{r.code}</Text>
             <Text style={styles.rolePerms}>
               {permCount === 0 && r.code !== 'SUPER_ADMIN'
-                ? '⚠️ No permissions granted'
-                : r.code === 'SUPER_ADMIN' ? 'All permissions' : `${permCount} permissions`}
+                ? (t('admin.noPermissionsGranted') || '⚠️ No permissions granted')
+                : r.code === 'SUPER_ADMIN' ? (t('admin.allPermissions') || 'All permissions') : `${permCount} ${t('admin.permissions') || 'permissions'}`}
             </Text>
           </View>
         </View>
 
         {!locked && (
-          <View style={styles.roleActions}>
+          <View style={[styles.roleActions, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => router.push(`/admin/roles/${r._id}`)}
             >
-              <Text style={styles.actionText}>🔐 Permissions</Text>
+              <Text style={styles.actionText}>🔐 {t('admin.permissions') || 'Permissions'}</Text>
             </TouchableOpacity>
             {canWrite && (
               <>
                 <TouchableOpacity style={styles.actionBtn} onPress={() => openEdit(r)}>
-                  <Text style={styles.actionText}>✎ Edit</Text>
+                  <Text style={styles.actionText}>✎ {t('admin.edit') || 'Edit'}</Text>
                 </TouchableOpacity>
                 {!r.isSystem && (
                   <TouchableOpacity style={[styles.actionBtn, styles.actionDanger]} onPress={() => handleDelete(r)}>
@@ -152,7 +154,9 @@ export default function RolesScreen() {
           </View>
         )}
         {locked && (
-          <Text style={styles.lockedLabel}>🔒 Built-in — locked</Text>
+          <Text style={[styles.lockedLabel, isRTL && { textAlign: 'right' }]}>
+            🔒 {t('admin.roleBuiltInLocked') || 'Built-in — locked'}
+          </Text>
         )}
       </Card>
     );
@@ -161,14 +165,18 @@ export default function RolesScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>🛡️ Roles Management</Text>
-          <Text style={styles.headerSub}>Manage system roles and permissions</Text>
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>
+            {t('admin.rolesTitle') || '🛡️ Roles Management'}
+          </Text>
+          <Text style={[styles.headerSub, isRTL && { textAlign: 'right' }]}>
+            {t('admin.rolesDesc') || 'Manage system roles and permissions'}
+          </Text>
         </View>
         {canWrite && (
           <TouchableOpacity style={styles.createBtn} onPress={() => setCreateOpen(true)}>
-            <Text style={styles.createBtnText}>＋ New</Text>
+            <Text style={styles.createBtnText}>＋ {t('admin.createRole') || 'New'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -180,48 +188,56 @@ export default function RolesScreen() {
         contentContainerStyle={styles.list}
         onRefresh={load}
         refreshing={loading}
-        ListEmptyComponent={!loading && <EmptyState icon="🛡️" title="No roles found" />}
+        ListEmptyComponent={!loading && <EmptyState icon="🛡️" title={t('admin.noRolesFound') || 'No roles found'} />}
       />
 
       {/* Create Modal */}
       <Modal visible={createOpen} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Create Custom Role</Text>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={styles.modalTitle}>{t('admin.createCustomRole') || 'Create Custom Role'}</Text>
             <TouchableOpacity onPress={() => { setCreateOpen(false); setForm(EMPTY_FORM); }}>
               <Text style={styles.modalClose}>✕</Text>
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody}>
-            <Text style={styles.fieldLabel}>Role Code *</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.roleCode') || 'Role Code'} *
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && { textAlign: 'right' }]}
               value={form.code}
               onChangeText={(v) => setForm((p) => ({ ...p, code: v.toUpperCase().replace(/[^A-Z0-9_]/g, '') }))}
               placeholder="e.g. YOUTH_LEADER"
               autoCapitalize="characters"
             />
-            <Text style={styles.fieldLabel}>Display Label *</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.displayLabel') || 'Display Label'} *
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && { textAlign: 'right' }]}
               value={form.label}
               onChangeText={(v) => setForm((p) => ({ ...p, label: v }))}
               placeholder="e.g. Youth Leader"
             />
-            <Text style={styles.fieldLabel}>Description</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.description') || 'Description'}
+            </Text>
             <TextInput
-              style={[styles.input, styles.multiline]}
+              style={[styles.input, styles.multiline, isRTL && { textAlign: 'right' }]}
               value={form.description}
               onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
-              placeholder="Optional description"
+              placeholder={t('admin.optionalDescription') || 'Optional description'}
               multiline
               numberOfLines={3}
             />
-            <Text style={styles.fieldLabel}>Category</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.category') || 'Category'}
+            </Text>
             {CREATABLE_CATEGORIES.map((c) => (
               <TouchableOpacity
                 key={c.value}
-                style={[styles.optionRow, form.category === c.value && styles.optionRowActive]}
+                style={[styles.optionRow, form.category === c.value && styles.optionRowActive, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => setForm((p) => ({ ...p, category: c.value }))}
               >
                 <View style={[styles.optionDot, form.category === c.value && styles.optionDotActive]} />
@@ -229,12 +245,12 @@ export default function RolesScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => { setCreateOpen(false); setForm(EMPTY_FORM); }}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t('common.cancel') || 'Cancel'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveBtn} onPress={handleCreate} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Create Role</Text>}
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>{t('admin.createRole') || 'Create Role'}</Text>}
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -243,41 +259,45 @@ export default function RolesScreen() {
       {/* Edit Modal */}
       <Modal visible={!!editing} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Edit Role</Text>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={styles.modalTitle}>{t('admin.editRole') || 'Edit Role'}</Text>
             <TouchableOpacity onPress={() => setEditing(null)}>
               <Text style={styles.modalClose}>✕</Text>
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody}>
-            <Text style={styles.fieldLabel}>Display Label *</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.displayLabel') || 'Display Label'} *
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && { textAlign: 'right' }]}
               value={editForm.label || ''}
               onChangeText={(v) => setEditForm((p) => ({ ...p, label: v }))}
             />
-            <Text style={styles.fieldLabel}>Description</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.description') || 'Description'}
+            </Text>
             <TextInput
-              style={[styles.input, styles.multiline]}
+              style={[styles.input, styles.multiline, isRTL && { textAlign: 'right' }]}
               value={editForm.description || ''}
               onChangeText={(v) => setEditForm((p) => ({ ...p, description: v }))}
               multiline
               numberOfLines={3}
             />
             <TouchableOpacity
-              style={[styles.optionRow, { marginTop: Spacing.md }]}
+              style={[styles.optionRow, { marginTop: Spacing.md }, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => setEditForm((p) => ({ ...p, isActive: !p.isActive }))}
             >
               <View style={[styles.optionDot, editForm.isActive && styles.optionDotActive]} />
-              <Text style={styles.optionLabel}>Active (visible and assignable)</Text>
+              <Text style={styles.optionLabel}>{t('admin.activeStatus') || 'Active'}</Text>
             </TouchableOpacity>
           </ScrollView>
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditing(null)}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t('common.cancel') || 'Cancel'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveBtn} onPress={handleEdit} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Save Changes</Text>}
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>{t('admin.saveChanges') || 'Save Changes'}</Text>}
             </TouchableOpacity>
           </View>
         </SafeAreaView>

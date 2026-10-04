@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { isSuperAdmin } from '../../../src/utils/permissions';
 import Card from '../../../src/components/Card';
 import Badge from '../../../src/components/Badge';
@@ -27,6 +28,7 @@ const ACTION_COLORS = {
 
 export default function AuditLogScreen() {
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [actionFilter, setActionFilter] = useState('');
@@ -35,7 +37,7 @@ export default function AuditLogScreen() {
   if (!isSuperAdmin(user)) {
     return (
       <SafeAreaView style={styles.safe}>
-        <EmptyState icon="🔒" title="Super Admin access required" subtitle="The audit log is only accessible to SUPER_ADMIN." />
+        <EmptyState icon="🔒" title={t('admin.accessRestricted')} subtitle={t('admin.onlySuperAdmins')} />
       </SafeAreaView>
     );
   }
@@ -58,17 +60,17 @@ export default function AuditLogScreen() {
     const color = ACTION_COLORS[e.action] || Colors.primary;
     return (
       <Card style={styles.logCard}>
-        <View style={styles.logRow}>
+        <View style={[styles.logRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <Badge label={e.action || '—'} color={color} bg={color + '18'} />
           <Text style={styles.logTime}>{relativeTime(e.createdAt)}</Text>
         </View>
-        <Text style={styles.actorName}>{e.actorUserId?.fullName || '—'}</Text>
-        <Text style={styles.actorId}>{e.actorIdentifier}</Text>
-        <View style={styles.targetRow}>
+        <Text style={[styles.actorName, isRTL && { textAlign: 'right' }]}>{e.actorUserId?.fullName || '—'}</Text>
+        <Text style={[styles.actorId, isRTL && { textAlign: 'right' }]}>{e.actorIdentifier}</Text>
+        <View style={[styles.targetRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <Text style={styles.targetType}>{e.targetType}</Text>
           {e.targetLabel ? <Text style={styles.targetLabel}> · {e.targetLabel}</Text> : null}
         </View>
-        {e.note ? <Text style={styles.note}>{e.note}</Text> : null}
+        {e.note ? <Text style={[styles.note, isRTL && { textAlign: 'right' }]}>{e.note}</Text> : null}
       </Card>
     );
   }
@@ -82,14 +84,14 @@ export default function AuditLogScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(a) => a}
-          contentContainerStyle={styles.filterList}
+          contentContainerStyle={[styles.filterList, isRTL && { flexDirection: 'row-reverse' }]}
           renderItem={({ item: a }) => (
             <TouchableOpacity
               style={[styles.filterPill, actionFilter === a && styles.filterPillActive]}
               onPress={() => setActionFilter(a)}
             >
               <Text style={[styles.filterText, actionFilter === a && styles.filterTextActive]}>
-                {a || 'All'}
+                {a || t('common.all')}
               </Text>
             </TouchableOpacity>
           )}
@@ -104,9 +106,9 @@ export default function AuditLogScreen() {
         onRefresh={load}
         refreshing={loading}
         ListHeaderComponent={() => (
-          <Text style={styles.totalText}>{total} total entries</Text>
+          <Text style={[styles.totalText, isRTL && { textAlign: 'right' }]}>{total} {t('admin.totalEntries')}</Text>
         )}
-        ListEmptyComponent={!loading && <EmptyState icon="📋" title="No audit entries yet" />}
+        ListEmptyComponent={!loading && <EmptyState icon="📋" title={t('admin.noAuditEntries')} />}
         ListFooterComponent={loading && !items.length ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
       />
     </SafeAreaView>

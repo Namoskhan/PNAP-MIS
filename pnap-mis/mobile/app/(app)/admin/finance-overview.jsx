@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { isSuperAdmin } from '../../../src/utils/permissions';
 import Card from '../../../src/components/Card';
 import EmptyState from '../../../src/components/EmptyState';
@@ -24,6 +25,7 @@ const formatPKR = (val) => {
 
 export default function FinanceOverviewScreen() {
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -53,8 +55,8 @@ export default function FinanceOverviewScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Ionicons name="lock-closed-outline" size={48} color={Colors.error} />
-          <Text style={styles.errorTitle}>Access Restricted</Text>
-          <Text style={styles.errorText}>Only Super Admins can access this screen.</Text>
+          <Text style={styles.errorTitle}>{t('admin.accessRestricted')}</Text>
+          <Text style={styles.errorText}>{t('admin.onlySuperAdmins')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -65,10 +67,10 @@ export default function FinanceOverviewScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={48} color={Colors.error} />
-          <Text style={styles.errorTitle}>Failed to Load</Text>
+          <Text style={styles.errorTitle}>{t('admin.failedToLoad')}</Text>
           <Text style={styles.errorText}>{err}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => loadData()}>
-            <Text style={styles.retryBtnText}>Retry</Text>
+            <Text style={styles.retryBtnText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -80,21 +82,21 @@ export default function FinanceOverviewScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading finance overview…</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const t = data?.totals || { donations: 0, donationCount: 0, expenses: 0, expenseCount: 0, transfers: 0, transferCount: 0, netBalance: 0 };
-  const isNetPositive = (t.netBalance || 0) >= 0;
+  const totals = data?.totals || { donations: 0, donationCount: 0, expenses: 0, expenseCount: 0, transfers: 0, transferCount: 0, netBalance: 0 };
+  const isNetPositive = (totals.netBalance || 0) >= 0;
 
   const renderProvince = ({ item: p }) => {
     const provNetPositive = (p.netBalance || 0) >= 0;
     return (
       <Card style={styles.provCard}>
-        <View style={styles.provHeader}>
-          <View style={styles.provTitleRow}>
+        <View style={[styles.provHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.provTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="location-outline" size={16} color={Colors.primary} />
             <Text style={styles.provName}>{p.name}</Text>
             {p.code ? (
@@ -110,29 +112,29 @@ export default function FinanceOverviewScreen() {
           </View>
         </View>
 
-        <View style={styles.statsGrid}>
+        <View style={[styles.statsGrid, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Donations</Text>
+            <Text style={styles.statLabel}>{t('admin.donations')}</Text>
             <Text style={[styles.statVal, { color: Colors.primaryDark }]}>{formatPKR(p.donations)}</Text>
-            <Text style={styles.statHint}>{p.donationCount || 0} {p.donationCount === 1 ? 'entry' : 'entries'}</Text>
+            <Text style={styles.statHint}>{p.donationCount || 0} {t('admin.entries')}</Text>
           </View>
 
           <View style={styles.statDivider} />
 
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Expenses</Text>
+            <Text style={styles.statLabel}>{t('admin.expenses')}</Text>
             <Text style={[styles.statVal, { color: '#dc2626' }]}>{formatPKR(p.expenses)}</Text>
-            <Text style={styles.statHint}>{p.expenseCount || 0} {p.expenseCount === 1 ? 'entry' : 'entries'}</Text>
+            <Text style={styles.statHint}>{p.expenseCount || 0} {t('admin.entries')}</Text>
           </View>
 
           <View style={styles.statDivider} />
 
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Net Margin</Text>
+            <Text style={styles.statLabel}>{t('admin.netMargin')}</Text>
             <Text style={[styles.statVal, { color: provNetPositive ? Colors.success : Colors.error }]}>
               {provNetPositive ? '+' : ''}{formatPKR(p.netBalance)}
             </Text>
-            <Text style={styles.statHint}>{provNetPositive ? 'Surplus' : 'Deficit'}</Text>
+            <Text style={styles.statHint}>{provNetPositive ? t('admin.surplus') : t('admin.deficit')}</Text>
           </View>
         </View>
       </Card>
@@ -152,75 +154,75 @@ export default function FinanceOverviewScreen() {
           <>
             {/* Hero Header Banner */}
             <View style={styles.hero}>
-              <View style={styles.heroTop}>
+              <View style={[styles.heroTop, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.heroIconBox}>
                   <Text style={styles.heroIcon}>💰</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.heroTitle}>Finance Overview</Text>
-                  <Text style={styles.heroSub} numberOfLines={2}>
-                    Aggregated financial overview across the entire organization.
+                  <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.financeOverview')}</Text>
+                  <Text style={[styles.heroSub, isRTL && { textAlign: 'right' }]} numberOfLines={2}>
+                    {t('admin.financeOverviewSub')}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.heroActions}>
+              <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity
-                  style={styles.heroSecondaryBtn}
+                  style={[styles.heroSecondaryBtn, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => loadData(true)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="refresh" size={14} color="#fff" style={{ marginRight: 4 }} />
-                  <Text style={styles.heroSecondaryBtnText}>Refresh Data</Text>
+                  <Ionicons name="refresh" size={14} color="#fff" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+                  <Text style={styles.heroSecondaryBtnText}>{t('admin.refreshData')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* KPI Cards Grid */}
             <View style={styles.kpiContainer}>
-              <View style={styles.kpiRow}>
+              <View style={[styles.kpiRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 {/* Total Donations */}
                 <View style={[styles.kpiCard, { borderTopColor: '#16a34a' }]}>
-                  <View style={styles.kpiTop}>
-                    <Text style={styles.kpiLabel}>Total Donations</Text>
+                  <View style={[styles.kpiTop, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.kpiLabel}>{t('admin.totalDonations')}</Text>
                     <View style={[styles.kpiIconWrap, { backgroundColor: '#f0fdf4' }]}>
                       <Ionicons name="cash-outline" size={14} color="#16a34a" />
                     </View>
                   </View>
                   <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit>
-                    {formatPKR(t.donations)}
+                    {formatPKR(totals.donations)}
                   </Text>
-                  <Text style={styles.kpiHint}>{t.donationCount || 0} total entries</Text>
+                  <Text style={[styles.kpiHint, isRTL && { textAlign: 'right' }]}>{totals.donationCount || 0} {t('admin.entries')}</Text>
                 </View>
 
                 {/* Approved Expenses */}
                 <View style={[styles.kpiCard, { borderTopColor: '#dc2626' }]}>
-                  <View style={styles.kpiTop}>
-                    <Text style={styles.kpiLabel}>Approved Expenses</Text>
+                  <View style={[styles.kpiTop, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.kpiLabel}>{t('admin.approvedExpenses')}</Text>
                     <View style={[styles.kpiIconWrap, { backgroundColor: '#fef2f2' }]}>
                       <Ionicons name="receipt-outline" size={14} color="#dc2626" />
                     </View>
                   </View>
                   <Text style={[styles.kpiValue, { color: '#dc2626' }]} numberOfLines={1} adjustsFontSizeToFit>
-                    {formatPKR(t.expenses)}
+                    {formatPKR(totals.expenses)}
                   </Text>
-                  <Text style={styles.kpiHint}>{t.expenseCount || 0} total entries</Text>
+                  <Text style={[styles.kpiHint, isRTL && { textAlign: 'right' }]}>{totals.expenseCount || 0} {t('admin.entries')}</Text>
                 </View>
               </View>
 
-              <View style={styles.kpiRow}>
+              <View style={[styles.kpiRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 {/* Acknowledged Transfers */}
                 <View style={[styles.kpiCard, { borderTopColor: '#0284c7' }]}>
-                  <View style={styles.kpiTop}>
-                    <Text style={styles.kpiLabel}>Transfers</Text>
+                  <View style={[styles.kpiTop, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.kpiLabel}>{t('admin.transfers')}</Text>
                     <View style={[styles.kpiIconWrap, { backgroundColor: '#f0f9ff' }]}>
                       <Ionicons name="swap-horizontal-outline" size={14} color="#0284c7" />
                     </View>
                   </View>
                   <Text style={[styles.kpiValue, { color: '#0284c7' }]} numberOfLines={1} adjustsFontSizeToFit>
-                    {formatPKR(t.transfers)}
+                    {formatPKR(totals.transfers)}
                   </Text>
-                  <Text style={styles.kpiHint}>{t.transferCount || 0} acknowledged</Text>
+                  <Text style={[styles.kpiHint, isRTL && { textAlign: 'right' }]}>{totals.transferCount || 0} {t('admin.transfers')}</Text>
                 </View>
 
                 {/* Net Balance */}
@@ -233,9 +235,9 @@ export default function FinanceOverviewScreen() {
                     },
                   ]}
                 >
-                  <View style={styles.kpiTop}>
+                  <View style={[styles.kpiTop, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Text style={[styles.kpiLabel, { color: isNetPositive ? '#15803d' : '#b91c1c' }]}>
-                      Net Balance
+                      {t('admin.netBalance')}
                     </Text>
                     <View
                       style={[
@@ -258,29 +260,30 @@ export default function FinanceOverviewScreen() {
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
-                    {formatPKR(t.netBalance)}
+                    {formatPKR(totals.netBalance)}
                   </Text>
                   <Text
                     style={[
                       styles.kpiHint,
                       { color: isNetPositive ? '#16a34a' : '#dc2626', fontWeight: '600' },
+                      isRTL && { textAlign: 'right' }
                     ]}
                   >
-                    {isNetPositive ? 'Overall Surplus' : 'Overall Deficit'}
+                    {isNetPositive ? t('admin.overallSurplus') : t('admin.overallDeficit')}
                   </Text>
                 </View>
               </View>
             </View>
 
             {/* Provincial Breakdown Section Title */}
-            <View style={styles.sectionHeader}>
+            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={styles.sectionIconBox}>
                 <Ionicons name="map-outline" size={16} color={Colors.primary} />
               </View>
-              <Text style={styles.sectionTitle}>By Province</Text>
+              <Text style={styles.sectionTitle}>{t('admin.byProvince')}</Text>
               <View style={styles.sectionBadge}>
                 <Text style={styles.sectionBadgeText}>
-                  {data?.perProvince?.length || 0} PROVINCES
+                  {data?.perProvince?.length || 0} {t('admin.provinces')}
                 </Text>
               </View>
             </View>
@@ -290,8 +293,8 @@ export default function FinanceOverviewScreen() {
           !loading && (
             <EmptyState
               icon="📊"
-              title="No Provincial Data"
-              message="No provincial financial records found in the database."
+              title={t('admin.noData')}
+              message={t('admin.noProvincialRecords')}
             />
           )
         }

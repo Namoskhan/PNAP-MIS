@@ -24,6 +24,7 @@ import Card from '../../../../src/components/Card';
 import Badge from '../../../../src/components/Badge';
 import EmptyState from '../../../../src/components/EmptyState';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 
 const ROLE_OPTIONS = [
   'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
@@ -54,6 +55,7 @@ function getAvatarColor(name) {
 export default function UsersScreen() {
   const { user: viewer } = useAuth();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const canWrite = isSuperAdmin(viewer);
   const params = useLocalSearchParams();
   const isCentralAdminView = params?.role === 'CENTRAL_ADMIN';
@@ -75,6 +77,8 @@ export default function UsersScreen() {
   const [resetPwdOpen, setResetPwdOpen] = useState(false);
   const [targetUser, setTargetUser] = useState(null);
   const [newPassword, setNewPassword] = useState('123456');
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   // Deactivate / Activate Confirmation Dialog State
   const [confirmToggleUser, setConfirmToggleUser] = useState(null);
@@ -356,18 +360,18 @@ export default function UsersScreen() {
     return (
       <Card style={styles.userCard}>
         {/* Top Header Row */}
-        <View style={styles.userCardHeader}>
+        <View style={[styles.userCardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <View style={styles.nameRow}>
+          <View style={[{ flex: 1, minWidth: 0 }, isRTL && { alignItems: 'flex-end' }]}>
+            <View style={[styles.nameRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Text style={styles.userName} numberOfLines={1}>{u.fullName || '—'}</Text>
               <View style={[styles.tierBadge, { backgroundColor: '#eff6ff' }]}>
                 <Text style={styles.tierBadgeText}>{tier}</Text>
               </View>
             </View>
-            <View style={styles.metaRow}>
+            <View style={[styles.metaRow, isRTL && { flexDirection: 'row-reverse' }]}>
               {u.username ? <Text style={styles.userUsername}>@{u.username} · </Text> : null}
               <Text style={styles.userEmail} numberOfLines={1}>{u.email || u.phone || 'No email'}</Text>
             </View>
@@ -375,19 +379,19 @@ export default function UsersScreen() {
 
           {/* Status Badge */}
           <TouchableOpacity
-            style={[styles.statusPill, u.isActive ? styles.statusActive : styles.statusInactive]}
+            style={[styles.statusPill, u.isActive ? styles.statusActive : styles.statusInactive, isRTL && { flexDirection: 'row-reverse' }]}
             onPress={() => requestToggleActive(u)}
             activeOpacity={0.7}
           >
             <View style={[styles.statusDot, { backgroundColor: u.isActive ? Colors.success : Colors.textMuted }]} />
             <Text style={[styles.statusPillText, { color: u.isActive ? Colors.success : Colors.textMuted }]}>
-              {u.isActive ? 'Active' : 'Inactive'}
+              {u.isActive ? (t('admin.activeStatus') || 'Active') : (t('admin.inactiveStatus') || 'Inactive')}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Roles Badges */}
-        <View style={styles.rolesRow}>
+        <View style={[styles.rolesRow, isRTL && { flexDirection: 'row-reverse' }]}>
           {(u.roles || []).map((r) => (
             <View key={r} style={styles.roleTag}>
               <Text style={styles.roleTagText}>{r.replace(/_/g, ' ')}</Text>
@@ -403,18 +407,18 @@ export default function UsersScreen() {
         {/* Action Buttons Toolbar */}
         {canWrite && (
           <View style={styles.cardActions}>
-            <View style={styles.actionRow}>
+            <View style={[styles.actionRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnSecondary]}
+                style={[styles.actionBtn, styles.actionBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => openEditUser(u)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="pencil-outline" size={14} color={Colors.primary} />
-                <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Edit</Text>
+                <Text style={[styles.actionBtnText, { color: Colors.primary }]}>{t('admin.edit') || 'Edit'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnSecondary]}
+                style={[styles.actionBtn, styles.actionBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => {
                   setTargetUser(u);
                   setResetPwdOpen(true);
@@ -422,23 +426,24 @@ export default function UsersScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="key-outline" size={14} color="#b45309" />
-                <Text style={[styles.actionBtnText, { color: '#b45309' }]}>Reset Pwd</Text>
+                <Text style={[styles.actionBtnText, { color: '#b45309' }]}>{t('admin.resetPassword') || 'Reset Pwd'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionBtn, styles.actionBtnPrimary]}
+                style={[styles.actionBtn, styles.actionBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => setSelectedUser(u)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="eye-outline" size={14} color={Colors.text} />
-                <Text style={styles.actionBtnText}>Details</Text>
+                <Text style={styles.actionBtnText}>{t('admin.details') || 'Details'}</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.actionRow}>
+            <View style={[styles.actionRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={[
                   styles.actionBtn,
+                  isRTL && { flexDirection: 'row-reverse' },
                   {
                     borderColor: u.isActive ? '#fecaca' : '#bbf7d0',
                     backgroundColor: u.isActive ? '#fef2f2' : '#f0fdf4',
@@ -453,20 +458,23 @@ export default function UsersScreen() {
                   color={u.isActive ? Colors.error : Colors.success}
                 />
                 <Text style={[styles.actionBtnText, { color: u.isActive ? Colors.error : Colors.success, fontWeight: '700' }]}>
-                  {u.isActive ? 'Deactivate' : 'Activate'}
+                  {u.isActive ? (t('admin.deactivate') || 'Deactivate') : (t('admin.activate') || 'Activate')}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.actionBtn,
+                  isRTL && { flexDirection: 'row-reverse' },
                   { borderColor: '#fecaca', backgroundColor: '#fef2f2' },
                 ]}
                 onPress={() => requestDeleteUser(u)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="trash-outline" size={14} color={Colors.error} />
-                <Text style={[styles.actionBtnText, { color: Colors.error, fontWeight: '700' }]}>Delete</Text>
+                <Text style={[styles.actionBtnText, { color: Colors.error, fontWeight: '700' }]}>
+                  {t('admin.delete') || 'Delete'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -479,24 +487,24 @@ export default function UsersScreen() {
     <SafeAreaView style={styles.safe}>
       {/* ─── Hero Banner (Matches Web) ─── */}
       <View style={styles.hero}>
-        <View style={styles.heroTop}>
+        <View style={[styles.heroTop, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={styles.heroIconBox}>
             <Text style={styles.heroIcon}>{isCentralAdminView ? '🏛️' : '👥'}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>
-              {isCentralAdminView ? 'Central Admins' : 'Users & Credentials'}
+            <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>
+              {isCentralAdminView ? (t('admin.centralAdmins') || 'Central Admins') : (t('admin.usersTitle') || 'Users & Credentials')}
             </Text>
-            <Text style={styles.heroSub} numberOfLines={2}>
+            <Text style={[styles.heroSub, isRTL && { textAlign: 'right' }]} numberOfLines={2}>
               {isCentralAdminView
-                ? 'Central Admins structure Provinces and administer Province Admins.'
-                : 'Search, filter, and manage every user account in the system.'}
+                ? (t('admin.centralAdminsDesc') || 'Central Admins structure Provinces and administer Province Admins.')
+                : (t('admin.usersDesc') || 'Search, filter, and manage every user account in the system.')}
             </Text>
           </View>
         </View>
 
         {/* Hero Quick Action Buttons */}
-        <View style={styles.heroActions}>
+        <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
           {canWrite && (
             <TouchableOpacity
               style={styles.heroPrimaryBtn}
@@ -513,7 +521,7 @@ export default function UsersScreen() {
               }}
             >
               <Text style={styles.heroPrimaryBtnText}>
-                {isCentralAdminView ? '＋ Create Central Admin' : '＋ Create User'}
+                {isCentralAdminView ? (t('admin.createCentralAdmin') || '＋ Create Central Admin') : (t('admin.createUser') || '＋ Create User')}
               </Text>
             </TouchableOpacity>
           )}
@@ -525,20 +533,20 @@ export default function UsersScreen() {
               load(1, true);
             }}
           >
-            <Text style={styles.heroSecondaryBtnText}>⟳ Refresh</Text>
+            <Text style={styles.heroSecondaryBtnText}>⟳ {t('admin.refresh') || 'Refresh'}</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* ─── Search & Filters Bar ─── */}
       <View style={styles.toolbar}>
-        <View style={styles.searchBox}>
+        <View style={[styles.searchBox, isRTL && { flexDirection: 'row-reverse' }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
             value={q}
             onChangeText={setQ}
-            placeholder="Search by name, email, username…"
+            placeholder={t('admin.searchUsersPlaceholder') || 'Search by name, email, username…'}
             placeholderTextColor={Colors.textLight}
             clearButtonMode="while-editing"
           />
@@ -550,7 +558,7 @@ export default function UsersScreen() {
         </View>
 
         {/* Filter Pills Scroll */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.filterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
           {roleFilter ? (
             <TouchableOpacity
               style={styles.activeRoleChip}
@@ -568,12 +576,16 @@ export default function UsersScreen() {
               onPress={() => setRoleFilter((prev) => (prev === 'CENTRAL_ADMIN' ? '' : 'CENTRAL_ADMIN'))}
             >
               <Text style={[styles.filterChipText, roleFilter === 'CENTRAL_ADMIN' && styles.filterChipTextActive]}>
-                Central Admins
+                {t('admin.centralAdmins') || 'Central Admins'}
               </Text>
             </TouchableOpacity>
           )}
 
-          {STATUS_OPTIONS.map((s) => (
+          {[
+            { label: t('admin.allStatus') || 'All Status', value: '' },
+            { label: t('admin.activeStatus') || 'Active', value: 'true' },
+            { label: t('admin.inactiveStatus') || 'Inactive', value: 'false' },
+          ].map((s) => (
             <TouchableOpacity
               key={s.value}
               style={[styles.filterChip, statusFilter === s.value && styles.filterChipActive]}
@@ -588,9 +600,9 @@ export default function UsersScreen() {
       </View>
 
       {/* ─── Results Counter Bar ─── */}
-      <View style={styles.countBar}>
+      <View style={[styles.countBar, isRTL && { flexDirection: 'row-reverse' }]}>
         <Text style={styles.countText}>
-          {total} {total === 1 ? 'ACCOUNT' : 'ACCOUNTS'} ON RECORD
+          {total} {t('admin.accountsOnRecord') || (total === 1 ? 'ACCOUNT ON RECORD' : 'ACCOUNTS ON RECORD')}
         </Text>
         {loading && <ActivityIndicator size="small" color={Colors.primary} />}
       </View>
@@ -622,9 +634,9 @@ export default function UsersScreen() {
       {/* ─── Create User Modal ─── */}
       <Modal visible={createOpen} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Text style={styles.modalTitle}>
-              {isCentralAdminView ? 'Create Central Admin' : 'Create User'}
+              {isCentralAdminView ? (t('admin.createCentralAdmin') || 'Create Central Admin') : (t('admin.createUser') || 'Create User')}
             </Text>
             <TouchableOpacity onPress={() => setCreateOpen(false)} style={styles.closeBtn}>
               <Text style={styles.closeBtnText}>✕</Text>
@@ -632,29 +644,33 @@ export default function UsersScreen() {
           </View>
 
           <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
-            <View style={styles.infoBanner}>
-              <Text style={styles.infoBannerTitle}>
-                {isCentralAdminView ? 'Central Administrator' : 'User Account Provisioning'}
+            <View style={[styles.infoBanner, isRTL && { alignItems: 'flex-end' }]}>
+              <Text style={[styles.infoBannerTitle, isRTL && { textAlign: 'right' }]}>
+                {isCentralAdminView ? (t('admin.centralAdmin') || 'Central Administrator') : (t('admin.userProvisioning') || 'User Account Provisioning')}
               </Text>
-              <Text style={styles.infoBannerText}>
+              <Text style={[styles.infoBannerText, isRTL && { textAlign: 'right' }]}>
                 {isCentralAdminView
-                  ? 'Central Admins have global authority over provinces, regional administrators, and nationwide reporting.'
-                  : 'Provision initial login credentials and specify role assignments for the system.'}
+                  ? (t('admin.centralAdminsDesc') || 'Central Admins have global authority over provinces, regional administrators, and nationwide reporting.')
+                  : (t('admin.userProvisioningDesc') || 'Provision initial login credentials and specify role assignments for the system.')}
               </Text>
             </View>
 
-            <Text style={styles.inputLabel}>Full Name <Text style={{ color: Colors.error }}>*</Text></Text>
+            <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.fullName') || 'Full Name'} <Text style={{ color: Colors.error }}>*</Text>
+            </Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, isRTL && { textAlign: 'right' }]}
               value={createForm.fullName}
               onChangeText={(v) => setCreateForm((p) => ({ ...p, fullName: v }))}
               placeholder="e.g. Aslam Khan"
               placeholderTextColor={Colors.textLight}
             />
 
-            <Text style={styles.inputLabel}>Username <Text style={styles.optionalText}>(Optional)</Text></Text>
+            <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.username') || 'Username'} <Text style={styles.optionalText}>({t('admin.optional') || 'Optional'})</Text>
+            </Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, isRTL && { textAlign: 'right' }]}
               value={createForm.username}
               onChangeText={(v) => setCreateForm((p) => ({ ...p, username: v }))}
               placeholder="e.g. aslam_central"
@@ -662,9 +678,11 @@ export default function UsersScreen() {
               autoCapitalize="none"
             />
 
-            <Text style={styles.inputLabel}>Email Address <Text style={{ color: Colors.error }}>*</Text></Text>
+            <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.email') || 'Email Address'} <Text style={{ color: Colors.error }}>*</Text>
+            </Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, isRTL && { textAlign: 'right' }]}
               value={createForm.email}
               onChangeText={(v) => setCreateForm((p) => ({ ...p, email: v }))}
               placeholder="e.g. admin@pknap.org"
@@ -672,44 +690,92 @@ export default function UsersScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            <Text style={styles.inputHint}>
-              Email is used for login identification, notifications, and password recovery.
+            <Text style={[styles.inputHint, isRTL && { textAlign: 'right' }]}>
+              {t('admin.emailLoginHint') || 'Email is used for login identification, notifications, and password recovery.'}
             </Text>
 
-            <Text style={styles.inputLabel}>Password <Text style={{ color: Colors.error }}>*</Text></Text>
-            <TextInput
-              style={styles.modalInput}
-              value={createForm.password}
-              onChangeText={(v) => setCreateForm((p) => ({ ...p, password: v }))}
-              placeholder="At least 6 characters"
-              placeholderTextColor={Colors.textLight}
-              secureTextEntry
-            />
+            <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.password') || 'Password'} <Text style={{ color: Colors.error }}>*</Text>
+            </Text>
+            <View style={[styles.passwordWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+              {isRTL ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowCreatePassword(!showCreatePassword)}
+                  >
+                    <Ionicons
+                      name={showCreatePassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                  <TextInput
+                    style={[styles.passwordInput, { textAlign: 'right' }]}
+                    value={createForm.password}
+                    onChangeText={(v) => setCreateForm((p) => ({ ...p, password: v }))}
+                    placeholder={t('admin.passwordMin6') || 'At least 6 characters'}
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showCreatePassword}
+                  />
+                </>
+              ) : (
+                <>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={createForm.password}
+                    onChangeText={(v) => setCreateForm((p) => ({ ...p, password: v }))}
+                    placeholder={t('admin.passwordMin6') || 'At least 6 characters'}
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showCreatePassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowCreatePassword(!showCreatePassword)}
+                  >
+                    <Ionicons
+                      name={showCreatePassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
 
-            <Text style={styles.inputLabel}>Confirm Password <Text style={{ color: Colors.error }}>*</Text></Text>
-            <TextInput
-              style={[
-                styles.modalInput,
-                createForm.passwordConfirm.length > 0 &&
-                  createForm.password !== createForm.passwordConfirm && {
-                    borderColor: Colors.error,
-                  },
-              ]}
-              value={createForm.passwordConfirm}
-              onChangeText={(v) => setCreateForm((p) => ({ ...p, passwordConfirm: v }))}
-              placeholder="Re-enter password"
-              placeholderTextColor={Colors.textLight}
-              secureTextEntry
-            />
+            <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+              {t('admin.confirmPassword') || 'Confirm Password'} <Text style={{ color: Colors.error }}>*</Text>
+            </Text>
+            <View style={[styles.passwordWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+              <TextInput
+                style={[
+                  styles.passwordInput,
+                  isRTL && { textAlign: 'right' },
+                  createForm.passwordConfirm.length > 0 &&
+                    createForm.password !== createForm.passwordConfirm && {
+                      borderColor: Colors.error,
+                    },
+                ]}
+                value={createForm.passwordConfirm}
+                onChangeText={(v) => setCreateForm((p) => ({ ...p, passwordConfirm: v }))}
+                placeholder={t('admin.reenterPassword') || 'Re-enter password'}
+                placeholderTextColor={Colors.textLight}
+                secureTextEntry={!showCreatePassword}
+              />
+            </View>
             {createForm.passwordConfirm.length > 0 &&
               createForm.password !== createForm.passwordConfirm && (
-                <Text style={styles.errorText}>Passwords do not match.</Text>
+                <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>
+                  {t('admin.passwordsDontMatch') || 'Passwords do not match.'}
+                </Text>
               )}
 
             {!isCentralAdminView && (
               <>
-                <Text style={styles.inputLabel}>Assign Role</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
+                <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('admin.assignRole') || 'Assign Role'}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[{ marginTop: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
                   {ROLE_OPTIONS.map((r) => (
                     <TouchableOpacity
                       key={r}
@@ -726,9 +792,9 @@ export default function UsersScreen() {
             )}
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity style={styles.footerCancelBtn} onPress={() => setCreateOpen(false)}>
-              <Text style={styles.footerCancelText}>Cancel</Text>
+              <Text style={styles.footerCancelText}>{t('common.cancel') || 'Cancel'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
@@ -744,7 +810,7 @@ export default function UsersScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.footerSaveText}>
-                  {isCentralAdminView ? 'Create Central Admin' : 'Create User'}
+                  {isCentralAdminView ? (t('admin.createCentralAdmin') || 'Create Central Admin') : (t('admin.createUser') || 'Create User')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -756,10 +822,10 @@ export default function UsersScreen() {
       <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalSafe}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <View>
-                <Text style={styles.modalTitle}>Edit User</Text>
-                <Text style={styles.modalSub}>{editingUser?.fullName || 'User Profile'}</Text>
+                <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('admin.editUser') || 'Edit User'}</Text>
+                <Text style={[styles.modalSub, isRTL && { textAlign: 'right' }]}>{editingUser?.fullName || 'User Profile'}</Text>
               </View>
               <TouchableOpacity onPress={() => setEditOpen(false)} style={styles.closeBtn}>
                 <Text style={styles.closeBtnText}>✕</Text>
@@ -767,18 +833,22 @@ export default function UsersScreen() {
             </View>
 
             <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
-              <Text style={styles.inputLabel}>Full Name <Text style={{ color: Colors.error }}>*</Text></Text>
+              <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+                {t('admin.fullName') || 'Full Name'} <Text style={{ color: Colors.error }}>*</Text>
+              </Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, isRTL && { textAlign: 'right' }]}
                 value={editForm.fullName}
                 onChangeText={(v) => setEditForm((p) => ({ ...p, fullName: v }))}
                 placeholder="Full name"
                 placeholderTextColor={Colors.textLight}
               />
 
-              <Text style={styles.inputLabel}>Username</Text>
+              <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+                {t('admin.username') || 'Username'}
+              </Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, isRTL && { textAlign: 'right' }]}
                 value={editForm.username}
                 onChangeText={(v) => setEditForm((p) => ({ ...p, username: v }))}
                 placeholder="Username (optional)"
@@ -786,9 +856,11 @@ export default function UsersScreen() {
                 autoCapitalize="none"
               />
 
-              <Text style={styles.inputLabel}>Email Address <Text style={{ color: Colors.error }}>*</Text></Text>
+              <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+                {t('admin.email') || 'Email Address'} <Text style={{ color: Colors.error }}>*</Text>
+              </Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, isRTL && { textAlign: 'right' }]}
                 value={editForm.email}
                 onChangeText={(v) => setEditForm((p) => ({ ...p, email: v }))}
                 placeholder="Email address"
@@ -797,9 +869,11 @@ export default function UsersScreen() {
                 autoCapitalize="none"
               />
 
-              <Text style={styles.inputLabel}>CNIC</Text>
+              <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+                {t('admin.cnic') || 'CNIC'}
+              </Text>
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, isRTL && { textAlign: 'right' }]}
                 value={editForm.cnic}
                 onChangeText={(v) => setEditForm((p) => ({ ...p, cnic: v }))}
                 placeholder="XXXXX-XXXXXXX-X"
@@ -807,21 +881,23 @@ export default function UsersScreen() {
                 keyboardType="numeric"
               />
 
-              <Text style={styles.inputLabel}>Roles Assignment</Text>
-              <View style={styles.rolePillGrid}>
+              <Text style={[styles.inputLabel, isRTL && { textAlign: 'right' }]}>
+                {t('admin.rolesAssignment') || 'Roles Assignment'}
+              </Text>
+              <View style={[styles.rolePillGrid, isRTL && { flexDirection: 'row-reverse' }]}>
                 {ROLE_OPTIONS.map((r) => {
                   const selected = editForm.roles.includes(r);
                   return (
                     <TouchableOpacity
                       key={r}
-                      style={[styles.roleGridPill, selected && styles.roleGridPillActive]}
+                      style={[styles.roleGridPill, selected && styles.roleGridPillActive, isRTL && { flexDirection: 'row-reverse' }]}
                       onPress={() => toggleRoleSelection(r)}
                     >
                       <Ionicons
                         name={selected ? 'checkbox' : 'square-outline'}
                         size={14}
                         color={selected ? '#fff' : Colors.textMuted}
-                        style={{ marginRight: 4 }}
+                        style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }}
                       />
                       <Text style={[styles.roleGridPillText, selected && styles.roleGridPillTextActive]}>
                         {r.replace(/_/g, ' ')}
@@ -831,11 +907,15 @@ export default function UsersScreen() {
                 })}
               </View>
 
-              <View style={styles.accountActiveRow}>
+              <View style={[styles.accountActiveRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.accountActiveTitle}>Account Active Status</Text>
-                  <Text style={styles.accountActiveSub}>
-                    {editForm.isActive ? 'User can log in and access authorized features.' : 'User account is deactivated.'}
+                  <Text style={[styles.accountActiveTitle, isRTL && { textAlign: 'right' }]}>
+                    {t('admin.accountActiveStatus') || 'Account Active Status'}
+                  </Text>
+                  <Text style={[styles.accountActiveSub, isRTL && { textAlign: 'right' }]}>
+                    {editForm.isActive
+                      ? (t('admin.userCanLogin') || 'User can log in and access authorized features.')
+                      : (t('admin.userDeactivated') || 'User account is deactivated.')}
                   </Text>
                 </View>
                 <Switch
@@ -847,13 +927,13 @@ export default function UsersScreen() {
               </View>
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.footerCancelBtn}
                 onPress={() => setEditOpen(false)}
                 disabled={editSaving}
               >
-                <Text style={styles.footerCancelText}>Cancel</Text>
+                <Text style={styles.footerCancelText}>{t('common.cancel') || 'Cancel'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.footerSaveBtn, editSaving && { opacity: 0.6 }]}
@@ -863,7 +943,7 @@ export default function UsersScreen() {
                 {editSaving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.footerSaveText}>Save Changes</Text>
+                  <Text style={styles.footerSaveText}>{t('admin.saveChanges') || 'Save Changes'}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -875,22 +955,24 @@ export default function UsersScreen() {
       <Modal visible={!!confirmToggleUser} animationType="fade" transparent>
         <View style={styles.overlayBackdrop}>
           <View style={styles.dialogCard}>
-            <Text style={styles.dialogTitle}>
-              {confirmToggleUser?.isActive ? 'Deactivate User Account' : 'Activate User Account'}
+            <Text style={[styles.dialogTitle, isRTL && { textAlign: 'right' }]}>
+              {confirmToggleUser?.isActive ? (t('admin.deactivateAccount') || 'Deactivate User Account') : (t('admin.activateAccount') || 'Activate User Account')}
             </Text>
-            <Text style={styles.dialogSub}>
-              Are you sure you want to {confirmToggleUser?.isActive ? 'deactivate' : 'activate'}{' '}
+            <Text style={[styles.dialogSub, isRTL && { textAlign: 'right' }]}>
+              {confirmToggleUser?.isActive ? (t('admin.confirmDeactivate') || 'Are you sure you want to deactivate') : (t('admin.confirmActivate') || 'Are you sure you want to activate')}{' '}
               <Text style={{ fontWeight: '700', color: Colors.text }}>{confirmToggleUser?.fullName}</Text>?
-              {confirmToggleUser?.isActive ? ' The user will lose access to system login.' : ' The user will regain login access.'}
+              {confirmToggleUser?.isActive
+                ? (' ' + (t('admin.deactivateWarning') || 'The user will lose access to system login.'))
+                : (' ' + (t('admin.activateWarning') || 'The user will regain login access.'))}
             </Text>
 
-            <View style={styles.dialogButtons}>
+            <View style={[styles.dialogButtons, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.dialogCancelBtn}
                 onPress={() => setConfirmToggleUser(null)}
                 disabled={toggling}
               >
-                <Text style={styles.dialogCancelText}>Cancel</Text>
+                <Text style={styles.dialogCancelText}>{t('common.cancel') || 'Cancel'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -904,7 +986,7 @@ export default function UsersScreen() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.dialogConfirmText}>
-                    {confirmToggleUser?.isActive ? 'Deactivate' : 'Activate'}
+                    {confirmToggleUser?.isActive ? (t('admin.deactivate') || 'Deactivate') : (t('admin.activate') || 'Activate')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -917,20 +999,22 @@ export default function UsersScreen() {
       <Modal visible={!!confirmDeleteUser} animationType="fade" transparent>
         <View style={styles.overlayBackdrop}>
           <View style={styles.dialogCard}>
-            <Text style={styles.dialogTitle}>Delete User Account</Text>
-            <Text style={styles.dialogSub}>
-              Are you sure you want to permanently delete{' '}
+            <Text style={[styles.dialogTitle, isRTL && { textAlign: 'right' }]}>
+              {t('admin.deleteAccount') || 'Delete User Account'}
+            </Text>
+            <Text style={[styles.dialogSub, isRTL && { textAlign: 'right' }]}>
+              {t('admin.confirmDeleteUser') || 'Are you sure you want to permanently delete'}{' '}
               <Text style={{ fontWeight: '700', color: Colors.text }}>{confirmDeleteUser?.fullName}</Text>?
-              {' '}This action cannot be undone and will revoke all access.
+              {' '}{t('admin.deleteUserWarning') || 'This action cannot be undone and will revoke all access.'}
             </Text>
 
-            <View style={styles.dialogButtons}>
+            <View style={[styles.dialogButtons, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.dialogCancelBtn}
                 onPress={() => setConfirmDeleteUser(null)}
                 disabled={deleting}
               >
-                <Text style={styles.dialogCancelText}>Cancel</Text>
+                <Text style={styles.dialogCancelText}>{t('common.cancel') || 'Cancel'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -943,7 +1027,7 @@ export default function UsersScreen() {
                 {deleting ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.dialogConfirmText}>Delete User</Text>
+                  <Text style={styles.dialogConfirmText}>{t('admin.delete') || 'Delete User'}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -955,21 +1039,60 @@ export default function UsersScreen() {
       <Modal visible={resetPwdOpen} animationType="fade" transparent>
         <View style={styles.overlayBackdrop}>
           <View style={styles.dialogCard}>
-            <Text style={styles.dialogTitle}>Reset Password</Text>
-            <Text style={styles.dialogSub}>
-              Set a new login password for <Text style={{ fontWeight: '700' }}>{targetUser?.fullName}</Text>:
+            <Text style={[styles.dialogTitle, isRTL && { textAlign: 'right' }]}>
+              {t('admin.resetPassword') || 'Reset Password'}
+            </Text>
+            <Text style={[styles.dialogSub, isRTL && { textAlign: 'right' }]}>
+              {t('admin.setNewPasswordFor') || 'Set a new login password for'} <Text style={{ fontWeight: '700' }}>{targetUser?.fullName}</Text>:
             </Text>
 
-            <TextInput
-              style={styles.dialogInput}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Enter new password"
-              placeholderTextColor={Colors.textLight}
-              secureTextEntry={false}
-            />
+            <View style={[styles.passwordWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+              {isRTL ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowResetPassword(!showResetPassword)}
+                  >
+                    <Ionicons
+                      name={showResetPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                  <TextInput
+                    style={[styles.passwordInput, { textAlign: 'right' }]}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder={t('admin.enterNewPassword') || 'Enter new password'}
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showResetPassword}
+                  />
+                </>
+              ) : (
+                <>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder={t('admin.enterNewPassword') || 'Enter new password'}
+                    placeholderTextColor={Colors.textLight}
+                    secureTextEntry={!showResetPassword}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeBtn}
+                    onPress={() => setShowResetPassword(!showResetPassword)}
+                  >
+                    <Ionicons
+                      name={showResetPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
 
-            <View style={styles.dialogButtons}>
+            <View style={[styles.dialogButtons, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.dialogCancelBtn}
                 onPress={() => {
@@ -977,7 +1100,7 @@ export default function UsersScreen() {
                   setTargetUser(null);
                 }}
               >
-                <Text style={styles.dialogCancelText}>Cancel</Text>
+                <Text style={styles.dialogCancelText}>{t('common.cancel') || 'Cancel'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.dialogConfirmBtn}
@@ -987,7 +1110,7 @@ export default function UsersScreen() {
                 {saving ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.dialogConfirmText}>Save Password</Text>
+                  <Text style={styles.dialogConfirmText}>{t('admin.savePassword') || 'Save Password'}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1429,6 +1552,26 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   footerSaveText: { fontSize: FontSize.sm, fontWeight: '700', color: '#fff' },
+
+  passwordWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    marginBottom: Spacing.sm,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    fontSize: FontSize.sm,
+    color: Colors.text,
+  },
+  eyeBtn: {
+    padding: 10,
+  },
 
   // ─── Dialogs ───
   overlayBackdrop: {
