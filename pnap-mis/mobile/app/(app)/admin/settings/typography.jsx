@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
@@ -19,14 +20,14 @@ const FONT_FAMILY_PRESETS = [
   { value: 'Georgia, serif',                       label: 'Georgia (serif)' },
 ];
 
-function Stepper({ label, value, onChange, min, max, step = 1, format = (v) => v, disabled }) {
+function Stepper({ label, value, onChange, min, max, step = 1, format = (v) => v, disabled, isRTL }) {
   const decrease = () => { if (!disabled && value > min) onChange(Math.max(min, value - step)); };
   const increase = () => { if (!disabled && value < max) onChange(Math.min(max, value + step)); };
   
   return (
-    <View style={styles.stepperContainer}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.stepperControls}>
+    <View style={[styles.stepperContainer, isRTL && { flexDirection: 'row-reverse' }]}>
+      <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{label}</Text>
+      <View style={[styles.stepperControls, isRTL && { flexDirection: 'row-reverse' }]}>
         <TouchableOpacity style={styles.stepperBtn} onPress={decrease} disabled={disabled || value <= min}>
           <Ionicons name="remove" size={16} color={disabled || value <= min ? Colors.textLight : Colors.text} />
         </TouchableOpacity>
@@ -40,6 +41,7 @@ function Stepper({ label, value, onChange, min, max, step = 1, format = (v) => v
 }
 
 export default function TypographyManagerScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -76,7 +78,7 @@ export default function TypographyManagerScreen() {
     setSaving(true); setErr('');
     try {
       await api.patch('/settings', { typography: form, changeNote: 'Typography updated' });
-      toast.success('Typography saved.');
+      toast.success(t('admin.settings.typographySaved', 'Typography saved.'));
       // Triggers root refresh on native, full reload on web to apply typography globally
       if (Platform.OS === 'web') {
         window.location.reload();
@@ -92,7 +94,7 @@ export default function TypographyManagerScreen() {
   if (busy) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading typography...</Text>
+        <Text style={styles.loadingText}>{t('admin.settings.loadingTypography', 'Loading typography...')}</Text>
       </View>
     );
   }
@@ -100,63 +102,63 @@ export default function TypographyManagerScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Ionicons name="text" size={24} color={Colors.primary} style={{ marginRight: Spacing.sm }} />
-          <Text style={styles.title}>Typography</Text>
+        <View style={[styles.headerTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Ionicons name="text" size={24} color={Colors.primary} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('admin.settings.typography', 'Typography')}</Text>
         </View>
-        <Text style={styles.subtitle}>Font family, base size, border radius, and spacing scale. Applied globally on save.</Text>
+        <Text style={[styles.subtitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.typographySub', 'Font family, base size, border radius, and spacing scale. Applied globally on save.')}</Text>
       </View>
 
-      {err ? <Text style={styles.errorText}>{err}</Text> : null}
+      {err ? <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{err}</Text> : null}
 
       {form && (
         <>
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="eye" size={16} color={Colors.textLight} style={{ marginRight: Spacing.sm }} />
-              <Text style={styles.cardTitle}>Preview</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Ionicons name="eye" size={16} color={Colors.textLight} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.preview', 'Preview')}</Text>
             </View>
             <View style={styles.cardBody}>
               {/* Note: In React Native, font-family must match exactly registered fonts, but for web testing standard web fonts work. */}
-              <Text style={{
+              <Text style={[{
                 fontFamily: Platform.OS === 'web' ? form.headingFontFamily : undefined,
                 fontSize: form.baseFontSize * form.headingScale,
                 fontWeight: '700',
                 marginBottom: 4,
                 color: Colors.text
-              }}>
-                Heading sample
+              }, isRTL && { textAlign: 'right' }]}>
+                {t('admin.settings.headingSample', 'Heading sample')}
               </Text>
-              <Text style={{
+              <Text style={[{
                 fontFamily: Platform.OS === 'web' ? form.fontFamily : undefined,
                 fontSize: form.baseFontSize,
                 marginBottom: 8,
                 color: Colors.text
-              }}>
-                The quick brown fox jumps over the lazy dog. 1234567890.
+              }, isRTL && { textAlign: 'right' }]}>
+                {t('admin.settings.bodySample', 'The quick brown fox jumps over the lazy dog. 1234567890.')}
               </Text>
-              <TouchableOpacity style={{
+              <TouchableOpacity style={[{
                 backgroundColor: Colors.primary,
                 paddingVertical: 6 * form.spacingScale,
                 paddingHorizontal: 14 * form.spacingScale,
                 borderRadius: form.borderRadius,
-                alignSelf: 'flex-start'
-              }}>
+                alignSelf: isRTL ? 'flex-end' : 'flex-start'
+              }]}>
                 <Text style={{
                   color: Colors.textInverse,
                   fontSize: form.baseFontSize,
                   fontWeight: '600'
-                }}>Sample button</Text>
+                }}>{t('admin.settings.sampleButton', 'Sample button')}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Fonts</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.fonts', 'Fonts')}</Text>
             </View>
             <View style={styles.cardBody}>
-              <Text style={styles.fieldLabel}>Body font family</Text>
+              <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('admin.settings.bodyFontFamily', 'Body font family')}</Text>
               <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={form.fontFamily}
@@ -167,9 +169,9 @@ export default function TypographyManagerScreen() {
                   {FONT_FAMILY_PRESETS.map(p => <Picker.Item key={p.value} label={p.label} value={p.value} />)}
                 </Picker>
               </View>
-              <Text style={styles.hint}>Curated list. Custom-uploaded fonts aren't supported (legal/security).</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.bodyFontFamilyHelp', "Curated list. Custom-uploaded fonts aren't supported (legal/security).")}</Text>
 
-              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>Heading font family</Text>
+              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.headingFontFamily', 'Heading font family')}</Text>
               <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={form.headingFontFamily}
@@ -180,62 +182,66 @@ export default function TypographyManagerScreen() {
                   {FONT_FAMILY_PRESETS.map(p => <Picker.Item key={p.value} label={p.label} value={p.value} />)}
                 </Picker>
               </View>
-              <Text style={styles.hint}>Pair with the body font or pick a contrasting display face for headings.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.headingFontFamilyHelp', 'Pair with the body font or pick a contrasting display face for headings.')}</Text>
             </View>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Sizing</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.sizing', 'Sizing')}</Text>
             </View>
             <View style={styles.cardBody}>
               <Stepper
-                label="Base font size"
+                label={t('admin.settings.baseFontSize', 'Base font size: {{size}}px', { size: form.baseFontSize })}
                 value={form.baseFontSize}
                 onChange={(val) => setForm(p => ({ ...p, baseFontSize: val }))}
                 min={12} max={18} step={1} format={(v) => `${v}px`}
                 disabled={!canWrite}
+                isRTL={isRTL}
               />
-              <Text style={styles.hint}>Default 14px. Affects every body-text style.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.baseFontSizeHelp', 'Default 14px. Affects every body-text style.')}</Text>
               
               <Stepper
-                label="Heading scale"
+                label={t('admin.settings.headingScale', 'Heading scale: {{scale}}×', { scale: form.headingScale.toFixed(2) })}
                 value={form.headingScale}
                 onChange={(val) => setForm(p => ({ ...p, headingScale: val }))}
                 min={1} max={1.5} step={0.05} format={(v) => `${v.toFixed(2)}×`}
                 disabled={!canWrite}
+                isRTL={isRTL}
               />
-              <Text style={styles.hint}>Multiplier applied to base size for headings.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.headingScaleHelp', 'Multiplier applied to base font size for headings.')}</Text>
               
               <Stepper
-                label="Border radius"
+                label={t('admin.settings.borderRadius', 'Border radius: {{radius}}px', { radius: form.borderRadius })}
                 value={form.borderRadius}
                 onChange={(val) => setForm(p => ({ ...p, borderRadius: val }))}
                 min={0} max={24} step={1} format={(v) => `${v}px`}
                 disabled={!canWrite}
+                isRTL={isRTL}
               />
-              <Text style={styles.hint}>0 = square corners. 24 = very rounded.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.borderRadiusHelp', '0 = square corners. 24 = very rounded.')}</Text>
               
               <Stepper
-                label="Spacing scale"
+                label={t('admin.settings.spacingScale', 'Spacing scale: {{scale}}×', { scale: form.spacingScale.toFixed(2) })}
                 value={form.spacingScale}
                 onChange={(val) => setForm(p => ({ ...p, spacingScale: val }))}
                 min={0.8} max={1.5} step={0.05} format={(v) => `${v.toFixed(2)}×`}
                 disabled={!canWrite}
+                isRTL={isRTL}
               />
-              <Text style={styles.hint}>Compresses or expands global spacing.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.spacingScaleHelp', 'Compresses or expands button and card padding globally.')}</Text>
             </View>
           </View>
         </>
       )}
 
       {canWrite && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, isRTL && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push('/admin/settings')} disabled={saving}>
-            <Text style={styles.cancelBtnText}>Cancel</Text>
+            <Text style={styles.cancelBtnText}>{t('common.cancel', 'Cancel')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={save} disabled={saving}>
-            <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Typography'}</Text>
+            <Text style={styles.saveBtnText}>{saving ? t('admin.settings.saving', 'Saving...') : t('admin.settings.saveTypography', 'Save Typography')}</Text>
           </TouchableOpacity>
         </View>
       )}

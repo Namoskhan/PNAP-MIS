@@ -3,46 +3,47 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert,
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
 
 const TOKEN_GROUPS = [
-  { title: 'Brand', tokens: [
-    { key: 'primary',     label: 'Primary',     contrastWith: 'textInverse', contrastLabel: 'button label' },
-    { key: 'primaryDark', label: 'Primary dark' },
-    { key: 'secondary',   label: 'Secondary' },
-    { key: 'accent',      label: 'Accent' },
+  { titleKey: 'admin.settings.groupBrand', title: 'Brand', tokens: [
+    { key: 'primary',     labelKey: 'admin.settings.tokenPrimary',     label: 'Primary',     contrastWith: 'textInverse', contrastLabelKey: 'admin.settings.contrastButtonLabel', contrastLabel: 'button label' },
+    { key: 'primaryDark', labelKey: 'admin.settings.tokenPrimaryDark', label: 'Primary dark' },
+    { key: 'secondary',   labelKey: 'admin.settings.tokenSecondary',   label: 'Secondary' },
+    { key: 'accent',      labelKey: 'admin.settings.tokenAccent',      label: 'Accent' },
   ]},
-  { title: 'Surfaces', tokens: [
-    { key: 'background', label: 'Page background' },
-    { key: 'surface',    label: 'Card surface',     contrastWith: 'textPrimary', contrastLabel: 'body text' },
-    { key: 'sidebarBg',  label: 'Sidebar background', contrastWith: 'sidebarFg', contrastLabel: 'sidebar text' },
-    { key: 'sidebarFg',  label: 'Sidebar text' },
-    { key: 'navbarBg',   label: 'Top-bar background' },
+  { titleKey: 'admin.settings.groupSurfaces', title: 'Surfaces', tokens: [
+    { key: 'background', labelKey: 'admin.settings.tokenBackground', label: 'Page background' },
+    { key: 'surface',    labelKey: 'admin.settings.tokenSurface',    label: 'Card surface',       contrastWith: 'textPrimary', contrastLabelKey: 'admin.settings.contrastBodyText',    contrastLabel: 'body text' },
+    { key: 'sidebarBg',  labelKey: 'admin.settings.tokenSidebarBg',  label: 'Sidebar background', contrastWith: 'sidebarFg',   contrastLabelKey: 'admin.settings.contrastSidebarText', contrastLabel: 'sidebar text' },
+    { key: 'sidebarFg',  labelKey: 'admin.settings.tokenSidebarFg',  label: 'Sidebar text' },
+    { key: 'navbarBg',   labelKey: 'admin.settings.tokenNavbarBg',   label: 'Top-bar background' },
   ]},
-  { title: 'Text', tokens: [
-    { key: 'textPrimary', label: 'Primary text', contrastWith: 'background', contrastLabel: 'body on bg' },
-    { key: 'textMuted',   label: 'Muted text',   contrastWith: 'background', contrastLabel: 'muted on bg', contrastTarget: 3 },
-    { key: 'textInverse', label: 'Inverse text', contrastWith: 'primary',    contrastLabel: 'button label' },
+  { titleKey: 'admin.settings.groupText', title: 'Text', tokens: [
+    { key: 'textPrimary', labelKey: 'admin.settings.tokenTextPrimary', label: 'Primary text', contrastWith: 'background', contrastLabelKey: 'admin.settings.contrastBodyOnBg',    contrastLabel: 'body on bg' },
+    { key: 'textMuted',   labelKey: 'admin.settings.tokenTextMuted',   label: 'Muted text',   contrastWith: 'background', contrastLabelKey: 'admin.settings.contrastMutedOnBg',   contrastLabel: 'muted on bg', contrastTarget: 3 },
+    { key: 'textInverse', labelKey: 'admin.settings.tokenTextInverse', label: 'Inverse text', contrastWith: 'primary',    contrastLabelKey: 'admin.settings.contrastButtonLabel', contrastLabel: 'button label' },
   ]},
-  { title: 'Borders', tokens: [
-    { key: 'borderSoft',   label: 'Soft border' },
-    { key: 'borderStrong', label: 'Strong border' },
+  { titleKey: 'admin.settings.groupBorders', title: 'Borders', tokens: [
+    { key: 'borderSoft',   labelKey: 'admin.settings.tokenBorderSoft',   label: 'Soft border' },
+    { key: 'borderStrong', labelKey: 'admin.settings.tokenBorderStrong', label: 'Strong border' },
   ]},
-  { title: 'Status', tokens: [
-    { key: 'success', label: 'Success' },
-    { key: 'warning', label: 'Warning' },
-    { key: 'danger',  label: 'Danger' },
-    { key: 'info',    label: 'Info' },
+  { titleKey: 'admin.settings.groupStatus', title: 'Status', tokens: [
+    { key: 'success', labelKey: 'admin.settings.tokenSuccess', label: 'Success' },
+    { key: 'warning', labelKey: 'admin.settings.tokenWarning', label: 'Warning' },
+    { key: 'danger',  labelKey: 'admin.settings.tokenDanger',  label: 'Danger' },
+    { key: 'info',    labelKey: 'admin.settings.tokenInfo',    label: 'Info' },
   ]},
-  { title: 'Tier badges', tokens: [
-    { key: 'tierCentral',   label: 'Central' },
-    { key: 'tierProvince',  label: 'Province' },
-    { key: 'tierDistrict',  label: 'District' },
-    { key: 'tierArea',      label: 'Area' },
-    { key: 'tierBasicUnit', label: 'Basic Unit' },
+  { titleKey: 'admin.settings.groupTiers', title: 'Tier badges', tokens: [
+    { key: 'tierCentral',   labelKey: 'admin.settings.tokenTierCentral',   label: 'Central' },
+    { key: 'tierProvince',  labelKey: 'admin.settings.tokenTierProvince',  label: 'Province' },
+    { key: 'tierDistrict',  labelKey: 'admin.settings.tokenTierDistrict',  label: 'District' },
+    { key: 'tierArea',      labelKey: 'admin.settings.tokenTierArea',      label: 'Area' },
+    { key: 'tierBasicUnit', labelKey: 'admin.settings.tokenTierBasicUnit', label: 'Basic Unit' },
   ]},
 ];
 
@@ -53,6 +54,7 @@ function themeFromResponse(res) {
 }
 
 export default function ThemeManagerScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -123,7 +125,10 @@ export default function ThemeManagerScreen() {
     if (Platform.OS === 'web') {
       window.location.reload();
     } else {
-      Alert.alert('Theme Saved', 'Please restart the app to see the updated theme colors.');
+      Alert.alert(
+        t('admin.settings.themeSaved', 'Theme Saved'),
+        t('admin.settings.restartAppPrompt', 'Please restart the app to see the updated theme colors.')
+      );
     }
   }
 
@@ -136,13 +141,13 @@ export default function ThemeManagerScreen() {
         setTheme(nextTheme);
         setSavedTheme(nextTheme);
       }
-      toast.success(`Preset "${code}" applied.`);
+      toast.success(t('admin.settings.presetApplied', { code, defaultValue: `Preset "${code}" applied.` }));
       setTimeout(triggerGlobalRefresh, 500);
     } catch (e) {
       const details = e?.response?.data?.error?.details;
       if (details?.errors) {
         setServerErrors(details.errors);
-        toast.error(`Preset "${code}" failed validation — ${details.errors.length} issue(s)`);
+        toast.error(t('admin.settings.presetValidationFailed', { code, count: details.errors.length, defaultValue: `Preset "${code}" failed validation — ${details.errors.length} issue(s)` }));
       } else {
         toast.error(errorMessage(e));
       }
@@ -152,18 +157,18 @@ export default function ThemeManagerScreen() {
   }
 
   async function applyPresetByCode(code) {
-    const msg = `Apply preset "${code}"? This overwrites the current theme.`;
+    const msg = t('admin.settings.applyPresetConfirm', { code, defaultValue: `Apply preset "${code}"? This overwrites the current theme.` });
     if (Platform.OS === 'web') {
       if (window.confirm(msg)) {
         await executeApplyPreset(code);
       }
     } else {
       Alert.alert(
-        'Apply Preset',
+        t('admin.settings.presets', 'Presets'),
         msg,
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Apply', style: 'destructive', onPress: () => executeApplyPreset(code) }
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+          { text: t('common.apply', 'Apply'), style: 'destructive', onPress: () => executeApplyPreset(code) }
         ]
       );
     }
@@ -187,13 +192,13 @@ export default function ThemeManagerScreen() {
         setTheme(nextTheme);
         setSavedTheme(nextTheme);
       }
-      toast.success('Theme saved.');
+      toast.success(t('admin.settings.themeSaved', 'Theme saved.'));
       setTimeout(triggerGlobalRefresh, 500);
     } catch (e) {
       const details = e?.response?.data?.error?.details;
       if (details?.errors) {
         setServerErrors(details.errors);
-        toast.error(`Theme failed validation — ${details.errors.length} issue(s)`);
+        toast.error(t('admin.settings.themeValidationFailed', { count: details.errors.length, defaultValue: `Theme failed validation — ${details.errors.length} issue(s)` }));
       } else {
         setErr(errorMessage(e));
         toast.error(errorMessage(e));
@@ -208,71 +213,74 @@ export default function ThemeManagerScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <View style={styles.heroHeader}>
-            <View style={styles.heroIconBg}>
+        <View style={[styles.hero, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.heroHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={[styles.heroIconBg, isRTL ? { marginLeft: Spacing.md, marginRight: 0 } : { marginRight: Spacing.md }]}>
               <Ionicons name="color-palette" size={24} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroTitle}>Theme Manager</Text>
-              <Text style={styles.heroSub}>Edit color palettes for light + dark modes.</Text>
+              <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.themeManager', 'Theme Manager')}</Text>
+              <Text style={[styles.heroSub, isRTL && { textAlign: 'right' }]}>{t('admin.settings.themeManagerSub', 'Edit color palettes for light + dark modes.')}</Text>
             </View>
           </View>
-          <View style={styles.heroActions}>
-            <TouchableOpacity style={styles.btnOutline} onPress={() => router.back()} disabled={busy}>
-              <Ionicons name="arrow-back" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-              <Text style={styles.btnOutlineText}>Back</Text>
+          <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
+            <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={busy}>
+              <Ionicons name="arrow-back" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+              <Text style={styles.btnOutlineText}>{t('common.back', 'Back')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btnOutline} onPress={load} disabled={busy}>
-              <Ionicons name="refresh" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-              <Text style={styles.btnOutlineText}>Refresh</Text>
+            <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={load} disabled={busy}>
+              <Ionicons name="refresh" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+              <Text style={styles.btnOutlineText}>{t('common.refresh', 'Refresh')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {err ? <Text style={styles.errorText}>{err}</Text> : null}
+        {err ? <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{err}</Text> : null}
         
         {serverErrors.length > 0 && (
           <View style={[styles.errorText, { marginBottom: Spacing.md }]}>
-            <Text style={{ color: Colors.error, fontWeight: '700', marginBottom: 4 }}>Theme failed validation.</Text>
+            <Text style={[{ color: Colors.error, fontWeight: '700', marginBottom: 4 }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.themeValidationFailed', 'Theme failed validation.')}</Text>
             {serverErrors.slice(0, 3).map((e, i) => (
-              <Text key={i} style={{ color: Colors.error, fontSize: FontSize.sm }}>• {e.path}: {e.message}</Text>
+              <Text key={i} style={[{ color: Colors.error, fontSize: FontSize.sm }, isRTL && { textAlign: 'right' }]}>• {e.path}: {e.message}</Text>
             ))}
-            {serverErrors.length > 3 && <Text style={{ color: Colors.error, fontSize: FontSize.sm }}>...and {serverErrors.length - 3} more</Text>}
+            {serverErrors.length > 3 && <Text style={[{ color: Colors.error, fontSize: FontSize.sm }, isRTL && { textAlign: 'right' }]}>...and {serverErrors.length - 3} more</Text>}
           </View>
         )}
 
         {!busy && theme && (
           <>
             <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Ionicons name="moon" size={16} color={Colors.textLight} style={{ marginRight: Spacing.sm }} />
-                <Text style={styles.cardTitle}>Active Mode</Text>
+              <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="moon" size={16} color={Colors.textLight} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+                <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.activeMode', 'Active Mode')}</Text>
               </View>
               <View style={styles.cardBody}>
-                <View style={styles.modeTabs}>
-                  {['LIGHT', 'DARK', 'AUTO'].map(m => (
-                    <TouchableOpacity 
-                      key={m} 
-                      style={[styles.modeTab, theme.activeMode === m && styles.modeTabActive, !canWrite && { opacity: 0.5 }]} 
-                      onPress={() => setActiveMode(m)}
-                      disabled={!canWrite}
-                    >
-                      <Text style={[styles.modeTabText, theme.activeMode === m && styles.modeTabTextActive]}>{m}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={[styles.modeTabs, isRTL && { flexDirection: 'row-reverse' }]}>
+                  {['LIGHT', 'DARK', 'AUTO'].map(m => {
+                    const label = m === 'LIGHT' ? t('admin.settings.modeLightShort', 'LIGHT') : m === 'DARK' ? t('admin.settings.modeDarkShort', 'DARK') : t('admin.settings.modeAutoShort', 'AUTO');
+                    return (
+                      <TouchableOpacity 
+                        key={m} 
+                        style={[styles.modeTab, theme.activeMode === m && styles.modeTabActive, !canWrite && { opacity: 0.5 }]} 
+                        onPress={() => setActiveMode(m)}
+                        disabled={!canWrite}
+                      >
+                        <Text style={[styles.modeTabText, theme.activeMode === m && styles.modeTabTextActive]}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             </View>
 
             <View style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Ionicons name="color-palette" size={16} color={Colors.textLight} style={{ marginRight: Spacing.sm }} />
-                <Text style={styles.cardTitle}>Presets</Text>
+              <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="color-palette" size={16} color={Colors.textLight} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+                <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.presets', 'Presets')}</Text>
                 <View style={styles.badge}><Text style={styles.badgeText}>{theme.presetName}</Text></View>
               </View>
               <View style={styles.cardBody}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.md }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[{ gap: Spacing.md }, isRTL && { flexDirection: 'row-reverse' }]}>
                   {presets.map((p) => (
                     <TouchableOpacity
                       key={p.code}
@@ -284,52 +292,52 @@ export default function ThemeManagerScreen() {
                       <Text style={styles.presetTitle}>{p.name}</Text>
                     </TouchableOpacity>
                   ))}
-                  {presets.length === 0 && <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm }}>No presets available.</Text>}
+                  {presets.length === 0 && <Text style={[{ color: Colors.textMuted, fontSize: FontSize.sm }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.noPresets', 'No presets available.')}</Text>}
                 </ScrollView>
               </View>
             </View>
 
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Editing Palette</Text>
-              <View style={styles.paletteToggle}>
+            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.editingPalette', 'Editing Palette')}</Text>
+              <View style={[styles.paletteToggle, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity 
                   style={[styles.paletteBtn, editingMode === 'LIGHT' && styles.paletteBtnActive]} 
                   onPress={() => setEditingMode('LIGHT')}
                 >
-                  <Text style={[styles.paletteBtnText, editingMode === 'LIGHT' && styles.paletteBtnTextActive]}>LIGHT</Text>
+                  <Text style={[styles.paletteBtnText, editingMode === 'LIGHT' && styles.paletteBtnTextActive]}>{t('admin.settings.modeLightShort', 'LIGHT')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.paletteBtn, editingMode === 'DARK' && styles.paletteBtnActive]} 
                   onPress={() => setEditingMode('DARK')}
                 >
-                  <Text style={[styles.paletteBtnText, editingMode === 'DARK' && styles.paletteBtnTextActive]}>DARK</Text>
+                  <Text style={[styles.paletteBtnText, editingMode === 'DARK' && styles.paletteBtnTextActive]}>{t('admin.settings.modeDarkShort', 'DARK')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {TOKEN_GROUPS.map(group => (
               <View key={group.title} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>{group.title}</Text>
+                <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t(group.titleKey, group.title)}</Text>
                 </View>
                 <View style={styles.cardBody}>
-                  {group.tokens.map(t => {
-                    const errKey = `${editingMode}::${t.key}`;
+                  {group.tokens.map(token => {
+                    const errKey = `${editingMode}::${token.key}`;
                     const tokenErrors = errorsByToken[errKey] || [];
-                    const val = editingPalette[t.key] || '';
+                    const val = editingPalette[token.key] || '';
                     return (
-                      <View key={t.key} style={styles.tokenRow}>
-                        <View style={styles.tokenLabelCol}>
-                          <Text style={styles.tokenLabel}>{t.label}</Text>
-                          <Text style={styles.tokenCode}>{t.key}</Text>
+                      <View key={token.key} style={[styles.tokenRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                        <View style={[styles.tokenLabelCol, isRTL ? { paddingLeft: Spacing.sm, paddingRight: 0 } : { paddingRight: Spacing.sm }]}>
+                          <Text style={[styles.tokenLabel, isRTL && { textAlign: 'right' }]}>{t(token.labelKey, token.label)}</Text>
+                          <Text style={[styles.tokenCode, isRTL && { textAlign: 'right' }]}>{token.key}</Text>
                         </View>
                         <View style={styles.tokenInputCol}>
-                          <View style={styles.colorInputWrapper}>
-                            <View style={[styles.colorSwatch, { backgroundColor: val || '#00000000' }]} />
+                          <View style={[styles.colorInputWrapper, isRTL && { flexDirection: 'row-reverse' }]}>
+                            <View style={[styles.colorSwatch, isRTL ? { borderLeftWidth: 1, borderLeftColor: Colors.border, borderRightWidth: 0 } : { borderRightWidth: 1, borderRightColor: Colors.border }, { backgroundColor: val || '#00000000' }]} />
                             <TextInput
-                              style={[styles.colorInput, !canWrite && { color: Colors.textMuted }]}
+                              style={[styles.colorInput, !canWrite && { color: Colors.textMuted }, isRTL && { textAlign: 'right' }]}
                               value={val}
-                              onChangeText={v => setToken(t.key, v)}
+                              onChangeText={v => setToken(token.key, v)}
                               placeholder="#000000"
                               editable={canWrite}
                               autoCapitalize="none"
@@ -338,7 +346,7 @@ export default function ThemeManagerScreen() {
                           {tokenErrors.length > 0 && (
                             <View style={{ marginTop: 4 }}>
                               {tokenErrors.map((m, i) => (
-                                <Text key={i} style={styles.tokenError}>⚠ {m}</Text>
+                                <Text key={i} style={[styles.tokenError, isRTL && { textAlign: 'right' }]}>⚠ {m}</Text>
                               ))}
                             </View>
                           )}
@@ -355,10 +363,10 @@ export default function ThemeManagerScreen() {
       </ScrollView>
       
       {canWrite && (
-        <View style={styles.footer}>
-          <Text style={styles.dirtyText}>{dirty ? 'Unsaved changes' : 'All changes saved'}</Text>
+        <View style={[styles.footer, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Text style={styles.dirtyText}>{dirty ? t('admin.settings.unsavedChanges', 'Unsaved changes') : t('admin.settings.allChangesSaved', 'All changes saved')}</Text>
           <TouchableOpacity style={[styles.saveBtn, (!dirty || saving) && { opacity: 0.5 }]} onPress={save} disabled={!dirty || saving}>
-            <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Theme'}</Text>
+            <Text style={styles.saveBtnText}>{saving ? t('admin.settings.saving', 'Saving...') : t('admin.settings.saveTheme', 'Save Theme')}</Text>
           </TouchableOpacity>
         </View>
       )}
