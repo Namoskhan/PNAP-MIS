@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchSettings } from '../../../api/branding';
@@ -15,24 +16,30 @@ import { ImageIcon } from '../../../components/icons';
 // favicon update without a hard reload.
 
 const SLOTS = [
-  { slot: 'sidebar', label: 'Sidebar logo',
+  { slot: 'sidebar', labelKey: 'admin.settings.sidebarLogo', label: 'Sidebar logo',
+    descKey: 'admin.settings.sidebarLogoDesc',
     description: 'Shown at the top of the sidebar in light mode.',
     recommended: '256×64 PNG, ≤100 KB' },
-  { slot: 'sidebarDark', label: 'Sidebar logo (dark mode)',
+  { slot: 'sidebarDark', labelKey: 'admin.settings.sidebarDarkLogo', label: 'Sidebar logo (dark mode)',
+    descKey: 'admin.settings.sidebarDarkLogoDesc',
     description: 'Variant used when the dark theme is active. Optional — falls back to the light-mode logo.',
     recommended: '256×64 PNG, ≤100 KB' },
-  { slot: 'login', label: 'Login page logo',
+  { slot: 'login', labelKey: 'admin.settings.loginLogo', label: 'Login page logo',
+    descKey: 'admin.settings.loginLogoDesc',
     description: 'Logo above the login form. Often larger than the sidebar version.',
     recommended: '512×512 PNG, ≤200 KB' },
-  { slot: 'favicon', label: 'Browser tab favicon',
+  { slot: 'favicon', labelKey: 'admin.settings.faviconLogo', label: 'Browser tab favicon',
+    descKey: 'admin.settings.faviconLogoDesc',
     description: 'Browser tab icon. Some browsers cache favicons hard — open a new private window to verify.',
     recommended: '32×32 to 64×64 PNG, ≤50 KB' },
-  { slot: 'print', label: 'Print / export logo',
+  { slot: 'print', labelKey: 'admin.settings.printLogo', label: 'Print / export logo',
+    descKey: 'admin.settings.printLogoDesc',
     description: 'High-DPI version embedded in PDF / XLSX exports.',
     recommended: '1024×256 PNG, ≤500 KB' },
 ];
 
 export default function LogoManagerPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const branding = useBranding();
   const canWrite = hasPermission(user, 'MANAGE_SYSTEM_BRANDING');
@@ -65,15 +72,14 @@ export default function LogoManagerPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><ImageIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Logo Manager</h2>
+            <h2 className="rm-hero-title">{t('admin.settings.logoManager', 'Logo Manager')}</h2>
             <div className="rm-hero-sub">
-              Upload, replace, or reset the five branding logo slots.
-              Files are stored in the upload directory and served from <code>/uploads/…</code>.
+              {t('admin.settings.logoManagerSub', 'Upload, replace, or reset the five branding logo slots. Files are stored in the upload directory.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← Back</Link>
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('admin.settings.backToSettings', '← Back')}</Link>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('common.refresh', 'Refresh')}</button>
           </div>
         </div>
       </div>
@@ -82,7 +88,7 @@ export default function LogoManagerPage() {
       {busy && (
         <div className="rm-loading">
           <span className="scope-spinner" aria-hidden="true" />
-          <span className="muted">Loading…</span>
+          <span className="muted">{t('common.loading', 'Loading…')}</span>
         </div>
       )}
 
@@ -93,15 +99,14 @@ export default function LogoManagerPage() {
             border: '1px solid rgba(2, 132, 199, 0.2)',
             color: 'var(--info-strong)',
           }}>
-            <strong>Format:</strong> JPEG, PNG, or WebP up to 5 MB.
-            SVG is not supported — server-side SVG sanitization isn't wired yet (XSS risk).
+            {t('admin.settings.logoFormatNotice', 'Format: JPEG, PNG, or WebP up to 5 MB. SVG is not supported.')}
           </div>
           {SLOTS.map((s) => (
             <LogoUploader
               key={s.slot}
               slot={s.slot}
-              label={s.label}
-              description={s.description}
+              label={t(s.labelKey, s.label)}
+              description={t(s.descKey, s.description)}
               recommended={s.recommended}
               currentUrl={logos[s.slot]?.url || ''}
               onChanged={onChanged}

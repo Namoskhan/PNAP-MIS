@@ -227,3 +227,15 @@
   left: 16px;
   right: auto;
 }
+
+/* Password Field in RTL: show/hide toggle moves to left side */
+[dir="rtl"] .pw-wrap input {
+  padding-left: 40px !important;
+  padding-right: 12px !important;
+}
+
+[dir="rtl"] .pw-toggle {
+  left: 1px !important;
+  right: auto !important;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm) !important;
+}
