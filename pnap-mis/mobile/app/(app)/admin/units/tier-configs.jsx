@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
@@ -33,6 +34,7 @@ const CAPABILITY_KEYS = [
 ];
 
 export default function UnitTierConfigsScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const toast = useToast();
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -112,7 +114,7 @@ export default function UnitTierConfigsScreen() {
             <View style={styles.hero}>
               <View style={styles.heroHeader}>
                 <Ionicons name="business" size={28} color={Colors.primary} />
-                <Text style={styles.heroTitle}>Unit Type Manager</Text>
+                <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.units.tierConfigs', 'Unit Type Manager')}</Text>
               </View>
               <Text style={styles.heroSub}>
                 Configure label, plural label, capabilities, and body policy for each of the 5 hierarchy tiers.

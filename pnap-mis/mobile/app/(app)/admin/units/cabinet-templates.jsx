@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { confirmAction } from '../../../../src/utils/dialog';
@@ -25,6 +26,7 @@ const TIER_CODES = ['CENTRAL', 'PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT'];
 const APPLIES_TO_BODY = ['BOTH', 'EXECUTIVE', 'COMMITTEE'];
 
 export default function CabinetTemplatesScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const toast = useToast();
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -94,11 +96,9 @@ export default function CabinetTemplatesScreen() {
           <View style={styles.hero}>
             <View style={styles.heroHeader}>
               <Ionicons name="people" size={28} color={Colors.primary} />
-              <Text style={styles.heroTitle}>Cabinet Structure</Text>
+              <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.units.cabinetTemplates', 'Cabinet Structure')}</Text>
             </View>
-            <Text style={styles.heroSub}>
-              Cabinet slots per tier — required vs optional, term length, body applicability, propose/decide gating.
-            </Text>
+            <Text style={[styles.heroSub, isRTL && { textAlign: 'right' }]}>{t('admin.units.cabinetTemplatesSub', 'Cabinet slots per tier — required vs optional, term length, body applicability, propose/decide gating.')}</Text>
 
             <View style={styles.heroActions}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
