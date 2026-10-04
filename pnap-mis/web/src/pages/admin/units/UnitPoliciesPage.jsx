@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
@@ -15,6 +16,7 @@ const TIER_CODES = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 const TRANSFER_DIRECTIONS = ['UP', 'DOWN', 'SAME_TIER'];
 
 export default function UnitPoliciesPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -51,16 +53,15 @@ export default function UnitPoliciesPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><ScaleIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Unit Policies</h2>
+            <h2 className="rm-hero-title">{t('admin.units.policies', 'Unit Policies')}</h2>
             <div className="rm-hero-sub">
-              Quorum, attendance, finance thresholds, and transfer rules.
-              Resolution: UNIT → TIER → GLOBAL — most specific wins per leaf field.
+              {t('admin.units.policiesSub', 'Quorum, attendance, finance thresholds, and transfer rules. Resolution: UNIT → TIER → GLOBAL — most specific wins per leaf field.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('admin.refresh', 'Refresh')}</button>
             {canWrite && (
-              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>＋ New Override</button>
+              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>{t('admin.units.newPolicy', '＋ New Override')}</button>
             )}
           </div>
         </div>
@@ -71,7 +72,7 @@ export default function UnitPoliciesPage() {
       {busy && (
         <div className="rm-loading">
           <span className="scope-spinner" aria-hidden="true" />
-          <span className="muted">Loading…</span>
+          <span className="muted">{t('common.loading', 'Loading…')}</span>
         </div>
       )}
 
@@ -83,17 +84,17 @@ export default function UnitPoliciesPage() {
               {p.scope}
               {p.tierCode ? ` · ${p.tierCode}` : ''}
               {p.unitId ? ` · unit ${String(p.unitId).slice(-6)}` : ''}
-              {p.isSystem && ' · built-in'}
-              {!p.isActive && ' · inactive'}
+              {p.isSystem && ` · ${t('admin.lockedBuiltin', 'built-in')}`}
+              {!p.isActive && ` · ${t('admin.inactiveStatus', 'inactive')}`}
             </span>
             <span className="rm-card-bar-count">v{p.policyVersion || 1}</span>
           </div>
           <div className="rm-card-body">
             <PolicySummary policy={p} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
-              <button className="rm-action edit" onClick={() => setEditing(p)} disabled={!canWrite}>Edit</button>
+              <button className="rm-action edit" onClick={() => setEditing(p)} disabled={!canWrite}>{t('admin.edit', 'Edit')}</button>
               {!p.isSystem && canWrite && (
-                <button className="rm-action delete" onClick={() => deletePolicy(p)}><TrashIcon size={13} /> Delete</button>
+                <button className="rm-action delete" onClick={() => deletePolicy(p)}><TrashIcon size={13} /> {t('admin.delete', 'Delete')}</button>
               )}
             </div>
           </div>
@@ -146,6 +147,7 @@ function PolicySummary({ policy }) {
 }
 
 function PolicyDialog({ mode, policy, onClose, onSaved }) {
+  const { t } = useTranslation();
   const isEdit = mode === 'edit';
   const [scope, setScope] = useState(policy?.scope || 'TIER');
   const [tierCode, setTierCode] = useState(policy?.tierCode || 'AREA');
@@ -344,8 +346,8 @@ function PolicyDialog({ mode, policy, onClose, onSaved }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button className="btn secondary" onClick={onClose}>Cancel</button>
-          <button className="btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : (isEdit ? 'Save' : 'Create')}</button>
+          <button className="btn secondary" onClick={onClose}>{t('admin.cancel', 'Cancel')}</button>
+          <button className="btn" disabled={busy} onClick={save}>{busy ? t('admin.saving', 'Saving…') : (isEdit ? t('admin.save', 'Save') : t('admin.create', 'Create'))}</button>
         </div>
       </div>
     </div>

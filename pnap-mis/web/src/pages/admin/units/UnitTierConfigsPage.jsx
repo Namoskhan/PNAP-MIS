@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
@@ -22,6 +23,7 @@ const CAPABILITY_KEYS = [
 ];
 
 export default function UnitTierConfigsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -47,14 +49,13 @@ export default function UnitTierConfigsPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><BuildingIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Unit Type Manager</h2>
+            <h2 className="rm-hero-title">{t('admin.units.tierConfigs', 'Unit Type Manager')}</h2>
             <div className="rm-hero-sub">
-              Configure label, plural label, capabilities, and body policy for each of the 5 hierarchy tiers.
-              The tier codes themselves are locked — only the editable surface is tunable.
+              {t('admin.units.tierConfigsSub', 'Configure label, plural label, capabilities, and body policy for each of the 5 hierarchy tiers. The tier codes themselves are locked — only the editable surface is tunable.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('admin.refresh', 'Refresh')}</button>
           </div>
         </div>
       </div>
@@ -64,53 +65,53 @@ export default function UnitTierConfigsPage() {
       <div className="rm-card">
         <div className="rm-card-head">
           <span className="rm-card-head-icon" aria-hidden="true"><TagIcon size={15} /></span>
-          <span className="rm-card-head-label">Tier</span>
+          <span className="rm-card-head-label">{t('admin.tier', 'Tier')}</span>
           <span className="rm-card-head-actions">
             <span className="rm-card-head-icon" aria-hidden="true"><GearIcon size={15} /></span>
-            <span>Actions</span>
+            <span>{t('admin.actions', 'Actions')}</span>
           </span>
         </div>
 
         {busy && (
           <div className="rm-loading">
             <span className="scope-spinner" aria-hidden="true" />
-            <span className="muted">Loading…</span>
+            <span className="muted">{t('common.loading', 'Loading…')}</span>
           </div>
         )}
 
-        {!busy && tiers.map((t) => {
-          const enabledCount = CAPABILITY_KEYS.filter((c) => t.capabilities?.[c.key]).length;
-          const bodyCount = (t.bodyPolicy?.executive ? 1 : 0) + (t.bodyPolicy?.committee ? 1 : 0);
+        {!busy && tiers.map((tierItem) => {
+          const enabledCount = CAPABILITY_KEYS.filter((c) => tierItem.capabilities?.[c.key]).length;
+          const bodyCount = (tierItem.bodyPolicy?.executive ? 1 : 0) + (tierItem.bodyPolicy?.committee ? 1 : 0);
           return (
-            <div key={t._id} className="rm-row locked">
+            <div key={tierItem._id} className="rm-row locked">
               <div className="rm-row-avatar">
-                <span aria-hidden="true">{t.label.charAt(0).toUpperCase()}</span>
+                <span aria-hidden="true">{tierItem.label.charAt(0).toUpperCase()}</span>
                 <span className="rm-row-avatar-badge" title="Built-in">🔒</span>
               </div>
               <div className="rm-row-meta">
                 <div className="rm-row-name">
-                  {t.label}
-                  <span className="rm-row-tag custom">v{t.configVersion || 1}</span>
+                  {tierItem.label}
+                  <span className="rm-row-tag custom">v{tierItem.configVersion || 1}</span>
                 </div>
                 <div className="rm-row-sub">
-                  <code>{t.tierCode}</code>
+                  <code>{tierItem.tierCode}</code>
                   <span className="muted">·</span>
-                  <span>{t.pluralLabel}</span>
+                  <span>{tierItem.pluralLabel}</span>
                   <span className="muted">·</span>
-                  <span>{enabledCount}/{CAPABILITY_KEYS.length} capabilities</span>
+                  <span>{enabledCount}/{CAPABILITY_KEYS.length} {t('admin.units.capabilities', 'capabilities')}</span>
                   <span className="muted">·</span>
                   <span>{bodyCount === 2 ? 'Both bodies' : bodyCount === 1 ? '1 body' : 'no bodies'}</span>
                   <span className="muted">·</span>
-                  <span>{(t.customFields || []).length} custom fields</span>
+                  <span>{(tierItem.customFields || []).length} {t('admin.units.customFields', 'custom fields')}</span>
                 </div>
               </div>
               <div className="rm-row-actions">
                 <button
                   className="rm-action edit"
-                  onClick={() => setEditing(t)}
+                  onClick={() => setEditing(tierItem)}
                   disabled={!canWrite}
                   title={canWrite ? 'Edit this tier' : 'Read-only — needs MANAGE_UNIT_CONFIG'}
-                >Edit</button>
+                >{t('admin.edit', 'Edit')}</button>
               </div>
             </div>
           );
@@ -129,6 +130,7 @@ export default function UnitTierConfigsPage() {
 }
 
 function EditTierDialog({ tier, onClose, onSaved }) {
+  const { t } = useTranslation();
   const [label, setLabel] = useState(tier.label || '');
   const [pluralLabel, setPluralLabel] = useState(tier.pluralLabel || '');
   const [description, setDescription] = useState(tier.description || '');
@@ -220,29 +222,29 @@ function EditTierDialog({ tier, onClose, onSaved }) {
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: 720, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>Edit tier · <code className="exec-login">{tier.tierCode}</code></h3>
+          <h3 style={{ margin: 0 }}>{t('admin.units.tierConfigs', 'Edit tier')} · <code className="exec-login">{tier.tierCode}</code></h3>
           <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
 
         <div className="form-grid">
           <div className="field">
-            <label>Display label</label>
+            <label>{t('admin.name', 'Display label')}</label>
             <input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} />
           </div>
           <div className="field">
-            <label>Plural label</label>
+            <label>{t('admin.units.pluralLabel', 'Plural label')}</label>
             <input value={pluralLabel} onChange={(e) => setPluralLabel(e.target.value)} maxLength={80} />
           </div>
           <div className="field full">
-            <label>Description (optional)</label>
+            <label>{t('admin.description', 'Description (optional)')}</label>
             <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} />
           </div>
         </div>
 
         <div className="rm-card" style={{ marginTop: 14 }}>
           <div className="rm-card-bar">
-            <span className="rm-card-bar-label">Capabilities</span>
+            <span className="rm-card-bar-label">{t('admin.units.capabilities', 'Capabilities')}</span>
             <span className="rm-card-bar-count">
               {CAPABILITY_KEYS.filter((c) => capabilities[c.key]).length} / {CAPABILITY_KEYS.length}
             </span>
@@ -268,7 +270,7 @@ function EditTierDialog({ tier, onClose, onSaved }) {
 
         <div className="rm-card" style={{ marginTop: 12 }}>
           <div className="rm-card-bar">
-            <span className="rm-card-bar-label">Body policy</span>
+            <span className="rm-card-bar-label">{t('admin.units.bodyPolicy', 'Body policy')}</span>
           </div>
           <div className="rm-card-body">
             <div className="form-grid">
@@ -396,8 +398,8 @@ function EditTierDialog({ tier, onClose, onSaved }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button className="btn secondary" onClick={onClose}>Cancel</button>
-          <button className="btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+          <button className="btn secondary" onClick={onClose}>{t('admin.cancel', 'Cancel')}</button>
+          <button className="btn" disabled={busy} onClick={save}>{busy ? t('admin.saving', 'Saving…') : t('admin.save', 'Save')}</button>
         </div>
       </div>
     </div>
