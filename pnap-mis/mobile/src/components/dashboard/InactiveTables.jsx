@@ -7,47 +7,48 @@ import {
   View,
 } from 'react-native';
 import { api } from '../../api/client';
+import { useLanguage } from '../../context/LanguageContext';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import Card from '../Card';
 import Badge from '../Badge';
 
-const UNIT_LEVELS = [
-  { key: 'BASIC_UNIT', label: 'Basic Units' },
-  { key: 'AREA', label: 'Areas' },
-  { key: 'DISTRICT', label: 'Districts' },
-  { key: 'PROVINCE', label: 'Provinces' },
-];
-
-function fmtDate(d) {
-  return d ? new Date(d).toLocaleDateString() : 'Never';
+function fmtDate(d, t) {
+  return d ? new Date(d).toLocaleDateString() : (t ? t('dashboard.never', 'Never') : 'Never');
 }
 
-function fmtDays(n) {
-  if (n == null) return 'No activity recorded';
-  return `${n.toLocaleString()} days silent`;
+function fmtDays(n, t) {
+  if (n == null) return t ? t('dashboard.noActivityRecorded', 'No activity recorded') : 'No activity recorded';
+  return t
+    ? t('dashboard.daysSilent', '{{count}} days silent', { count: n.toLocaleString() })
+    : `${n.toLocaleString()} days silent`;
 }
 
 function Pager({ page, pages, total, onPage, busy }) {
+  const { t, isRTL } = useLanguage();
   if (!total || total === 0) return null;
   return (
-    <View style={styles.pagerRow}>
-      <Text style={styles.pagerInfo}>
-        Page {page} of {pages} ({total.toLocaleString()} total)
+    <View style={[styles.pagerRow, isRTL && { flexDirection: 'row-reverse' }]}>
+      <Text style={[styles.pagerInfo, isRTL && { textAlign: 'right' }]}>
+        {t('dashboard.pageOfRows', 'Page {{page}} of {{pages}} ({{total}} total)', {
+          page,
+          pages,
+          total: total.toLocaleString(),
+        })}
       </Text>
-      <View style={styles.pagerBtns}>
+      <View style={[styles.pagerBtns, isRTL && { flexDirection: 'row-reverse' }]}>
         <TouchableOpacity
           disabled={busy || page <= 1}
           style={[styles.pagerBtn, (busy || page <= 1) && styles.pagerBtnDisabled]}
           onPress={() => onPage(page - 1)}
         >
-          <Text style={styles.pagerBtnText}>← Prev</Text>
+          <Text style={styles.pagerBtnText}>{isRTL ? '→ ' + t('common.previous', 'Prev') : '← ' + t('common.previous', 'Prev')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           disabled={busy || page >= pages}
           style={[styles.pagerBtn, (busy || page >= pages) && styles.pagerBtnDisabled]}
           onPress={() => onPage(page + 1)}
         >
-          <Text style={styles.pagerBtnText}>Next →</Text>
+          <Text style={styles.pagerBtnText}>{isRTL ? t('common.next', 'Next') + ' ←' : t('common.next', 'Next') + ' →'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -55,10 +56,18 @@ function Pager({ page, pages, total, onPage, busy }) {
 }
 
 export function InactiveUnitsTable({ params }) {
+  const { t, isRTL } = useLanguage();
   const [level, setLevel] = useState('BASIC_UNIT');
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(true);
+
+  const unitLevels = [
+    { key: 'BASIC_UNIT', label: t('units.basicUnits', 'Basic Units') },
+    { key: 'AREA', label: t('units.areas', 'Areas') },
+    { key: 'DISTRICT', label: t('units.districts', 'Districts') },
+    { key: 'PROVINCE', label: t('units.provinces', 'Provinces') },
+  ];
 
   useEffect(() => {
     setPage(1);
@@ -81,22 +90,22 @@ export function InactiveUnitsTable({ params }) {
 
   return (
     <Card style={styles.card}>
-      <View style={styles.cardHeader}>
+      <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>
-            {showingActive ? 'Active Units' : 'Dormant Units'}
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>
+            {showingActive ? t('dashboard.activeUnitsDetail', 'Active Units') : t('dashboard.inactiveUnitsDetail', 'Dormant Units')}
           </Text>
-          <Text style={styles.cardSub}>
+          <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>
             {showingActive
-              ? 'Key office bearers active inside window'
-              : 'No activity inside window · Longest silence first'}
+              ? t('dashboard.activeUnitsSub', 'Key office bearers active inside window')
+              : t('dashboard.inactiveUnitsSub', 'No activity inside window · Longest silence first')}
           </Text>
         </View>
       </View>
 
       {/* Tier Switcher Chips */}
-      <View style={styles.tierChipsRow}>
-        {UNIT_LEVELS.map((l) => {
+      <View style={[styles.tierChipsRow, isRTL && { flexDirection: 'row-reverse' }]}>
+        {unitLevels.map((l) => {
           const active = level === l.key;
           return (
             <TouchableOpacity
@@ -121,49 +130,53 @@ export function InactiveUnitsTable({ params }) {
         <View style={styles.emptyBox}>
           <Text style={styles.emptyText}>
             {showingActive
-              ? 'No active units match these filters.'
-              : 'Nothing dormant — every unit at this tier has recent activity!'}
+              ? t('dashboard.noActiveUnitsMatch', 'No active units match these filters.')
+              : t('dashboard.noUnitsFoundSelection', 'Nothing dormant — every unit at this tier has recent activity!')}
           </Text>
         </View>
       ) : (
         <View style={styles.itemsList}>
           {items.map((u) => {
             const loc = [u.province, u.district, u.area, u.basicUnit].filter(Boolean).join(' › ');
+            const statusLabel = u.status === 'ACTIVE'
+              ? t('common.active', 'ACTIVE')
+              : (u.status === 'DORMANT' ? t('common.inactive', 'DORMANT') : (u.status || t('common.inactive', 'INACTIVE')));
+
             return (
               <View key={u._id} style={styles.itemCard}>
-                <View style={styles.itemTop}>
-                  <Text style={styles.itemLocation} numberOfLines={1}>
-                    {loc || 'Unit'}
+                <View style={[styles.itemTop, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.itemLocation, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                    {loc || t('dashboard.unit', 'Unit')}
                   </Text>
                   <Badge
-                    label={u.status || 'INACTIVE'}
+                    label={statusLabel}
                     color={u.status === 'ACTIVE' ? Colors.success : Colors.warning}
                     bg={u.status === 'ACTIVE' ? 'rgba(22,163,74,0.12)' : 'rgba(217,119,6,0.12)'}
                   />
                 </View>
 
                 {/* Responsible Officer */}
-                <View style={styles.itemOfficer}>
-                  <Text style={styles.metaLabel}>Officer: </Text>
+                <View style={[styles.itemOfficer, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={styles.metaLabel}>{t('dashboard.officerInCharge', 'Officer')}: </Text>
                   {u.officer ? (
-                    <Text style={styles.officerText} numberOfLines={1}>
+                    <Text style={[styles.officerText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
                       {u.officer.fullName}{' '}
                       <Text style={styles.officerRole}>
                         ({String(u.officer.roleCode || '').replace(/_/g, ' ').toLowerCase()})
                       </Text>
                     </Text>
                   ) : (
-                    <Text style={styles.noOfficerText}>No cabinet appointed</Text>
+                    <Text style={styles.noOfficerText}>{t('dashboard.noCabinetAppointed', 'No cabinet appointed')}</Text>
                   )}
                 </View>
 
                 {/* Activity & Days */}
-                <View style={styles.itemBottom}>
+                <View style={[styles.itemBottom, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Text style={styles.metaText}>
-                    Last: {fmtDate(u.lastActivityAt)}
+                    {t('dashboard.lastActive', 'Last')}: {fmtDate(u.lastActivityAt, t)}
                   </Text>
                   <Text style={styles.daysText}>
-                    {fmtDays(u.daysInactive)}
+                    {fmtDays(u.daysInactive, t)}
                   </Text>
                 </View>
               </View>
@@ -185,6 +198,7 @@ export function InactiveUnitsTable({ params }) {
 }
 
 export function InactiveMembersTable({ params }) {
+  const { t, isRTL } = useLanguage();
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(true);
@@ -209,15 +223,15 @@ export function InactiveMembersTable({ params }) {
 
   return (
     <Card style={styles.card}>
-      <View style={styles.cardHeader}>
+      <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>Dormant Members</Text>
-          <Text style={styles.cardSub}>
-            No meaningful organizational activity in window
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.inactiveMembersDetail', 'Dormant Members')}</Text>
+          <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>
+            {t('dashboard.inactiveMembersSub', 'No meaningful organizational activity in window')}
           </Text>
         </View>
         <Text style={styles.metaCount}>
-          {(data?.total || 0).toLocaleString()} members
+          {(data?.total || 0).toLocaleString()} {t('common.members', 'members')}
         </Text>
       </View>
 
@@ -228,39 +242,43 @@ export function InactiveMembersTable({ params }) {
       ) : items.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={styles.emptyText}>
-            No dormant members match these filters.
+            {t('dashboard.noInactiveMembersFound', 'No dormant members match these filters.')}
           </Text>
         </View>
       ) : (
         <View style={styles.itemsList}>
           {items.map((m) => {
             const loc = [m.province, m.district, m.area, m.basicUnit].filter(Boolean).join(' › ');
+            const statusLabel = m.status === 'ACTIVE'
+              ? t('common.active', 'ACTIVE')
+              : (m.status === 'DORMANT' ? t('common.inactive', 'DORMANT') : (m.status || t('common.inactive', 'INACTIVE')));
+
             return (
               <View key={m._id} style={styles.itemCard}>
-                <View style={styles.itemTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.memberName} numberOfLines={1}>{m.fullName}</Text>
-                    <Text style={styles.memberCode}>{m.memberCode || '—'}</Text>
+                <View style={[styles.itemTop, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                    <Text style={[styles.memberName, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{m.fullName}</Text>
+                    <Text style={[styles.memberCode, isRTL && { textAlign: 'right' }]}>{m.memberCode || '—'}</Text>
                   </View>
                   <Badge
-                    label={m.status || 'INACTIVE'}
+                    label={statusLabel}
                     color={m.status === 'ACTIVE' ? Colors.success : Colors.textMuted}
                     bg={m.status === 'ACTIVE' ? 'rgba(22,163,74,0.12)' : 'rgba(100,116,139,0.12)'}
                   />
                 </View>
 
                 {loc ? (
-                  <Text style={styles.memberLoc} numberOfLines={1}>
+                  <Text style={[styles.memberLoc, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
                     📍 {loc}
                   </Text>
                 ) : null}
 
-                <View style={styles.itemBottom}>
+                <View style={[styles.itemBottom, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Text style={styles.metaText}>
-                    Last: {fmtDate(m.lastActivityAt)}
+                    {t('dashboard.lastActive', 'Last')}: {fmtDate(m.lastActivityAt, t)}
                   </Text>
                   <Text style={styles.daysText}>
-                    {fmtDays(m.daysInactive)}
+                    {fmtDays(m.daysInactive, t)}
                   </Text>
                 </View>
               </View>

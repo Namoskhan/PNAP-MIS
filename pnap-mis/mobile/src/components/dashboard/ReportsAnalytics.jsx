@@ -11,26 +11,13 @@ import {
 import useAnalytics from '../../hooks/useAnalytics';
 import { api } from '../../api/client';
 import { useToast } from '../Toast';
+import { useLanguage } from '../../context/LanguageContext';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import Card from '../Card';
 import { Donut, SmartKpi, StackedHBar } from '../charts';
 import { downloadAndShare } from '../../utils/export';
 
-const LEVEL_NOUN = {
-  PROVINCE: 'Province',
-  DISTRICT: 'District',
-  AREA: 'Area',
-  BASIC_UNIT: 'Basic Unit',
-};
-
 const LEVELS = ['CENTRAL', 'PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT'];
-const LEVEL_LABEL = {
-  CENTRAL: 'Central',
-  PROVINCE: 'Province',
-  DISTRICT: 'District',
-  AREA: 'Area',
-  BASIC_UNIT: 'Basic Unit',
-};
 const KEY_OF = {
   PROVINCE: 'provinceId',
   DISTRICT: 'districtId',
@@ -41,7 +28,23 @@ const EMPTY = { provinceId: '', districtId: '', areaId: '', basicUnitId: '' };
 
 export default function ReportsAnalytics({ params, periodFrom, scope }) {
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const { data, loading, error } = useAnalytics('/dashboard/reports', params);
+
+  const levelNoun = {
+    PROVINCE: t('units.province', 'Province'),
+    DISTRICT: t('units.district', 'District'),
+    AREA: t('units.area', 'Area'),
+    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
+  };
+
+  const levelLabel = {
+    CENTRAL: t('admin.central', 'Central'),
+    PROVINCE: t('units.province', 'Province'),
+    DISTRICT: t('units.district', 'District'),
+    AREA: t('units.area', 'Area'),
+    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
+  };
 
   // Unit Report Downloads State
   const [sel, setSel] = useState(EMPTY);
@@ -102,12 +105,12 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
   useEffect(() => { setTarget(deepest); }, [deepest]);
 
   const nameAt = useMemo(() => ({
-    CENTRAL: 'Central (National)',
+    CENTRAL: `${levelLabel.CENTRAL} (${t('dashboard.national', 'National')})`,
     PROVINCE: provinces.find((p) => String(p._id) === String(sel.provinceId))?.name,
     DISTRICT: districts.find((d) => String(d._id) === String(sel.districtId))?.name,
     AREA: areas.find((a) => String(a._id) === String(sel.areaId))?.name,
     BASIC_UNIT: units.find((u) => String(u._id) === String(sel.basicUnitId))?.name,
-  }), [provinces, districts, areas, units, sel]);
+  }), [provinces, districts, areas, units, sel, levelLabel, t]);
 
   const chain = LEVELS.slice(0, LEVELS.indexOf(deepest) + 1);
 
@@ -134,9 +137,9 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
       const filename = `${safe}-${kind}-report.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
 
       await downloadAndShare(`/exports/unit/${kind}/${format}`, filename, qParams);
-      toast.success(`Export ready: ${filename}`);
+      toast.success(t('dashboard.exportReady', `Export ready: ${filename}`));
     } catch (e) {
-      toast.error(e.message || 'Export failed');
+      toast.error(e.message || t('dashboard.exportFailed', 'Export failed'));
     } finally {
       setBusyExport('');
     }
@@ -160,24 +163,24 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
 
   if (!data) return null;
 
-  const t = data.totals || {};
+  const totals = data.totals || {};
   const rows = data.rows || [];
-  const noun = data.level ? LEVEL_NOUN[data.level] : null;
+  const noun = data.level ? levelNoun[data.level] : null;
 
   return (
     <View style={styles.container}>
       {/* 3 KPIs */}
-      <View style={styles.kpiGrid}>
+      <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
         <SmartKpi
-          label="Reports Filed"
-          value={t.filed}
+          label={t('dashboard.reportsSubmitted', 'Reports Filed')}
+          value={totals.filed}
           icon="✅"
           iconBg="rgba(22, 163, 74, 0.12)"
           iconColor={Colors.success}
         />
         <SmartKpi
-          label="Outstanding"
-          value={t.outstanding}
+          label={t('dashboard.reportsNotSubmitted', 'Outstanding')}
+          value={totals.outstanding}
           icon="⚠️"
           iconBg="rgba(239, 68, 68, 0.12)"
           iconColor={Colors.error}
@@ -185,36 +188,47 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
       </View>
 
       <SmartKpi
-        label="Overall Filing Rate"
-        value={t.filingRate ?? 0}
+        label={t('dashboard.reportsSubmittedPct', 'Overall Filing Rate')}
+        value={totals.filingRate ?? 0}
         format={(v) => `${v}%`}
         icon="📄"
         iconBg="rgba(30, 64, 175, 0.12)"
         iconColor={Colors.primary}
-        subLabel="Outstanding counts ignore date filter"
+        subLabel={t('dashboard.reportsNotSubmittedNote', 'Outstanding counts ignore date filter')}
       />
 
       {/* Filing Rate Donut + Filing Status by Level */}
       {noun && rows.length > 0 && (
         <Card style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Filing status by {noun.toLowerCase()}</Text>
-            <Text style={styles.cardSub}>Most outstanding first</Text>
+          <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>
+                {t('dashboard.reportStatusBy', 'Filing status by {{tier}}', { tier: noun.toLowerCase() })}
+              </Text>
+              <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>
+                {t('dashboard.unitsWithMostMissingFirst', 'Most outstanding first')}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.donutGaugeRow}>
+          <View style={[styles.donutGaugeRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <Donut
-              percent={t.filingRate ?? 0}
-              label="FILING RATE"
+              percent={totals.filingRate ?? 0}
+              label={t('dashboard.filingRate', 'FILING RATE')}
               size={94}
               stroke={10}
-              color={(t.filingRate ?? 0) >= 60 ? Colors.success : Colors.warning}
+              color={(totals.filingRate ?? 0) >= 60 ? Colors.success : Colors.warning}
               trackColor={Colors.surfaceAlt}
             />
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.donutNoteTitle}>Filing Efficiency</Text>
-              <Text style={styles.donutNote}>
-                {(t.filed || 0).toLocaleString()} reports filed vs {(t.outstanding || 0).toLocaleString()} still owed across all units in scope.
+              <Text style={[styles.donutNoteTitle, isRTL && { textAlign: 'right' }]}>
+                {t('dashboard.filingEfficiency', 'Filing Efficiency')}
+              </Text>
+              <Text style={[styles.donutNote, isRTL && { textAlign: 'right' }]}>
+                {t('dashboard.filingEfficiencyDesc', '{{filed}} reports filed vs {{outstanding}} still owed across all units in scope.', {
+                  filed: (totals.filed || 0).toLocaleString(),
+                  outstanding: (totals.outstanding || 0).toLocaleString(),
+                })}
               </Text>
             </View>
           </View>
@@ -225,101 +239,103 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
               values: { filed: r.filed, outstanding: r.outstanding },
             }))}
             series={[
-              { key: 'filed', label: 'Filed', color: Colors.success },
-              { key: 'outstanding', label: 'Outstanding', color: Colors.error },
+              { key: 'filed', label: t('dashboard.submitted', 'Filed'), color: Colors.success },
+              { key: 'outstanding', label: t('dashboard.notSubmitted', 'Outstanding'), color: Colors.error },
             ]}
-            emptyLabel="Nothing on record."
+            emptyLabel={t('common.noData', 'Nothing on record.')}
           />
         </Card>
       )}
 
       {/* Unit Report Downloads Picker */}
       <Card style={styles.card}>
-        <View style={styles.cardHeader}>
+        <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Unit report downloads</Text>
-            <Text style={styles.cardSub}>
-              Generate full meeting & finance reports for any unit
+            <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>
+              {t('dashboard.unitReports', 'Unit report downloads')}
+            </Text>
+            <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>
+              {t('dashboard.unitReportsSub', 'Generate full meeting & finance reports for any unit')}
             </Text>
           </View>
           {deepest !== 'CENTRAL' && (
             <TouchableOpacity onPress={() => setSel(EMPTY)}>
-              <Text style={styles.resetText}>Reset</Text>
+              <Text style={styles.resetText}>{t('common.reset', 'Reset')}</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Cascading Picker Buttons */}
-        <View style={styles.pickerRow}>
+        <View style={[styles.pickerRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity
-            style={styles.selectBtn}
+            style={[styles.selectBtn, isRTL && { flexDirection: 'row-reverse' }]}
             onPress={() =>
               setPickerModal({
-                title: 'Select Province',
-                items: [{ _id: '', name: 'All Provinces (Central)' }, ...provinces],
+                title: t('dashboard.selectProvince', 'Select Province'),
+                items: [{ _id: '', name: t('dashboard.allProvincesCentral', 'All Provinces (Central)') }, ...provinces],
                 selected: sel.provinceId,
                 onSelect: (v) => pick('PROVINCE', v),
               })
             }
           >
-            <Text style={styles.selectBtnText} numberOfLines={1}>
-              {nameAt.PROVINCE || 'All Provinces'}
+            <Text style={[styles.selectBtnText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+              {nameAt.PROVINCE || t('dashboard.allProvincesCentral', 'All Provinces')}
             </Text>
             <Text style={styles.arrow}>▼</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             disabled={!sel.provinceId}
-            style={[styles.selectBtn, !sel.provinceId && styles.disabledBtn]}
+            style={[styles.selectBtn, !sel.provinceId && styles.disabledBtn, isRTL && { flexDirection: 'row-reverse' }]}
             onPress={() =>
               setPickerModal({
-                title: 'Select District',
-                items: [{ _id: '', name: 'All Districts' }, ...districts],
+                title: t('dashboard.selectDistrict', 'Select District'),
+                items: [{ _id: '', name: t('dashboard.allDistricts', 'All Districts') }, ...districts],
                 selected: sel.districtId,
                 onSelect: (v) => pick('DISTRICT', v),
               })
             }
           >
-            <Text style={styles.selectBtnText} numberOfLines={1}>
-              {nameAt.DISTRICT || 'All Districts'}
+            <Text style={[styles.selectBtnText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+              {nameAt.DISTRICT || t('dashboard.allDistricts', 'All Districts')}
             </Text>
             <Text style={styles.arrow}>▼</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.pickerRow}>
+        <View style={[styles.pickerRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity
             disabled={!sel.districtId}
-            style={[styles.selectBtn, !sel.districtId && styles.disabledBtn]}
+            style={[styles.selectBtn, !sel.districtId && styles.disabledBtn, isRTL && { flexDirection: 'row-reverse' }]}
             onPress={() =>
               setPickerModal({
-                title: 'Select Area',
-                items: [{ _id: '', name: 'All Areas' }, ...areas],
+                title: t('dashboard.selectArea', 'Select Area'),
+                items: [{ _id: '', name: t('dashboard.allAreas', 'All Areas') }, ...areas],
                 selected: sel.areaId,
                 onSelect: (v) => pick('AREA', v),
               })
             }
           >
-            <Text style={styles.selectBtnText} numberOfLines={1}>
-              {nameAt.AREA || 'All Areas'}
+            <Text style={[styles.selectBtnText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+              {nameAt.AREA || t('dashboard.allAreas', 'All Areas')}
             </Text>
             <Text style={styles.arrow}>▼</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             disabled={!sel.areaId}
-            style={[styles.selectBtn, !sel.areaId && styles.disabledBtn]}
+            style={[styles.selectBtn, !sel.areaId && styles.disabledBtn, isRTL && { flexDirection: 'row-reverse' }]}
             onPress={() =>
               setPickerModal({
-                title: 'Select Basic Unit',
-                items: [{ _id: '', name: 'All Basic Units' }, ...units],
+                title: t('dashboard.selectBasicUnit', 'Select Basic Unit'),
+                items: [{ _id: '', name: t('dashboard.allBasicUnits', 'All Basic Units') }, ...units],
                 selected: sel.basicUnitId,
                 onSelect: (v) => pick('BASIC_UNIT', v),
               })
             }
           >
-            <Text style={styles.selectBtnText} numberOfLines={1}>
-              {nameAt.BASIC_UNIT || 'All Basic Units'}
+            <Text style={[styles.selectBtnText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+              {nameAt.BASIC_UNIT || t('dashboard.allBasicUnits', 'All Basic Units')}
             </Text>
             <Text style={styles.arrow}>▼</Text>
           </TouchableOpacity>
@@ -327,8 +343,8 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
 
         {/* Reporting Target Switcher */}
         <View style={styles.targetRow}>
-          <Text style={styles.targetLabel}>Report on:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+          <Text style={[styles.targetLabel, isRTL && { textAlign: 'right' }]}>{t('dashboard.reportOn', 'Report on:')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[{ gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
             {chain.map((lvl) => {
               const active = target === lvl;
               return (
@@ -338,7 +354,7 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
                   onPress={() => setTarget(lvl)}
                 >
                   <Text style={[styles.targetChipText, active && styles.targetChipTextActive]}>
-                    {nameAt[lvl] || LEVEL_LABEL[lvl]} ({LEVEL_LABEL[lvl]})
+                    {nameAt[lvl] || levelLabel[lvl]} ({levelLabel[lvl]})
                   </Text>
                 </TouchableOpacity>
               );
@@ -350,9 +366,9 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
         <View style={styles.downloadGrid}>
           {/* Meetings & Activities Download */}
           <View style={styles.downloadCard}>
-            <Text style={styles.downloadTitle}>📋 Meetings & Activities</Text>
-            <Text style={styles.downloadSub}>Roster, attendance, activities & responsibilities.</Text>
-            <View style={styles.downloadBtns}>
+            <Text style={[styles.downloadTitle, isRTL && { textAlign: 'right' }]}>📋 {t('dashboard.meetingsAndActivitiesReport', 'Meetings & Activities')}</Text>
+            <Text style={[styles.downloadSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.meetingsAndActivitiesDesc', 'Roster, attendance, activities & responsibilities.')}</Text>
+            <View style={[styles.downloadBtns, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.primaryBtn]}
                 disabled={!!busyExport}
@@ -380,9 +396,9 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
 
           {/* Finance Download */}
           <View style={styles.downloadCard}>
-            <Text style={styles.downloadTitle}>💰 Finance</Text>
-            <Text style={styles.downloadSub}>Donations, expenses and unit net balance.</Text>
-            <View style={styles.downloadBtns}>
+            <Text style={[styles.downloadTitle, isRTL && { textAlign: 'right' }]}>💰 {t('dashboard.finance', 'Finance')}</Text>
+            <Text style={[styles.downloadSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.financeDesc', 'Donations, expenses and unit net balance.')}</Text>
+            <View style={[styles.downloadBtns, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.primaryBtn]}
                 disabled={!!busyExport}
@@ -414,7 +430,7 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
       <Modal visible={!!pickerModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <Text style={styles.modalTitle}>{pickerModal?.title}</Text>
               <TouchableOpacity onPress={() => setPickerModal(null)}>
                 <Text style={styles.modalClose}>✕</Text>
@@ -426,13 +442,13 @@ export default function ReportsAnalytics({ params, periodFrom, scope }) {
                 return (
                   <TouchableOpacity
                     key={String(it._id || 'all')}
-                    style={[styles.modalItem, isSelected && styles.modalItemActive]}
+                    style={[styles.modalItem, isSelected && styles.modalItemActive, isRTL && { flexDirection: 'row-reverse' }]}
                     onPress={() => {
                       pickerModal.onSelect(it._id);
                       setPickerModal(null);
                     }}
                   >
-                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextActive]}>
+                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextActive, isRTL && { textAlign: 'right' }]}>
                       {it.name}
                     </Text>
                     {isSelected && <Text style={{ color: Colors.primary, fontWeight: '700' }}>✓</Text>}

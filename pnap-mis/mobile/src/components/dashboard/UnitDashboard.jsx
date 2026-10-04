@@ -43,14 +43,32 @@ import UnitSwitcherModal from '../UnitSwitcherModal';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import { downloadAndShare } from '../../utils/export';
 
-const MEETING_TYPE_LABEL = {
-  GBM: 'General Body', EXC: 'Executive', PRT: 'Protest', JLS: 'Jalsa',
-  CMP: 'Campaign', SEM: 'Seminar', STC: 'Study Circle', OTH: 'Other',
+const getMeetingTypeLabel = (code, t) => {
+  const map = {
+    GBM: t('meetings.types.generalBody', 'General Body'),
+    EXC: t('meetings.types.executive', 'Executive'),
+    PRT: t('meetings.types.protest', 'Protest'),
+    JLS: t('meetings.types.jalsa', 'Jalsa'),
+    CMP: t('meetings.types.campaign', 'Campaign'),
+    SEM: t('meetings.types.seminar', 'Seminar'),
+    STC: t('meetings.types.studyCircle', 'Study Circle'),
+    OTH: t('meetings.types.other', 'Other'),
+  };
+  return map[code] || code;
 };
-const ACTIVITY_TYPE_LABEL = {
-  PROTEST: 'Protest', JALSA: 'Jalsa', CAMPAIGN: 'Campaign',
-  SEMINAR: 'Seminar', STUDY_CIRCLE: 'Study Circle', TASK: 'Task',
-  COMMUNITY_SERVICE: 'Community Service',
+
+const getActivityTypeLabel = (code, t) => {
+  const map = {
+    PROTEST: t('activities.types.protest', 'Protest'),
+    JALSA: t('activities.types.jalsa', 'Jalsa'),
+    CAMPAIGN: t('activities.types.campaign', 'Campaign'),
+    SEMINAR: t('activities.types.seminar', 'Seminar'),
+    STUDY_CIRCLE: t('activities.types.studyCircle', 'Study Circle'),
+    TASK: t('activities.types.task', 'Task'),
+    COMMUNITY_SERVICE: t('activities.types.communityService', 'Community Service'),
+    OTHER: t('activities.types.other', 'Other'),
+  };
+  return map[code] || code;
 };
 
 function formatPkr(val) {
@@ -591,9 +609,9 @@ export default function UnitDashboard() {
                 </View>
                 <VBars
                   rows={[
-                    { label: 'Don.', value: data.finance?.donations || 0, color: '#16a34a' },
-                    { label: 'Exp.', value: data.finance?.expenses || 0, color: '#dc2626' },
-                    { label: 'Bal.', value: Math.max(0, data.finance?.balance || 0), color: '#2563eb' },
+                    { label: t('dashboard.donShort', 'Don.'), value: data.finance?.donations || 0, color: '#16a34a' },
+                    { label: t('dashboard.expShort', 'Exp.'), value: data.finance?.expenses || 0, color: '#dc2626' },
+                    { label: t('dashboard.balShort', 'Bal.'), value: Math.max(0, data.finance?.balance || 0), color: '#2563eb' },
                   ]}
                   height={95}
                 />
@@ -617,7 +635,7 @@ export default function UnitDashboard() {
                     </View>
                     <VBars
                       rows={(data.analytics.meetingsByType || []).map((r) => ({
-                        label: (MEETING_TYPE_LABEL[r.type] || r.type).slice(0, 5),
+                        label: (getMeetingTypeLabel(r.type, t) || r.type).slice(0, 5),
                         value: r.count,
                         color: BRAND.dark,
                       }))}
@@ -636,7 +654,7 @@ export default function UnitDashboard() {
                     </View>
                     <VBars
                       rows={(data.analytics.activitiesByType || []).map((r) => ({
-                        label: (ACTIVITY_TYPE_LABEL[r.type] || r.type).slice(0, 5),
+                        label: (getActivityTypeLabel(r.type, t) || r.type).slice(0, 5),
                         value: r.count,
                         color: BRAND.mid,
                       }))}
@@ -703,7 +721,7 @@ export default function UnitDashboard() {
                         <Text style={[styles.cardSub, { marginBottom: 10 }, isRTL && { textAlign: 'right' }]}>{t('dashboard.composition30d', '30 days composition')}</Text>
                         <PieChart
                           segments={data.analytics.meetingsByType.map((r) => ({
-                            label: MEETING_TYPE_LABEL[r.type] || r.type,
+                            label: getMeetingTypeLabel(r.type, t) || r.type,
                             value: r.count,
                           }))}
                         />
@@ -715,7 +733,7 @@ export default function UnitDashboard() {
                         <Text style={[styles.cardSub, { marginBottom: 10 }, isRTL && { textAlign: 'right' }]}>{t('dashboard.composition30d', '30 days composition')}</Text>
                         <PieChart
                           segments={data.analytics.activitiesByType.map((r) => ({
-                            label: ACTIVITY_TYPE_LABEL[r.type] || r.type,
+                            label: getActivityTypeLabel(r.type, t) || r.type,
                             value: r.count,
                           }))}
                         />
@@ -848,21 +866,21 @@ export default function UnitDashboard() {
                         <View style={[styles.subRowStats, isRTL && { flexDirection: 'row-reverse' }]}>
                           <View style={styles.subStatItem}>
                             <Text style={styles.subStatVal}>{s.members}</Text>
-                            <Text style={styles.subStatLabel}>Mbrs</Text>
+                            <Text style={styles.subStatLabel}>{t('dashboard.mbrsShort', 'Mbrs')}</Text>
                           </View>
                           <View style={styles.subStatItem}>
                             <Text style={styles.subStatVal}>{s.meetings30}</Text>
-                            <Text style={styles.subStatLabel}>Mtg</Text>
+                            <Text style={styles.subStatLabel}>{t('dashboard.mtgShort', 'Mtg')}</Text>
                           </View>
                           <View style={styles.subStatItem}>
                             <Text style={styles.subStatVal}>{s.activities30 ?? 0}</Text>
-                            <Text style={styles.subStatLabel}>Act</Text>
+                            <Text style={styles.subStatLabel}>{t('dashboard.actShort', 'Act')}</Text>
                           </View>
                           <View style={styles.subStatItem}>
                             <Text style={[styles.subStatVal, { color: s.balance < 0 ? Colors.error : Colors.success }]}>
                               {formatPkr(s.balance)}
                             </Text>
-                            <Text style={styles.subStatLabel}>Bal</Text>
+                            <Text style={styles.subStatLabel}>{t('dashboard.balShort', 'Bal')}</Text>
                           </View>
                           <Text style={styles.chevron}>{isRTL ? '‹' : '›'}</Text>
                         </View>
@@ -877,7 +895,7 @@ export default function UnitDashboard() {
             {!isFinanceOnlyUser && (!isPresidentPersonaUser || ctx?.unitLevel === 'CENTRAL') && (
               <Card style={styles.fullCard}>
                 <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('dashboard.generateReport', 'Generate Subordinate Report')}</Text>
-                <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>Export filtered meeting and finance records</Text>
+                <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{t('dashboard.exportFilteredRecords', 'Export filtered meeting and finance records')}</Text>
 
                 {/* Unit Selector Chips */}
                 <View style={{ marginTop: 12 }}>
@@ -888,7 +906,7 @@ export default function UnitDashboard() {
                       onPress={() => setReportSubId('self')}
                     >
                       <Text style={[styles.unitPickText, reportSubId === 'self' && styles.unitPickTextActive]}>
-                        ⭐ {ctx?.unitName} (Current)
+                        ⭐ {ctx?.unitName} ({t('dashboard.current', 'Current')})
                       </Text>
                     </TouchableOpacity>
                     {subordinates.map((s) => (
@@ -916,7 +934,7 @@ export default function UnitDashboard() {
                       <ActivityIndicator size="small" color={Colors.primary} />
                     ) : (
                       <Text style={styles.previewBtnText}>
-                        {!isOnline ? 'Offline (Preview Unavailable)' : `🔍 ${t('dashboard.previewReport', 'Preview Report')}`}
+                        {!isOnline ? t('dashboard.offlinePreviewUnavailable', 'Offline (Preview Unavailable)') : `🔍 ${t('dashboard.previewReport', 'Preview Report')}`}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -1007,48 +1025,48 @@ export default function UnitDashboard() {
                   <View>
                     <Text style={styles.cardTitle}>{data.committee.name}</Text>
                     <Text style={styles.cardSub}>
-                      {data.committee.formedAt ? 'Active Committee Cabinet' : 'Pending Activation'}
+                      {data.committee.formedAt ? t('dashboard.activeCommitteeCabinet', 'Active Committee Cabinet') : t('dashboard.pendingActivation', 'Pending Activation')}
                     </Text>
                   </View>
-                  <Badge label="Cabinet" color="#8b5cf6" bg="#f5f3ff" />
+                  <Badge label={t('dashboard.cabinet', 'Cabinet')} color="#8b5cf6" bg="#f5f3ff" />
                 </View>
                 <View style={styles.rollupGrid}>
                   <View style={styles.rollupKpi}>
                     <Text style={styles.rollupKpiVal}>{data.committee.totalMembers || 0}</Text>
-                    <Text style={styles.rollupKpiLabel}>Total Members</Text>
+                    <Text style={styles.rollupKpiLabel}>{t('dashboard.totalMembers', 'Total Members')}</Text>
                   </View>
                   <View style={styles.rollupKpi}>
                     <Text style={styles.rollupKpiVal}>{data.committee.executiveCount || 0}</Text>
-                    <Text style={styles.rollupKpiLabel}>Executive</Text>
+                    <Text style={styles.rollupKpiLabel}>{t('meetings.types.executive', 'Executive')}</Text>
                   </View>
                   <View style={styles.rollupKpi}>
                     <Text style={styles.rollupKpiVal}>{data.committee.permanentCount || 0}</Text>
-                    <Text style={styles.rollupKpiLabel}>Selective</Text>
+                    <Text style={styles.rollupKpiLabel}>{t('dashboard.selective', 'Selective')}</Text>
                   </View>
                   <View style={styles.rollupKpi}>
                     <Text style={styles.rollupKpiVal}>{data.committee.meetings30 ?? 0}</Text>
-                    <Text style={styles.rollupKpiLabel}>Meetings (30d)</Text>
+                    <Text style={styles.rollupKpiLabel}>{t('dashboard.meetings30', 'Meetings (30d)')}</Text>
                   </View>
                 </View>
                 <View style={styles.commActions}>
                   <Link href="/unit/committee" asChild>
                     <TouchableOpacity style={styles.commBtn}>
-                      <Text style={styles.commBtnText}>Committee Roster →</Text>
+                      <Text style={styles.commBtnText}>{t('dashboard.committeeRoster', 'Committee Roster')} →</Text>
                     </TouchableOpacity>
                   </Link>
                   <Link href="/meetings?body=COMMITTEE" asChild>
                     <TouchableOpacity style={styles.commBtn}>
-                      <Text style={styles.commBtnText}>Meetings →</Text>
+                      <Text style={styles.commBtnText}>{t('nav.meetings', 'Meetings')} →</Text>
                     </TouchableOpacity>
                   </Link>
                   <Link href="/activities?body=COMMITTEE" asChild>
                     <TouchableOpacity style={styles.commBtn}>
-                      <Text style={styles.commBtnText}>Activities →</Text>
+                      <Text style={styles.commBtnText}>{t('nav.activities', 'Activities')} →</Text>
                     </TouchableOpacity>
                   </Link>
                   <Link href="/finance?body=COMMITTEE" asChild>
                     <TouchableOpacity style={styles.commBtn}>
-                      <Text style={styles.commBtnText}>Finance →</Text>
+                      <Text style={styles.commBtnText}>{t('nav.finance', 'Finance')} →</Text>
                     </TouchableOpacity>
                   </Link>
                 </View>
@@ -1057,51 +1075,51 @@ export default function UnitDashboard() {
 
             {/* ─── Quick Shortcuts Hub ─── */}
             <Card style={styles.fullCard}>
-              <Text style={styles.cardTitle}>Quick Navigation Hub</Text>
-              <Text style={[styles.cardSub, { marginBottom: 12 }]}>Direct access to unit management</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.quickNavHub', 'Quick Navigation Hub')}</Text>
+              <Text style={[styles.cardSub, { marginBottom: 12 }]}>{t('dashboard.directAccessUnitMgmt', 'Direct access to unit management')}</Text>
               <View style={styles.hubGrid}>
                 <Link href="/members" asChild>
                   <TouchableOpacity style={styles.hubTile}>
                     <Text style={styles.hubIcon}>👥</Text>
-                    <Text style={styles.hubText}>Members</Text>
+                    <Text style={styles.hubText}>{t('nav.members', 'Members')}</Text>
                   </TouchableOpacity>
                 </Link>
                 {ctx?.unitLevel !== 'BASIC_UNIT' && (
                   <Link href="/unit/committee" asChild>
                     <TouchableOpacity style={styles.hubTile}>
                       <Text style={styles.hubIcon}>🤝</Text>
-                      <Text style={styles.hubText}>Committee</Text>
+                      <Text style={styles.hubText}>{t('nav.committee', 'Committee')}</Text>
                     </TouchableOpacity>
                   </Link>
                 )}
                 <Link href="/meetings" asChild>
                   <TouchableOpacity style={styles.hubTile}>
                     <Text style={styles.hubIcon}>📅</Text>
-                    <Text style={styles.hubText}>Meetings</Text>
+                    <Text style={styles.hubText}>{t('nav.meetings', 'Meetings')}</Text>
                   </TouchableOpacity>
                 </Link>
                 <Link href="/activities" asChild>
                   <TouchableOpacity style={styles.hubTile}>
                     <Text style={styles.hubIcon}>🎯</Text>
-                    <Text style={styles.hubText}>Activities</Text>
+                    <Text style={styles.hubText}>{t('nav.activities', 'Activities')}</Text>
                   </TouchableOpacity>
                 </Link>
                 <Link href="/finance" asChild>
                   <TouchableOpacity style={styles.hubTile}>
                     <Text style={styles.hubIcon}>💰</Text>
-                    <Text style={styles.hubText}>Finance</Text>
+                    <Text style={styles.hubText}>{t('nav.finance', 'Finance')}</Text>
                   </TouchableOpacity>
                 </Link>
                 <Link href="/cabinet" asChild>
                   <TouchableOpacity style={styles.hubTile}>
                     <Text style={styles.hubIcon}>🏛️</Text>
-                    <Text style={styles.hubText}>Cabinet</Text>
+                    <Text style={styles.hubText}>{t('nav.cabinet', 'Cabinet')}</Text>
                   </TouchableOpacity>
                 </Link>
                 <Link href="/admin" asChild>
                   <TouchableOpacity style={styles.hubTile}>
                     <Text style={styles.hubIcon}>⚙️</Text>
-                    <Text style={styles.hubText}>Admin</Text>
+                    <Text style={styles.hubText}>{t('nav.admin', 'Admin')}</Text>
                   </TouchableOpacity>
                 </Link>
               </View>

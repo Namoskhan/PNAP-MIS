@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useLanguage } from '../../context/LanguageContext';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import Card from '../Card';
 import Badge from '../Badge';
@@ -14,15 +15,16 @@ const num = (v) => (v ?? 0).toLocaleString();
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
 
 function TierBar({ label, active, total }) {
+  const { t, isRTL } = useLanguage();
   if (total == null || total === 0) return null;
   const p = pct(active, total);
   return (
     <View style={styles.tierRow}>
-      <View style={styles.tierHeader}>
+      <View style={[styles.tierHeader, isRTL && { flexDirection: 'row-reverse' }]}>
         <Text style={styles.tierLabel}>{label}</Text>
         <Text style={styles.tierNum}>
           <Text style={{ fontWeight: '700', color: Colors.text }}>{num(active)}</Text>
-          <Text style={{ color: Colors.textMuted }}> of {num(total)}</Text>
+          <Text style={{ color: Colors.textMuted }}> {t('common.of', 'of')} {num(total)}</Text>
         </Text>
       </View>
       <View style={styles.tierTrack}>
@@ -41,23 +43,24 @@ function TierBar({ label, active, total }) {
 }
 
 function UnitCard({ r, onDrill }) {
+  const { t, isRTL } = useLanguage();
   const m = r.members || {};
   const memberPct = m.activePct ?? pct(m.active, m.total);
 
   return (
     <Card style={[styles.unitCard, !r.isActiveUnit && styles.dormantCard]}>
       {/* Header: Name + Badge */}
-      <View style={styles.cardHead}>
+      <View style={[styles.cardHead, isRTL && { flexDirection: 'row-reverse' }]}>
         <TouchableOpacity
           style={{ flex: 1 }}
           onPress={() => onDrill?.(r.level, r._id, r.name)}
         >
-          <Text style={styles.unitName} numberOfLines={1}>
-            {r.name} <Text style={styles.drillArrow}>→</Text>
+          <Text style={[styles.unitName, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+            {r.name} <Text style={styles.drillArrow}>{isRTL ? '←' : '→'}</Text>
           </Text>
         </TouchableOpacity>
         <Badge
-          label={r.isActiveUnit ? 'Working' : 'Silent'}
+          label={r.isActiveUnit ? t('dashboard.active', 'Working') : t('dashboard.inactive', 'Silent')}
           bg={r.isActiveUnit ? 'rgba(22, 163, 74, 0.12)' : 'rgba(100, 116, 139, 0.15)'}
           color={r.isActiveUnit ? Colors.success : Colors.textMuted}
         />
@@ -65,11 +68,11 @@ function UnitCard({ r, onDrill }) {
 
       {/* Members Stats */}
       <View style={styles.membersBlock}>
-        <View style={styles.membersLeadRow}>
+        <View style={[styles.membersLeadRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <Text style={styles.membersVal}>{num(m.total)}</Text>
-          <Text style={styles.membersLabel}>members</Text>
-          <Text style={styles.membersSplit}>
-            ({num(m.active)} active · {num(m.inactive)} silent)
+          <Text style={styles.membersLabel}>{t('common.members', 'members')}</Text>
+          <Text style={[styles.membersSplit, isRTL && { marginRight: 'auto', marginLeft: 0 }]}>
+            ({num(m.active)} {t('dashboard.takingPart', 'active')} · {num(m.inactive)} {t('dashboard.notTakingPart', 'silent')})
           </Text>
         </View>
         <View style={styles.membersTrack}>
@@ -79,23 +82,23 @@ function UnitCard({ r, onDrill }) {
 
       {/* Sub-tier Progress Bars */}
       <View style={styles.tiersContainer}>
-        <TierBar label="Districts" active={r.districts?.active} total={r.districts?.total} />
-        <TierBar label="Areas" active={r.areas?.active} total={r.areas?.total} />
-        <TierBar label="Basic Units" active={r.basicUnits?.active} total={r.basicUnits?.total} />
+        <TierBar label={t('units.districts', 'Districts')} active={r.districts?.active} total={r.districts?.total} />
+        <TierBar label={t('units.areas', 'Areas')} active={r.areas?.active} total={r.areas?.total} />
+        <TierBar label={t('units.basicUnits', 'Basic Units')} active={r.basicUnits?.active} total={r.basicUnits?.total} />
       </View>
 
       {/* Responsible Officer */}
-      <View style={styles.officerRow}>
-        <Text style={styles.officerLabel}>In charge: </Text>
+      <View style={[styles.officerRow, isRTL && { flexDirection: 'row-reverse' }]}>
+        <Text style={styles.officerLabel}>{t('dashboard.officerInCharge', 'In charge')}: </Text>
         {r.officer?.fullName ? (
-          <Text style={styles.officerName} numberOfLines={1}>
+          <Text style={[styles.officerName, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
             {r.officer.fullName}{' '}
             <Text style={styles.officerRole}>
               ({String(r.officer.roleCode || '').replace(/_/g, ' ').toLowerCase()})
             </Text>
           </Text>
         ) : (
-          <Text style={styles.officerNone}>No office bearer on record</Text>
+          <Text style={[styles.officerNone, isRTL && { textAlign: 'right' }]}>{t('dashboard.noCabinetAppointed', 'No office bearer on record')}</Text>
         )}
       </View>
     </Card>
@@ -103,6 +106,7 @@ function UnitCard({ r, onDrill }) {
 }
 
 export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }) {
+  const { t, isRTL } = useLanguage();
   const [query, setQuery] = useState('');
   const noun = levelNoun.toLowerCase();
   const all = rows || [];
@@ -116,7 +120,7 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
   if (all.length === 0) {
     return (
       <Card style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No {noun}s found in this view.</Text>
+        <Text style={styles.emptyText}>{t('dashboard.noUnitsFoundSelection', `No ${noun}s found in this view.`)}</Text>
       </Card>
     );
   }
@@ -125,12 +129,12 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
     <View style={styles.container}>
       {/* Search Filter Toolbar */}
       {all.length >= 4 && (
-        <View style={styles.searchRow}>
+        <View style={[styles.searchRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
             value={query}
             onChangeText={setQuery}
-            placeholder={`Filter ${noun}s by name…`}
+            placeholder={t('dashboard.filterUnitsByName', `Filter ${noun}s by name…`)}
             placeholderTextColor={Colors.textMuted}
           />
           {query ? (
@@ -143,7 +147,7 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
 
       {filtered.length === 0 ? (
         <Card style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No {noun} matches “{query}”.</Text>
+          <Text style={styles.emptyText}>{t('dashboard.noUnitMatchesQuery', `No ${noun} matches “${query}”.`)}</Text>
         </Card>
       ) : (
         <View style={styles.grid}>
