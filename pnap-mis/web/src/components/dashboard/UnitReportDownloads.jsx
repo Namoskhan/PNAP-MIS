@@ -1,33 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../api/client';
 import { FileTextIcon, WalletIcon } from '../icons';
 import { useUnit } from '../../context/UnitContext';
 
 // Province / District / Area / Basic Unit reports.
-//
-// These are the SAME reports an Area, District or Province Admin
-// downloads from their unit Reports page — /exports/unit/meetings and
-// /exports/unit/finance. The difference is reach: a District Admin is
-// pinned to their own district by UnitContext, whereas Super Admin
-// walks the hierarchy here and reports on any unit at any tier.
-//
-// The picker CASCADES: pick a province, and the district list narrows
-// to that province; pick a district and the area list narrows to it.
-// A flat "every area in the country" dropdown is unusable once an org
-// has more than a handful.
-//
-// Choosing a deeper level does not throw away the shallower one — the
-// chain stays selected and the "Reporting on" chips let you generate
-// the report at ANY level of it without clearing your way back up.
-//
-// Nothing new is generated server-side; this is a picker over existing
-// export endpoints.
 
 const LEVELS = ['CENTRAL', 'PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT'];
-const LEVEL_LABEL = {
-  CENTRAL: 'Central', PROVINCE: 'Province',
-  DISTRICT: 'District', AREA: 'Area', BASIC_UNIT: 'Basic Unit',
-};
 const KEY_OF = {
   PROVINCE: 'provinceId', DISTRICT: 'districtId',
   AREA: 'areaId', BASIC_UNIT: 'basicUnitId',
@@ -35,8 +14,6 @@ const KEY_OF = {
 
 const EMPTY = { provinceId: '', districtId: '', areaId: '', basicUnitId: '' };
 
-// A Bearer token can't ride on a plain <a href>, so fetch then
-// object-URL — the same approach the unit Reports page uses.
 function downloadAuthed(path, filename) {
   const token = localStorage.getItem('pnap_token');
   return fetch(path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
@@ -58,6 +35,7 @@ function downloadAuthed(path, filename) {
 }
 
 export default function UnitReportDownloads({ scope, from, to, accessScope }) {
+  const { t } = useTranslation();
   const locked = Boolean(accessScope?.unitId);
   const { provinces = [] } = useUnit() || {};
   const [sel, setSel] = useState(EMPTY);
@@ -68,8 +46,14 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
 
-  // Seed from whatever the dashboard is scoped to, so the report you
-  // download matches the numbers you were just looking at.
+  const levelLabel = {
+    CENTRAL: t('admin.central', 'Central'),
+    PROVINCE: t('units.province', 'Province'),
+    DISTRICT: t('units.district', 'District'),
+    AREA: t('units.area', 'Area'),
+    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
+  };
+
   useEffect(() => {
     setSel({
       provinceId: scope.provinceId || '',
@@ -79,9 +63,6 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
     });
   }, [scope]);
 
-  // ── Cascading option lists ───────────────────────────────────────
-  // Each level's list is fetched for its PARENT, so a district list is
-  // that province's districts and nothing else.
   useEffect(() => {
     if (!sel.provinceId) { setDistricts([]); return; }
     api.get('/org/districts', { params: { provinceId: sel.provinceId } })
@@ -98,7 +79,6 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
       .then((r) => setUnits(r.data.data || [])).catch(() => setUnits([]));
   }, [sel.areaId]);
 
-  // The deepest level the user has actually chosen.
   const deepest = useMemo(() => {
     if (sel.basicUnitId) return 'BASIC_UNIT';
     if (sel.areaId) return 'AREA';
@@ -107,27 +87,19 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
     return 'CENTRAL';
   }, [sel]);
 
-  // Follow the selection by default. A target deeper than the current
-  // chain is impossible, so it snaps back rather than trying to export
-  // a unit that is no longer chosen.
   useEffect(() => { setTarget(deepest); }, [deepest]);
 
-  // Name lookup per level, for the chips and the download filename.
   const nameAt = useMemo(() => ({
-    CENTRAL: 'Central (National)',
+    CENTRAL: `${levelLabel.CENTRAL} (${t('dashboard.national', 'National')})`,
     PROVINCE: provinces.find((p) => String(p._id) === String(sel.provinceId))?.name,
     DISTRICT: districts.find((d) => String(d._id) === String(sel.districtId))?.name,
     AREA: areas.find((a) => String(a._id) === String(sel.areaId))?.name,
     BASIC_UNIT: units.find((u) => String(u._id) === String(sel.basicUnitId))?.name,
-  }), [provinces, districts, areas, units, sel]);
+  }), [provinces, districts, areas, units, sel, levelLabel, t]);
 
-  // Every level in the chain up to what's selected — these are the
-  // levels a report can be generated at right now.
   const chain = locked ? [accessScope.level] : LEVELS.slice(0, LEVELS.indexOf(deepest) + 1);
 
   function pick(level, value) {
-    // Narrowing a level clears everything beneath it: a district from
-    // another province must never survive a province change.
     const idx = LEVELS.indexOf(level);
     const next = { ...sel, [KEY_OF[level]]: value };
     for (const deeper of LEVELS.slice(idx + 1)) {
@@ -168,14 +140,14 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
     <div className="chart-card">
       <div className="chart-card-head">
         <div>
-          <div className="chart-card-title">Unit reports</div>
+          <div className="chart-card-title">{t('dashboard.unitReports', 'Unit reports')}</div>
           <div className="chart-card-sub">
-            {locked ? 'Download reports for your own unit.' : 'Choose a province, district, area or basic unit, then download its report.'}
+            {locked ? t('dashboard.unitReportsSubLocked', 'Download reports for your own unit.') : t('dashboard.unitReportsSub', 'Choose a province, district, area or basic unit, then download its report.')}
           </div>
         </div>
         {!locked && deepest !== 'CENTRAL' && (
           <button type="button" className="btn ghost sm" onClick={() => setSel(EMPTY)}>
-            Reset
+            {t('common.reset', 'Reset')}
           </button>
         )}
       </div>
@@ -187,21 +159,21 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
             value={sel[KEY_OF[s.level]]}
             disabled={!s.enabled}
             onChange={(e) => pick(s.level, e.target.value)}
-            aria-label={`Select ${LEVEL_LABEL[s.level].toLowerCase()}`}
+            aria-label={`${t('common.select', 'Select')} ${levelLabel[s.level]}`}
             style={{ minWidth: 175 }}
           >
             <option value="">
-              {s.level === 'PROVINCE' ? 'All provinces (Central)' : `All ${LEVEL_LABEL[s.level].toLowerCase()}s`}
+              {s.level === 'PROVINCE'
+                ? t('dashboard.allProvincesCentral', 'All provinces (Central)')
+                : t('dashboard.allTierPlaceholder', 'All {{tier}}', { tier: levelLabel[s.level] })}
             </option>
             {s.options.map((o) => <option key={o._id} value={o._id}>{o.name}</option>)}
           </select>
         ))}
       </div>}
 
-      {/* Report at any level of the chosen chain without clearing the
-          selection to get back up to it. */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
-        <span className="muted" style={{ fontSize: 12 }}>Report on</span>
+        <span className="muted" style={{ fontSize: 12 }}>{t('dashboard.reportOn', 'Report on')}</span>
         {chain.map((lvl) => (
           <button
             key={lvl}
@@ -209,11 +181,11 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
             className={`chip${target === lvl ? ' on' : ''}`}
             disabled={locked}
             onClick={() => setTarget(lvl)}
-            title={`${LEVEL_LABEL[lvl]} report`}
+            title={`${levelLabel[lvl]} ${t('dashboard.unitReports', 'report')}`}
           >
-            {nameAt[lvl] || LEVEL_LABEL[lvl]}
+            {nameAt[lvl] || levelLabel[lvl]}
             <span className="muted" style={{ marginLeft: 6, fontSize: 11 }}>
-              {LEVEL_LABEL[lvl]}
+              {levelLabel[lvl]}
             </span>
           </button>
         ))}
@@ -228,46 +200,46 @@ export default function UnitReportDownloads({ scope, from, to, accessScope }) {
       }}>
         <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12 }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>
-            <FileTextIcon size={13} /> Meetings &amp; Activities
+            <FileTextIcon size={13} /> {t('dashboard.meetingsAndActivitiesReport', 'Meetings & Activities')}
           </div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 9 }}>
-            Member list, meetings with photos, activities and assigned tasks.
+            {t('dashboard.meetingsAndActivitiesDesc', 'Member list, meetings with photos, activities and assigned tasks.')}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="button" className="btn sm" disabled={!!busy}
               onClick={() => download('meetings', 'pdf')}>
-              {busy === 'meetings-pdf' ? 'Preparing…' : 'PDF'}
+              {busy === 'meetings-pdf' ? t('dashboard.preparing', 'Preparing…') : 'PDF'}
             </button>
             <button type="button" className="btn secondary sm" disabled={!!busy}
               onClick={() => download('meetings', 'xlsx')}>
-              {busy === 'meetings-xlsx' ? 'Preparing…' : 'Excel'}
+              {busy === 'meetings-xlsx' ? t('dashboard.preparing', 'Preparing…') : 'Excel'}
             </button>
           </div>
         </div>
 
         <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12 }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>
-            <WalletIcon size={13} /> Finance
+            <WalletIcon size={13} /> {t('dashboard.finance', 'Finance')}
           </div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 9 }}>
-            Donations, expenses and money left.
+            {t('dashboard.financeDesc', 'Donations, expenses and money left.')}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button type="button" className="btn sm" disabled={!!busy}
               onClick={() => download('finance', 'pdf')}>
-              {busy === 'finance-pdf' ? 'Preparing…' : 'PDF'}
+              {busy === 'finance-pdf' ? t('dashboard.preparing', 'Preparing…') : 'PDF'}
             </button>
             <button type="button" className="btn secondary sm" disabled={!!busy}
               onClick={() => download('finance', 'xlsx')}>
-              {busy === 'finance-xlsx' ? 'Preparing…' : 'Excel'}
+              {busy === 'finance-xlsx' ? t('dashboard.preparing', 'Preparing…') : 'Excel'}
             </button>
           </div>
         </div>
       </div>
 
       <p className="muted" style={{ fontSize: 11.5, marginTop: 10, marginBottom: 0 }}>
-        Each report shows only the selected unit's own meetings and finances.
-        {!locked && 'For a district or area report, select that district or area above.'}
+        {t('dashboard.unitReportsFootNote', "Each report shows only the selected unit's own meetings and finances.")}
+        {!locked && (' ' + t('dashboard.unitReportsDistrictAreaNote', 'For a district or area report, select that district or area above.'))}
       </p>
     </div>
   );

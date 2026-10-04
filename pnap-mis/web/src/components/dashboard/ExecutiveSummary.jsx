@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import SmartKpi from '../SmartKpi';
 import { SkeletonKpiGrid } from '../Skeleton';
 import {
@@ -35,12 +36,14 @@ function Band({ label, children }) {
 const num = (v) => (v ?? 0).toLocaleString();
 
 export default function ExecutiveSummary({ data, loading, windowLabel }) {
+  const { t } = useTranslation();
+
   if (loading && !data) return <SkeletonKpiGrid count={8} />;
   if (!data) {
     return (
       <div className="empty-smart" style={{ padding: '28px 16px' }}>
         <div className="empty-icon">📈</div>
-        <p style={{ margin: 0 }}>No summary available for this scope.</p>
+        <p style={{ margin: 0 }}>{t('dashboard.noSummaryAvailable', 'No summary available for this scope.')}</p>
       </div>
     );
   }
@@ -53,94 +56,91 @@ export default function ExecutiveSummary({ data, loading, windowLabel }) {
 
   return (
     <>
-      <Band label={`Membership · ${windowLabel}`}>
+      <Band label={`${t('dashboard.membershipBand', 'Membership')} · ${windowLabel}`}>
         <SmartKpi
-          label="Total Members" value={m.total}
+          label={t('dashboard.totalMembers', 'Total Members')} value={m.total}
           icon={<UsersIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="New Members" value={m.newMembers}
+          label={t('dashboard.newMembers', 'New Members')} value={m.newMembers}
           icon={<ZapIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Active Members" value={m.active}
+          label={t('dashboard.activeMembers', 'Active Members')} value={m.active}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
           format={(v) => `${num(v)} (${m.activePct}%)`}
         />
         <SmartKpi
-          label="Inactive Members" value={m.inactive}
+          label={t('dashboard.inactiveMembers', 'Inactive Members')} value={m.inactive}
           icon={<MinusCircleIcon size={14} />}
           iconBg="var(--surface-alt)" iconColor="var(--muted)"
         />
       </Band>
 
-      <Band label="Organization">
+      <Band label={t('dashboard.organizationBand', 'Organization')}>
         <SmartKpi
-          label="Total Provinces" value={o.provinces.total}
+          label={t('dashboard.totalProvinces', 'Total Provinces')} value={o.provinces.total}
           icon={<GlobeIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Total Districts" value={o.districts.total}
+          label={t('dashboard.totalDistricts', 'Total Districts')} value={o.districts.total}
           icon={<BuildingIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Total Areas" value={o.areas.total}
+          label={t('dashboard.totalAreas', 'Total Areas')} value={o.areas.total}
           icon={<FolderIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Total Basic Units" value={o.basicUnits.total}
+          label={t('dashboard.totalBasicUnits', 'Total Basic Units')} value={o.basicUnits.total}
           icon={<ShieldIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Active Units" value={o.basicUnits.active}
+          label={t('dashboard.activeUnits', 'Active Units')} value={o.basicUnits.active}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />
         <SmartKpi
-          label="Inactive Units" value={o.basicUnits.inactive}
+          label={t('dashboard.inactiveUnits', 'Inactive Units')} value={o.basicUnits.inactive}
           icon={<MinusCircleIcon size={14} />}
           iconBg="var(--surface-alt)" iconColor="var(--muted)"
         />
       </Band>
 
-      <Band label={`Operations · ${windowLabel}`}>
+      <Band label={`${t('dashboard.operationsBand', 'Operations')} · ${windowLabel}`}>
         <SmartKpi
-          label="Total Meetings" value={mt.total}
+          label={t('dashboard.totalMeetings', 'Total Meetings')} value={mt.total}
           icon={<CalendarIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Conducted Meetings" value={mt.conducted}
+          label={t('dashboard.conductedMeetings', 'Conducted Meetings')} value={mt.conducted}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />
         <SmartKpi
-          label="Scheduled Meetings" value={mt.scheduled}
+          label={t('dashboard.scheduledMeetings', 'Scheduled Meetings')} value={mt.scheduled}
           icon={<CalendarIcon size={14} />}
           iconBg="var(--warning-bg)" iconColor="var(--warning)"
         />
         <SmartKpi
-          label="Running Campaigns" value={c.running}
+          label={t('dashboard.runningCampaigns', 'Running Campaigns')} value={c.running}
           icon={<TargetIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
-        {/* Reports here are MEETING reports — filed by finalizing the
-            meeting. Nothing in this system assigns a report to a
-            person, so there is no pending/completed queue to show. */}
         <SmartKpi
-          label="Reports Outstanding" value={r.outstanding}
+          label={t('dashboard.reportsOutstanding', 'Reports Outstanding')} value={r.outstanding}
           icon={<ClipboardIcon size={14} />}
           iconBg="var(--warning-bg)" iconColor="var(--warning)"
         />
         <SmartKpi
-          label="Reports Filed" value={r.filed}
+          label={t('dashboard.reportsFiled', 'Reports Filed')} value={r.filed}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />

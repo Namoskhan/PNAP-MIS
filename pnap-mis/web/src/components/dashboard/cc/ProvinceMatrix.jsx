@@ -1,43 +1,15 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Reveal from './Reveal';
 import { SearchIcon, XIcon } from '../../icons';
 
-// ─── The child units, one card each ──────────────────────────────────
-//
-// This single view answers eight separate questions that used to be
-// eight separate blocks:
-//
-//   province-wise membership · province-wise basic units ·
-//   province-wise area units · province-wise district units ·
-//   province-wise ACTIVE basic units · active area units ·
-//   active district units · and the inactive counterpart of each.
-//
-// They collapse into one card per unit because they are all facts about
-// the same thing. Reading them as eight stacked charts forced the
-// operator to hold a province in their head and re-find it eight times;
-// here a unit is one object with its numbers attached.
-//
-// Every figure comes from a single /dashboard/org-breakdown row — no
-// extra request, no client-side arithmetic beyond percentages.
-//
-// The grid SCROLLS inside a bounded box. This list is unbounded —
-// drilling into a province with 42 districts rendered 42 cards in one
-// block, roughly 4,000px of section — and a dashboard panel has to stay
-// a predictable height. The filter is there so a specific unit can be
-// found by name instead of by scrolling to it.
-
-// Above this many rows the per-card reveal is dropped: 300+ observers
-// each with a staggered delay is both expensive and badly timed inside a
-// scroll container, where most cards start out clipped.
 const ANIMATE_UP_TO = 12;
-const FILTER_FROM = 8;          // below this, a search box is just clutter
+const FILTER_FROM = 8;
 
 const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) : 0);
 const num = (v) => (v ?? 0).toLocaleString();
 
-// One tier's active/total split. The bar is the point: "3 of 6" makes
-// you do the division, the bar does not.
-function TierBar({ label, active, total }) {
+function TierBar({ label, active, total, t }) {
   const p = pct(active, total);
   return (
     <div className="pm-tier">
@@ -45,10 +17,10 @@ function TierBar({ label, active, total }) {
         <span className="pm-tier-label">{label}</span>
         <span className="pm-tier-num">
           <strong>{num(active)}</strong>
-          <span className="pm-tier-of"> of {num(total)}</span>
+          <span className="pm-tier-of"> {t('common.of', 'of')} {num(total)}</span>
         </span>
       </div>
-      <div className="pm-tier-track" title={`${p}% active`}>
+      <div className="pm-tier-track" title={`${p}% ${t('dashboard.active', 'active')}`}>
         <div
           className="pm-tier-fill"
           style={{
@@ -61,7 +33,7 @@ function TierBar({ label, active, total }) {
   );
 }
 
-function UnitCard({ r, onDrill }) {
+function UnitCard({ r, onDrill, t }) {
   const m = r.members || {};
   const memberPct = m.activePct ?? pct(m.active, m.total);
   return (
@@ -77,16 +49,15 @@ function UnitCard({ r, onDrill }) {
           {r.name}
         </button>
         <span className={`pm-flag ${r.isActiveUnit ? 'on' : 'off'}`}>
-          {r.isActiveUnit ? 'Active' : 'Inactive'}
+          {r.isActiveUnit ? t('common.active', 'Active') : t('common.inactive', 'Inactive')}
         </span>
       </div>
 
-      {/* Members lead — the number everything else exists to serve. */}
       <div className="pm-members">
         <span className="pm-members-value">{num(m.total)}</span>
-        <span className="pm-members-label">members</span>
+        <span className="pm-members-label">{t('common.members', 'members')}</span>
         <span className="pm-members-split">
-          {num(m.active)} active · {num(m.inactive)} inactive
+          {num(m.active)} {t('dashboard.active', 'active')} · {num(m.inactive)} {t('dashboard.inactive', 'inactive')}
         </span>
         <div className="pm-members-track">
           <div className="pm-members-fill" style={{ width: `${memberPct}%` }} />
@@ -94,27 +65,28 @@ function UnitCard({ r, onDrill }) {
       </div>
 
       <div className="pm-tiers">
-        <TierBar label="Districts" active={r.districts?.active} total={r.districts?.total} />
-        <TierBar label="Areas" active={r.areas?.active} total={r.areas?.total} />
-        <TierBar label="Basic units" active={r.basicUnits?.active} total={r.basicUnits?.total} />
+        <TierBar label={t('units.district', 'Districts')} active={r.districts?.active} total={r.districts?.total} t={t} />
+        <TierBar label={t('units.area', 'Areas')} active={r.areas?.active} total={r.areas?.total} t={t} />
+        <TierBar label={t('units.basicUnit', 'Basic units')} active={r.basicUnits?.active} total={r.basicUnits?.total} t={t} />
       </div>
 
       {r.officer?.fullName ? (
         <div className="pm-officer">
-          <span className="pm-officer-label">In charge</span>
+          <span className="pm-officer-label">{t('dashboard.officerInCharge', 'In charge')}</span>
           {r.officer.fullName}
           <span className="pm-officer-role">
             {String(r.officer.roleCode || '').replace(/_/g, ' ').toLowerCase()}
           </span>
         </div>
       ) : (
-        <div className="pm-officer pm-officer-none">No officer listed</div>
+        <div className="pm-officer pm-officer-none">{t('common.noData', 'No officer listed')}</div>
       )}
     </div>
   );
 }
 
 export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const noun = levelNoun.toLowerCase();
   const all = rows || [];
@@ -126,13 +98,11 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
   }, [all, query]);
 
   if (all.length === 0) {
-    return <p className="muted" style={{ margin: 0, fontSize: 13 }}>No {noun}s in this view.</p>;
+    return <p className="muted" style={{ margin: 0, fontSize: 13 }}>{t('common.noData', 'No records found in this view.')}</p>;
   }
 
   const showFilter = all.length >= FILTER_FROM;
   const animate = filtered.length <= ANIMATE_UP_TO;
-  // A short list should size to its content rather than leave dead space
-  // inside a fixed box.
   const scrolls = filtered.length > ANIMATE_UP_TO;
 
   return (
@@ -145,8 +115,8 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${noun}s by name…`}
-              aria-label={`Search ${noun}s by name`}
+              placeholder={`${t('common.search', 'Search')} ${noun}…`}
+              aria-label={`Search ${noun} by name`}
             />
             {query && (
               <button
@@ -160,14 +130,14 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
           <div className="pm-count">
             {filtered.length === all.length
               ? `${num(all.length)} ${noun}${all.length === 1 ? '' : 's'}`
-              : `${num(filtered.length)} of ${num(all.length)} ${noun}${all.length === 1 ? '' : 's'}`}
+              : `${num(filtered.length)} ${t('common.of', 'of')} ${num(all.length)} ${noun}${all.length === 1 ? '' : 's'}`}
           </div>
         </div>
       )}
 
       {filtered.length === 0 ? (
         <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-          No {noun} matches “{query}”.
+          {t('common.noData', 'No records match search.')}
         </p>
       ) : (
         <div className={`pm-scroll${scrolls ? ' on' : ''}`}>
@@ -176,12 +146,12 @@ export default function ProvinceMatrix({ rows, levelNoun = 'Province', onDrill }
               animate
                 ? (
                   <Reveal key={r._id} delay={i * 45} className="pm-card-wrap">
-                    <UnitCard r={r} onDrill={onDrill} />
+                    <UnitCard r={r} onDrill={onDrill} t={t} />
                   </Reveal>
                 )
                 : (
                   <div key={r._id} className="pm-card-wrap">
-                    <UnitCard r={r} onDrill={onDrill} />
+                    <UnitCard r={r} onDrill={onDrill} t={t} />
                   </div>
                 )
             ))}

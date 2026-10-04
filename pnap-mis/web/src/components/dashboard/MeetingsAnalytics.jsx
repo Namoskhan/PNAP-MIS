@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import SmartKpi from '../SmartKpi';
 import { SkeletonKpiGrid } from '../Skeleton';
 import {
@@ -8,32 +9,6 @@ import {
 import { CalendarIcon, CheckIcon, ClockIcon, InfoIcon } from '../icons';
 import useAnalytics from './useAnalytics';
 import CongressManager from './CongressManager';
-
-// Section 4 — meetings by state, by tier and body, plus a 12-month
-// trend.
-//
-// "Body" here is Cabinet (executive) vs Committee, which is what the
-// Meeting record actually stores. See the note rendered at the foot of
-// this section about Jirga meetings.
-
-const TIER_LABEL = {
-  CENTRAL: 'Central', PROVINCE: 'Province', DISTRICT: 'District',
-  AREA: 'Area', BASIC_UNIT: 'Basic Unit',
-};
-const BODY_LABEL = { EXECUTIVE: 'Cabinet', COMMITTEE: 'Committee', GENERAL_BODY: 'General Body' };
-
-// Meeting lifecycle is a STATUS scale — ordered, with meaning attached
-// to each step — so it wears the reserved status hues rather than a
-// categorical set. Ordered as the workflow runs, not by size, so the
-// shape of the pipeline is readable.
-const STATE_META = [
-  { key: 'DRAFT', label: 'Draft', color: 'var(--muted-soft)' },
-  { key: 'SCHEDULED', label: 'Planned', color: 'var(--info)' },
-  { key: 'IN_PROGRESS', label: 'Ongoing', color: 'var(--warning)' },
-  { key: 'PENDING_REPORT', label: 'Report needed', color: 'var(--warning-strong)' },
-  { key: 'FINALIZED', label: 'Completed', color: 'var(--success)' },
-  { key: 'CANCELLED', label: 'Cancelled', color: 'var(--danger)' },
-];
 
 function ChartCard({ title, sub, meta, children }) {
   return (
@@ -61,42 +36,49 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
   // charts would force the reader to hold one in memory to compare;
   // one chart with a toggle keeps the axis and scale fixed.
   const [yearSplit, setYearSplit] = useState('BODY');
+  const { t } = useTranslation();
   const { data, loading, error, reload } = useAnalytics(
     '/dashboard/meetings',
     { ...params, yearBasis, years },
   );
 
+  const tierLabels = {
+    CENTRAL: t('admin.central', 'Central'),
+    PROVINCE: t('units.province', 'Province'),
+    DISTRICT: t('units.district', 'District'),
+    AREA: t('units.area', 'Area'),
+    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
+  };
+  const bodyLabels = {
+    EXECUTIVE: t('admin.executiveCabinet', 'Cabinet'),
+    COMMITTEE: t('admin.committee', 'Committee'),
+    GENERAL_BODY: t('meetings.types.generalBody', 'General Body'),
+  };
+  const stateMeta = [
+    { key: 'DRAFT', label: t('common.draft', 'Draft'), color: 'var(--muted-soft)' },
+    { key: 'SCHEDULED', label: t('dashboard.plannedMeetings', 'Planned'), color: 'var(--info)' },
+    { key: 'IN_PROGRESS', label: t('common.inProgress', 'Ongoing'), color: 'var(--warning)' },
+    { key: 'PENDING_REPORT', label: t('dashboard.lateReports', 'Report needed'), color: 'var(--warning-strong)' },
+    { key: 'FINALIZED', label: t('dashboard.completedMeetings', 'Completed'), color: 'var(--success)' },
+    { key: 'CANCELLED', label: t('common.cancelled', 'Cancelled'), color: 'var(--danger)' },
+  ];
+
   if (loading && !data) return <SkeletonKpiGrid count={4} />;
   if (error) return <div className="alert error">{error}</div>;
   if (!data) return null;
 
-  const t = data.totals;
+  const totals = data.totals;
   const tiers = data.byTier || [];
   const yearly = data.yearly || [];
   const matrix = data.yearlyMatrix || [];
   const tiersPresent = data.tiersPresent || [];
   const bodiesPresent = data.bodiesPresent || [];
 
-  // Each bar needs a slot at least as wide as its own label, or the
-  // axis becomes unreadable. Labels render at 11px, roughly 6.2 units
-  // per character in the SVG's coordinate space. Congress labels
-  // ("13th National Congress → 14th National Congress") are far longer
-  // than year labels, so this is measured from the real strings rather
-  // than assumed. 44 units is the floor — enough for a short year plus
-  // breathing room. Capped so a pathological label can't produce a
-  // multi-thousand-pixel canvas.
-  // Congress periods carry a short axis form ("14th National Congress")
-  // alongside the full one used in tables ("13th … → 14th …"); the long
-  // version cannot be made to fit a bar axis at any sane width.
   const axisLabel = (y) => y.shortLabel || y.label;
   const longestLabel = yearly.reduce((n, y) => Math.max(n, axisLabel(y).length), 0);
-  // +12 units of gutter so adjacent labels don't touch at the extremes.
   const slotWidth = Math.min(200, Math.max(44, Math.round(longestLabel * 6.2) + 12));
   const chartWidth = Math.max(240, yearly.length * slotWidth);
 
-  // The year x tier x body matrix is a heatmap, not a list: one row per
-  // period, one column per tier+body pair, shaded by conducted count.
-  // Built from exactly the rows the table used, so the numbers match.
   const matrixCols = [];
   const colSeen = new Set();
   const matrixRows = [];
@@ -108,8 +90,8 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
       colSeen.add(ck);
       matrixCols.push({
         key: ck,
-        label: TIER_LABEL[r.level] || r.level,
-        sublabel: BODY_LABEL[r.body] || r.body,
+        label: tierLabels[r.level] || r.level,
+        sublabel: bodyLabels[r.body] || r.body,
       });
     }
     const rk = String(r.year);
@@ -124,17 +106,12 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
   const yearSeries = yearSplit === 'BODY'
     ? bodiesPresent.map((b, i) => ({
         key: b,
-        label: BODY_LABEL[b] || b,
-        // Bodies are identities, not magnitudes — categorical hues.
+        label: bodyLabels[b] || b,
         color: CATEGORICAL[i % CATEGORICAL.length],
       }))
     : tiersPresent.map((tr, i) => ({
         key: tr,
-        label: TIER_LABEL[tr] || tr,
-        // Tiers are an ordered hierarchy, so they take the sequential
-        // ramp: depth in the party reads as depth of colour. Steps are
-        // spread across the ramp so three tiers do not come out as three
-        // near-identical pale blues.
+        label: tierLabels[tr] || tr,
         color: rampSteps(tiersPresent.length)[i],
       }));
 
@@ -146,22 +123,22 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         gap: 10, marginBottom: 12,
       }}>
         <SmartKpi
-          label="Total Meetings" value={t.total}
+          label={t('dashboard.totalMeetings', 'Total Meetings')} value={totals.total}
           icon={<CalendarIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Completed meetings" value={t.conducted}
+          label={t('dashboard.completedMeetings', 'Completed meetings')} value={totals.conducted}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />
         <SmartKpi
-          label="Planned meetings" value={t.scheduled}
+          label={t('dashboard.plannedMeetings', 'Planned meetings')} value={totals.scheduled}
           icon={<ClockIcon size={14} />}
           iconBg="var(--warning-bg)" iconColor="var(--warning)"
         />
         <SmartKpi
-          label="Late reports" value={t.overdueReports}
+          label={t('dashboard.lateReports', 'Late reports')} value={totals.overdueReports}
           icon={<InfoIcon size={14} />}
           iconBg="var(--danger-bg)" iconColor="var(--danger)"
         />
@@ -173,9 +150,9 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         gap: 10,
       }}>
         <ChartCard
-          title="Meetings each month"
-          sub="Meetings per month, last 12 months"
-          meta={`${t.total.toLocaleString()} in ${windowLabel}`}
+          title={t('dashboard.meetingsEachMonth', 'Meetings each month')}
+          sub={t('dashboard.meetingsPerMonth12', 'Meetings per month, last 12 months')}
+          meta={`${totals.total.toLocaleString()} ${t('common.in', 'in')} ${windowLabel}`}
         >
           {data.trend && data.trend.length > 1 ? (
             <AreaChart
@@ -186,33 +163,26 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
               fill={BRAND.tint}
             />
           ) : (
-            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough data to show this chart yet.</p>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>{t('dashboard.notEnoughDataChart', 'Not enough data to show this chart yet.')}</p>
           )}
         </ChartCard>
 
-        {/* Where meetings sit in their lifecycle — the pipeline behind
-            the headline "conducted" number. */}
-        <ChartCard title="Meeting status" sub={`Status of meetings in the ${windowLabel}`}>
+        <ChartCard title={t('dashboard.meetingStatus', 'Meeting status')} sub={`${t('common.status', 'Status')}: ${windowLabel}`}>
           <HBar
-            rows={STATE_META
+            rows={stateMeta
               .map((s) => ({ label: s.label, value: data.byState?.[s.key] || 0, color: s.color }))
               .filter((r) => r.value > 0)}
-            emptyLabel="No meetings during the selected dates."
+            emptyLabel={t('dashboard.noMeetingsSelectedDates', 'No meetings during the selected dates.')}
           />
         </ChartCard>
-
       </div>
 
-      {/* ── Yearly view ──────────────────────────────────────────
-          Deliberately independent of the date-range filter: a
-          "last 30 days" window would collapse a multi-year report
-          to a single bar. Territorial scope still applies. */}
       <div className="chart-card" style={{ marginTop: 10 }}>
         <div className="chart-card-head">
           <div>
-            <div className="chart-card-title">Completed meetings by year</div>
+            <div className="chart-card-title">{t('dashboard.completedMeetingsByYear', 'Completed meetings by year')}</div>
             <div className="chart-card-sub">
-              {data.yearBasisLabel} · this chart uses the year options below
+              {data.yearBasisLabel} · {t('dashboard.usesYearOptions', 'this chart uses the year options below')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -221,29 +191,29 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
               className={`chip${yearBasis === 'CALENDAR' ? ' on' : ''}`}
               onClick={() => setYearBasis('CALENDAR')}
             >
-              January–December
+              {t('dashboard.januaryDecember', 'January–December')}
             </button>
             <button
               type="button"
               className={`chip${yearBasis === 'FISCAL' ? ' on' : ''}`}
               onClick={() => setYearBasis('FISCAL')}
             >
-              July–June
+              {t('dashboard.julyJune', 'July–June')}
             </button>
             <button
               type="button"
               className={`chip${yearBasis === 'CONGRESS' ? ' on' : ''}`}
               onClick={() => setYearBasis('CONGRESS')}
             >
-              Congress to Congress
+              {t('dashboard.congressToCongress', 'Congress to Congress')}
             </button>
             {yearBasis !== 'CONGRESS' && (
               <select
                 value={years}
                 onChange={(e) => setYears(Number(e.target.value))}
-                aria-label="Years to show"
+                aria-label={t('dashboard.yearsToShow', 'Years to show')}
               >
-                {[3, 5, 10].map((n) => <option key={n} value={n}>{n} years</option>)}
+                {[3, 5, 10].map((n) => <option key={n} value={n}>{n} {t('dashboard.yearsCount', '{{count}} years', { count: n })}</option>)}
               </select>
             )}
             {yearBasis === 'CONGRESS' && (
@@ -252,31 +222,20 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
                 className="btn ghost sm"
                 onClick={() => setShowCongress((v) => !v)}
               >
-                {showCongress ? 'Hide calendar' : 'Manage calendar'}
+                {showCongress ? t('dashboard.hideCalendar', 'Hide calendar') : t('dashboard.manageCalendar', 'Manage calendar')}
               </button>
             )}
           </div>
         </div>
 
-        {/* Congress mode needs dates before it can bucket anything.
-            Say so and offer the fix rather than drawing an empty chart. */}
         {yearBasis === 'CONGRESS' && data.congressConfigured === false ? (
           <div className="alert info" style={{ marginBottom: 0 }}>
-            No Congress dates recorded yet. Add them with <strong>Manage calendar</strong> above.
+            {t('dashboard.noCongressDates', 'No Congress dates recorded yet.')}
           </div>
         ) : yearly.length === 0 ? (
-          <p className="muted" style={{ margin: 0, fontSize: 13 }}>No meetings on record.</p>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>{t('common.noData', 'No records found')}</p>
         ) : (
           <>
-            {/* Value bar = conducted, track behind = total scheduled,
-                so the shortfall is visible without a second chart.
-
-                Width is sized to the data rather than left at the
-                default: ten bars in a 240-unit viewBox gives each label
-                ~22 units to live in, and "FY 2024–25" needs nearer 60,
-                so they collide into an unreadable smear. Below the
-                wrapper's min-width the chart scrolls sideways instead
-                of compressing further. */}
             <div style={{ overflowX: 'auto' }}>
               <div style={{ minWidth: chartWidth }}>
                 <VBars
@@ -289,20 +248,15 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
               </div>
             </div>
             <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
-              Dark bars = completed meetings · light bars = all meetings held
-              {yearly.length > 6 && ' · scroll sideways to see all years'}
+              {t('dashboard.darkLightBarsMeetingNote', 'Dark bars = completed meetings · light bars = all meetings held')}
+              {yearly.length > 6 && ` · ${t('dashboard.scrollSidewaysYears', 'scroll sideways to see all years')}`}
             </div>
           </>
         )}
 
-        {/* Meetings older than the first Congress belong to no period.
-            Reported rather than folded into period one, so the bars
-            always reconcile against the totals. */}
         {yearBasis === 'CONGRESS' && data.unassignedMeetings > 0 && (
           <p className="muted" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
-            <InfoIcon size={12} /> {data.unassignedMeetings.toLocaleString()} meeting
-            {data.unassignedMeetings === 1 ? '' : 's'} took place before the first Congress date and
-            are not included in these periods.
+            <InfoIcon size={12} /> {data.unassignedMeetings.toLocaleString()} {t('dashboard.unassignedMeetingsNote', 'meetings took place before the first Congress date and are not included in these periods.')}
           </p>
         )}
 
@@ -311,14 +265,12 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         )}
       </div>
 
-      {/* Year x body and year x tier, the two cuts asked for — as columns
-          rather than a grid of numbers. */}
       {yearly.length > 0 && (bodiesPresent.length > 0 || tiersPresent.length > 0) && (
         <div className="chart-card" style={{ marginTop: 10 }}>
           <div className="chart-card-head">
             <div>
               <div className="chart-card-title">
-                Completed meetings by year and {yearSplit === 'BODY' ? 'group' : 'level'}
+                {t('dashboard.completedMeetingsByYearAnd', 'Completed meetings by year and')} {yearSplit === 'BODY' ? t('dashboard.byGroup', 'group') : t('dashboard.byLevel', 'level')}
               </div>
               <div className="chart-card-sub">{data.yearBasisLabel}</div>
             </div>
@@ -329,7 +281,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
                 onClick={() => setYearSplit('BODY')}
                 disabled={bodiesPresent.length === 0}
               >
-                By group
+                {t('dashboard.byGroup', 'By group')}
               </button>
               <button
                 type="button"
@@ -337,14 +289,14 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
                 onClick={() => setYearSplit('TIER')}
                 disabled={tiersPresent.length === 0}
               >
-                By level
+                {t('dashboard.byLevel', 'By level')}
               </button>
             </div>
           </div>
           <StackedColumns
             groups={yearly.map((y) => ({
               label: axisLabel(y),
-              sublabel: `${y.conducted.toLocaleString()} of ${y.total.toLocaleString()}`,
+              sublabel: `${y.conducted.toLocaleString()} ${t('common.of', 'of')} ${y.total.toLocaleString()}`,
               values: yearSplit === 'BODY'
                 ? Object.fromEntries(bodiesPresent.map((b) => [b, y.bodies[b]?.conducted ?? 0]))
                 : Object.fromEntries(tiersPresent.map((tr) => [tr, y.tiers[tr]?.conducted ?? 0])),
@@ -352,7 +304,7 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
             series={yearSeries}
             height={240}
             colWidth={Math.max(58, Math.min(150, slotWidth))}
-            emptyLabel="No completed meetings found."
+            emptyLabel={t('dashboard.noCompletedMeetingsFound', 'No completed meetings found.')}
           />
         </div>
       )}
@@ -361,22 +313,20 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         <div className="chart-card" style={{ marginTop: 10 }}>
           <div className="chart-card-head">
             <div>
-              <div className="chart-card-title">Meetings by year, level and group</div>
+              <div className="chart-card-title">{t('dashboard.meetingsByYearLevelGroup', 'Meetings by year, level and group')}</div>
               <div className="chart-card-sub">
-                Darker colours mean more completed meetings
+                {t('dashboard.darkerColoursCompleted', 'Darker colours mean more completed meetings')}
               </div>
             </div>
-            <div className="chart-card-meta">{matrixCols.length} groups</div>
+            <div className="chart-card-meta">{matrixCols.length} {t('dashboard.groups', 'groups')}</div>
           </div>
-          {/* A real <table>, so this doubles as the accessible table view of
-              the shaded chart above it. */}
           <Heatmap
-            rowHeader="Period"
-            valueNoun="completed"
+            rowHeader={t('dashboard.period', 'Period')}
+            valueNoun={t('dashboard.completed', 'completed')}
             rows={matrixRows}
             cols={matrixCols}
             cells={matrixCells}
-            emptyLabel="No records yet."
+            emptyLabel={t('dashboard.noRecordsYet', 'No records yet.')}
           />
         </div>
       )}
@@ -385,34 +335,30 @@ export default function MeetingsAnalytics({ params, windowLabel }) {
         <div className="chart-card" style={{ marginTop: 10 }}>
           <div className="chart-card-head">
             <div>
-              <div className="chart-card-title">Meetings by level and group</div>
+              <div className="chart-card-title">{t('dashboard.meetingsByLevelAndGroup', 'Meetings by level and group')}</div>
               <div className="chart-card-sub">
-                Completed and planned meetings, {windowLabel}
+                {t('dashboard.completedAndPlannedMeetings', 'Completed and planned meetings')}, {windowLabel}
               </div>
             </div>
           </div>
-          {/* Conducted and scheduled are lifecycle STATES, so they wear the
-              reserved status hues rather than categorical ones. */}
           <StackedHBar
             rows={tiers.map((r) => ({
-              label: `${TIER_LABEL[r.level] || r.level} ${BODY_LABEL[r.body] || r.body}`,
+              label: `${tierLabels[r.level] || r.level} ${bodyLabels[r.body] || r.body}`,
               values: { conducted: r.conducted, scheduled: r.scheduled },
             }))}
             series={[
-              { key: 'conducted', label: 'Completed', color: 'var(--success)' },
-              { key: 'scheduled', label: 'Planned', color: 'var(--warning)' },
+              { key: 'conducted', label: t('dashboard.completed', 'Completed'), color: 'var(--success)' },
+              { key: 'scheduled', label: t('dashboard.planned', 'Planned'), color: 'var(--warning)' },
             ]}
-            emptyLabel="No meetings during the selected dates."
+            emptyLabel={t('dashboard.noMeetingsSelectedDates', 'No meetings during the selected dates.')}
           />
         </div>
       )}
 
-      {/* An honest gap is more useful than a fabricated zero. */}
       {data.jirgaTracked === false && (
         <div className="alert info" style={{ marginTop: 12 }}>
-          <strong>Jirga meetings are not counted above.</strong>{' '}
-          A meeting stores its body as <em>Cabinet</em> or <em>Committee</em> only, so
-          Jirga meetings are recorded as one of those and cannot be separated out.
+          <strong>{t('dashboard.jirgaNoteBold', 'Jirga meetings are not counted above.')}</strong>{' '}
+          {t('dashboard.jirgaNoteBody', 'A meeting stores its body as Cabinet or Committee only, so Jirga meetings are recorded as one of those and cannot be separated out.')}
         </div>
       )}
     </>
