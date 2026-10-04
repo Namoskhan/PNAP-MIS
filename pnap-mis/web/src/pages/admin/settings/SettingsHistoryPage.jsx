@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { listVersions, restoreVersion } from '../../../api/branding';
@@ -25,6 +26,7 @@ const KIND_BADGES = {
 };
 
 export default function SettingsHistoryPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const branding = useBranding();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
@@ -46,13 +48,11 @@ export default function SettingsHistoryPage() {
   useEffect(() => { load(); }, []);
 
   async function doRestore(v) {
-    const confirmText = `Restore branding to version v${v.versionNumber}?\n\n` +
-      `This creates a NEW version (history is preserved). The current theme + identity will be replaced ` +
-      `with the snapshot from this point in time.`;
+    const confirmText = t('admin.settings.restoreConfirm', 'Restore branding to version v{{version}}?\n\nThis creates a NEW version (history is preserved). The current theme + identity will be replaced with the snapshot from this point in time.', { version: v.versionNumber });
     if (!await dialog.confirm(confirmText)) return;
     try {
       await restoreVersion(v.versionNumber, { changeNote: `Manual rollback to v${v.versionNumber}` });
-      toast.success?.(`Restored from v${v.versionNumber}.`);
+      toast.success?.(t('admin.settings.restoredFrom', 'Restored from v{{version}}.', { version: v.versionNumber }));
       branding.refresh?.();
       load();
     } catch (e) { toast.error?.(errorMessage(e)); }
@@ -64,15 +64,14 @@ export default function SettingsHistoryPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><ClockIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Settings History</h2>
+            <h2 className="rm-hero-title">{t('admin.settings.settingsHistory', 'Settings History')}</h2>
             <div className="rm-hero-sub">
-              Append-only timeline of every branding change. Click any row to inspect the diff;
-              click <strong>Restore</strong> to roll back. Restoring creates a new version — history is never lost.
+              {t('admin.settings.settingsHistorySub', 'Append-only timeline of every branding change. Inspect diffs and restore previous versions.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← Back</Link>
-            <button className="rm-hero-btn outline" onClick={load} disabled={busy}>⟳ Refresh</button>
+            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('admin.settings.backToSettings', '← Back')}</Link>
+            <button className="rm-hero-btn outline" onClick={load} disabled={busy}>⟳ {t('common.refresh', 'Refresh')}</button>
           </div>
         </div>
       </div>
@@ -81,13 +80,13 @@ export default function SettingsHistoryPage() {
       {busy && (
         <div className="rm-loading">
           <span className="scope-spinner" aria-hidden="true" />
-          <span className="muted">Loading…</span>
+          <span className="muted">{t('common.loading', 'Loading…')}</span>
         </div>
       )}
 
       {!busy && items.length === 0 && (
         <div className="rm-card">
-          <div className="rm-empty">No branding changes yet.</div>
+          <div className="rm-empty">{t('admin.settings.noChangesYet', 'No branding changes yet.')}</div>
         </div>
       )}
 
@@ -95,6 +94,7 @@ export default function SettingsHistoryPage() {
         const isOpen = expanded === v.versionNumber;
         const kind = KIND_BADGES[v.kind] || KIND_BADGES.UPDATE;
         const diffCount = (v.diff || []).length;
+        const kindKey = `admin.settings.kind_${(v.kind || 'edit').toLowerCase()}`;
         return (
           <div key={v.versionNumber} className="rm-card" style={{ marginBottom: 10 }}>
             <button
@@ -120,16 +120,16 @@ export default function SettingsHistoryPage() {
                 background: `${kind.color}1a`,
                 color: kind.color,
               }}>
-                {kind.label}
+                {t(kindKey, kind.label)}
                 {v.kind === 'RESTORE' && v.restoredFrom && ` ← v${v.restoredFrom}`}
               </span>
 
               <span style={{ flex: 1, fontSize: 13 }}>
-                {v.changeNote || <span className="muted">no note</span>}
+                {v.changeNote || <span className="muted">{t('admin.settings.noNote', 'no note')}</span>}
               </span>
 
               <span className="muted" style={{ fontSize: 12 }}>
-                {diffCount} change{diffCount === 1 ? '' : 's'}
+                {t('admin.settings.changesCount', '{{count}} change', { count: diffCount })}
               </span>
 
               <span className="muted" style={{ fontSize: 12, minWidth: 140, textAlign: 'right' }}>
@@ -148,19 +148,19 @@ export default function SettingsHistoryPage() {
                 {/* Diff table */}
                 {diffCount === 0 ? (
                   <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                    No leaf-level changes captured (likely a snapshot reset / import).
+                    {t('admin.settings.noLeafChanges', 'No leaf-level changes captured (likely a snapshot reset / import).')}
                   </p>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, fontSize: 12, fontFamily: 'monospace' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--muted)' }}>Path</div>
-                    <div style={{ fontWeight: 700, color: 'var(--muted)' }}>Before</div>
-                    <div style={{ fontWeight: 700, color: 'var(--muted)' }}>After</div>
+                    <div style={{ fontWeight: 700, color: 'var(--muted)' }}>{t('admin.settings.path', 'Path')}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--muted)' }}>{t('admin.settings.before', 'Before')}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--muted)' }}>{t('admin.settings.after', 'After')}</div>
                     {(v.diff || []).slice(0, 30).map((d, i) => (
                       <DiffRow key={i} d={d} />
                     ))}
                     {diffCount > 30 && (
                       <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 8 }} className="muted">
-                        … and {diffCount - 30} more
+                        {t('admin.settings.andMoreChanges', '… and {{count}} more', { count: diffCount - 30 })}
                       </div>
                     )}
                   </div>
@@ -172,7 +172,7 @@ export default function SettingsHistoryPage() {
                       type="button"
                       className="rm-action perms"
                       onClick={() => doRestore(v)}
-                    >↺ Restore this version</button>
+                    >{t('admin.settings.restoreThisVersion', '↺ Restore this version')}</button>
                   </div>
                 )}
               </div>

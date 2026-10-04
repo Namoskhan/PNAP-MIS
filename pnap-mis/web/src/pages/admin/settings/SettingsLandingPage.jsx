@@ -1,43 +1,40 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchSettings } from '../../../api/branding';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { ClockIcon, FileTextIcon, GearIcon, ImageIcon, LogInIcon, PaletteIcon, SlidersIcon, TagIcon, TypeIcon } from '../../../components/icons';
 
-// Branding overview at /admin/settings. Shows current identity at
-// a glance + cards for each editable surface. Admin-only;
-// VIEW_SYSTEM_BRANDING gates read, MANAGE_SYSTEM_BRANDING gates write
-// (the individual editor pages enforce write).
-
 const SURFACES = [
-  { key: 'identity', label: 'System Identity', icon: <TagIcon size={20} />,
+  { key: 'identity', labelKey: 'admin.settings.systemIdentity', descKey: 'admin.settings.systemIdentitySub', label: 'System Identity', icon: <TagIcon size={20} />,
     description: 'System name, organization name, footer, browser tab title.',
     path: '/admin/settings/identity', shipped: true },
-  { key: 'login', label: 'Login Customization', icon: <LogInIcon size={20} />,
+  { key: 'login', labelKey: 'admin.settings.loginCustomization', descKey: 'admin.settings.loginCustomizationSub', label: 'Login Customization', icon: <LogInIcon size={20} />,
     description: 'Login page hero, welcome message, slogan, card style.',
     path: '/admin/settings/login', shipped: true },
-  { key: 'logos', label: 'Logo Manager', icon: <ImageIcon size={20} />,
+  { key: 'logos', labelKey: 'admin.settings.logoManager', descKey: 'admin.settings.logoManagerSub', label: 'Logo Manager', icon: <ImageIcon size={20} />,
     description: 'Sidebar / login / favicon / print logos. Upload, preview, reset.',
     path: '/admin/settings/logos', shipped: true },
-  { key: 'theme', label: 'Theme Manager', icon: <PaletteIcon size={20} />,
+  { key: 'theme', labelKey: 'admin.settings.themeManager', descKey: 'admin.settings.themeManagerSub', label: 'Theme Manager', icon: <PaletteIcon size={20} />,
     description: 'Colors, dark mode, presets. Preview before apply.',
     path: '/admin/settings/theme', shipped: true },
-  { key: 'typography', label: 'Typography', icon: <TypeIcon size={20} />,
+  { key: 'typography', labelKey: 'admin.settings.typography', descKey: 'admin.settings.typographySub', label: 'Typography', icon: <TypeIcon size={20} />,
     description: 'Font family, base size, border radius, spacing scale.',
     path: '/admin/settings/typography', shipped: true },
-  { key: 'dashboard', label: 'UI Preferences', icon: <SlidersIcon size={20} />,
+  { key: 'dashboard', labelKey: 'admin.settings.dashboardAppearance', descKey: 'admin.settings.dashboardAppearanceSub', label: 'UI Preferences', icon: <SlidersIcon size={20} />,
     description: 'Animations, KPI counters, chart style, compact mode, glassmorphism.',
     path: '/admin/settings/dashboard', shipped: true },
-  { key: 'reports', label: 'Report Branding', icon: <FileTextIcon size={20} />,
+  { key: 'reports', labelKey: 'admin.settings.reportBranding', descKey: 'admin.settings.reportBrandingSub', label: 'Report Branding', icon: <FileTextIcon size={20} />,
     description: 'PDF / XLSX export header logo, footer text, theme color.',
     path: '/admin/settings/reports', shipped: true },
-  { key: 'history', label: 'Settings History', icon: <ClockIcon size={20} />,
+  { key: 'history', labelKey: 'admin.settings.settingsHistory', descKey: 'admin.settings.settingsHistorySub', label: 'Settings History', icon: <ClockIcon size={20} />,
     description: 'View / rollback past versions of the branding configuration.',
     path: '/admin/settings/history', shipped: true },
 ];
 
 export default function SettingsLandingPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const canRead = hasPermission(user, 'VIEW_SYSTEM_BRANDING') || hasPermission(user, 'MANAGE_SYSTEM_BRANDING');
   const [settings, setSettings] = useState(null);
@@ -58,10 +55,9 @@ export default function SettingsLandingPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><GearIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">System Branding & Appearance</h2>
+            <h2 className="rm-hero-title">{t('admin.settings.systemSettings', 'System Branding & Appearance')}</h2>
             <div className="rm-hero-sub">
-              Configure system identity, theme, logos, and appearance — applied globally across every page,
-              report, and export.
+              {t('admin.settings.systemSettingsSub', 'Configure system identity, theme, logos, and appearance — applied globally across every page, report, and export.')}
             </div>
           </div>
         </div>
@@ -69,7 +65,7 @@ export default function SettingsLandingPage() {
 
       {!canRead && (
         <div className="alert error">
-          You need <code>VIEW_SYSTEM_BRANDING</code> or <code>MANAGE_SYSTEM_BRANDING</code> to view this section.
+          {t('admin.settings.permAlert', 'You need VIEW_SYSTEM_BRANDING or MANAGE_SYSTEM_BRANDING to view this section.')}
         </div>
       )}
 
@@ -77,16 +73,16 @@ export default function SettingsLandingPage() {
         <div className="rm-card" style={{ marginBottom: 14 }}>
           <div className="rm-card-bar">
             <span className="rm-card-bar-icon" aria-hidden="true"><TagIcon size={15} /></span>
-            <span className="rm-card-bar-label">Current identity</span>
+            <span className="rm-card-bar-label">{t('admin.settings.currentIdentity', 'Current identity')}</span>
             <span className="rm-card-bar-count">v{settings.settingsVersion || 1}</span>
           </div>
           <div className="rm-card-body">
             <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-              <li><strong>System name:</strong> {settings.identity?.systemName || '—'}</li>
-              <li><strong>Short name:</strong> {settings.identity?.shortName || '—'}</li>
-              <li><strong>Organization:</strong> {settings.identity?.organizationName || '—'}</li>
-              <li><strong>Browser tab title:</strong> {settings.identity?.browserTabTitle || '—'}</li>
-              <li><strong>Theme:</strong> {settings.theme?.presetName || '—'} · <code>{settings.theme?.activeMode || '—'}</code> mode</li>
+              <li><strong>{t('admin.settings.systemName', 'System name')}:</strong> {settings.identity?.systemName || '—'}</li>
+              <li><strong>{t('admin.settings.shortName', 'Short name')}:</strong> {settings.identity?.shortName || '—'}</li>
+              <li><strong>{t('admin.settings.organizationName', 'Organization')}:</strong> {settings.identity?.organizationName || '—'}</li>
+              <li><strong>{t('admin.settings.browserTabTitle', 'Browser tab title')}:</strong> {settings.identity?.browserTabTitle || '—'}</li>
+              <li><strong>{t('admin.settings.themeManager', 'Theme')}:</strong> {settings.theme?.presetName || '—'} · <code>{settings.theme?.activeMode || '—'}</code></li>
             </ul>
           </div>
         </div>
@@ -104,10 +100,10 @@ export default function SettingsLandingPage() {
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--primary)' }} aria-hidden="true">{s.icon}</span>
-                  <strong style={{ fontSize: 14 }}>{s.label}</strong>
-                  {!s.shipped && <span className="rm-row-tag inactive">Coming in next PR</span>}
+                  <strong style={{ fontSize: 14 }}>{t(s.labelKey, s.label)}</strong>
+                  {!s.shipped && <span className="rm-row-tag inactive">{t('common.comingSoon', 'Coming soon')}</span>}
                 </div>
-                <div className="muted" style={{ fontSize: 13 }}>{s.description}</div>
+                <div className="muted" style={{ fontSize: 13 }}>{t(s.descKey, s.description)}</div>
               </>
             );
             const baseStyle = {
@@ -147,7 +143,7 @@ export default function SettingsLandingPage() {
       {busy && (
         <div className="rm-loading">
           <span className="scope-spinner" aria-hidden="true" />
-          <span className="muted">Loading…</span>
+          <span className="muted">{t('common.loading', 'Loading…')}</span>
         </div>
       )}
     </div>
