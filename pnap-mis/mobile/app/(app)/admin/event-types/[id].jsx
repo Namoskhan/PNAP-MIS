@@ -18,6 +18,7 @@ import { api, errorMessage } from '../../../../src/api/client';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import Card from '../../../../src/components/Card';
 import Badge from '../../../../src/components/Badge';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
@@ -31,6 +32,7 @@ export default function EventTypeEditorScreen() {
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const canWrite = hasPermission(user, 'MANAGE_EVENT_CONFIG');
 
   const [doc, setDoc] = useState(null);
@@ -246,7 +248,7 @@ export default function EventTypeEditorScreen() {
   if (!doc) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errText}>Event type not found.</Text>
+        <Text style={styles.errText}>{t('admin.noTypesDefined', 'Event type not found.')}</Text>
       </View>
     );
   }
@@ -271,7 +273,7 @@ export default function EventTypeEditorScreen() {
         <View style={styles.heroActionsRow}>
           <TouchableOpacity style={styles.snapshotBtn} onPress={openSnapshot}>
             <Ionicons name="eye-outline" size={15} color="#fff" style={{ marginRight: 4 }} />
-            <Text style={styles.snapshotBtnText}>Snapshot</Text>
+            <Text style={styles.snapshotBtnText}>{t('admin.schemaSnapshot', 'Snapshot')}</Text>
           </TouchableOpacity>
           {canWrite && (
             <TouchableOpacity
@@ -284,7 +286,7 @@ export default function EventTypeEditorScreen() {
               ) : (
                 <>
                   <Ionicons name="checkmark-sharp" size={16} color={Colors.primary} style={{ marginRight: 4 }} />
-                  <Text style={styles.heroSaveBtnText}>Save</Text>
+                  <Text style={styles.heroSaveBtnText}>{t('common.save', 'Save')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -313,11 +315,11 @@ export default function EventTypeEditorScreen() {
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
-            <Text style={styles.cardTitle}>Basic Info</Text>
+            <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.basicInformation', 'Basic Info')}</Text>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Display Label *</Text>
+            <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('admin.displayLabel', 'Display Label')} *</Text>
             <TextInput
               style={[styles.input, !canWrite && styles.inputDisabled]}
               value={label}
@@ -329,7 +331,7 @@ export default function EventTypeEditorScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Description</Text>
+            <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('admin.descriptionOptional', 'Description')}</Text>
             <TextInput
               style={[styles.input, styles.multiline, !canWrite && styles.inputDisabled]}
               value={description}
@@ -343,7 +345,7 @@ export default function EventTypeEditorScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Sort Order</Text>
+            <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('admin.sortOrder', 'Sort Order')}</Text>
             <View style={styles.numberStepperRow}>
               <TouchableOpacity
                 style={[styles.stepperBtn, !canWrite && styles.inputDisabled]}
@@ -385,7 +387,7 @@ export default function EventTypeEditorScreen() {
 
           <View style={styles.switchRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.switchTitle}>Active Status</Text>
+              <Text style={[styles.switchTitle, isRTL && { textAlign: 'right' }]}>{t('common.active', 'Active Status')}</Text>
               <Text style={styles.switchSub}>Allow officers to schedule and log this event type</Text>
             </View>
             <Switch
@@ -401,7 +403,7 @@ export default function EventTypeEditorScreen() {
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="people-outline" size={18} color={Colors.primary} />
-            <Text style={styles.cardTitle}>Body Applicability</Text>
+            <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.appliesToBodies', 'Body Applicability')}</Text>
           </View>
           <Text style={styles.sectionDesc}>
             Control which administrative bodies are authorized to record this {entity.toLowerCase()} type.
@@ -438,7 +440,7 @@ export default function EventTypeEditorScreen() {
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="camera-outline" size={18} color={Colors.primary} />
-            <Text style={styles.cardTitle}>Photo Policy</Text>
+            <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.photoPolicy', 'Photo Policy')}</Text>
           </View>
 
           <View style={styles.switchRow}>

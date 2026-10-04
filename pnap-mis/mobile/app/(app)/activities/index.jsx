@@ -95,6 +95,7 @@ function gmapsLink(lat, lng) {
 export default function ActivitiesScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+  const isTablet = width >= 768;
 
   const { user } = useAuth();
   const { t, isRTL } = useLanguage();

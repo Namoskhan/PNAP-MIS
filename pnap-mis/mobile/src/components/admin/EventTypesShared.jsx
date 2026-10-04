@@ -24,9 +24,11 @@ import Card from '../Card';
 import Badge from '../Badge';
 import EmptyState from '../EmptyState';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
+import { useLanguage } from '../../context/LanguageContext';
 
 // Shared component used by both meetings.jsx and activities.jsx
 export function EventTypeList({ entity, title, icon }) {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const toast = useToast();
   const router = useRouter();
@@ -78,13 +80,13 @@ export function EventTypeList({ entity, title, icon }) {
 
   async function handleCreate() {
     if (!form.code.trim() || !form.label.trim()) {
-      toast.error('Code and label are required.');
+      toast.error(t('common.requiredFields', 'Code and label are required.'));
       return;
     }
     setSaving(true);
     try {
       await api.post('/admin/events/types', { ...form, entity });
-      toast.success('Type created.');
+      toast.success(t('admin.typeCreated', 'Type created.'));
       setCreateOpen(false);
       setForm({ code: '', label: '', description: '' });
       load();
@@ -95,65 +97,69 @@ export function EventTypeList({ entity, title, icon }) {
     }
   }
 
-  async function handleDelete(t) {
+  async function handleDelete(tItem) {
     confirmAction(
-      'Delete Type',
-      `Delete "${t.label}" (${t.code})? This cannot be undone.`,
+      t('common.delete', 'Delete'),
+      t('admin.deleteTypeConfirm', {
+        label: tItem.label,
+        code: tItem.code,
+        defaultValue: `Delete "${tItem.label}" (${tItem.code})? This cannot be undone.`,
+      }),
       async () => {
         try {
-          await api.delete(`/admin/events/types/${t._id}`);
-          toast.success('Type deleted.');
+          await api.delete(`/admin/events/types/${tItem._id}`);
+          toast.success(t('admin.typeDeleted', 'Type deleted.'));
           load();
         } catch (e) {
           toast.error(errorMessage(e));
         }
       },
-      { confirmText: 'Delete', destructive: true }
+      { confirmText: t('common.delete', 'Delete'), destructive: true }
     );
   }
 
-  function renderItem({ item: t }) {
+  function renderItem({ item: tItem }) {
     return (
       <Card style={[styles.typeCard, isSmall && styles.typeCardSmall]}>
-        <View style={[styles.typeRow, isSmall && styles.typeRowSmall]}>
+        <View style={[styles.typeRow, isSmall && styles.typeRowSmall, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={{ flex: 1, width: '100%' }}>
-            <View style={styles.typeNameRow}>
-              <Text style={styles.typeName}>{t.label}</Text>
-              <View style={styles.badgeRow}>
-                {t.isSystem ? (
-                  <Badge label="System" color="#0369a1" bg="#e0f2fe" />
+            <View style={[styles.typeNameRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.typeName, isRTL && { textAlign: 'right' }]}>{tItem.label}</Text>
+              <View style={[styles.badgeRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                {tItem.isSystem ? (
+                  <Badge label={t('admin.builtInLocked', 'System')} color="#0369a1" bg="#e0f2fe" />
                 ) : (
-                  <Badge label="Custom" color="#7c3aed" bg="#f3e8ff" />
+                  <Badge label={t('admin.custom', 'Custom')} color="#7c3aed" bg="#f3e8ff" />
                 )}
-                {!t.isActive && <Badge label="Inactive" color={Colors.textMuted} bg={Colors.borderLight} />}
+                {!tItem.isActive && <Badge label={t('admin.inactive', 'Inactive')} color={Colors.textMuted} bg={Colors.borderLight} />}
               </View>
             </View>
             <View style={styles.codePill}>
-              <Text style={styles.typeCode}>{t.code}</Text>
+              <Text style={styles.typeCode}>{tItem.code}</Text>
             </View>
-            {t.description ? (
-              <Text style={styles.typeDesc} numberOfLines={isSmall ? 3 : 2}>
-                {t.description}
+            {tItem.description ? (
+              <Text style={[styles.typeDesc, isRTL && { textAlign: 'right' }]} numberOfLines={isSmall ? 3 : 2}>
+                {tItem.description}
               </Text>
             ) : null}
           </View>
 
-          <View style={[styles.typeActions, isSmall && styles.typeActionsSmall]}>
+          <View style={[styles.typeActions, isSmall && styles.typeActionsSmall, isRTL && { flexDirection: 'row-reverse' }]}>
             {(hasPermission(user, 'VIEW_EVENT_CONFIG') || canWrite) && (
               <TouchableOpacity
                 style={[styles.actionBtn, isSmall && styles.actionBtnSmall]}
-                onPress={() => router.push(`/admin/event-types/${t._id}`)}
+                onPress={() => router.push(`/admin/event-types/${tItem._id}`)}
               >
                 <Ionicons name="settings-outline" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.actionText}>Configure</Text>
+                <Text style={styles.actionText}>{t('admin.configure', 'Configure')}</Text>
                 <Ionicons name="chevron-forward" size={13} color={Colors.primary} style={{ marginLeft: 2 }} />
               </TouchableOpacity>
             )}
-            {canWrite && !t.isSystem && (
+            {canWrite && !tItem.isSystem && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionDanger, isSmall && styles.actionDangerSmall]}
-                onPress={() => handleDelete(t)}
-                accessibilityLabel="Delete type"
+                onPress={() => handleDelete(tItem)}
+                accessibilityLabel={t('common.delete', 'Delete')}
               >
                 <Ionicons name="trash-outline" size={15} color={Colors.error} />
               </TouchableOpacity>
@@ -168,30 +174,30 @@ export function EventTypeList({ entity, title, icon }) {
     <SafeAreaView style={styles.safe}>
       <View style={[styles.container, isTablet && styles.containerTablet]}>
         {/* Header */}
-        <View style={[styles.header, isSmall && styles.headerSmall]}>
+        <View style={[styles.header, isSmall && styles.headerSmall, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>
               {icon} {title}
             </Text>
-            <Text style={styles.headerSubtitle}>
-              {types.length} {types.length === 1 ? 'type' : 'types'} configured
+            <Text style={[styles.headerSubtitle, isRTL && { textAlign: 'right' }]}>
+              {types.length} {t('admin.type', 'types')}
             </Text>
           </View>
           {canWrite && (
             <TouchableOpacity style={styles.createBtn} onPress={() => setCreateOpen(true)}>
               <Ionicons name="add" size={18} color="#fff" style={{ marginRight: 2 }} />
-              <Text style={styles.createBtnText}>New Type</Text>
+              <Text style={styles.createBtnText}>{t('admin.newType', 'New Type')}</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Search Bar if multiple types */}
         {types.length > 4 && (
-          <View style={styles.searchWrap}>
+          <View style={[styles.searchWrap, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
-              placeholder={`Search ${title.toLowerCase()}…`}
+              style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
+              placeholder={`${t('common.search', 'Search')} ${title.toLowerCase()}…`}
               placeholderTextColor={Colors.textMuted}
               value={search}
               onChangeText={setSearch}
@@ -209,7 +215,7 @@ export function EventTypeList({ entity, title, icon }) {
         <FlatList
           data={filtered}
           renderItem={renderItem}
-          keyExtractor={(t) => t._id}
+          keyExtractor={(tItem) => tItem._id}
           contentContainerStyle={styles.list}
           onRefresh={load}
           refreshing={loading}
@@ -217,8 +223,8 @@ export function EventTypeList({ entity, title, icon }) {
             !loading && (
               <EmptyState
                 icon={icon}
-                title={search ? 'No matching types found' : `No ${title.toLowerCase()} yet`}
-                subtitle={search ? 'Try adjusting your search query' : 'Create one using the + New Type button above'}
+                title={search ? t('common.noData', 'No matching types found') : t('admin.noTypesDefined', 'No types defined yet.')}
+                subtitle={search ? t('common.filter', 'Try adjusting your search query') : t('admin.newType', 'Create one using the + New Type button above')}
               />
             )
           }
@@ -229,8 +235,12 @@ export function EventTypeList({ entity, title, icon }) {
       <Modal visible={createOpen} animationType="slide" transparent onRequestClose={() => setCreateOpen(false)}>
         <SafeAreaView style={styles.modalOverlay}>
           <View style={[styles.modalContainer, isTablet && styles.modalContainerTablet]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>New {entity === 'MEETING' ? 'Meeting' : 'Activity'} Type</Text>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.modalTitle}>
+                {entity === 'MEETING'
+                  ? t('admin.createMeetingType', 'Create meeting type')
+                  : t('admin.createActivityType', 'Create activity type')}
+              </Text>
               <TouchableOpacity
                 onPress={() => {
                   setCreateOpen(false);
@@ -242,38 +252,38 @@ export function EventTypeList({ entity, title, icon }) {
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
-              <Text style={styles.fieldLabel}>Type Code *</Text>
+              <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('admin.code', 'Code')} *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.code}
                 onChangeText={(v) => setForm((p) => ({ ...p, code: v.toUpperCase().replace(/[^A-Z0-9_]/g, '') }))}
                 placeholder="e.g. EMERGENCY_MEETING"
                 placeholderTextColor={Colors.textMuted}
                 autoCapitalize="characters"
               />
-              <Text style={styles.fieldHint}>Uppercase letters, numbers, and underscores only</Text>
+              <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>{t('admin.codeHint', 'Uppercase letters, numbers, and underscores only')}</Text>
 
-              <Text style={styles.fieldLabel}>Display Label *</Text>
+              <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('admin.displayLabel', 'Display Label')} *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.label}
                 onChangeText={(v) => setForm((p) => ({ ...p, label: v }))}
                 placeholder="e.g. Emergency Meeting"
                 placeholderTextColor={Colors.textMuted}
               />
 
-              <Text style={styles.fieldLabel}>Description</Text>
+              <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('admin.descriptionOptional', 'Description')}</Text>
               <TextInput
-                style={[styles.input, styles.multiline]}
+                style={[styles.input, styles.multiline, isRTL && { textAlign: 'right' }]}
                 value={form.description}
                 onChangeText={(v) => setForm((p) => ({ ...p, description: v }))}
-                placeholder="Brief description of when this type is used"
+                placeholder={t('admin.descTypePlaceholder', 'Brief description of when this type is used')}
                 placeholderTextColor={Colors.textMuted}
                 multiline
                 numberOfLines={3}
               />
             </ScrollView>
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => {
@@ -281,10 +291,10 @@ export function EventTypeList({ entity, title, icon }) {
                   setForm({ code: '', label: '', description: '' });
                 }}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleCreate} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveText}>Create Type</Text>}
+                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveText}>{t('admin.newType', 'Create Type')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
