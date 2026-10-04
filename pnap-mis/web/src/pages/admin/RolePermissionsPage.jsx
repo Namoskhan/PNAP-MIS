@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../utils/permissions';
@@ -10,9 +11,6 @@ import {
   MegaphoneIcon, BuildingIcon, GearIcon,
 } from '../../components/icons';
 
-// Map a category string to a small icon. Falls back to a generic
-// shield. Order is also defined here so the rendered grid follows
-// a meaningful sequence regardless of catalogue insertion order.
 const CATEGORY_ICON = {
   Members:           <UsersIcon size={16} />,
   Finance:           <WalletIcon size={16} />,
@@ -27,6 +25,7 @@ const CATEGORY_ORDER = [
 ];
 
 export default function RolePermissionsPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const nav = useNavigate();
   const { user, refreshMe } = useAuth();
@@ -150,14 +149,14 @@ export default function RolePermissionsPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><ShieldIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Role Permissions</h2>
-            <div className="rm-hero-sub">Manage role-based access control and permissions</div>
+            <h2 className="rm-hero-title">{t('admin.rolePermissions')}</h2>
+            <div className="rm-hero-sub">{t('admin.rolePermissionsSub')}</div>
           </div>
           <div className="rm-hero-actions">
-            <Link to="/admin/roles" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← Back to Roles</Link>
+            <Link to="/admin/roles" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← {t('admin.backToRoles')}</Link>
             {canWrite && (
               <button className="rm-hero-btn solid" disabled={!dirty || saving || readOnly} onClick={save}>
-                {saving ? 'Saving…' : 'Save Permissions'}
+                {saving ? t('admin.saving') : t('admin.savePermissions')}
               </button>
             )}
           </div>
@@ -168,7 +167,7 @@ export default function RolePermissionsPage() {
       {busy && (
         <div className="rm-loading">
           <span className="scope-spinner" aria-hidden="true" />
-          <span className="muted">Loading…</span>
+          <span className="muted">{t('common.loading')}</span>
         </div>
       )}
 
@@ -178,11 +177,11 @@ export default function RolePermissionsPage() {
           <div className="rm-card">
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><UsersIcon size={15} /></span>
-              <span className="rm-card-bar-label">Select Role</span>
+              <span className="rm-card-bar-label">{t('admin.selectRole')}</span>
             </div>
             <div className="rm-card-body">
               <div className="field" style={{ maxWidth: 520 }}>
-                <label>Role name</label>
+                <label>{t('admin.roleName')}</label>
                 <select value={role._id} onChange={(e) => switchRole(e.target.value)}>
                   {allRoles.map((r) => (
                     <option key={r._id} value={r._id}>
@@ -202,7 +201,7 @@ export default function RolePermissionsPage() {
           <div className="rm-card">
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><ShieldIcon size={15} /></span>
-              <span className="rm-card-bar-label">Permissions for {role.label}</span>
+              <span className="rm-card-bar-label">{t('admin.permissions')}: {role.label}</span>
               <span className="rm-card-bar-count">
                 {selected.size} / {totalPerms}
               </span>
@@ -236,7 +235,7 @@ export default function RolePermissionsPage() {
                   <span className="rm-cat-icon" aria-hidden="true">{CATEGORY_ICON[cat] || <ShieldIcon size={16} />}</span>
                   <div className="rm-cat-titles">
                     <div className="rm-cat-title">{cat}</div>
-                    <div className="rm-cat-sub">{perms.length} permission{perms.length === 1 ? '' : 's'}</div>
+                    <div className="rm-cat-sub">{perms.length} {t('admin.permissions')}</div>
                   </div>
                   <label className="rm-select-all">
                     <input
@@ -246,7 +245,7 @@ export default function RolePermissionsPage() {
                       disabled={readOnly}
                       onChange={(e) => selectCategory(perms, e.target.checked)}
                     />
-                    <span>Select All</span>
+                    <span>{t('admin.selectAll')}</span>
                   </label>
                 </div>
                 <div className="rm-cat-body">
@@ -286,9 +285,9 @@ export default function RolePermissionsPage() {
                   Unsaved changes — {selected.size < original.size ? 'permissions will be revoked on save' : 'save to apply'}
                 </span>
               )}
-              <button type="button" className="rm-hero-btn outline" onClick={cancel}>× Cancel</button>
+              <button type="button" className="rm-hero-btn outline" onClick={cancel}>× {t('common.cancel')}</button>
               <button type="button" className="rm-hero-btn solid" disabled={!dirty || saving} onClick={save}>
-                {saving ? 'Saving…' : '✓ Save Permissions'}
+                {saving ? t('admin.saving') : `✓ ${t('admin.savePermissions')}`}
               </button>
             </div>
           )}

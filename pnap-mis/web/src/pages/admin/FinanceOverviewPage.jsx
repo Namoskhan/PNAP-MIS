@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../api/client';
 
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
 export default function FinanceOverviewPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
 
@@ -14,34 +16,34 @@ export default function FinanceOverviewPage() {
   }, []);
 
   if (err) return <div className="alert error">{err}</div>;
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p>{t('common.loading', 'Loading…')}</p>;
 
-  const t = data.totals;
+  const totals = data.totals;
   return (
     <div>
-      <div className="page-header"><h2>Finance Overview (System-wide)</h2></div>
-      <p className="muted">Aggregated finance across the entire party.</p>
+      <div className="page-header"><h2>{t('admin.financeOverview')}</h2></div>
+      <p className="muted">{t('admin.financeOverviewSub')}</p>
 
       <div className="kpi-grid" style={{ marginBottom: 16 }}>
-        <Kpi label="Total Donations" value={PKR.format(t.donations)} sub={`${t.donationCount} entries`} />
-        <Kpi label="Approved Expenses" value={PKR.format(t.expenses)} sub={`${t.expenseCount} entries`} />
-        <Kpi label="Acknowledged Transfers" value={PKR.format(t.transfers)} sub={`${t.transferCount} entries`} />
-        <Kpi label="Net Balance" value={PKR.format(t.netBalance)} accent={t.netBalance < 0 ? 'danger' : 'good'} />
+        <Kpi label={t('admin.totalDonations')} value={PKR.format(totals.donations)} sub={`${totals.donationCount} ${t('admin.entries')}`} />
+        <Kpi label={t('admin.approvedExpenses')} value={PKR.format(totals.expenses)} sub={`${totals.expenseCount} ${t('admin.entries')}`} />
+        <Kpi label={t('admin.transfers')} value={PKR.format(totals.transfers)} sub={`${totals.transferCount} ${t('admin.entries')}`} />
+        <Kpi label={t('admin.netBalance')} value={PKR.format(totals.netBalance)} accent={totals.netBalance < 0 ? 'danger' : 'good'} />
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>By Province</h3>
+        <h3 style={{ marginTop: 0 }}>{t('admin.byProvince')}</h3>
         <table className="list">
           <thead>
             <tr>
-              <th>Province</th>
-              <th style={{ textAlign: 'right' }}>Donations</th>
-              <th style={{ textAlign: 'right' }}>Expenses</th>
-              <th style={{ textAlign: 'right' }}>Net Balance</th>
+              <th>{t('admin.province')}</th>
+              <th style={{ textAlign: 'right' }}>{t('admin.donations')}</th>
+              <th style={{ textAlign: 'right' }}>{t('admin.expenses')}</th>
+              <th style={{ textAlign: 'right' }}>{t('admin.netBalance')}</th>
             </tr>
           </thead>
           <tbody>
-            {data.perProvince.length === 0 && <tr><td colSpan="4" className="muted">No data.</td></tr>}
+            {data.perProvince.length === 0 && <tr><td colSpan="4" className="muted">{t('admin.noData')}</td></tr>}
             {data.perProvince.map((p) => (
               <tr key={p._id}>
                 <td><strong>{p.name}</strong> {p.code && <span className="muted">({p.code})</span>}</td>
