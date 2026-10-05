@@ -6,6 +6,7 @@ const { z } = require('zod');
 
 const domain = z.enum([
   'EXPENSE_APPROVAL',
+  'DONATION_APPROVAL',
   'MEMBER_APPROVAL',
   'ROLE_APPROVAL',
   'TRANSFER_APPROVAL',
