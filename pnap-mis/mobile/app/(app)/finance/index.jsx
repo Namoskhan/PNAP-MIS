@@ -486,7 +486,7 @@ export default function FinanceScreen() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const streamLabel = isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'Committee' : 'Executive'));
-      toast.success(`${streamLabel} donation of ${PKR(donAmount)} recorded.`);
+      toast.success(`${streamLabel} donation of ${PKR(donAmount)} submitted for approval.`);
       setShowDonation(false);
       load(true);
     } catch (e) {
@@ -520,8 +520,13 @@ export default function FinanceScreen() {
           receiptNo: `OFFLINE-${Math.floor(1000 + Math.random() * 9000)}`,
           receivedAt: donationForm.receivedAt || new Date().toISOString(),
           createdAt: new Date().toISOString(),
-          state: 'OFFLINE_PENDING',
+          state: 'PENDING',
           _isOffline: true,
+          recordedBy: {
+            fullName: user?.fullName || 'Me',
+            username: user?.username,
+            roles: user?.roles || [],
+          },
         };
 
         const payload = {
@@ -644,6 +649,11 @@ export default function FinanceScreen() {
           createdAt: new Date().toISOString(),
           state: 'OFFLINE_PENDING',
           _isOffline: true,
+          recordedBy: {
+            fullName: user?.fullName || 'Me',
+            username: user?.username,
+            roles: user?.roles || [],
+          },
         };
 
         await enqueueOfflineAction({
@@ -691,6 +701,34 @@ export default function FinanceScreen() {
           prev.map((item) => (item._id === id ? { ...item, status: decision === 'APPROVE' ? 'APPROVED' : 'REJECTED' } : item))
         );
         toast.success(`Offline: Expense ${decision.toLowerCase()} saved. Will sync when online.`);
+      } else {
+        toast.error(errorMessage(e));
+      }
+    }
+  }
+
+  async function decideDonation(id, decision) {
+    try {
+      if (!isOnline) {
+        throw new Error('OFFLINE_MODE');
+      }
+      await api.post(`/finance/donations/${id}/decide`, { decision });
+      toast.success(`Donation ${decision.toLowerCase()}.`);
+      load(true);
+    } catch (e) {
+      if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
+        await enqueueOfflineAction({
+          entityType: 'DONATION',
+          action: 'UPDATE',
+          endpoint: `/finance/donations/${id}/decide`,
+          method: 'POST',
+          payload: { decision },
+          displayTitle: `${decision === 'APPROVE' || decision === 'APPROVED' ? 'Approve' : 'Reject'} Donation`,
+        });
+        setDonations((prev) =>
+          prev.map((item) => (item._id === id ? { ...item, state: decision === 'APPROVE' || decision === 'APPROVED' ? 'APPROVED' : 'REJECTED' } : item))
+        );
+        toast.success(`Offline: Donation ${decision.toLowerCase()} saved. Will sync when online.`);
       } else {
         toast.error(errorMessage(e));
       }
@@ -1163,14 +1201,17 @@ export default function FinanceScreen() {
             >
               {/* DONATIONS TABLE */}
               {tab === 'DONATIONS' && (
-                <View style={{ minWidth: isTablet ? '100%' : 750, width: isTablet ? '100%' : undefined }}>
+                <View style={{ minWidth: isTablet ? '100%' : 970, width: isTablet ? '100%' : undefined }}>
                   <View style={[styles.thRow, isRTL && { flexDirection: 'row-reverse' }]}>
-                    <Text style={[styles.th, { width: isTablet ? '22%' : 150 }, isRTL && { textAlign: 'right' }]}>{t('finance.receiptNo', 'Receipt')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{t('finance.date', 'Date')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '24%' : 160 }, isRTL && { textAlign: 'right' }]}>{t('finance.donor', 'Donor')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{t('finance.mode', 'Mode')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '10%' : 80, textAlign: 'center' }]}>{t('finance.receiptImage', 'Proof')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 130, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.amount', 'Amount (PKR)')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 120 }, isRTL && { textAlign: 'right' }]}>{t('finance.receiptNo', 'Receipt')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '10%' : 90 }, isRTL && { textAlign: 'right' }]}>{t('finance.date', 'Date')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 130 }, isRTL && { textAlign: 'right' }]}>{t('finance.donor', 'Donor')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 130 }, isRTL && { textAlign: 'right' }]}>{t('finance.collectedBy', 'Collected By')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '10%' : 90 }, isRTL && { textAlign: 'right' }]}>{t('finance.mode', 'Mode')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '7%' : 60, textAlign: 'center' }]}>{t('finance.receiptImage', 'Proof')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '13%' : 110, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.amount', 'Amount (PKR)')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '8%' : 80 }]}>{t('finance.status', 'Status')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '10%' : 140, textAlign: 'center' }]}>{t('finance.actions', 'Actions')}</Text>
                   </View>
 
                   {donations.length === 0 && !loading && (
@@ -1197,7 +1238,7 @@ export default function FinanceScreen() {
 
                     return (
                       <View key={d._id} style={[styles.tr, isRTL && { flexDirection: 'row-reverse' }]}>
-                        <View style={[styles.td, { width: isTablet ? '22%' : 150 }]}>
+                        <View style={[styles.td, { width: isTablet ? '14%' : 120 }]}>
                           <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 4 }}>
                             <Badge
                               label={d._isOffline ? 'Offline Pending' : (isCng ? t('units.nationalCongress', 'Congress') : (isJrg ? t('units.jirga', 'Jirga') : (isCm ? t('units.committee', 'Committee') : t('roles.executive', 'Executive'))))}
@@ -1213,11 +1254,23 @@ export default function FinanceScreen() {
                           )}
                         </View>
 
-                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{shortDate(d.receivedAt || d.createdAt)}</Text>
-                        <Text style={[styles.td, { width: isTablet ? '24%' : 160 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{effectiveDonorName}</Text>
-                        <Text style={[styles.td, { width: isTablet ? '14%' : 110 }, isRTL && { textAlign: 'right' }]}>{d.paymentMode?.replace('_', ' ')}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '10%' : 90 }, isRTL && { textAlign: 'right' }]}>{shortDate(d.receivedAt || d.createdAt)}</Text>
+                        <Text style={[styles.td, { width: isTablet ? '14%' : 130 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{effectiveDonorName}</Text>
                         
-                        <View style={[styles.td, { width: isTablet ? '10%' : 80, alignItems: 'center', justifyContent: 'center' }]}>
+                        <View style={[styles.td, { width: isTablet ? '14%' : 130 }]}>
+                          <Text style={[{ fontSize: 12, fontWeight: '600', color: Colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                            {d.recordedBy?.fullName || d.recordedBy?.username || d.recordedByName || '—'}
+                          </Text>
+                          {d.recordedBy?.roles?.[0] && (
+                            <Text style={[{ fontSize: 10, color: Colors.textMuted }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                              {t(`roles.${d.recordedBy.roles[0].toLowerCase()}`, d.recordedBy.roles[0].replace(/_/g, ' '))}
+                            </Text>
+                          )}
+                        </View>
+
+                        <Text style={[styles.td, { width: isTablet ? '10%' : 90 }, isRTL && { textAlign: 'right' }]}>{d.paymentMode?.replace('_', ' ')}</Text>
+                        
+                        <View style={[styles.td, { width: isTablet ? '7%' : 60, alignItems: 'center', justifyContent: 'center' }]}>
                           {d.receiptUrl || d.receiptImageUrl ? (
                             <TouchableOpacity 
                               style={styles.pillDocBtn}
@@ -1231,9 +1284,34 @@ export default function FinanceScreen() {
                           )}
                         </View>
 
-                        <Text style={[styles.td, { width: isTablet ? '16%' : 130, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#15803d' }]}>
+                        <Text style={[styles.td, { width: isTablet ? '13%' : 110, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#15803d' }]}>
                           {PKR(d.amount)}
                         </Text>
+
+                        <View style={[styles.td, { width: isTablet ? '8%' : 80 }]}>
+                          <Badge
+                            label={d._isOffline ? 'OFFLINE' : (d.state || 'APPROVED')}
+                            color={d._isOffline ? '#D97706' : (d.state === 'APPROVED' ? '#15803d' : (d.state === 'REJECTED' ? '#b91c1c' : '#b45309'))}
+                            bg={d._isOffline ? '#FEF3C7' : (d.state === 'APPROVED' ? '#dcfce7' : (d.state === 'REJECTED' ? '#fee2e2' : '#fef3c7'))}
+                          />
+                        </View>
+
+                        <View style={[styles.td, { width: isTablet ? '10%' : 140, flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>
+                          {d.state === 'PENDING' && canApprove ? (
+                            <>
+                              <TouchableOpacity style={styles.btnApprove} onPress={() => decideDonation(d._id, 'APPROVED')}>
+                                <Ionicons name="checkmark" size={13} color="#15803d" />
+                                <Text style={styles.btnApproveText}>{t('finance.approve', 'Approve')}</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity style={styles.btnDanger} onPress={() => decideDonation(d._id, 'REJECTED')}>
+                                <Ionicons name="close" size={13} color="#b91c1c" />
+                                <Text style={styles.btnDangerText}>{t('finance.reject', 'Reject')}</Text>
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <Text style={{ color: Colors.textMuted, fontSize: 11 }}>—</Text>
+                          )}
+                        </View>
                       </View>
                     );
                   })}
@@ -1242,16 +1320,17 @@ export default function FinanceScreen() {
 
               {/* EXPENSES TABLE */}
               {tab === 'EXPENSES' && (
-                <View style={{ minWidth: isTablet ? '100%' : 850, width: isTablet ? '100%' : undefined }}>
+                <View style={{ minWidth: isTablet ? '100%' : 970, width: isTablet ? '100%' : undefined }}>
                   <View style={[styles.thRow, isRTL && { flexDirection: 'row-reverse' }]}>
-                    <Text style={[styles.th, { width: isTablet ? '12%' : 100 }, isRTL && { textAlign: 'right' }]}>{t('finance.date', 'Date')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '16%' : 130 }, isRTL && { textAlign: 'right' }]}>{t('finance.category', 'Category')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '20%' : 180 }, isRTL && { textAlign: 'right' }]}>{t('finance.description', 'Description')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '13%' : 110 }, isRTL && { textAlign: 'right' }]}>{t('finance.vendorPayee', 'Vendor')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '8%' : 70, textAlign: 'center' }]}>{t('finance.receiptImage', 'Proof')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '12%' : 110, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.amount', 'Amount')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '9%' : 90 }, isRTL && { textAlign: 'right' }]}>{t('finance.status', 'State')}</Text>
-                    <Text style={[styles.th, { width: isTablet ? '10%' : 150, textAlign: 'center' }]}>{t('common.actions', 'Actions')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '11%' : 90 }, isRTL && { textAlign: 'right' }]}>{t('finance.date', 'Date')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 120 }, isRTL && { textAlign: 'right' }]}>{t('finance.category', 'Category')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '18%' : 160 }, isRTL && { textAlign: 'right' }]}>{t('finance.description', 'Description')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '14%' : 120 }, isRTL && { textAlign: 'right' }]}>{t('finance.recordedBy', 'Recorded By')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '11%' : 100 }, isRTL && { textAlign: 'right' }]}>{t('finance.vendorPayee', 'Vendor')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '7%' : 60, textAlign: 'center' }]}>{t('finance.receiptImage', 'Proof')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '11%' : 100, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.amount', 'Amount')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '8%' : 80 }, isRTL && { textAlign: 'right' }]}>{t('finance.status', 'State')}</Text>
+                    <Text style={[styles.th, { width: isTablet ? '9%' : 140, textAlign: 'center' }]}>{t('common.actions', 'Actions')}</Text>
                   </View>
 
                   {expenses.length === 0 && !loading && (
@@ -1270,8 +1349,8 @@ export default function FinanceScreen() {
 
                     return (
                       <View key={e._id} style={[styles.tr, isRTL && { flexDirection: 'row-reverse' }]}>
-                        <Text style={[styles.td, { width: isTablet ? '12%' : 100 }, isRTL && { textAlign: 'right' }]}>{shortDate(e.incurredAt || e.createdAt)}</Text>
-                        <View style={[styles.td, { width: isTablet ? '16%' : 130 }]}>
+                        <Text style={[styles.td, { width: isTablet ? '11%' : 90 }, isRTL && { textAlign: 'right' }]}>{shortDate(e.incurredAt || e.createdAt)}</Text>
+                        <View style={[styles.td, { width: isTablet ? '14%' : 120 }]}>
                           <Badge
                             label={isCng ? t('units.nationalCongress', 'Congress') : (isJrg ? t('units.jirga', 'Jirga') : (isCm ? t('units.committee', 'Committee') : t('roles.executive', 'Executive')))}
                             color={isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'))}
@@ -1279,7 +1358,7 @@ export default function FinanceScreen() {
                           />
                           <Text style={[{ fontSize: 11, color: Colors.text, marginTop: 2, fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>{e.category}</Text>
                         </View>
-                        <View style={[styles.td, { width: isTablet ? '20%' : 180 }]}>
+                        <View style={[styles.td, { width: isTablet ? '18%' : 160 }]}>
                           <Text style={[{ fontSize: 12, color: Colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{e.description}</Text>
                           {e.unitLevel && (
                             <Text style={[styles.unitArrangedSubText, isRTL && { textAlign: 'right' }]}>
@@ -1287,9 +1366,21 @@ export default function FinanceScreen() {
                             </Text>
                           )}
                         </View>
-                        <Text style={[styles.td, { width: isTablet ? '13%' : 110 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{e.vendor || '—'}</Text>
+
+                        <View style={[styles.td, { width: isTablet ? '14%' : 120 }]}>
+                          <Text style={[{ fontSize: 12, fontWeight: '600', color: Colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                            {e.recordedBy?.fullName || e.recordedBy?.username || e.recordedByName || '—'}
+                          </Text>
+                          {e.recordedBy?.roles?.[0] && (
+                            <Text style={[{ fontSize: 10, color: Colors.textMuted }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                              {t(`roles.${e.recordedBy.roles[0].toLowerCase()}`, e.recordedBy.roles[0].replace(/_/g, ' '))}
+                            </Text>
+                          )}
+                        </View>
+
+                        <Text style={[styles.td, { width: isTablet ? '11%' : 100 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{e.vendor || '—'}</Text>
                         
-                        <View style={[styles.td, { width: isTablet ? '8%' : 70, alignItems: 'center', justifyContent: 'center' }]}>
+                        <View style={[styles.td, { width: isTablet ? '7%' : 60, alignItems: 'center', justifyContent: 'center' }]}>
                           {e.evidenceUrl || e.receiptImageUrl ? (
                             <TouchableOpacity 
                               style={styles.pillDocBtn}
@@ -1303,17 +1394,17 @@ export default function FinanceScreen() {
                           )}
                         </View>
 
-                        <Text style={[styles.td, { width: isTablet ? '12%' : 110, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#b91c1c' }]}>
+                        <Text style={[styles.td, { width: isTablet ? '11%' : 100, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#b91c1c' }]}>
                           {PKR(e.amount)}
                         </Text>
-                        <View style={[styles.td, { width: isTablet ? '9%' : 90 }]}>
+                        <View style={[styles.td, { width: isTablet ? '8%' : 80 }]}>
                           <Badge
                             label={e._isOffline ? 'OFFLINE' : (e.state || 'PENDING')}
                             color={e._isOffline ? '#D97706' : (e.state === 'APPROVED' ? '#15803d' : (e.state === 'REJECTED' ? '#b91c1c' : '#b45309'))}
                             bg={e._isOffline ? '#FEF3C7' : (e.state === 'APPROVED' ? '#dcfce7' : (e.state === 'REJECTED' ? '#fee2e2' : '#fef3c7'))}
                           />
                         </View>
-                        <View style={[styles.td, { width: isTablet ? '10%' : 150, flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>
+                        <View style={[styles.td, { width: isTablet ? '9%' : 140, flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>
                           {e.state === 'PENDING' && canApprove ? (
                             <>
                               <TouchableOpacity style={styles.btnApprove} onPress={() => decideExpense(e._id, 'APPROVED')}>
