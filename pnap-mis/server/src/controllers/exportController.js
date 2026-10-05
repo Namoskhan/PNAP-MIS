@@ -754,12 +754,14 @@ async function gatherUnitData({ unitLevel, unitId, from, to, scope, body }) {
       .lean(),
     Donation.find(mergeFilters(ownQ, recvClause, financeBodyQ))
       .populate('donorMemberId', 'fullName memberId cnic')
+      .populate('recordedBy', 'fullName username email roles')
       .populate('basicUnitId', 'name')
       .populate('areaId', 'name')
       .populate('districtId', 'name code')
       .populate('provinceId', 'name code')
       .lean(),
     Expense.find(mergeFilters(ownQ, incurClause, financeBodyQ))
+      .populate('recordedBy', 'fullName username email roles')
       .populate('basicUnitId', 'name')
       .populate('areaId', 'name')
       .populate('districtId', 'name code')
@@ -814,7 +816,8 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
   const DATE_FMT = 'dd-mmm-yyyy';
   const CURRENCY_FMT = '#,##0';
 
-  const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
+  const donTotal = data.donations.filter((d) => d.state === 'APPROVED' || !d.state).reduce((a, d) => a + (d.amount || 0), 0);
+  const donPending = data.donations.filter((d) => d.state === 'PENDING').reduce((a, d) => a + (d.amount || 0), 0);
   const expApproved = data.expenses.filter((e) => e.state === 'APPROVED').reduce((a, e) => a + (e.amount || 0), 0);
   const expPending = data.expenses.filter((e) => e.state === 'PENDING').reduce((a, e) => a + (e.amount || 0), 0);
   const xferOutTotal = data.transfersOut.reduce((a, t) => a + (t.amount || 0), 0);
@@ -851,8 +854,10 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     ['Scope', isCongress ? 'National Congress (Central)' : (scope === 'subtree' ? 'Aggregated (Including all subordinate units)' : 'This unit tier only')],
     ...(bodyLabel(body) ? [['Stream / Body', `${bodyLabel(body)} Only`]] : []),
     ['Reporting Period', `${from || 'All time'} → ${to || 'Present'}`],
-    ['Donations Count', data.donations.length],
-    ['Total Donations (PKR)', donTotal],
+    ['Approved Donations Count', data.donations.filter((d) => d.state === 'APPROVED' || !d.state).length],
+    ['Approved Donations (PKR)', donTotal],
+    ['Pending Donations Count', data.donations.filter((d) => d.state === 'PENDING').length],
+    ['Pending Donations (PKR)', donPending],
     ...(!isCongress ? [['Transfers In (PKR)', xferInTotal]] : []),
     ['Approved Expenses Count', data.expenses.filter((e) => e.state === 'APPROVED').length],
     ['Approved Expenses (PKR)', expApproved],
@@ -884,7 +889,9 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     { header: 'Donor Type', key: 'dt', width: 14 },
     { header: 'Donor Name', key: 'dn', width: 28 },
     { header: 'Donor CNIC', key: 'c', width: 18 },
+    { header: 'Collected By', key: 'cb', width: 22 },
     { header: 'Payment Mode', key: 'm', width: 16 },
+    { header: 'State', key: 's', width: 14 },
     { header: 'Amount (PKR)', key: 'a', width: 18, style: { numFmt: CURRENCY_FMT } },
     { header: 'Reference', key: 'ref', width: 18 },
     { header: 'Notes', key: 'note', width: 36 },
@@ -900,7 +907,9 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
       dt: d.donorType,
       dn: d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
       c: d.donorCnic || '',
+      cb: d.recordedBy?.fullName || d.recordedBy?.username || d.recordedByName || '—',
       m: d.paymentMode,
+      s: d.state || 'APPROVED',
       a: d.amount || 0,
       ref: d.reference || '',
       note: d.notes || d.note || '',
@@ -915,6 +924,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
     { header: 'Unit / Incurred By', key: 'u', width: 26 },
     { header: 'Category', key: 'c', width: 18 },
     { header: 'Description', key: 'desc', width: 36 },
+    { header: 'Recorded By', key: 'rb', width: 22 },
     { header: 'Vendor', key: 'v', width: 24 },
     { header: 'Payment Mode', key: 'm', width: 16 },
     { header: 'State', key: 's', width: 14 },
@@ -931,6 +941,7 @@ exports.unitFinanceXlsx = asyncHandler(async (req, res) => {
       u: e.arrangedBy || formatUnitArrangedBy(e, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
       c: e.category,
       desc: e.description || '',
+      rb: e.recordedBy?.fullName || e.recordedBy?.username || e.recordedByName || '—',
       v: e.vendor || '',
       m: e.paymentMode,
       s: e.state,
@@ -1113,7 +1124,8 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
   const doc = new PDFDocument({ margin: 40, size: 'A4', bufferPages: true });
   doc.pipe(res);
 
-  const donTotal = data.donations.reduce((a, d) => a + (d.amount || 0), 0);
+  const donTotal = data.donations.filter((d) => d.state === 'APPROVED' || !d.state).reduce((a, d) => a + (d.amount || 0), 0);
+  const donPending = data.donations.filter((d) => d.state === 'PENDING').reduce((a, d) => a + (d.amount || 0), 0);
   const expApproved = data.expenses.filter((e) => e.state === 'APPROVED').reduce((a, e) => a + (e.amount || 0), 0);
   const expPending = data.expenses.filter((e) => e.state === 'PENDING').reduce((a, e) => a + (e.amount || 0), 0);
 
@@ -1145,9 +1157,12 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
       { label: 'Net Balance', value: `PKR ${net.toLocaleString()}`, color: net < 0 ? '#cf2e2e' : '#00a266' },
     ], sectionColor);
   }
-  if (expPending) {
+  if (donPending || expPending) {
+    const pendNotes = [];
+    if (donPending) pendNotes.push(`Pending donations: PKR ${donPending.toLocaleString()}`);
+    if (expPending) pendNotes.push(`Pending expenses: PKR ${expPending.toLocaleString()}`);
     doc.font('Helvetica-Oblique').fontSize(8.5).fillColor('#5c6b76')
-      .text(`Pending expenses awaiting approval: PKR ${expPending.toLocaleString()} (not included in Net Balance)`,
+      .text(`${pendNotes.join(' · ')} (awaiting approval, not included in Net Balance)`,
         PAGE_L, doc.y, { width: PAGE_R - PAGE_L });
     doc.moveDown(0.6);
     doc.font('Helvetica').fillColor('#1a1a1a');
@@ -1164,12 +1179,14 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     sectionColor,
     emptyText: 'No donations recorded in this period.',
     cols: [
-      { label: 'Receipt #', x: 40, w: 55 },
-      { label: 'Date', x: 95, w: 55 },
-      { label: 'Unit', x: 150, w: 105, wrap: true },
-      { label: 'Donor', x: 255, w: 120, wrap: true },
-      { label: 'Mode', x: 375, w: 75 },
-      { label: 'Amount (PKR)', x: 450, w: 105, align: 'right' },
+      { label: 'Receipt #', x: 40, w: 48 },
+      { label: 'Date', x: 88, w: 48 },
+      { label: 'Unit', x: 136, w: 80, wrap: true },
+      { label: 'Donor', x: 216, w: 84, wrap: true },
+      { label: 'Collected By', x: 300, w: 75, wrap: true },
+      { label: 'Mode', x: 375, w: 50 },
+      { label: 'Status', x: 425, w: 45 },
+      { label: 'Amount (PKR)', x: 470, w: 85, align: 'right' },
     ],
     rows: data.donations
       .slice()
@@ -1179,13 +1196,15 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
         new Date(d.receivedAt).toLocaleDateString(),
         d.arrangedBy || formatUnitArrangedBy(d, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
         d.donorType === 'ANONYMOUS' ? 'Anonymous' : (d.donorName || d.donorMemberId?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—')),
+        d.recordedBy?.fullName || d.recordedBy?.username || d.recordedByName || '—',
         d.paymentMode || '—',
+        d.state || 'APPROVED',
         (d.amount || 0).toLocaleString(),
       ]),
   });
   if (data.donations.length) {
     doc.font('Helvetica-Bold').fontSize(9.5).fillColor(sectionColor)
-      .text(`Total Donations: PKR ${donTotal.toLocaleString()}`, PAGE_L, doc.y, {
+      .text(`Total Approved Donations: PKR ${donTotal.toLocaleString()}`, PAGE_L, doc.y, {
         width: PAGE_R - PAGE_L, align: 'right',
       });
     doc.font('Helvetica').fillColor('#1a1a1a');
@@ -1198,12 +1217,13 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
     sectionColor,
     emptyText: 'No expenses recorded in this period.',
     cols: [
-      { label: 'Date', x: 40, w: 55 },
-      { label: 'Unit', x: 95, w: 105, wrap: true },
-      { label: 'Category', x: 200, w: 85 },
-      { label: 'Description', x: 285, w: 135, wrap: true },
-      { label: 'State', x: 420, w: 50 },
-      { label: 'Amount (PKR)', x: 470, w: 85, align: 'right' },
+      { label: 'Date', x: 40, w: 50 },
+      { label: 'Unit', x: 90, w: 85, wrap: true },
+      { label: 'Category', x: 175, w: 75 },
+      { label: 'Description', x: 250, w: 110, wrap: true },
+      { label: 'Recorded By', x: 360, w: 75, wrap: true },
+      { label: 'State', x: 435, w: 45 },
+      { label: 'Amount (PKR)', x: 480, w: 75, align: 'right' },
     ],
     rows: data.expenses
       .slice()
@@ -1213,6 +1233,7 @@ exports.unitFinancePdf = asyncHandler(async (req, res) => {
         e.arrangedBy || formatUnitArrangedBy(e, { isCommitteeView: body === 'COMMITTEE', isCongressView: isCongress }),
         e.category || '—',
         e.description || e.vendor || '—',
+        e.recordedBy?.fullName || e.recordedBy?.username || e.recordedByName || '—',
         e.state || '—',
         (e.amount || 0).toLocaleString(),
       ]),

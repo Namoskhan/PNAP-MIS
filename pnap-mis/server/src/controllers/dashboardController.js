@@ -84,13 +84,13 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
     ]),
     Promise.resolve(null),
     Activity.countDocuments({ ...ownFilter, startAt: { $gte: since30 } }),
-    Donation.aggregate([{ $match: ownFilter }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    Donation.aggregate([{ $match: { ...ownFilter, $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }] } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     Expense.aggregate([{ $match: { ...ownFilter, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     countSubordinateUnits(unitLevel, chain),
     // Subtree rollups (all subordinate units + own unit)
     unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Meeting.countDocuments({ ...subFilter, startAt: { $gte: since30 } }),
     unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Activity.countDocuments({ ...subFilter, startAt: { $gte: since30 } }),
-    unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Donation.aggregate([{ $match: subFilter }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Donation.aggregate([{ $match: { ...subFilter, $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }] } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     unitLevel === 'BASIC_UNIT' ? Promise.resolve(null) : Expense.aggregate([{ $match: { ...subFilter, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
   ]);
 
@@ -214,7 +214,7 @@ exports.unitDashboard = asyncHandler(async (req, res) => {
     ]),
     // Monthly donation receipts for trend chart (last 6 months).
     Donation.aggregate([
-      { $match: { ...ownFilter, receivedAt: { $gte: since6mo } } },
+      { $match: { ...ownFilter, receivedAt: { $gte: since6mo }, $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }] } },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m', date: '$receivedAt' } },
@@ -599,7 +599,7 @@ async function rowsFor(children, fkField) {
       Member.countDocuments({ ...f, status: 'ACTIVE' }),
       Meeting.countDocuments({ ...f, startAt: { $gte: since30 } }),
       Activity.countDocuments({ ...f, startAt: { $gte: since30 } }),
-      Donation.aggregate([{ $match: f }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+      Donation.aggregate([{ $match: { ...f, $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }] } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Expense.aggregate([{ $match: { ...f, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Meeting.aggregate([
         { $match: { ...f, state: 'FINALIZED' } },
