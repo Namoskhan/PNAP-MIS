@@ -23,6 +23,7 @@ import EmptyState from '../../../../src/components/EmptyState';
 
 const DOMAIN_LABELS = {
   EXPENSE_APPROVAL: 'Expense approval',
+  DONATION_APPROVAL: 'Donation approval',
   MEMBER_APPROVAL: 'Member approval',
   ROLE_APPROVAL: 'Role approval',
   TRANSFER_APPROVAL: 'Transfer approval',
