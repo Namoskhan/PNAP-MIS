@@ -353,9 +353,19 @@ export default function FinancePage() {
       setDonReceipt(null);
       setDonModalOpen(false);
       reload();
-      toast.success(`Donation of ${PKR.format(amount)} recorded.`, { title: 'Donation recorded' });
+      toast.success(`Donation of ${PKR.format(amount)} submitted for approval.`, { title: 'Donation recorded' });
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Could not record donation', duration: 7000 });
+    }
+  }
+
+  async function decideDonation(id, decision) {
+    try {
+      await api.post(`/finance/donations/${id}/decide`, { decision });
+      reload();
+      toast.success(`Donation ${decision.toLowerCase()}.`);
+    } catch (e) {
+      toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} donation`, duration: 7000 });
     }
   }
 
@@ -422,7 +432,7 @@ export default function FinancePage() {
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
-  if (!hasPermission(user, 'MANAGE_FINANCE') && !hasPermission(user, 'APPROVE_EXPENSE')) {
+  if (!hasPermission(user, 'MANAGE_FINANCE') && !hasPermission(user, 'APPROVE_EXPENSE') && !canApproveExpense(user)) {
     return (
       <div className="alert error">
         Your current role does not include finance permissions, so this page is unavailable.
@@ -626,14 +636,17 @@ export default function FinancePage() {
                 <th>{t('finance.receipt', 'Receipt')}</th>
                 <th>{t('common.date', 'Date')}</th>
                 <th>{t('finance.donor', 'Donor')}</th>
+                <th>{t('finance.collectedBy', 'Collected By')}</th>
                 <th>{t('finance.mode', 'Mode')}</th>
                 <th style={{ textAlign: 'right' }}>{t('finance.amount', 'Amount')}</th>
+                <th>{t('finance.status', 'Status')}</th>
+                <th>{t('finance.actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody>
               {displayedDonations.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
                     {t('finance.noDonationsYet', 'No donations recorded yet.')}
                   </td>
                 </tr>
@@ -680,8 +693,25 @@ export default function FinancePage() {
                     </td>
                     <td>{new Date(d.receivedAt).toLocaleDateString()}</td>
                     <td>{effectiveDonorName}</td>
+                    <td>
+                      <div style={{ fontWeight: 500 }}>
+                        {d.recordedBy?.fullName || d.recordedBy?.username || d.recordedByName || '—'}
+                      </div>
+                      {d.recordedBy?.roles?.[0] && (
+                        <div className="muted" style={{ fontSize: 11 }}>
+                          {t(`roles.${d.recordedBy.roles[0].toLowerCase()}`, d.recordedBy.roles[0].replace(/_/g, ' '))}
+                        </div>
+                      )}
+                    </td>
                     <td>{d.paymentMode}</td>
                     <td style={{ textAlign: 'right' }}>{PKR.format(d.amount)}</td>
+                    <td><span className={`badge ${d.state || 'APPROVED'}`}>{d.state || 'APPROVED'}</span></td>
+                    <td>{d.state === 'PENDING' && canApprove && (
+                      <>
+                        <button className="btn" onClick={() => decideDonation(d._id, 'APPROVED')}>{t('finance.approve', 'Approve')}</button>{' '}
+                        <button className="btn danger" onClick={() => decideDonation(d._id, 'REJECTED')}>{t('finance.reject', 'Reject')}</button>
+                      </>
+                    )}</td>
                   </tr>
                 );
               })}
@@ -770,6 +800,7 @@ export default function FinancePage() {
                 <th>{t('common.date', 'Date')}</th>
                 <th>{t('finance.category', 'Category')}</th>
                 <th>{t('finance.description', 'Description')}</th>
+                <th>{t('finance.recordedBy', 'Recorded By')}</th>
                 <th>{t('finance.vendorPayee', 'Vendor')}</th>
                 <th style={{ textAlign: 'right' }}>{t('finance.amount', 'Amount')}</th>
                 <th>{t('finance.status', 'State')}</th>
@@ -779,7 +810,7 @@ export default function FinancePage() {
             <tbody>
               {displayedExpenses.length === 0 && (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
                     {t('finance.noExpensesYet', 'No expenses recorded yet.')}
                   </td>
                 </tr>
@@ -814,6 +845,16 @@ export default function FinancePage() {
                         <span className="badge" style={{ fontSize: 10, padding: '1px 5px', background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
                           {formatUnitArrangedBy(x, { isCommitteeView, isJirgaView, isCongressView })}
                         </span>
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 500 }}>
+                      {x.recordedBy?.fullName || x.recordedBy?.username || x.recordedByName || '—'}
+                    </div>
+                    {x.recordedBy?.roles?.[0] && (
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {t(`roles.${x.recordedBy.roles[0].toLowerCase()}`, x.recordedBy.roles[0].replace(/_/g, ' '))}
                       </div>
                     )}
                   </td>

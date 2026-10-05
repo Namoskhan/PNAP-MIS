@@ -16,6 +16,7 @@ import {
   isPureMember,
   roleLabel,
   hasPermission,
+  canApproveExpense,
 } from '../utils/permissions';
 import NotificationBell from './NotificationBell';
 import { useTranslation } from 'react-i18next';
@@ -257,7 +258,7 @@ export default function Layout() {
   // a role hides its surfaces for every holder — persona branches
   // alone are role-code based and kept showing links the holder
   // could no longer use.
-  const canFinance = hasPermission(user, 'MANAGE_FINANCE') || hasPermission(user, 'APPROVE_EXPENSE');
+  const canFinance = hasPermission(user, 'MANAGE_FINANCE') || hasPermission(user, 'APPROVE_EXPENSE') || canApproveExpense(user);
   const canRegister = hasPermission(user, 'REGISTER_MEMBER');
   const canApproveMembers = hasPermission(user, 'APPROVE_MEMBER');
 
