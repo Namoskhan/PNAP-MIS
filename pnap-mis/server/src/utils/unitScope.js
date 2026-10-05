@@ -131,7 +131,7 @@ function isAdmin(user) {
 // in DEFAULT_PERMISSIONS so seed + cold-start behaviour matches the
 // SRS-defined original.
 const { userHasPermission } = require('./permissions');
-function canApprove(user)               { return userHasPermission(user, 'APPROVE_EXPENSE'); }
+function canApprove(user)               { return userHasPermission(user, 'APPROVE_EXPENSE') || userHasRole(user, 'SECRETARY', 'PRESIDENT', 'CHAIRMAN', 'CO_CHAIRMAN', 'GENERAL_SECRETARY'); }
 function canInitiateRole(user)          { return userHasPermission(user, 'INITIATE_ROLE'); }
 function canDecideRole(user)            { return userHasPermission(user, 'DECIDE_ROLE'); }
 function canApproveMember(user)         { return userHasPermission(user, 'APPROVE_MEMBER'); }

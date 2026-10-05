@@ -4,7 +4,7 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { upload } = require('../middleware/upload');
 const { requireUnitScope } = require('../middleware/unitScopeGuard');
-const { donationCreateSchema, expenseCreateSchema, expenseDecideSchema } = require('../validators/unitSchemas');
+const { donationCreateSchema, donationDecideSchema, expenseCreateSchema, expenseDecideSchema } = require('../validators/unitSchemas');
 
 router.use(authenticate);
 
@@ -35,6 +35,7 @@ router.post(
   validate(donationCreateSchema),
   ctrl.recordDonation
 );
+router.post('/donations/:id/decide', validate(donationDecideSchema), ctrl.decideDonation);
 
 router.get('/expenses', FIN_READ, IN_SCOPE, ctrl.listExpenses);
 router.post('/expenses', IN_SCOPE, upload.single('evidence'), validate(expenseCreateSchema), ctrl.recordExpense);

@@ -17,7 +17,7 @@ const PERMISSIONS = [
 
   // ─── Finance
   { code: 'MANAGE_FINANCE',    category: 'Finance',         label: 'Record donations, expenses, and transfers' },
-  { code: 'APPROVE_EXPENSE',   category: 'Finance',         label: 'Approve or reject pending expenses' },
+  { code: 'APPROVE_EXPENSE',   category: 'Finance',         label: 'Approve or reject pending expenses and donations' },
 
   // ─── Meetings & activities
   { code: 'MANAGE_MEETINGS',   category: 'Meetings',        label: 'Create and finalize meetings, log activities' },
@@ -99,7 +99,7 @@ const DEFAULT_PERMISSIONS = {
   ],
   AREA_ADMIN: [
     'REGISTER_MEMBER', 'APPROVE_MEMBER',
-    'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS',
+    'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS', 'APPROVE_EXPENSE',
   ],
 
   // Below-province cabinet
@@ -111,14 +111,14 @@ const DEFAULT_PERMISSIONS = {
   SPORTS_SECRETARY:   [],
 
   // Province cabinet
-  PRESIDENT:          ['DECIDE_ROLE'],
+  PRESIDENT:          ['DECIDE_ROLE', 'APPROVE_EXPENSE'],
   SR_VICE_PRESIDENT:  ['MANAGE_FINANCE', 'MANAGE_MEETINGS', 'INITIATE_ROLE', 'POST_ANNOUNCEMENT'],
   VICE_PRESIDENT:     [],
-  GENERAL_SECRETARY:  ['REGISTER_MEMBER', 'MANAGE_FINANCE', 'MANAGE_MEETINGS', 'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS', 'MANAGE_JIRGA_MEMBERS', 'MANAGE_CONGRESS_MEMBERS', 'POST_ANNOUNCEMENT'],
+  GENERAL_SECRETARY:  ['REGISTER_MEMBER', 'MANAGE_FINANCE', 'MANAGE_MEETINGS', 'INITIATE_ROLE', 'DECIDE_ROLE', 'MANAGE_PERMANENT_MEMBERS', 'MANAGE_JIRGA_MEMBERS', 'MANAGE_CONGRESS_MEMBERS', 'POST_ANNOUNCEMENT', 'APPROVE_EXPENSE'],
 
   // Central cabinet
-  CHAIRMAN:           ['DECIDE_ROLE'],
-  CO_CHAIRMAN:        ['DECIDE_ROLE'],
+  CHAIRMAN:           ['DECIDE_ROLE', 'APPROVE_EXPENSE'],
+  CO_CHAIRMAN:        ['DECIDE_ROLE', 'APPROVE_EXPENSE'],
   SR_VICE_CHAIRMAN:   [],
   VICE_CHAIRMAN:      [],
   FIRST_SECRETARY:    ['MANAGE_FINANCE', 'MANAGE_MEETINGS', 'INITIATE_ROLE', 'POST_ANNOUNCEMENT'],
@@ -161,6 +161,10 @@ function invalidateRolePermissionCache() {
 function userHasPermission(user, perm) {
   if (!user || !Array.isArray(user.roles)) return false;
   if (user.roles.includes('SUPER_ADMIN')) return true;
+  // Fallback: Secretary, President, Chairman, Co-Chairman always have APPROVE_EXPENSE
+  if (perm === 'APPROVE_EXPENSE' && user.roles.some((r) => ['SECRETARY', 'PRESIDENT', 'CHAIRMAN', 'CO_CHAIRMAN', 'GENERAL_SECRETARY'].includes(r))) {
+    return true;
+  }
   if (!_cacheReady) {
     // Fallback: if the cache hasn't loaded yet, derive from the
     // hard-coded defaults so behavior matches the legacy gates.
