@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { isSuperAdmin } from '../../utils/permissions';
@@ -7,6 +8,7 @@ import { useToast } from '../../components/Toast';
 
 import dialog from '../../components/dialog';
 import { XIcon } from '../../components/icons';
+
 const CREATABLE_CATEGORIES = [
   { value: 'CUSTOM',           label: 'Custom (general)' },
   { value: 'BU_AREA_DISTRICT', label: 'Below-Province Cabinet' },
@@ -15,6 +17,7 @@ const CREATABLE_CATEGORIES = [
 ];
 
 export default function RolesPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = isSuperAdmin(user);
@@ -39,10 +42,10 @@ export default function RolesPage() {
 
   async function deleteRole(r) {
     if (!canWrite) return;
-    if (!await dialog.confirm(`Delete custom role "${r.label}" (${r.code})? This cannot be undone.`)) return;
+    if (!await dialog.confirm(`${t('admin.confirmDeleteRole')} "${r.label}" (${r.code})?`)) return;
     try {
       await api.delete(`/admin/roles/${r._id}`);
-      toast.success?.('Role deleted.');
+      toast.success?.(t('admin.roleDeleted'));
       load();
     } catch (e) { toast.error?.(errorMessage(e)); }
   }
@@ -63,14 +66,14 @@ export default function RolesPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true">🛡️</div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Roles Management</h2>
-            <div className="rm-hero-sub">Manage system roles and permissions</div>
+            <h2 className="rm-hero-title">{t('admin.rolesManagement')}</h2>
+            <div className="rm-hero-sub">{t('admin.rolesManagementSub')}</div>
           </div>
           {canWrite && (
             <div className="rm-hero-actions">
-              <button className="rm-hero-btn outline" onClick={load} title="Reload">⟳ Refresh</button>
+              <button className="rm-hero-btn outline" onClick={load} title="Reload">⟳ {t('admin.refresh')}</button>
               <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>
-                <span aria-hidden="true">＋</span> Create New Role
+                <span aria-hidden="true">＋</span> {t('admin.createNewRole')}
               </button>
             </div>
           )}
@@ -83,22 +86,22 @@ export default function RolesPage() {
       <div className="rm-card">
         <div className="rm-card-head">
           <span className="rm-card-head-icon" aria-hidden="true">👤</span>
-          <span className="rm-card-head-label">Role Name</span>
+          <span className="rm-card-head-label">{t('admin.roleName')}</span>
           <span className="rm-card-head-actions">
             <span className="rm-card-head-icon" aria-hidden="true">⚙</span>
-            <span>Actions</span>
+            <span>{t('common.actions')}</span>
           </span>
         </div>
 
         {busy && (
           <div className="rm-loading">
             <span className="scope-spinner" aria-hidden="true" />
-            <span className="muted">Loading roles…</span>
+            <span className="muted">{t('common.loading')}</span>
           </div>
         )}
 
         {!busy && sorted.length === 0 && (
-          <div className="rm-empty">No roles defined yet.</div>
+          <div className="rm-empty">{t('admin.noRolesDefined')}</div>
         )}
 
         {!busy && sorted.map((r) => {
@@ -113,8 +116,8 @@ export default function RolesPage() {
               <div className="rm-row-meta">
                 <div className="rm-row-name">
                   {r.label}
-                  {!r.isSystem && <span className="rm-row-tag custom">Custom</span>}
-                  {!r.isActive && <span className="rm-row-tag inactive">Inactive</span>}
+                  {!r.isSystem && <span className="rm-row-tag custom">{t('common.custom')}</span>}
+                  {!r.isActive && <span className="rm-row-tag inactive">{t('common.inactive')}</span>}
                 </div>
                 <div className="rm-row-sub">
                   <code>{r.code}</code>
@@ -124,35 +127,35 @@ export default function RolesPage() {
                       className="rm-row-tag"
                       style={{ background: 'var(--warning-bg)', color: 'var(--warning-strong)', border: '1px solid var(--warning-border)' }}
                       title="Holders of this role see only the member portal until you grant permissions."
-                    >No permissions — grants nothing</span>
+                    >{t('admin.noPermissionsGrantsNothing')}</span>
                   ) : (
-                    <span>{(r.permissions || []).length} permissions</span>
+                    <span>{(r.permissions || []).length} {t('admin.permissions')}</span>
                   )}
                   {r.description && <span className="rm-row-desc"> · {r.description}</span>}
                 </div>
               </div>
               <div className="rm-row-actions">
                 {locked ? (
-                  <span className="rm-row-locked">🔒 Locked (built-in)</span>
+                  <span className="rm-row-locked">🔒 {t('admin.lockedBuiltin')}</span>
                 ) : (
                   <>
                     <button
                       className="rm-action perms"
                       onClick={() => nav(`/admin/roles/${r._id}/permissions`)}
                       title="Edit permissions for this role"
-                    >🔐 Permissions</button>
+                    >🔐 {t('admin.permissions')}</button>
                     <button
                       className="rm-action edit"
                       onClick={() => setEditing(r)}
                       disabled={!canWrite}
                       title={canWrite ? 'Edit label, description, category' : 'Read-only'}
-                    >✎ Edit</button>
+                    >✎ {t('common.edit')}</button>
                     {!r.isSystem && canWrite && (
                       <button
                         className="rm-action delete"
                         onClick={() => deleteRole(r)}
                         title="Delete this custom role"
-                      >🗑 Delete</button>
+                      >🗑 {t('common.delete')}</button>
                     )}
                   </>
                 )}

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Modal, Switch, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { confirmAction } from '../../../../src/utils/dialog';
@@ -14,6 +15,7 @@ const TIER_CODES = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 const FORMATS = ['PDF', 'XLSX', 'BOTH'];
 
 export default function ReportTemplatesScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const toast = useToast();
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -67,7 +69,7 @@ export default function ReportTemplatesScreen() {
             <Ionicons name="document-text" size={24} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>Report Templates</Text>
+            <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.units.reportTemplates', 'Report Templates')}</Text>
             <Text style={styles.heroSub}>
               Composable PDF / XLSX reports built from pre-built sections.
             </Text>

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const PAYMENT_MODES = ['CASH', 'BANK_TRANSFER', 'MOBILE_WALLET', 'CHEQUE'];
 const DONOR_TYPES = ['MEMBER', 'NON_MEMBER', 'CORPORATE', 'ANONYMOUS'];
+const STATES = ['PENDING', 'APPROVED', 'REJECTED'];
 
 const donationSchema = new mongoose.Schema(
   {
@@ -49,6 +50,24 @@ const donationSchema = new mongoose.Schema(
     receiptImageUrl: { type: String },
     note: { type: String },
 
+    state: { type: String, enum: STATES, default: 'PENDING', index: true },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: { type: Date },
+    rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    rejectedAt: { type: Date },
+    rejectionNote: { type: String },
+
+    approvalChain: [{
+      stageCode: String,
+      stageName: String,
+      decision: { type: String, enum: ['APPROVED', 'REJECTED', 'SKIPPED'] },
+      decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      decidedAt: Date,
+      note: String,
+    }],
+    workflowConfigId: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkflowConfig' },
+    workflowVersion: Number,
+
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
@@ -58,5 +77,6 @@ donationSchema.index({ unitId: 1, fiscalYear: 1, receiptNo: 1 }, { unique: true 
 
 donationSchema.statics.PAYMENT_MODES = PAYMENT_MODES;
 donationSchema.statics.DONOR_TYPES = DONOR_TYPES;
+donationSchema.statics.STATES = STATES;
 
 module.exports = mongoose.model('Donation', donationSchema);

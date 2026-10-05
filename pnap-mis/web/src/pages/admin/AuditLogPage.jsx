@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../api/client';
 
 const ACTIONS = [
@@ -8,6 +9,7 @@ const ACTIONS = [
 ];
 
 export default function AuditLogPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [actionFilter, setActionFilter] = useState('');
@@ -28,17 +30,17 @@ export default function AuditLogPage() {
   return (
     <div>
       <div className="page-header">
-        <h2>Audit Log</h2>
+        <h2>{t('admin.auditLog')}</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
-            <option value="">All actions</option>
+            <option value="">{t('admin.allActions')}</option>
             {ACTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
-          <span className="muted" style={{ alignSelf: 'center' }}>{total} entries</span>
+          <span className="muted" style={{ alignSelf: 'center' }}>{total} {t('admin.entries')}</span>
         </div>
       </div>
       <p className="muted">
-        Append-only stream of privileged write actions. Read-only — entries cannot be deleted from the system.
+        {t('admin.auditSub')}
       </p>
 
       {err && <div className="alert error">{err}</div>}
@@ -46,15 +48,15 @@ export default function AuditLogPage() {
       <table className="list">
         <thead>
           <tr>
-            <th>When</th>
-            <th>Actor</th>
-            <th>Action</th>
-            <th>Target</th>
-            <th>Note</th>
+            <th>{t('admin.when')}</th>
+            <th>{t('admin.actor')}</th>
+            <th>{t('admin.action')}</th>
+            <th>{t('admin.target')}</th>
+            <th>{t('admin.note')}</th>
           </tr>
         </thead>
         <tbody>
-          {items.length === 0 && <tr><td colSpan="5" className="muted">No audit entries yet.</td></tr>}
+          {items.length === 0 && <tr><td colSpan="5" className="muted">{t('admin.noAuditEntries')}</td></tr>}
           {items.map((e) => (
             <tr key={e._id}>
               <td style={{ fontSize: 12 }}>{new Date(e.createdAt).toLocaleString()}</td>

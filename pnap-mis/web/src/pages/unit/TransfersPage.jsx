@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
@@ -34,6 +35,7 @@ function bodySupported(level) {
 }
 
 export default function TransfersPage() {
+  const { t } = useTranslation();
   const { ctx } = useUnit();
   const location = useLocation();
   const toast = useToast();
@@ -208,13 +210,13 @@ export default function TransfersPage() {
   }
 
   const { user } = useAuth();
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) return <p>{t('units.selectUnitFirst', 'Select a unit context first.')}</p>;
   // Server enforces this too (403) — the guard just renders a clear
   // notice instead of a page of failed requests.
   if (!hasPermission(user, 'MANAGE_FINANCE') && !hasPermission(user, 'APPROVE_EXPENSE')) {
     return (
       <div className="alert error">
-        Your current role does not include finance permissions, so this page is unavailable.
+        {t('finance.noFinancePerms', 'Your current role does not include finance permissions, so this page is unavailable.')}
       </div>
     );
   }
@@ -233,15 +235,15 @@ export default function TransfersPage() {
       <div className="page-header">
         <h2>
           {isJirgaView
-            ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Fund Transfers' : `Sobayi Jirga Fund Transfers · ${ctx.unitName}`)
-            : (isCommitteeView ? `Committee Transfers · ${ctx.unitName}` : `Executive Transfers · ${ctx.unitName}`)}
+            ? (ctx.unitLevel === 'CENTRAL' ? t('finance.qomiJirgaTransfers', 'Qomi Jirga Fund Transfers') : `${t('finance.sobayiJirgaTransfers', 'Sobayi Jirga Fund Transfers')} · ${ctx.unitName}`)
+            : (isCommitteeView ? `${t('finance.committeeTransfers', 'Committee Transfers')} · ${ctx.unitName}` : `${t('finance.executiveTransfers', 'Executive Transfers')} · ${ctx.unitName}`)}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
-          <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
+          <button className="btn secondary" onClick={exportPdf}>{t('finance.downloadPdf', 'Export PDF')}</button>
+          <button className="btn secondary" onClick={exportXlsx}>{t('finance.downloadExcel', 'Export Excel')}</button>
           {canSend && (
             <button className="btn" onClick={() => setTransferModalOpen(true)}>
-              {isJirgaView ? '+ Initiate Jirga Fund Transfer' : (isCommitteeView ? '+ Initiate Committee Fund Transfer' : '+ Initiate Fund Transfer')}
+              {isJirgaView ? t('finance.initiateJirgaTransfer', '+ Initiate Jirga Fund Transfer') : (isCommitteeView ? t('finance.initiateCommitteeTransfer', '+ Initiate Committee Fund Transfer') : t('finance.initiateTransfer', '+ Initiate Fund Transfer'))}
             </button>
           )}
         </div>
@@ -254,22 +256,21 @@ export default function TransfersPage() {
           <span>
             <strong>{ctx.unitName}</strong>{' '}
             {ctx.unitLevel === 'CENTRAL'
-              ? 'may send funds to any unit in the organization.'
+              ? t('finance.bannerCentral', 'may send funds to any unit in the organization.')
               : ctx.unitLevel === 'PROVINCE'
-                ? 'may send funds to any unit in the organization, including other provinces.'
-                : 'may send funds to any unit within its own province, or to the Center. '
-                  + 'Transfers to another province are initiated by the Province Finance Secretary.'}
-            {' '}The unit you choose receives the funds and is the only one that acknowledges them.
+                ? t('finance.bannerProvince', 'may send funds to any unit in the organization, including other provinces.')
+                : t('finance.bannerSub', 'may send funds to any unit within its own province, or to the Center. Transfers to another province are initiated by the Province Finance Secretary.')}
+            {' '}{t('finance.bannerRecipient', 'The unit you choose receives the funds and is the only one that acknowledges them.')}
           </span>
         </div>
       )}
 
       {canSend && transferModalOpen && (
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setTransferModalOpen(false); }}>
-        <div className="modal tr-modal" role="dialog" aria-modal="true" aria-label="Initiate Fund Transfer">
+        <div className="modal tr-modal" role="dialog" aria-modal="true" aria-label={t('finance.initiateTransferTitle', 'Initiate Fund Transfer')}>
           <div className="tr-modal-head">
-            <h3 style={{ margin: 0 }}>Initiate Fund Transfer</h3>
-            <button type="button" className="btn secondary" onClick={() => setTransferModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+            <h3 style={{ margin: 0 }}>{t('finance.initiateTransferTitle', 'Initiate Fund Transfer')}</h3>
+            <button type="button" className="btn secondary" onClick={() => setTransferModalOpen(false)} aria-label={t('common.close', 'Close')} style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
 
           {err && <div className="alert error">{err}</div>}
@@ -283,7 +284,7 @@ export default function TransfersPage() {
 
           {/* ── Organization tree ─────────────────────────────── */}
           <div className="tr-pane tr-pane-tree">
-            <p className="tr-section-title">Choose Destination</p>
+            <p className="tr-section-title">{t('finance.chooseDestination', 'Choose Destination')}</p>
             <OrgTree
               selectedId={picked?.id || null}
               disabledId={ctx.unitId}
@@ -296,7 +297,7 @@ export default function TransfersPage() {
 
           {/* ── Transfer From ──────────────────────────────────── */}
           <div className="tr-section">
-            <p className="tr-section-title">Transfer From</p>
+            <p className="tr-section-title">{t('finance.transferFrom', 'Transfer From')}</p>
             <div className="tr-endpoint from">
               <span className="tr-endpoint-level">{LEVEL_LABEL[ctx.unitLevel] || ctx.unitLevel}</span>
               <div className="tr-endpoint-name">{ctx.unitName}</div>
@@ -305,19 +306,19 @@ export default function TransfersPage() {
 
           {/* ── Selected destination ──────────────────────────── */}
           <div className="tr-section">
-            <p className="tr-section-title">Selected Destination</p>
+            <p className="tr-section-title">{t('finance.selectedDestination', 'Selected Destination')}</p>
             {!picked && (
               <div className="tr-endpoint to empty">
                 <div className="tr-endpoint-name muted">
-                  Nothing selected yet — pick a unit from the organization tree.
+                  {t('finance.pickDestinationHint', 'Nothing selected yet — pick a unit from the organization tree.')}
                 </div>
               </div>
             )}
-            {picked && previewLoading && <p className="muted">Checking destination…</p>}
+            {picked && previewLoading && <p className="muted">{t('finance.checkingDestination', 'Checking destination…')}</p>}
             {picked && previewErr && <div className="alert error">{previewErr}</div>}
             {preview && (
               <div className="tr-endpoint to">
-                <div className="tr-endpoint-label">Destination</div>
+                <div className="tr-endpoint-label">{t('finance.destination', 'Destination')}</div>
                 <div className="tr-endpoint-name">{preview.destination.name}</div>
                 <div style={{ marginTop: 8 }}>
                   <span className="tr-endpoint-level">{preview.destination.level}</span>
@@ -327,7 +328,7 @@ export default function TransfersPage() {
                     </span>
                   )}
                 </div>
-                <div className="tr-endpoint-label" style={{ marginTop: 14 }}>Hierarchy</div>
+                <div className="tr-endpoint-label" style={{ marginTop: 14 }}>{t('finance.hierarchy', 'Hierarchy')}</div>
                 <DestinationHierarchy path={preview.path} />
                 <p className="hint" style={{ marginTop: 10 }}>
                   The {preview.destination.levelLabel} Finance Secretary of{' '}
@@ -339,23 +340,23 @@ export default function TransfersPage() {
 
           {/* ── Transfer form ─────────────────────────────────── */}
           <div className="tr-section">
-          <p className="tr-section-title">Transfer Details</p>
+          <p className="tr-section-title">{t('finance.transferDetails', 'Transfer Details')}</p>
           <div className="form-grid">
-            <div className="field"><label>Amount (PKR)</label>
+            <div className="field"><label>{t('finance.amount', 'Amount (PKR)')}</label>
               <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
-            <div className="field"><label>Mode</label>
+            <div className="field"><label>{t('finance.mode', 'Mode')}</label>
               <select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}>
-                <option>BANK_TRANSFER</option>
-                <option>CASH</option>
-                <option>MOBILE_WALLET</option>
-                <option>CHEQUE</option>
+                <option value="BANK_TRANSFER">{t('finance.bankTransfer', 'Bank Transfer')}</option>
+                <option value="CASH">{t('finance.cash', 'Cash')}</option>
+                <option value="MOBILE_WALLET">{t('finance.mobileWallet', 'Mobile Wallet')}</option>
+                <option value="CHEQUE">{t('finance.cheque', 'Cheque')}</option>
               </select></div>
-            <div className="field"><label>Reference / Cheque No.</label>
+            <div className="field"><label>{t('finance.referenceChequeNo', 'Reference / Cheque No.')}</label>
               <input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} /></div>
-            <div className="field full"><label>Notes</label>
+            <div className="field full"><label>{t('finance.notes', 'Notes')}</label>
               <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
             <div className="field full">
-              <label>Receipt / Proof of Payment <span className="req">*</span></label>
+              <label>{t('finance.receiptProof', 'Receipt / Proof of Payment')} <span className="req">*</span></label>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -370,13 +371,13 @@ export default function TransfersPage() {
           </div>{/* /tr-modal-body */}
 
           <div className="tr-modal-actions">
-            <button className="btn secondary" type="button" onClick={() => setTransferModalOpen(false)}>Cancel</button>
+            <button className="btn secondary" type="button" onClick={() => setTransferModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
             <button
               className="btn"
               onClick={() => { setErr(''); setConfirmOpen(true); }}
               disabled={!readyToConfirm}
             >
-              Transfer
+              {t('finance.transfer', 'Transfer')}
             </button>
           </div>
         </div>
@@ -390,20 +391,20 @@ export default function TransfersPage() {
           style={{ zIndex: 1100 }}
           onClick={(e) => { if (e.target === e.currentTarget && !submitting) setConfirmOpen(false); }}
         >
-          <div className="modal" style={{ maxWidth: 580 }} role="dialog" aria-modal="true" aria-label="Confirm Transfer">
-            <h3 style={{ marginTop: 0 }}>Transfer Summary</h3>
-            <p className="muted" style={{ marginTop: 0 }}>You are about to transfer funds.</p>
+          <div className="modal" style={{ maxWidth: 580 }} role="dialog" aria-modal="true" aria-label={t('finance.confirmTransfer', 'Confirm Transfer')}>
+            <h3 style={{ marginTop: 0 }}>{t('finance.transferSummary', 'Transfer Summary')}</h3>
+            <p className="muted" style={{ marginTop: 0 }}>{t('finance.aboutToTransfer', 'You are about to transfer funds.')}</p>
 
             <div className="tr-summary">
               <div className="tr-summary-row">
-                <div className="tr-summary-key">From</div>
+                <div className="tr-summary-key">{t('finance.from', 'From')}</div>
                 <div className="tr-summary-val">
                   {ctx.unitName}
                   <span className="muted"> · {LEVEL_LABEL[ctx.unitLevel] || ctx.unitLevel}</span>
                 </div>
               </div>
               <div className="tr-summary-row">
-                <div className="tr-summary-key">To</div>
+                <div className="tr-summary-key">{t('finance.to', 'To')}</div>
                 <div className="tr-summary-val">
                   {preview.destination.name}
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
@@ -413,39 +414,39 @@ export default function TransfersPage() {
                 </div>
               </div>
               <div className="tr-summary-row">
-                <div className="tr-summary-key">Destination Level</div>
+                <div className="tr-summary-key">{t('finance.destinationLevel', 'Destination Level')}</div>
                 <div className="tr-summary-val">{preview.destination.level}</div>
               </div>
               <div className="tr-summary-row">
-                <div className="tr-summary-key">Hierarchy</div>
+                <div className="tr-summary-key">{t('finance.hierarchy', 'Hierarchy')}</div>
                 <div className="tr-summary-val">
                   <DestinationHierarchyInline path={preview.path} />
                 </div>
               </div>
               <div className="tr-summary-row">
-                <div className="tr-summary-key">Amount</div>
+                <div className="tr-summary-key">{t('finance.amount', 'Amount')}</div>
                 <div className="tr-summary-val amount">
                   {form.amount ? PKR.format(parseFloat(form.amount)) : '—'}
                 </div>
               </div>
               <div className="tr-summary-row">
-                <div className="tr-summary-key">Receipt</div>
+                <div className="tr-summary-key">{t('finance.receipt', 'Receipt')}</div>
                 <div className="tr-summary-val">{receipt ? `Uploaded — ${receipt.name}` : 'Not attached'}</div>
               </div>
               <div className="tr-summary-row">
-                <div className="tr-summary-key">Reference</div>
+                <div className="tr-summary-key">{t('finance.reference', 'Reference')}</div>
                 <div className="tr-summary-val">{form.mode}{form.reference ? ` · ${form.reference}` : ''}</div>
               </div>
               <div className="tr-summary-row">
-                <div className="tr-summary-key">Notes</div>
+                <div className="tr-summary-key">{t('finance.notes', 'Notes')}</div>
                 <div className="tr-summary-val">{form.note || '—'}</div>
               </div>
             </div>
 
             <div style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="btn secondary" type="button" disabled={submitting} onClick={() => setConfirmOpen(false)}>Cancel</button>
+              <button className="btn secondary" type="button" disabled={submitting} onClick={() => setConfirmOpen(false)}>{t('common.cancel', 'Cancel')}</button>
               <button className="btn" onClick={initiate} disabled={submitting}>
-                {submitting ? 'Transferring…' : 'Confirm Transfer'}
+                {submitting ? t('finance.transferring', 'Transferring…') : t('finance.confirmTransfer', 'Confirm Transfer')}
               </button>
             </div>
           </div>
@@ -453,21 +454,21 @@ export default function TransfersPage() {
       )}
 
       <div className="toolbar" style={{ marginTop: 16 }}>
-        <button className={`btn ${tab === 'outgoing' ? '' : 'secondary'}`} onClick={() => setTab('outgoing')}>Outgoing</button>
-        <button className={`btn ${tab === 'incoming' ? '' : 'secondary'}`} onClick={() => setTab('incoming')}>Incoming</button>
+        <button className={`btn ${tab === 'outgoing' ? '' : 'secondary'}`} onClick={() => setTab('outgoing')}>{t('finance.outgoing', 'Outgoing')}</button>
+        <button className={`btn ${tab === 'incoming' ? '' : 'secondary'}`} onClick={() => setTab('incoming')}>{t('finance.incoming', 'Incoming')}</button>
       </div>
 
       <div className="table-responsive">
       <table className="list">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>{tab === 'outgoing' ? 'To' : 'From'}</th>
-            <th>Mode</th>
-            <th>Reference</th>
-            <th style={{ textAlign: 'right' }}>Amount</th>
-            <th>Receipt</th>
-            <th>State</th>
+            <th>{t('finance.date', 'Date')}</th>
+            <th>{tab === 'outgoing' ? t('finance.to', 'To') : t('finance.from', 'From')}</th>
+            <th>{t('finance.mode', 'Mode')}</th>
+            <th>{t('finance.reference', 'Reference')}</th>
+            <th style={{ textAlign: 'right' }}>{t('finance.amount', 'Amount')}</th>
+            <th>{t('finance.receipt', 'Receipt')}</th>
+            <th>{t('finance.status', 'State')}</th>
             <th></th>
           </tr>
         </thead>
@@ -475,60 +476,60 @@ export default function TransfersPage() {
           {displayedItems.length === 0 && (
             <tr>
               <td colSpan="8" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} transfers in this view.
+                {t('finance.noTransactions', 'No transfers in this view.')}
               </td>
             </tr>
           )}
-          {displayedItems.map((t) => (
-            <tr key={t._id}>
-              <td>{new Date(t.createdAt).toLocaleDateString()}</td>
+          {displayedItems.map((tItem) => (
+            <tr key={tItem._id}>
+              <td>{new Date(tItem.createdAt).toLocaleDateString()}</td>
               <td>
                 <span
                   className="badge"
                   style={{
                     marginRight: 6,
-                    background: t.body === 'JIRGA' ? '#f3e8ff' : (t.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)'),
-                    color: t.body === 'JIRGA' ? '#6b21a8' : (t.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)'),
-                    border: t.body === 'JIRGA' ? '1px solid #d8b4fe' : undefined,
+                    background: tItem.body === 'JIRGA' ? '#f3e8ff' : (tItem.body === 'COMMITTEE' ? 'var(--primary-subtle, #e0f2fe)' : 'var(--surface-sunken, #f1f5f9)'),
+                    color: tItem.body === 'JIRGA' ? '#6b21a8' : (tItem.body === 'COMMITTEE' ? 'var(--primary, #0369a1)' : 'var(--text-muted, #475569)'),
+                    border: tItem.body === 'JIRGA' ? '1px solid #d8b4fe' : undefined,
                     fontWeight: 600,
                     fontSize: 11,
                   }}
                 >
-                  {t.body === 'JIRGA' ? 'Jirga' : (t.body === 'COMMITTEE' ? 'Committee' : 'Executive')}
+                  {tItem.body === 'JIRGA' ? t('units.jirga', 'Jirga') : (tItem.body === 'COMMITTEE' ? t('units.committee', 'Committee') : t('roles.executive', 'Executive'))}
                 </span>
-                {counterparty(t)}
+                {counterparty(tItem)}
               </td>
-              <td>{t.mode}</td>
-              <td>{t.reference || '—'}</td>
-              <td style={{ textAlign: 'right' }}>{PKR.format(t.amount)}</td>
+              <td>{tItem.mode}</td>
+              <td>{tItem.reference || '—'}</td>
+              <td style={{ textAlign: 'right' }}>{PKR.format(tItem.amount)}</td>
               <td>
-                {t.receiptImageUrl ? (
-                  <button className="btn ghost" onClick={() => setPreviewUrl(t.receiptImageUrl)}>View</button>
+                {tItem.receiptImageUrl ? (
+                  <button className="btn ghost" onClick={() => setPreviewUrl(tItem.receiptImageUrl)}>{t('common.view', 'View')}</button>
                 ) : (<span className="muted">—</span>)}
               </td>
               <td>
-                <span className={`badge ${t.state === 'ACKNOWLEDGED' ? 'APPROVED' : t.state === 'REJECTED' ? 'REJECTED' : 'PENDING'}`}>{t.state}</span>
-                {t.state === 'REJECTED' && t.decisionNote && (
+                <span className={`badge ${tItem.state === 'ACKNOWLEDGED' ? 'APPROVED' : tItem.state === 'REJECTED' ? 'REJECTED' : 'PENDING'}`}>{tItem.state}</span>
+                {tItem.state === 'REJECTED' && tItem.decisionNote && (
                   <div style={{ marginTop: 4, fontSize: 12, color: 'var(--danger)', display: 'flex', gap: 4, alignItems: 'flex-start', maxWidth: 260 }}>
-                    <strong>Reason:</strong>
-                    <span style={{ flex: 1 }}>{t.decisionNote}</span>
+                    <strong>{t('common.reason', 'Reason')}:</strong>
+                    <span style={{ flex: 1 }}>{tItem.decisionNote}</span>
                   </div>
                 )}
               </td>
               <td>
-                {tab === 'incoming' && t.state === 'PENDING_ACK' && (
+                {tab === 'incoming' && tItem.state === 'PENDING_ACK' && (
                   <>
-                    {t.receiptImageUrl && (
+                    {tItem.receiptImageUrl && (
                       <>
-                        <button className="btn secondary" onClick={() => setPreviewUrl(t.receiptImageUrl)}>Review Receipt</button>{' '}
+                        <button className="btn secondary" onClick={() => setPreviewUrl(tItem.receiptImageUrl)}>{t('finance.reviewReceipt', 'Review Receipt')}</button>{' '}
                       </>
                     )}
-                    <button className="btn" onClick={() => ack(t._id)}>Approve</button>{' '}
-                    <button className="btn danger" onClick={() => reject(t._id)}>Reject</button>
+                    <button className="btn" onClick={() => ack(tItem._id)}>{t('finance.approve', 'Approve')}</button>{' '}
+                    <button className="btn danger" onClick={() => reject(tItem._id)}>{t('finance.reject', 'Reject')}</button>
                   </>
                 )}
-                {tab === 'outgoing' && t.state === 'PENDING_ACK' && canSend && (
-                  <button className="btn danger" onClick={() => cancelTransfer(t._id)}>Cancel</button>
+                {tab === 'outgoing' && tItem.state === 'PENDING_ACK' && canSend && (
+                  <button className="btn danger" onClick={() => cancelTransfer(tItem._id)}>{t('common.cancel', 'Cancel')}</button>
                 )}
               </td>
             </tr>
@@ -540,11 +541,11 @@ export default function TransfersPage() {
       {previewUrl && (
         <div className="modal-backdrop" onClick={() => setPreviewUrl(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720 }}>
-            <h3 style={{ marginTop: 0 }}>Receipt / Proof of Payment</h3>
+            <h3 style={{ marginTop: 0 }}>{t('finance.receiptProof', 'Receipt / Proof of Payment')}</h3>
             <img src={previewUrl} alt="Receipt" style={{ maxWidth: '100%', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }} />
             <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
-              <a className="btn secondary" href={previewUrl} target="_blank" rel="noreferrer">Open full size</a>
-              <button className="btn" onClick={() => setPreviewUrl(null)}>Close</button>
+              <a className="btn secondary" href={previewUrl} target="_blank" rel="noreferrer">{t('common.openFullSize', 'Open full size')}</a>
+              <button className="btn" onClick={() => setPreviewUrl(null)}>{t('common.close', 'Close')}</button>
             </div>
           </div>
         </div>

@@ -12,11 +12,13 @@ import {
   View,
 } from 'react-native';
 import { api, errorMessage } from '../../src/api/client';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { useToast } from '../../src/components/Toast';
 import { Colors, FontSize, Radius, Spacing } from '../../src/constants/colors';
 import { useRouter } from 'expo-router';
 
 export default function ForgotPasswordScreen() {
+  const { t, isRTL } = useLanguage();
   const [identifier, setIdentifier] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -29,7 +31,7 @@ export default function ForgotPasswordScreen() {
     try {
       await api.post('/auth/forgot-password', { identifier: identifier.trim() });
       setSent(true);
-      toast.success('Reset instructions sent to your email.');
+      toast.success(t('auth.resetLinkSentBody', 'Reset instructions sent to your email.'));
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -45,25 +47,25 @@ export default function ForgotPasswordScreen() {
             {sent ? (
               <>
                 <Text style={styles.icon}>📧</Text>
-                <Text style={styles.title}>Check your email</Text>
-                <Text style={styles.subtitle}>
-                  If an account matches that identifier, we've sent password reset instructions to the registered email.
+                <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('auth.resetLinkSent', 'Check your email')}</Text>
+                <Text style={[styles.subtitle, isRTL && { textAlign: 'right' }]}>
+                  {t('auth.resetLinkSentBody', "If an account matches that identifier, we've sent password reset instructions to the registered email.")}
                 </Text>
                 <TouchableOpacity style={styles.btn} onPress={() => router.back()}>
-                  <Text style={styles.btnText}>Back to Sign In</Text>
+                  <Text style={styles.btnText}>{t('auth.backToSignIn', 'Back to Sign In')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={styles.title}>Reset Password</Text>
-                <Text style={styles.subtitle}>Enter your CNIC, member ID, or phone number.</Text>
+                <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('auth.forgotPassword', 'Reset Password')}</Text>
+                <Text style={[styles.subtitle, isRTL && { textAlign: 'right' }]}>{t('auth.forgotPasswordSubtitle', 'Enter your CNIC, member ID, or phone number.')}</Text>
                 <View style={styles.field}>
-                  <Text style={styles.label}>Identifier</Text>
+                  <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('auth.identifierLabel', 'Identifier')}</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, isRTL && { textAlign: 'right' }]}
                     value={identifier}
                     onChangeText={setIdentifier}
-                    placeholder="CNIC / Member ID / Phone"
+                    placeholder={t('auth.identifierPlaceholder', 'CNIC / Member ID / Phone')}
                     placeholderTextColor={Colors.textLight}
                     autoCapitalize="none"
                     returnKeyType="send"
@@ -71,7 +73,7 @@ export default function ForgotPasswordScreen() {
                   />
                 </View>
                 <TouchableOpacity style={[styles.btn, busy && styles.btnDisabled]} onPress={handleSubmit} disabled={busy}>
-                  {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Send Reset Link</Text>}
+                  {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('auth.sendResetLink', 'Send Reset Link')}</Text>}
                 </TouchableOpacity>
               </>
             )}

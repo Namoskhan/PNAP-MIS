@@ -11,16 +11,16 @@ import {
   View,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage } from '../../../src/api/client';
 import Card from '../../../src/components/Card';
 import KpiCard from '../../../src/components/KpiCard';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import { PKR } from '../../../src/utils/formatters';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 
 export default function PerformanceScreen() {
+  const { t, isRTL } = useLanguage();
   const { ctx } = useUnit();
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
@@ -60,27 +60,16 @@ export default function PerformanceScreen() {
   async function download(type) {
     if (!memberId) return;
     if (Platform.OS === 'web') {
-      Alert.alert('Not Supported', 'Downloading is not fully supported on the web preview. Please use the mobile app or desktop dashboard.');
+      Alert.alert(t('common.notSupported', 'Not Supported'), t('reports.webPreviewDownloadNotice', 'Downloading is not fully supported on the web preview. Please use the mobile app or desktop dashboard.'));
       return;
     }
-    const params = new URLSearchParams();
-    if (from) params.set('from', from);
-    if (to) params.set('to', to);
-    
-    // In Expo, the new FileSystem API requires using downloadAsync or similar depending on the exact version,
-    // but the instruction earlier mentioned downloadAsync is deprecated. Let's use fetch, get blob, and save it.
-    // Wait, let's just use window.fetch if on web, but on native we use FileSystem.downloadAsync.
-    // However, the earlier error log says "Method downloadAsync imported from expo-file-system is deprecated...".
-    // Actually, I can just tell the user to use the web dashboard for exporting, OR I can use the standard API endpoint to get a blob.
-    // Let's implement a simple placeholder for now or standard fetch, or just a simple alert since reports are tricky on mobile without proper filesystem.
-    // Wait, the prompt didn't say I must perfectly implement PDF downloading on native, but I should provide the buttons.
-    Alert.alert('Info', `Download ${type.toUpperCase()} requested. Check Web Dashboard for direct download.`);
+    Alert.alert(t('common.info', 'Info'), t('reports.downloadRequestedNotice', 'Download {{type}} requested. Check Web Dashboard for direct download.', { type: type.toUpperCase() }));
   }
 
   if (!ctx) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>Select a unit context first.</Text>
+        <Text style={styles.muted}>{t('performance.selectUnitContextFirst', 'Select a unit context first.')}</Text>
       </View>
     );
   }
@@ -90,65 +79,65 @@ export default function PerformanceScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         
         <Card style={styles.formCard}>
-          <Text style={styles.label}>Member</Text>
+          <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('performance.member', 'Member')}</Text>
           <View style={styles.pickerWrap}>
             <Picker
               selectedValue={memberId}
               onValueChange={(v) => setMemberId(v)}
               style={styles.picker}
             >
-              <Picker.Item label="— pick a member —" value="" />
+              <Picker.Item label={t('performance.pickMember', '— pick a member —')} value="" />
               {members.map((m) => (
                 <Picker.Item key={m._id} label={`${m.fullName} · ${m.memberId || m.cnic}`} value={m._id} />
               ))}
             </Picker>
           </View>
 
-          {/* Date range omitted for simplicity, but could be added later. For now, empty dates = all time */}
-
           <TouchableOpacity style={[styles.btn, (!memberId || busy) && styles.btnDisabled]} onPress={load} disabled={!memberId || busy}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Generate Report</Text>}
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{t('performance.generate', t('reports.generateReport', 'Generate Report'))}</Text>}
           </TouchableOpacity>
-          {err ? <Text style={styles.error}>{err}</Text> : null}
+          {err ? <Text style={[styles.error, isRTL && { textAlign: 'right' }]}>{err}</Text> : null}
         </Card>
 
         {report && (
           <View>
             <Card style={styles.headerCard}>
-              <Text style={styles.memberName}>{report.member.fullName}</Text>
-              <Text style={styles.memberMeta}>{report.member.memberId} · CNIC {report.member.cnic} · {report.member.phone}</Text>
+              <Text style={[styles.memberName, isRTL && { textAlign: 'right' }]}>{report.member.fullName}</Text>
+              <Text style={[styles.memberMeta, isRTL && { textAlign: 'right' }]}>{report.member.memberId} · CNIC {report.member.cnic} · {report.member.phone}</Text>
               {report.roles?.length > 0 && (
-                <Text style={styles.memberRoles}>Roles: {report.roles.map((r) => r.customRoleName || r.roleCode).join(', ')}</Text>
+                <Text style={[styles.memberRoles, isRTL && { textAlign: 'right' }]}>
+                  {t('roles.rolesList', 'Roles:')} {report.roles.map((r) => r.customRoleName || t(`roles.${r.roleCode}`, r.roleCode)).join(', ')}
+                </Text>
               )}
               
-              <View style={styles.actionRow}>
+              <View style={[styles.actionRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={() => download('pdf')}>
-                  <Text style={styles.secondaryBtnText}>PDF</Text>
+                  <Text style={styles.secondaryBtnText}>{t('common.exportPdf', 'PDF')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={() => download('xlsx')}>
-                  <Text style={styles.secondaryBtnText}>Excel</Text>
+                  <Text style={styles.secondaryBtnText}>{t('common.exportExcel', 'Excel')}</Text>
                 </TouchableOpacity>
               </View>
             </Card>
 
-            <View style={styles.kpiGrid}>
-              <KpiCard label="Meetings" value={report.meetings.totalRoster} icon="📅" color={Colors.primary} />
-              <KpiCard label="Present" value={report.meetings.present} icon="✅" color={Colors.success} />
-              <KpiCard label="Absent" value={report.meetings.absent} icon="❌" color={report.meetings.absent > 0 ? Colors.error : Colors.textMuted} />
+            <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
+              <KpiCard label={t('meetings.title', 'Meetings')} value={report.meetings.totalRoster} icon="📅" color={Colors.primary} />
+              <KpiCard label={t('status.present', t('meetings.present', 'Present'))} value={report.meetings.present} icon="✅" color={Colors.success} />
+              <KpiCard label={t('status.absent', t('meetings.absent', 'Absent'))} value={report.meetings.absent} icon="❌" color={report.meetings.absent > 0 ? Colors.error : Colors.textMuted} />
             </View>
 
-            <View style={styles.kpiGrid}>
-              <KpiCard label="Activities (Part.)" value={report.activities.participated} icon="🎯" color={Colors.info} />
-              <KpiCard label="Activities (Led)" value={report.activities.led} icon="⭐" color={Colors.warning} />
+            <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
+              <KpiCard label={t('performance.activitiesParticipated', 'Activities (Part.)')} value={report.activities.participated} icon="🎯" color={Colors.info} />
+              <KpiCard label={t('performance.activitiesLed', 'Activities (Led)')} value={report.activities.led} icon="⭐" color={Colors.warning} />
             </View>
 
-            <View style={styles.kpiGrid}>
-              <KpiCard label="Tasks Pending" value={report.responsibilities.pending} icon="⏳" color={Colors.warning} />
-              <KpiCard label="Tasks Done" value={report.responsibilities.completed} icon="✅" color={Colors.success} />
+            <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
+              <KpiCard label={t('performance.tasksPending', 'Tasks Pending')} value={report.responsibilities.pending} icon="⏳" color={Colors.warning} />
+              <KpiCard label={t('performance.tasksDone', 'Tasks Done')} value={report.responsibilities.completed} icon="✅" color={Colors.success} />
             </View>
             
-            <View style={styles.kpiGrid}>
-              <KpiCard label="Donations" value={PKR(report.donations.total)} icon="💰" color={Colors.success} />
+            <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
+              <KpiCard label={t('finance.donations', 'Donations')} value={PKR(report.donations.total)} icon="💰" color={Colors.success} />
             </View>
           </View>
         )}

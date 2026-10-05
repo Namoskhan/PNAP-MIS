@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
@@ -22,6 +23,7 @@ const ALL_METRICS = Object.keys(METRIC_LABELS);
 const TIER_CODES = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 
 export default function PerformanceRuleSetsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => { }, error: () => { } };
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -63,16 +65,15 @@ export default function PerformanceRuleSetsPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><BarChartIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Performance Rules</h2>
+            <h2 className="rm-hero-title">{t('admin.units.performanceRules', 'Performance Rules')}</h2>
             <div className="rm-hero-sub">
-              Weighted scoring formula for member performance.
-              Resolution: TIER override → GLOBAL fallback. Weights must sum to 100%.
+              {t('admin.units.performanceRulesSub', 'Weighted scoring formula for member performance. Resolution: TIER override → GLOBAL fallback. Weights must sum to 100%.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('admin.refresh', 'Refresh')}</button>
             {canWrite && (
-              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>＋ TIER Override</button>
+              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>{t('admin.units.newRuleset', '＋ TIER Override')}</button>
             )}
           </div>
         </div>

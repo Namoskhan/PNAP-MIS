@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
 import {
   ClipboardIcon, TargetIcon, CameraIcon, RepeatIcon,
-  PuzzleIcon, InfoIcon, UsersIcon, TrashIcon, XIcon } from '../../../components/icons';
+  PuzzleIcon, InfoIcon, UsersIcon, TrashIcon, XIcon,
+} from '../../../components/icons';
 
 // Full editor for a single EventTypeConfig — basic info, body
 // applicability, photo policy, workflow extras, and field selection.
-// Loads the type by id, and the full FieldDefinition library on
-// mount so the field-picker doesn't make a second round trip.
 
 const CORE_STATES = {
   MEETING: ['DRAFT', 'SCHEDULED', 'IN_PROGRESS', 'PENDING_REPORT', 'FINALIZED', 'CANCELLED'],
@@ -22,6 +22,7 @@ export default function EventTypeEditorPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = hasPermission(user, 'MANAGE_EVENT_CONFIG');
 
@@ -46,11 +47,11 @@ export default function EventTypeEditorPage() {
   async function load() {
     setBusy(true); setErr('');
     try {
-      const [t, f] = await Promise.all([
+      const [tRes, fRes] = await Promise.all([
         api.get(`/admin/events/types/${id}`),
         api.get('/admin/events/fields', { params: { active: 'true' } }),
       ]);
-      const td = t.data?.data;
+      const td = tRes.data?.data;
       setDoc(td);
       setLabel(td.label || '');
       setDescription(td.description || '');
@@ -71,9 +72,7 @@ export default function EventTypeEditorPage() {
         finalizeRequiresPhotos: td.workflow?.finalizeRequiresPhotos !== false,
       });
       setFieldIds((td.fields || []).map((f) => (typeof f === 'string' ? f : f._id)));
-      setLibrary(f.data?.data || []);
-      // Baseline for dirty detection - computed from the same shape
-      // save() sends, so "dirty" means "this save would change data".
+      setLibrary(fRes.data?.data || []);
       const req = !!td.photoPolicy?.required;
       let mc = Math.max(0, parseInt(td.photoPolicy?.minCount, 10) || 0);
       if (!req) mc = 0; else if (mc < 1) mc = 1;
@@ -124,87 +123,71 @@ export default function EventTypeEditorPage() {
     setWorkflow((w) => ({ ...w, extraStates: w.extraStates.filter((_, i) => i !== idx) }));
   }
 
-  function toggleField(fid) {
-    setFieldIds((cur) => {
-      if (cur.includes(fid)) return cur.filter((x) => x !== fid);
-      return [...cur, fid];
-    });
+  function toggleField(fId) {
+    setFieldIds((prev) => (prev.includes(fId) ? prev.filter((x) => x !== fId) : [...prev, fId]));
   }
 
-  function buildPayload() {
-    const required = !!photoPolicy.required;
-    let minCount = Math.max(0, parseInt(photoPolicy.minCount, 10) || 0);
-    if (!required) minCount = 0; else if (minCount < 1) minCount = 1;
+  const currentPayload = useMemo(() => {
+    let mc = Math.max(0, parseInt(photoPolicy.minCount, 10) || 0);
+    if (!photoPolicy.required) mc = 0; else if (mc < 1) mc = 1;
     return {
       label,
       description: description || undefined,
       isActive,
-      sortOrder,
+      sortOrder: parseInt(sortOrder, 10) || 0,
       appliesTo,
       photoPolicy: {
-        required,
-        minCount,
-        requireGps: !!photoPolicy.requireGps,
-        requireExif: !!photoPolicy.requireExif,
+        required: photoPolicy.required,
+        minCount: mc,
+        requireGps: photoPolicy.requireGps,
+        requireExif: photoPolicy.requireExif,
       },
       workflow: {
         extraStates: workflow.extraStates
-          .filter((s) => s.code && s.label && s.after)
+          .filter((s) => s.code && s.label)
           .map((s) => ({
-            code: String(s.code).toUpperCase(),
-            label: s.label,
-            after: String(s.after).toUpperCase(),
+            code: s.code.toUpperCase().trim(),
+            label: s.label.trim(),
+            after: s.after || coreStates[0],
           })),
-        finalizeRequiresPhotos: !!workflow.finalizeRequiresPhotos,
+        finalizeRequiresPhotos: workflow.finalizeRequiresPhotos,
       },
       fields: fieldIds,
     };
-  }
+  }, [label, description, isActive, sortOrder, appliesTo, photoPolicy, workflow, fieldIds, coreStates]);
 
-  const dirty = useMemo(
-    () => baseline !== '' && JSON.stringify(buildPayload()) !== baseline,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [baseline, label, description, isActive, sortOrder, appliesTo, photoPolicy, workflow, fieldIds],
-  );
+  const dirty = useMemo(() => {
+    if (!baseline) return false;
+    return JSON.stringify(currentPayload) !== baseline;
+  }, [currentPayload, baseline]);
 
   async function save() {
-    setErr('');
-    // A type must stay usable by at least one body - with both off,
-    // every record attempt fails BODY_NOT_ALLOWED and the type dies.
-    if (!appliesTo.executive && !appliesTo.committee) {
-      setErr('Type must apply to at least one body (Executive or Committee).');
-      return;
-    }
-    // Half-filled workflow rows used to be dropped silently on save -
-    // surface them instead so the admin input never just vanishes.
-    const incomplete = workflow.extraStates.filter((s) => (s.code || s.label) && !(s.code && s.label && s.after));
-    if (incomplete.length > 0) {
-      setErr('Complete or remove the partially-filled workflow extra state(s) before saving.');
-      return;
-    }
-    setSaving(true);
+    if (!canWrite) return;
+    setSaving(true); setErr('');
     try {
-      await api.patch(`/admin/events/types/${id}`, buildPayload());
-      toast.success?.('Event type saved.');
-      load();
-    } catch (e) { setErr(errorMessage(e)); toast.error?.(errorMessage(e)); }
-    finally { setSaving(false); }
+      await api.patch(`/admin/events/types/${id}`, currentPayload);
+      toast.success?.(t('admin.changesSaved', 'Changes saved successfully.'));
+      await load();
+    } catch (e) {
+      setErr(errorMessage(e));
+      toast.error?.(errorMessage(e));
+    } finally { setSaving(false); }
   }
 
   function showSnapshot() {
     setSnapshotOpen(true);
   }
 
-  if (busy && !doc) {
+  if (busy) {
     return (
       <div className="rm-loading">
         <span className="scope-spinner" aria-hidden="true" />
-        <span className="muted">Loading…</span>
+        <span className="muted">{t('common.loading', 'Loading…')}</span>
       </div>
     );
   }
   if (!doc) {
-    return <div className="alert error">Event type not found.</div>;
+    return <div className="alert error">{t('admin.noTypesDefined', 'Event type not found.')}</div>;
   }
 
   const backTo = entity === 'MEETING' ? '/admin/events/meeting-types' : '/admin/events/activity-types';
@@ -220,16 +203,16 @@ export default function EventTypeEditorPage() {
               {doc.label} <span className="muted" style={{ fontWeight: 400 }}>· <code>{doc.code}</code></span>
             </h2>
             <div className="rm-hero-sub">
-              {entity === 'MEETING' ? 'Meeting' : 'Activity'} type · v{doc.configVersion || 1}
-              {isSystem && ' · Built-in'}
+              {entity === 'MEETING' ? t('nav.meetings', 'Meeting') : t('nav.activities', 'Activity')} {t('admin.type', 'type')} · v{doc.configVersion || 1}
+              {isSystem && ` · ${t('admin.builtInLocked', 'Built-in')}`}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <Link to={backTo} className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← Back</Link>
-            <button className="rm-hero-btn outline" onClick={showSnapshot}>Preview snapshot</button>
+            <Link to={backTo} className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← {t('common.back', 'Back')}</Link>
+            <button className="rm-hero-btn outline" onClick={showSnapshot}>{t('admin.viewSnapshot', 'Preview snapshot')}</button>
             {canWrite && (
               <button className="rm-hero-btn solid" disabled={saving || !dirty} onClick={save}>
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving ? t('admin.saving', 'Saving…') : t('admin.saveChanges', 'Save changes')}
               </button>
             )}
           </div>
@@ -239,7 +222,7 @@ export default function EventTypeEditorPage() {
       {err && <div className="alert error">{err}</div>}
       {isSystem && (
         <div className="alert" style={{ background: 'rgba(217, 119, 6, 0.08)', border: '1px solid rgba(217, 119, 6, 0.2)' }}>
-          <strong>Built-in type.</strong> The code stays canonical and the type can't be deactivated, but you can still edit the label, description, photo policy, workflow extras, and field set.
+          <strong>{t('admin.builtInLocked', 'Built-in type.')}</strong> {t('admin.systemTypeNotice', 'This is a built-in system type. Core identifiers are locked.')}
         </div>
       )}
 
@@ -247,27 +230,27 @@ export default function EventTypeEditorPage() {
       <div className="rm-card">
         <div className="rm-card-bar">
           <span className="rm-card-bar-icon" aria-hidden="true"><InfoIcon size={15} /></span>
-          <span className="rm-card-bar-label">Basic info</span>
+          <span className="rm-card-bar-label">{t('admin.basicInformation', 'Basic info')}</span>
         </div>
         <div className="rm-card-body">
           <div className="form-grid">
             <div className="field full">
-              <label>Display label</label>
+              <label>{t('admin.displayLabel', 'Display label')}</label>
               <input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={80} disabled={!canWrite} />
             </div>
             <div className="field full">
-              <label>Description</label>
+              <label>{t('admin.descriptionOptional', 'Description')}</label>
               <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} disabled={!canWrite} />
             </div>
             <div className="field">
-              <label>Sort order</label>
+              <label>{t('admin.sortOrder', 'Sort order')}</label>
               <input
                 type="number"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(parseInt(e.target.value, 10) || 0)}
                 disabled={!canWrite}
               />
-              <div className="hint">Lower numbers appear first.</div>
+              <div className="hint">{t('admin.sortOrderHint', 'Lower numbers appear first.')}</div>
             </div>
             <div className="field">
               <label className="toggle-row">
@@ -277,7 +260,7 @@ export default function EventTypeEditorPage() {
                   onChange={(e) => setIsActive(e.target.checked)}
                   disabled={!canWrite || isSystem}
                 />
-                Active (admin can record records of this type)
+                {t('common.active', 'Active')}
               </label>
             </div>
           </div>
@@ -288,7 +271,7 @@ export default function EventTypeEditorPage() {
       <div className="rm-card">
         <div className="rm-card-bar">
           <span className="rm-card-bar-icon" aria-hidden="true"><UsersIcon size={15} /></span>
-          <span className="rm-card-bar-label">Body applicability</span>
+          <span className="rm-card-bar-label">{t('admin.appliesToBodies', 'Body applicability')}</span>
         </div>
         <div className="rm-card-body">
           <div className="form-grid">
@@ -300,7 +283,7 @@ export default function EventTypeEditorPage() {
                   onChange={(e) => setAppliesTo((p) => ({ ...p, executive: e.target.checked }))}
                   disabled={!canWrite}
                 />
-                Executive can run this type
+                {t('admin.executiveCabinet', 'Executive can run this type')}
               </label>
             </div>
             <div className="field">
@@ -311,12 +294,9 @@ export default function EventTypeEditorPage() {
                   onChange={(e) => setAppliesTo((p) => ({ ...p, committee: e.target.checked }))}
                   disabled={!canWrite}
                 />
-                Committee can run this type
+                {t('admin.committee', 'Committee can run this type')}
               </label>
             </div>
-            <p className="muted" style={{ fontSize: 12, gridColumn: '1 / -1', margin: 0 }}>
-              At Area+ levels both bodies can record meetings/activities; flip these off to restrict a type to one body.
-            </p>
           </div>
         </div>
       </div>
@@ -325,7 +305,7 @@ export default function EventTypeEditorPage() {
       <div className="rm-card">
         <div className="rm-card-bar">
           <span className="rm-card-bar-icon" aria-hidden="true"><CameraIcon size={15} /></span>
-          <span className="rm-card-bar-label">Photo policy</span>
+          <span className="rm-card-bar-label">{t('admin.photoPolicy', 'Photo policy')}</span>
         </div>
         <div className="rm-card-body">
           <div className="form-grid">
@@ -337,17 +317,15 @@ export default function EventTypeEditorPage() {
                   onChange={(e) => setPhotoPolicy((p) => ({
                     ...p,
                     required: e.target.checked,
-                    // Keep the pair coherent: off means no minimum;
-                    // on means at least one. Mirrors the server invariant.
                     minCount: e.target.checked ? Math.max(1, p.minCount || 0) : 0,
                   }))}
                   disabled={!canWrite}
                 />
-                Photos required
+                {t('admin.requirePhotos', 'Photos required')}
               </label>
             </div>
             <div className="field">
-              <label>Minimum photo count</label>
+              <label>{t('admin.minPhotos', 'Minimum photo count')}</label>
               <input
                 type="number"
                 min="0"
@@ -365,7 +343,7 @@ export default function EventTypeEditorPage() {
                   onChange={(e) => setPhotoPolicy((p) => ({ ...p, requireGps: e.target.checked }))}
                   disabled={!canWrite}
                 />
-                Require GPS metadata
+                {t('admin.requireGps', 'Require GPS metadata')}
               </label>
             </div>
             <div className="field">
@@ -376,7 +354,7 @@ export default function EventTypeEditorPage() {
                   onChange={(e) => setPhotoPolicy((p) => ({ ...p, requireExif: e.target.checked }))}
                   disabled={!canWrite}
                 />
-                Require EXIF metadata
+                {t('admin.requireExif', 'Require EXIF metadata')}
               </label>
             </div>
           </div>
@@ -387,15 +365,10 @@ export default function EventTypeEditorPage() {
       <div className="rm-card">
         <div className="rm-card-bar">
           <span className="rm-card-bar-icon" aria-hidden="true"><RepeatIcon size={15} /></span>
-          <span className="rm-card-bar-label">Workflow extras</span>
-          <span className="rm-card-bar-count">{workflow.extraStates.length} state{workflow.extraStates.length === 1 ? '' : 's'}</span>
+          <span className="rm-card-bar-label">{t('admin.workflowStages', 'Workflow extras')}</span>
+          <span className="rm-card-bar-count">{workflow.extraStates.length}</span>
         </div>
         <div className="rm-card-body">
-          <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
-            Extra optional states slot in <em>after</em> a chosen core state. Core states (
-            <code>{coreStates.join(' → ')}</code>
-            ) and the finalize/cancel sealing cannot be removed.
-          </p>
           {entity === 'MEETING' && (
             <div className="field">
               <label className="toggle-row">
@@ -405,7 +378,7 @@ export default function EventTypeEditorPage() {
                   onChange={(e) => setWorkflow((w) => ({ ...w, finalizeRequiresPhotos: e.target.checked }))}
                   disabled={!canWrite}
                 />
-                Finalize requires at least one photo
+                {t('admin.finalizeRequiresPhotos', 'Finalize requires at least one photo')}
               </label>
             </div>
           )}
@@ -413,7 +386,10 @@ export default function EventTypeEditorPage() {
           {workflow.extraStates.length > 0 && (
             <div className="em-extra-table">
               <div className="em-extra-head">
-                <span>Code</span><span>Label</span><span>After core state</span><span></span>
+                <span>{t('admin.code', 'Code')}</span>
+                <span>{t('admin.displayLabel', 'Label')}</span>
+                <span>{t('admin.afterCoreState', 'After core state')}</span>
+                <span></span>
               </div>
               {workflow.extraStates.map((s, i) => (
                 <div key={i} className="em-extra-row">
@@ -443,7 +419,7 @@ export default function EventTypeEditorPage() {
                     className="rm-action delete"
                     onClick={() => removeExtraState(i)}
                     disabled={!canWrite}
-                    title="Remove this extra state"
+                    title={t('common.delete', 'Delete')}
                   ><TrashIcon size={14} /></button>
                 </div>
               ))}
@@ -452,7 +428,7 @@ export default function EventTypeEditorPage() {
 
           {canWrite && (
             <button type="button" className="btn secondary" onClick={addExtraState} style={{ marginTop: 8 }}>
-              ＋ Add extra state
+              {t('admin.addState', '＋ Add extra state')}
             </button>
           )}
         </div>
@@ -464,15 +440,16 @@ export default function EventTypeEditorPage() {
         selected={fieldIds}
         onToggle={toggleField}
         canWrite={canWrite}
+        t={t}
       />
 
       {/* Footer */}
       {canWrite && (
         <div className="rm-footer">
-          {dirty && <span className="rm-dirty-chip" role="status">Unsaved changes — save to apply</span>}
-          <Link to={backTo} className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>× Cancel</Link>
+          {dirty && <span className="rm-dirty-chip" role="status">{t('admin.discardChanges', 'Unsaved changes')}</span>}
+          <Link to={backTo} className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>× {t('common.cancel', 'Cancel')}</Link>
           <button type="button" className="rm-hero-btn solid" disabled={saving || !dirty} onClick={save}>
-            {saving ? 'Saving…' : '✓ Save changes'}
+            {saving ? t('admin.saving', 'Saving…') : `✓ ${t('admin.saveChanges', 'Save changes')}`}
           </button>
         </div>
       )}
@@ -481,17 +458,17 @@ export default function EventTypeEditorPage() {
         <SnapshotPreviewDialog
           typeId={id}
           onClose={() => setSnapshotOpen(false)}
+          t={t}
         />
       )}
     </div>
   );
 }
 
-function FieldsCard({ library, selected, onToggle, canWrite }) {
+function FieldsCard({ library, selected, onToggle, canWrite, t }) {
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const ordered = useMemo(() => {
     return [...library].sort((a, b) => {
-      // Selected first (in selection order from `selected`), then library by sortOrder
       const aSel = selectedSet.has(a._id);
       const bSel = selectedSet.has(b._id);
       if (aSel !== bSel) return aSel ? -1 : 1;
@@ -503,50 +480,45 @@ function FieldsCard({ library, selected, onToggle, canWrite }) {
     <div className="rm-card">
       <div className="rm-card-bar">
         <span className="rm-card-bar-icon" aria-hidden="true"><PuzzleIcon size={15} /></span>
-        <span className="rm-card-bar-label">Custom fields</span>
+        <span className="rm-card-bar-label">{t('admin.customFields', 'Custom fields')}</span>
         <span className="rm-card-bar-count">{selected.length} / {library.length}</span>
       </div>
       <div className="rm-card-body">
         {library.length === 0 ? (
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-            No fields in the library yet. Visit the <Link to="/admin/events/fields">Field Library</Link> to add reusable fields.
+            {t('admin.noFieldsAttached', 'No fields in the library yet.')}
           </p>
         ) : (
-          <>
-            <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
-              Tick fields that should appear when recording this {`type`.toLowerCase()}. Field order follows the field-library sort order.
-            </p>
-            <div className="rm-perm-grid">
-              {ordered.map((f) => {
-                const on = selectedSet.has(f._id);
-                return (
-                  <label
-                    key={f._id}
-                    className={`rm-perm-tile ${on ? 'on' : ''} ${!canWrite ? 'readonly' : ''}`}
-                    title={`${f.key} (${f.type})${f.helpText ? '\n' + f.helpText : ''}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      disabled={!canWrite}
-                      onChange={() => onToggle(f._id)}
-                    />
-                    <span className="rm-perm-tile-text">
-                      <span className="rm-perm-tile-name">{f.label}</span>
-                      <span className="rm-perm-tile-code">{f.key} · {f.type}</span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </>
+          <div className="rm-perm-grid">
+            {ordered.map((f) => {
+              const on = selectedSet.has(f._id);
+              return (
+                <label
+                  key={f._id}
+                  className={`rm-perm-tile ${on ? 'on' : ''} ${!canWrite ? 'readonly' : ''}`}
+                  title={`${f.key} (${f.type})${f.helpText ? '\n' + f.helpText : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    disabled={!canWrite}
+                    onChange={() => onToggle(f._id)}
+                  />
+                  <span className="rm-perm-tile-text">
+                    <span className="rm-perm-tile-name">{f.label}</span>
+                    <span className="rm-perm-tile-code">{f.key} · {f.type}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function SnapshotPreviewDialog({ typeId, onClose }) {
+function SnapshotPreviewDialog({ typeId, onClose, t }) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState('');
   useEffect(() => {
@@ -561,14 +533,11 @@ function SnapshotPreviewDialog({ typeId, onClose }) {
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>Snapshot preview</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+          <h3 style={{ margin: 0 }}>{t('admin.schemaSnapshot', 'Snapshot preview')}</h3>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label={t('common.close', 'Close')} style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
-        <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
-          Exactly what will be frozen into <code>EventConfigSnapshot</code> on the next record using this type.
-        </p>
         {err && <div className="alert error">{err}</div>}
-        {!data && !err && <div className="muted">Loading…</div>}
+        {!data && !err && <div className="muted">{t('common.loading', 'Loading…')}</div>}
         {data && (
           <pre style={{
             background: 'var(--bg-soft, var(--bg))',

@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { api } from '../../api/client';
 
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
-const CHILD_LABEL = {
-  AREA: 'Basic Units',
-  DISTRICT: 'Areas',
-  PROVINCE: 'Districts',
-  CENTRAL: 'Provinces',
-};
-
 export default function BreakdownPage() {
+  const { t } = useTranslation();
   const { ctx } = useUnit();
   const [rows, setRows] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -24,32 +19,38 @@ export default function BreakdownPage() {
       .finally(() => setBusy(false));
   }, [ctx]);
 
-  if (!ctx) return <p>Select a unit context first.</p>;
-  if (ctx.unitLevel === 'BASIC_UNIT') return <p>Basic Units have no subordinates.</p>;
+  if (!ctx) return <p>{t('common.selectUnitContext', 'Select a unit context first.')}</p>;
+  if (ctx.unitLevel === 'BASIC_UNIT') return <p>{t('breakdown.noSubordinatesBasicUnit', 'Basic Units have no subordinates.')}</p>;
 
-  const childLabel = CHILD_LABEL[ctx.unitLevel];
+  const childLabelMap = {
+    AREA: t('units.basicUnits', 'Basic Units'),
+    DISTRICT: t('units.areas', 'Areas'),
+    PROVINCE: t('units.districts', 'Districts'),
+    CENTRAL: t('units.provinces', 'Provinces'),
+  };
+  const childLabel = childLabelMap[ctx.unitLevel] || t('breakdown.subordinateUnits', 'Subordinate Units');
 
   return (
     <div>
       <div className="page-header">
-        <h2>{childLabel} of {ctx.unitName}</h2>
+        <h2>{t('breakdown.headerTitle', '{{childLabel}} of {{unitName}}', { childLabel, unitName: ctx.unitName })}</h2>
       </div>
 
-      {busy && <p>Loading…</p>}
+      {busy && <p>{t('common.loading', 'Loading…')}</p>}
       <table className="list">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Active Members</th>
-            <th>Meetings (30d)</th>
-            <th>Activities (30d)</th>
-            <th style={{ textAlign: 'right' }}>Donations</th>
-            <th style={{ textAlign: 'right' }}>Expenses</th>
-            <th style={{ textAlign: 'right' }}>Balance</th>
+            <th>{t('common.name', 'Name')}</th>
+            <th>{t('breakdown.activeMembers', 'Active Members')}</th>
+            <th>{t('breakdown.meetings30', 'Meetings (30d)')}</th>
+            <th>{t('breakdown.activities30', 'Activities (30d)')}</th>
+            <th style={{ textAlign: 'right' }}>{t('finance.donations', 'Donations')}</th>
+            <th style={{ textAlign: 'right' }}>{t('finance.expenses', 'Expenses')}</th>
+            <th style={{ textAlign: 'right' }}>{t('finance.balance', 'Balance')}</th>
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && <tr><td colSpan="7">No subordinate units yet.</td></tr>}
+          {rows.length === 0 && <tr><td colSpan="7">{t('breakdown.noSubordinatesYet', 'No subordinate units yet.')}</td></tr>}
           {rows.map((r) => (
             <tr key={r._id}>
               <td>{r.name}{r.code ? ` (${r.code})` : ''}</td>

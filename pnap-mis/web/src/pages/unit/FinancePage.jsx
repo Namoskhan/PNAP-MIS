@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
@@ -26,18 +27,6 @@ const DONOR_TYPES = ['MEMBER','NON_MEMBER','CORPORATE','ANONYMOUS'];
 const ANONYMOUS_CAP = 5000;
 const NON_MEMBER_CNIC_THRESHOLD = 50000;
 
-// SRS §3.1 — the Executive and the full Committee keep separate
-// books. `body` is a tag applied at creation time from whichever hub
-// the record was entered in, not an eligibility check on the officer
-// (a Finance Secretary sits on both bodies by construction). Omitting
-// it entirely gives the pooled view, which is what whole-unit
-// oversight roles need.
-//
-// Level list copied verbatim from MeetingsPage / ActivitiesPage,
-// BASIC_UNIT included. Note that composition() says a Basic Unit has
-// no committee body — that inconsistency is already live in the
-// Meetings and Activities toggles today, so this matches rather than
-// silently diverging from them.
 function bodySupported(level) {
   return level === 'BASIC_UNIT' || level === 'AREA' || level === 'DISTRICT'
     || level === 'PROVINCE' || level === 'CENTRAL';
@@ -47,6 +36,7 @@ function bodySupported(level) {
 const Req = () => <span className="req">*</span>;
 
 export default function FinancePage() {
+  const { t } = useTranslation();
   const { ctx, setCtx } = useUnit();
   const { user, setActiveRole, allRoles } = useAuth();
   const location = useLocation();
@@ -363,9 +353,19 @@ export default function FinancePage() {
       setDonReceipt(null);
       setDonModalOpen(false);
       reload();
-      toast.success(`Donation of ${PKR.format(amount)} recorded.`, { title: 'Donation recorded' });
+      toast.success(`Donation of ${PKR.format(amount)} submitted for approval.`, { title: 'Donation recorded' });
     } catch (e) {
       toast.error(errorMessage(e), { title: 'Could not record donation', duration: 7000 });
+    }
+  }
+
+  async function decideDonation(id, decision) {
+    try {
+      await api.post(`/finance/donations/${id}/decide`, { decision });
+      reload();
+      toast.success(`Donation ${decision.toLowerCase()}.`);
+    } catch (e) {
+      toast.error(errorMessage(e), { title: `Could not ${decision.toLowerCase()} donation`, duration: 7000 });
     }
   }
 
@@ -432,7 +432,7 @@ export default function FinancePage() {
   }
 
   if (!ctx) return <p>Select a unit context first.</p>;
-  if (!hasPermission(user, 'MANAGE_FINANCE') && !hasPermission(user, 'APPROVE_EXPENSE')) {
+  if (!hasPermission(user, 'MANAGE_FINANCE') && !hasPermission(user, 'APPROVE_EXPENSE') && !canApproveExpense(user)) {
     return (
       <div className="alert error">
         Your current role does not include finance permissions, so this page is unavailable.
@@ -445,15 +445,15 @@ export default function FinancePage() {
     return (
       <div>
         <div className="page-header">
-          <h2>National Congress Finance · قومي کانګرس</h2>
+          <h2>{t('finance.nationalCongress', 'National Congress Finance')} · قومي کانګرس</h2>
         </div>
         <div className="card" style={{ maxWidth: 680, margin: '20px auto', textAlign: 'center', padding: '32px 24px' }}>
           <div style={{ display: 'inline-flex', padding: 14, borderRadius: '50%', background: 'var(--surface-alt)', marginBottom: 16 }}>
             <CongressIcon size={36} />
           </div>
-          <h3 style={{ marginTop: 0 }}>National Congress operates exclusively at the Central Level</h3>
+          <h3 style={{ marginTop: 0 }}>{t('activities.congressCentralOnlyTitle', 'National Congress operates exclusively at the Central Level')}</h3>
           <p className="muted" style={{ lineHeight: 1.6 }}>
-            Under the PKNAP constitution, the <strong>National Congress (قومي کانګرس)</strong> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <strong>Sobayi Jirga</strong> (Province) and <strong>Zilla &amp; Elaqayi Committees</strong> (District &amp; Area).
+            {t('activities.congressCentralOnlyText', 'Under the PKNAP constitution, the National Congress is the supreme representative assembly operating at the Central tier. Lower tiers operate via Sobayi Jirga and Zilla & Elaqayi Committees.')}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24, flexWrap: 'wrap' }}>
             <button
@@ -461,7 +461,7 @@ export default function FinancePage() {
               className="btn"
               onClick={handleSwitchToCentral}
             >
-              Switch to Central Unit Context →
+              {t('activities.switchToCentral', 'Switch to Central Unit Context →')}
             </button>
           </div>
         </div>
@@ -475,16 +475,16 @@ export default function FinancePage() {
         <div>
           <h2>
             {isCongressView
-              ? 'National Congress Finance · PKNAP Central'
+              ? `${t('finance.nationalCongress', 'National Congress Finance')} · PKNAP Central`
               : (isJirgaView
-                ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Finance' : `Sobayi Jirga Finance · ${ctx.unitName}`)
-                : (isCommitteeView ? `Committee Finance · ${ctx.unitName}` : `Executive Finance · ${ctx.unitName}`))}
+                ? (ctx.unitLevel === 'CENTRAL' ? t('finance.qomiJirga', 'Qomi Jirga Finance') : `${t('finance.sobayiJirga', 'Sobayi Jirga Finance')} · ${ctx.unitName}`)
+                : (isCommitteeView ? `${t('finance.committeeFinance', 'Committee Finance')} · ${ctx.unitName}` : `${t('finance.executiveFinance', 'Executive Finance')} · ${ctx.unitName}`))}
           </h2>
           <div className="subtitle">{ctx.unitLevel.replace('_', ' ')}</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn secondary" onClick={() => downloadReport('pdf')}>Download PDF</button>
-          <button className="btn secondary" onClick={() => downloadReport('xlsx')}>Download Excel</button>
+          <button className="btn secondary" onClick={() => downloadReport('pdf')}>{t('finance.downloadPdf', 'Download PDF')}</button>
+          <button className="btn secondary" onClick={() => downloadReport('xlsx')}>{t('finance.downloadExcel', 'Download Excel')}</button>
         </div>
       </div>
 
@@ -493,23 +493,23 @@ export default function FinancePage() {
       {summary && (
         <>
           <div className="kpi-grid" key={pulseKey}>
-            <div className="kpi kpi-pulse"><div className="label">Donations</div><div className="value">{PKR.format(summary.donations.total)}</div><div className="hint">{summary.donations.count} entries</div></div>
-            <div className="kpi kpi-pulse"><div className="label">Approved Expenses</div><div className="value">{PKR.format(summary.expenses.total)}</div><div className="hint">{summary.expenses.count} entries</div></div>
+            <div className="kpi kpi-pulse"><div className="label">{t('finance.donations', 'Donations')}</div><div className="value">{PKR.format(summary.donations.total)}</div><div className="hint">{summary.donations.count} {t('finance.entries', 'entries')}</div></div>
+            <div className="kpi kpi-pulse"><div className="label">{t('finance.approvedExpenses', 'Approved Expenses')}</div><div className="value">{PKR.format(summary.expenses.total)}</div><div className="hint">{summary.expenses.count} {t('finance.entries', 'entries')}</div></div>
             {summary.transfersIn && (
-              <div className="kpi kpi-pulse"><div className="label">Transfers In</div><div className="value">{PKR.format(summary.transfersIn.total)}</div><div className="hint">{summary.transfersIn.count} acknowledged</div></div>
+              <div className="kpi kpi-pulse"><div className="label">{t('finance.transfersIn', 'Transfers In')}</div><div className="value">{PKR.format(summary.transfersIn.total)}</div><div className="hint">{summary.transfersIn.count} {t('finance.acknowledged', 'acknowledged')}</div></div>
             )}
             {summary.transfersOut && (
-              <div className="kpi kpi-pulse"><div className="label">Transfers Out</div><div className="value">{PKR.format(summary.transfersOut.total)}</div><div className="hint">{summary.transfersOut.count} acknowledged</div></div>
+              <div className="kpi kpi-pulse"><div className="label">{t('finance.transfersOut', 'Transfers Out')}</div><div className="value">{PKR.format(summary.transfersOut.total)}</div><div className="hint">{summary.transfersOut.count} {t('finance.acknowledged', 'acknowledged')}</div></div>
             )}
-            <div className={`kpi kpi-pulse ${summary.balance < 0 ? 'kpi-danger' : 'kpi-good'}`}><div className="label">Net Balance</div><div className="value">{PKR.format(summary.balance)}</div></div>
+            <div className={`kpi kpi-pulse ${summary.balance < 0 ? 'kpi-danger' : 'kpi-good'}`}><div className="label">{t('finance.netBalance', 'Net Balance')}</div><div className="value">{PKR.format(summary.balance)}</div></div>
           </div>
         </>
       )}
 
       <div className="toolbar">
-        <button className={`btn ${tab === 'donations' ? '' : 'secondary'}`} onClick={() => setTab('donations')}>Donations</button>
-        <button className={`btn ${tab === 'expenses' ? '' : 'secondary'}`} onClick={() => setTab('expenses')}>Expenses</button>
-        <button className={`btn ${tab === 'monthly' ? '' : 'secondary'}`} onClick={() => setTab('monthly')}>Monthly Statements</button>
+        <button className={`btn ${tab === 'donations' ? '' : 'secondary'}`} onClick={() => setTab('donations')}>{t('finance.donations', 'Donations')}</button>
+        <button className={`btn ${tab === 'expenses' ? '' : 'secondary'}`} onClick={() => setTab('expenses')}>{t('finance.expenses', 'Expenses')}</button>
+        <button className={`btn ${tab === 'monthly' ? '' : 'secondary'}`} onClick={() => setTab('monthly')}>{t('finance.monthlyStatements', 'Monthly Statements')}</button>
       </div>
 
       {tab === 'donations' && (
@@ -517,35 +517,35 @@ export default function FinancePage() {
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn" onClick={() => { setErr(''); setDonModalOpen(true); }}>
-                {isCongressView ? '+ Record Congress Donation' : (isJirgaView ? '+ Record Jirga Donation' : (isCommitteeView ? '+ Record Committee Donation' : '+ Record Donation'))}
+                {isCongressView ? t('finance.recordCongressDonation', '+ Record Congress Donation') : (isJirgaView ? t('finance.recordJirgaDonation', '+ Record Jirga Donation') : (isCommitteeView ? t('finance.recordCommitteeDonation', '+ Record Committee Donation') : t('finance.recordDonation', '+ Record Donation')))}
               </button>
             </div>
           )}
           {canRecord && donModalOpen && (
             <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDonModalOpen(false); }}>
-              <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Donation">
+              <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label={t('finance.recordDonation', 'Record Donation')}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <h3 style={{ margin: 0 }}>
-                    {isCongressView ? 'Record Congress Donation' : (isJirgaView ? 'Record Jirga Donation' : (isCommitteeView ? 'Record Committee Donation' : 'Record a Donation'))}
+                    {isCongressView ? t('finance.recordCongressDonation', 'Record Congress Donation') : (isJirgaView ? t('finance.recordJirgaDonation', 'Record Jirga Donation') : (isCommitteeView ? t('finance.recordCommitteeDonation', 'Record Committee Donation') : t('finance.recordDonation', 'Record a Donation')))}
                   </h3>
-                  <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+                  <button type="button" className="btn secondary" onClick={() => setDonModalOpen(false)} aria-label={t('common.close', 'Close')} style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
                 {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
                 <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-                  Fields marked <Req /> are required.
+                  {t('finance.fieldsMarkedRequired', 'Fields marked * are required.')}
                 </p>
                 <div className="form-grid">
-                  <div className="field"><label>Amount (PKR) <Req /></label>
+                  <div className="field"><label>{t('finance.amount', 'Amount')} (PKR) <Req /></label>
                     <input type="number" min="1" required value={donForm.amount}
                       aria-invalid={donErrors.amount ? 'true' : undefined}
                       onChange={(e) => setDonForm({ ...donForm, amount: e.target.value })} />
                     {donErrors.amount
                       ? <div className="error">{donErrors.amount}</div>
                       : donForm.donorType === 'ANONYMOUS'
-                        ? <div className="hint">Anonymous donations are capped at {PKR.format(ANONYMOUS_CAP)}.</div>
+                        ? <div className="hint">{t('finance.anonymousCap', `Anonymous donations are capped at ${PKR.format(ANONYMOUS_CAP)}.`)}</div>
                         : null}
                   </div>
-                  <div className="field"><label>Donor Type <Req /></label>
+                  <div className="field"><label>{t('finance.donorType', 'Donor Type')} <Req /></label>
                     <select
                       value={donForm.donorType}
                       onChange={(e) => {
@@ -560,11 +560,11 @@ export default function FinancePage() {
                         });
                       }}
                     >
-                      {DONOR_TYPES.map((t) => <option key={t}>{t}</option>)}
+                      {DONOR_TYPES.map((dType) => <option key={dType} value={dType}>{t(`finance.${dType.toLowerCase().replace('_', '')}`, dType)}</option>)}
                     </select></div>
                   {donForm.donorType === 'MEMBER' && (
                     <div className="field full">
-                      <label>Donor (member)</label>
+                      <label>{t('finance.donorMember', 'Donor (member)')}</label>
                       <select
                         value={donForm.donorMemberId}
                         onChange={(e) => {
@@ -578,7 +578,7 @@ export default function FinancePage() {
                           });
                         }}
                       >
-                        <option value="">— pick a member —</option>
+                        <option value="">— {t('finance.pickMember', 'pick a member')} —</option>
                         {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
                       </select>
                       <div className="hint">Linking to a member also reflects the donation on their performance report.</div>
@@ -586,10 +586,10 @@ export default function FinancePage() {
                   )}
                   {(donForm.donorType === 'NON_MEMBER' || donForm.donorType === 'CORPORATE') && (
                     <>
-                      <div className="field"><label>Donor Name</label>
+                      <div className="field"><label>{t('finance.donorName', 'Donor Name')}</label>
                         <input value={donForm.donorName} onChange={(e) => setDonForm({ ...donForm, donorName: e.target.value })} /></div>
                       <div className="field">
-                        <label>Donor CNIC {donCnicRequired && <Req />}</label>
+                        <label>{t('finance.donorCnic', 'Donor CNIC')} {donCnicRequired && <Req />}</label>
                         <input
                           value={donForm.donorCnic}
                           placeholder="42101-1234567-1"
@@ -607,23 +607,23 @@ export default function FinancePage() {
                       </div>
                     </>
                   )}
-                  <div className="field"><label>Payment Mode <Req /></label>
+                  <div className="field"><label>{t('finance.paymentMode', 'Payment Mode')} <Req /></label>
                     <select value={donForm.paymentMode} onChange={(e) => setDonForm({ ...donForm, paymentMode: e.target.value })}>
-                      {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
+                      {PAYMENT_MODES.map((m) => <option key={m} value={m}>{t(`finance.${m.toLowerCase().replace(/_([a-z])/g, (_, l) => l.toUpperCase())}`, m)}</option>)}
                     </select></div>
-                  <div className="field"><label>Received At <Req /></label>
+                  <div className="field"><label>{t('finance.receivedAt', 'Received At')} <Req /></label>
                     <input type="date" required value={donForm.receivedAt}
                       aria-invalid={donErrors.receivedAt ? 'true' : undefined}
                       onChange={(e) => setDonForm({ ...donForm, receivedAt: e.target.value })} />
                     {donErrors.receivedAt && <div className="error">{donErrors.receivedAt}</div>}
                   </div>
-                  <div className="field full"><label>Receipt Image</label>
+                  <div className="field full"><label>{t('finance.receiptImage', 'Receipt Image')}</label>
                     <input type="file" accept="image/*,application/pdf" onChange={(e) => setDonReceipt(e.target.files?.[0] || null)} />
                     <div className="hint">Optional.</div></div>
                 </div>
                 <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                  <button className="btn secondary" type="button" onClick={() => setDonModalOpen(false)}>Cancel</button>
-                  <button className="btn" onClick={recordDonation}>Record Donation</button>
+                  <button className="btn secondary" type="button" onClick={() => setDonModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
+                  <button className="btn" onClick={recordDonation}>{t('finance.recordDonation', 'Record Donation')}</button>
                 </div>
               </div>
             </div>
@@ -632,13 +632,22 @@ export default function FinancePage() {
           <div className="table-responsive">
           <table className="list">
             <thead>
-              <tr><th>Receipt</th><th>Date</th><th>Donor</th><th>Mode</th><th style={{ textAlign: 'right' }}>Amount</th></tr>
+              <tr>
+                <th>{t('finance.receipt', 'Receipt')}</th>
+                <th>{t('common.date', 'Date')}</th>
+                <th>{t('finance.donor', 'Donor')}</th>
+                <th>{t('finance.collectedBy', 'Collected By')}</th>
+                <th>{t('finance.mode', 'Mode')}</th>
+                <th style={{ textAlign: 'right' }}>{t('finance.amount', 'Amount')}</th>
+                <th>{t('finance.status', 'Status')}</th>
+                <th>{t('finance.actions', 'Actions')}</th>
+              </tr>
             </thead>
             <tbody>
               {displayedDonations.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                    No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} donations recorded yet.
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                    {t('finance.noDonationsYet', 'No donations recorded yet.')}
                   </td>
                 </tr>
               )}
@@ -648,8 +657,8 @@ export default function FinancePage() {
                   ? members.find((m) => String(m._id) === String(d.donorMemberId))
                   : null;
                 const effectiveDonorName = d.donorType === 'ANONYMOUS'
-                  ? 'Anonymous'
-                  : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? 'Member' : '—'));
+                  ? t('finance.anonymous', 'Anonymous')
+                  : (d.donorName || memberObj?.fullName || memberFromList?.fullName || (d.donorType === 'MEMBER' ? t('finance.member', 'Member') : '—'));
 
                 const isCng = d.body === 'CONGRESS';
                 const isJrg = d.body === 'JIRGA';
@@ -684,8 +693,25 @@ export default function FinancePage() {
                     </td>
                     <td>{new Date(d.receivedAt).toLocaleDateString()}</td>
                     <td>{effectiveDonorName}</td>
+                    <td>
+                      <div style={{ fontWeight: 500 }}>
+                        {d.recordedBy?.fullName || d.recordedBy?.username || d.recordedByName || '—'}
+                      </div>
+                      {d.recordedBy?.roles?.[0] && (
+                        <div className="muted" style={{ fontSize: 11 }}>
+                          {t(`roles.${d.recordedBy.roles[0].toLowerCase()}`, d.recordedBy.roles[0].replace(/_/g, ' '))}
+                        </div>
+                      )}
+                    </td>
                     <td>{d.paymentMode}</td>
                     <td style={{ textAlign: 'right' }}>{PKR.format(d.amount)}</td>
+                    <td><span className={`badge ${d.state || 'APPROVED'}`}>{d.state || 'APPROVED'}</span></td>
+                    <td>{d.state === 'PENDING' && canApprove && (
+                      <>
+                        <button className="btn" onClick={() => decideDonation(d._id, 'APPROVED')}>{t('finance.approve', 'Approve')}</button>{' '}
+                        <button className="btn danger" onClick={() => decideDonation(d._id, 'REJECTED')}>{t('finance.reject', 'Reject')}</button>
+                      </>
+                    )}</td>
                   </tr>
                 );
               })}
@@ -700,56 +726,68 @@ export default function FinancePage() {
           {canRecord && (
             <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn" onClick={() => { setErr(''); setExpModalOpen(true); }}>
-                {isCongressView ? '+ Record Congress Expense' : (isJirgaView ? '+ Record Jirga Expense' : (isCommitteeView ? '+ Record Committee Expense' : '+ Record Expense'))}
+                {isCongressView
+                  ? t('finance.recordCongressExpense', '+ Record Congress Expense')
+                  : (isJirgaView
+                    ? t('finance.recordJirgaExpense', '+ Record Jirga Expense')
+                    : (isCommitteeView
+                      ? t('finance.recordCommitteeExpense', '+ Record Committee Expense')
+                      : t('finance.recordExpense', '+ Record Expense')))}
               </button>
             </div>
           )}
           {canRecord && expModalOpen && (
             <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setExpModalOpen(false); }}>
-              <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Record Expense">
+              <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label={t('finance.recordExpense', 'Record Expense')}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <h3 style={{ margin: 0 }}>
-                    {isCongressView ? 'Record Congress Expense' : (isJirgaView ? 'Record Jirga Expense' : (isCommitteeView ? 'Record Committee Expense' : 'Record an Expense'))}
+                    {isCongressView
+                      ? t('finance.recordCongressExpense', 'Record Congress Expense')
+                      : (isJirgaView
+                        ? t('finance.recordJirgaExpense', 'Record Jirga Expense')
+                        : (isCommitteeView
+                          ? t('finance.recordCommitteeExpense', 'Record Committee Expense')
+                          : t('finance.recordExpense', 'Record an Expense')))}
                   </h3>
-                  <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+                  <button type="button" className="btn secondary" onClick={() => setExpModalOpen(false)} aria-label={t('common.close', 'Close')} style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
                 </div>
                 {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
                 <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-                  Fields marked <Req /> are required.
+                  {t('finance.fieldsMarkedRequired', 'Fields marked * are required.')}
                 </p>
                 <div className="form-grid">
-                  <div className="field"><label>Amount (PKR) <Req /></label>
+                  <div className="field"><label>{t('finance.amount', 'Amount (PKR)')} <Req /></label>
                     <input type="number" min="1" required value={expForm.amount}
                       aria-invalid={expErrors.amount ? 'true' : undefined}
                       onChange={(e) => setExpForm({ ...expForm, amount: e.target.value })} />
                     {expErrors.amount && <div className="error">{expErrors.amount}</div>}
                   </div>
-                  <div className="field"><label>Category <Req /></label>
+                  <div className="field"><label>{t('finance.category', 'Category')} <Req /></label>
                     <select value={expForm.category} onChange={(e) => setExpForm({ ...expForm, category: e.target.value })}>
                       {EXPENSE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                     </select></div>
-                  <div className="field full"><label>Description <Req /></label>
+                  <div className="field full"><label>{t('finance.description', 'Description')} <Req /></label>
                     <input required value={expForm.description}
                       aria-invalid={expErrors.description ? 'true' : undefined}
                       onChange={(e) => setExpForm({ ...expForm, description: e.target.value })} />
                     {expErrors.description && <div className="error">{expErrors.description}</div>}
                   </div>
-                  <div className="field"><label>Vendor / Payee</label>
+                  <div className="field"><label>{t('finance.vendorPayee', 'Vendor / Payee')}</label>
                     <input value={expForm.vendor} onChange={(e) => setExpForm({ ...expForm, vendor: e.target.value })} />
-                    <div className="hint">Optional.</div></div>
-                  <div className="field"><label>Payment Mode <Req /></label>
+                    <div className="hint">{t('common.optional', 'Optional')}</div></div>
+                  <div className="field"><label>{t('finance.paymentMode', 'Payment Mode')} <Req /></label>
                     <select value={expForm.paymentMode} onChange={(e) => setExpForm({ ...expForm, paymentMode: e.target.value })}>
                       {PAYMENT_MODES.map((m) => <option key={m}>{m}</option>)}
                     </select></div>
-                  <div className="field"><label>Incurred At <Req /></label>
+                  <div className="field"><label>{t('finance.incurredAt', 'Incurred At')} <Req /></label>
                     <input type="date" required value={expForm.incurredAt} onChange={(e) => setExpForm({ ...expForm, incurredAt: e.target.value })} /></div>
-                  <div className="field full"><label>Bill / Voucher <Req /></label>
+                  <div className="field full"><label>{t('finance.billVoucher', 'Bill / Voucher')} <Req /></label>
                     <input type="file" accept="image/*,application/pdf" onChange={(e) => setExpEvidence(e.target.files?.[0] || null)} />
-                    <div className="hint">{expEvidence ? expEvidence.name : 'An expense cannot be recorded without a bill or voucher.'}</div></div>
+                    <div className="hint">{expEvidence ? expEvidence.name : t('finance.billRequiredHint', 'An expense cannot be recorded without a bill or voucher.')}</div></div>
                 </div>
                 <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                  <button className="btn secondary" type="button" onClick={() => setExpModalOpen(false)}>Cancel</button>
-                  <button className="btn" onClick={recordExpense}>Record Expense</button>
+                  <button className="btn secondary" type="button" onClick={() => setExpModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
+                  <button className="btn" onClick={recordExpense}>{t('finance.recordExpense', 'Record Expense')}</button>
                 </div>
               </div>
             </div>
@@ -758,13 +796,22 @@ export default function FinancePage() {
           <div className="table-responsive">
           <table className="list">
             <thead>
-              <tr><th>Date</th><th>Category</th><th>Description</th><th>Vendor</th><th style={{ textAlign: 'right' }}>Amount</th><th>State</th><th></th></tr>
+              <tr>
+                <th>{t('common.date', 'Date')}</th>
+                <th>{t('finance.category', 'Category')}</th>
+                <th>{t('finance.description', 'Description')}</th>
+                <th>{t('finance.recordedBy', 'Recorded By')}</th>
+                <th>{t('finance.vendorPayee', 'Vendor')}</th>
+                <th style={{ textAlign: 'right' }}>{t('finance.amount', 'Amount')}</th>
+                <th>{t('finance.status', 'State')}</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               {displayedExpenses.length === 0 && (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                    No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} expenses recorded yet.
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                    {t('finance.noExpensesYet', 'No expenses recorded yet.')}
                   </td>
                 </tr>
               )}
@@ -787,7 +834,7 @@ export default function FinancePage() {
                         fontSize: 11,
                       }}
                     >
-                      {isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'))}
+                      {isCng ? t('units.nationalCongress', 'Congress') : (isJrg ? t('units.jirga', 'Jirga') : (isCm ? t('units.committee', 'Committee') : t('roles.executive', 'Executive')))}
                     </span>
                     {x.category}
                   </td>
@@ -801,13 +848,23 @@ export default function FinancePage() {
                       </div>
                     )}
                   </td>
+                  <td>
+                    <div style={{ fontWeight: 500 }}>
+                      {x.recordedBy?.fullName || x.recordedBy?.username || x.recordedByName || '—'}
+                    </div>
+                    {x.recordedBy?.roles?.[0] && (
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {t(`roles.${x.recordedBy.roles[0].toLowerCase()}`, x.recordedBy.roles[0].replace(/_/g, ' '))}
+                      </div>
+                    )}
+                  </td>
                   <td>{x.vendor || '—'}</td>
                   <td style={{ textAlign: 'right' }}>{PKR.format(x.amount)}</td>
                   <td><span className={`badge ${x.state}`}>{x.state}</span></td>
                   <td>{x.state === 'PENDING' && canApprove && (
                     <>
-                      <button className="btn" onClick={() => decideExpense(x._id, 'APPROVED')}>Approve</button>{' '}
-                      <button className="btn danger" onClick={() => decideExpense(x._id, 'REJECTED')}>Reject</button>
+                      <button className="btn" onClick={() => decideExpense(x._id, 'APPROVED')}>{t('finance.approve', 'Approve')}</button>{' '}
+                      <button className="btn danger" onClick={() => decideExpense(x._id, 'REJECTED')}>{t('finance.reject', 'Reject')}</button>
                     </>
                   )}</td>
                   </tr>
@@ -824,19 +881,19 @@ export default function FinancePage() {
           <div className="card" style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div className="field" style={{ minWidth: 180 }}>
-                <label>From</label>
+                <label>{t('finance.from', 'From')}</label>
                 <input type="date" value={monthFrom} onChange={(e) => setMonthFrom(e.target.value)} />
               </div>
               <div className="field" style={{ minWidth: 180 }}>
-                <label>To</label>
+                <label>{t('finance.to', 'To')}</label>
                 <input type="date" value={monthTo} onChange={(e) => setMonthTo(e.target.value)} />
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                <button className="btn secondary" onClick={() => applyQuickRange('this')}>This month</button>
-                <button className="btn secondary" onClick={() => applyQuickRange('last')}>Last month</button>
-                <button className="btn secondary" onClick={() => applyQuickRange('3')}>Last 3 months</button>
-                <button className="btn secondary" onClick={() => applyQuickRange('ytd')}>Year-to-date</button>
-                <button className="btn ghost" onClick={() => applyQuickRange('all')}>All time</button>
+                <button className="btn secondary" onClick={() => applyQuickRange('this')}>{t('finance.thisMonth', 'This month')}</button>
+                <button className="btn secondary" onClick={() => applyQuickRange('last')}>{t('finance.lastMonth', 'Last month')}</button>
+                <button className="btn secondary" onClick={() => applyQuickRange('3')}>{t('finance.last3Months', 'Last 3 months')}</button>
+                <button className="btn secondary" onClick={() => applyQuickRange('ytd')}>{t('finance.ytd', 'Year-to-date')}</button>
+                <button className="btn ghost" onClick={() => applyQuickRange('all')}>{t('finance.allTime', 'All time')}</button>
               </div>
             </div>
           </div>
@@ -845,19 +902,19 @@ export default function FinancePage() {
           <table className="list">
             <thead>
               <tr>
-                <th>Month</th>
-                <th style={{ textAlign: 'right' }}>Donations</th>
-                <th style={{ textAlign: 'right' }}>Transfers In</th>
-                <th style={{ textAlign: 'right' }}>Expenses</th>
-                <th style={{ textAlign: 'right' }}>Transfers Out</th>
-                <th style={{ textAlign: 'right' }}>Net Balance</th>
+                <th>{t('finance.month', 'Month')}</th>
+                <th style={{ textAlign: 'right' }}>{t('finance.donations', 'Donations')}</th>
+                <th style={{ textAlign: 'right' }}>{t('finance.transfersIn', 'Transfers In')}</th>
+                <th style={{ textAlign: 'right' }}>{t('finance.expenses', 'Expenses')}</th>
+                <th style={{ textAlign: 'right' }}>{t('finance.transfersOut', 'Transfers Out')}</th>
+                <th style={{ textAlign: 'right' }}>{t('finance.netBalance', 'Net Balance')}</th>
               </tr>
             </thead>
             <tbody>
               {monthly.length === 0 && (
                 <tr>
                   <td colSpan="6" style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
-                    No {isCommitteeView ? 'committee' : 'executive'} financial activity in this period.
+                    {t('finance.noTransactions', 'No financial activity in this period.')}
                   </td>
                 </tr>
               )}
@@ -875,7 +932,7 @@ export default function FinancePage() {
               ))}
               {monthly.length > 0 && (
                 <tr style={{ fontWeight: 600, background: 'var(--surface-alt)' }}>
-                  <td>Totals</td>
+                  <td>{t('finance.totals', 'Totals')}</td>
                   <td style={{ textAlign: 'right' }}>{PKR.format(monthly.reduce((a, m) => a + m.donations, 0))}</td>
                   <td style={{ textAlign: 'right' }}>{PKR.format(monthly.reduce((a, m) => a + m.transfersIn, 0))}</td>
                   <td style={{ textAlign: 'right' }}>{PKR.format(monthly.reduce((a, m) => a + m.expenses, 0))}</td>

@@ -20,6 +20,7 @@ import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { confirmAction } from '../../../../src/utils/dialog';
 import { useToast } from '../../../../src/components/Toast';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import Card from '../../../../src/components/Card';
 import Badge from '../../../../src/components/Badge';
 import EmptyState from '../../../../src/components/EmptyState';
@@ -82,6 +83,7 @@ const INITIAL_FIELD_FORM = {
 export default function FieldLibraryScreen() {
   const { user } = useAuth();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const canWrite = hasPermission(user, 'MANAGE_EVENT_CONFIG');
 
   const [fields, setFields] = useState([]);
@@ -265,10 +267,10 @@ export default function FieldLibraryScreen() {
       if (!editingField) {
         payload.key = form.key.trim();
         await api.post('/admin/events/fields', payload);
-        toast.success('Field created successfully.');
+        toast.success(t('admin.fieldCreated', 'Field created successfully.'));
       } else {
         await api.patch(`/admin/events/fields/${editingField._id}`, payload);
-        toast.success('Field updated successfully.');
+        toast.success(t('admin.fieldUpdated', 'Field updated successfully.'));
       }
       setModalOpen(false);
       load();
@@ -283,12 +285,12 @@ export default function FieldLibraryScreen() {
   async function handleDelete(f) {
     if (!canWrite || f.isSystem) return;
     confirmAction(
-      'Delete Field',
-      `Delete field "${f.label}" (${f.key})? This is only safe if no event type currently uses it.`,
+      t('common.delete', 'Delete'),
+      t('admin.deleteFieldConfirm', { label: f.label, key: f.key, defaultValue: `Delete field "${f.label}" (${f.key})? This is only safe if no event type currently uses it.` }),
       async () => {
         try {
           await api.delete(`/admin/events/fields/${f._id}`);
-          toast.success('Field deleted.');
+          toast.success(t('admin.fieldDeleted', 'Field deleted.'));
           load();
         } catch (e) {
           toast.error(errorMessage(e));
@@ -315,8 +317,8 @@ export default function FieldLibraryScreen() {
             <View style={styles.nameRow}>
               <Text style={styles.fieldName}>{f.label}</Text>
               <Badge label={f.type} color={Colors.primary} bg="#eff6ff" />
-              {f.required && <Badge label="Required" color="#b91c1c" bg="#fef2f2" />}
-              {!f.isActive && <Badge label="Inactive" color={Colors.textMuted} bg={Colors.borderLight} />}
+              {f.required && <Badge label={t('common.required', 'Required')} color="#b91c1c" bg="#fef2f2" />}
+              {!f.isActive && <Badge label={t('admin.inactive', 'Inactive')} color={Colors.textMuted} bg={Colors.borderLight} />}
             </View>
 
             <View style={styles.metaRow}>
@@ -337,7 +339,7 @@ export default function FieldLibraryScreen() {
           <View style={styles.actionsRow}>
             {canWrite && (
               <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(f)}>
-                <Text style={styles.editBtnText}>✎ Edit</Text>
+                <Text style={styles.editBtnText}>✎ {t('common.edit', 'Edit')}</Text>
               </TouchableOpacity>
             )}
             {canWrite && !f.isSystem && (
@@ -361,7 +363,7 @@ export default function FieldLibraryScreen() {
         {canWrite && (
           <TouchableOpacity style={styles.createBtn} onPress={openCreate}>
             <Ionicons name="add" size={16} color="#fff" style={{ marginRight: 4 }} />
-            <Text style={styles.createBtnText}>New Field</Text>
+            <Text style={styles.createBtnText}>{t('admin.newField', 'New Field')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -384,7 +386,7 @@ export default function FieldLibraryScreen() {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>{editingField ? 'Edit Field' : 'New Field'}</Text>
+                <Text style={styles.modalTitle}>{editingField ? t('admin.editField', 'Edit Field') : t('admin.createField', 'New Field')}</Text>
                 {editingField && (
                   <Text style={styles.modalSub}>
                     <code>{editingField.key}</code> — key is locked after creation
@@ -406,7 +408,7 @@ export default function FieldLibraryScreen() {
 
               {/* Basic Fields */}
               <View style={styles.formField}>
-                <Text style={styles.label}>Display Label *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('admin.displayLabel', 'Display Label')} *</Text>
                 <TextInput
                   style={styles.input}
                   value={form.label}
@@ -466,7 +468,7 @@ export default function FieldLibraryScreen() {
               </View>
 
               <View style={styles.formField}>
-                <Text style={styles.label}>Sort Order</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('admin.sortOrder', 'Sort Order')}</Text>
                 <View style={styles.numberStepperRow}>
                   <TouchableOpacity
                     style={styles.stepperBtn}
@@ -525,7 +527,7 @@ export default function FieldLibraryScreen() {
               {/* ─── Validation Block ─── */}
               {(isString || isNumber || needsOptions) && (
                 <View style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>Validation</Text>
+                  <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('admin.validation', 'Validation')}</Text>
 
                   {isString && (
                     <>
@@ -754,7 +756,7 @@ export default function FieldLibraryScreen() {
                 onPress={() => setModalOpen(false)}
                 disabled={saving}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveBtn, saving && { opacity: 0.7 }]}
@@ -764,7 +766,7 @@ export default function FieldLibraryScreen() {
                 {saving ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>{editingField ? 'Save Changes' : 'Create Field'}</Text>
+                  <Text style={styles.saveBtnText}>{editingField ? t('admin.saveChanges', 'Save Changes') : t('admin.createField', 'Create Field')}</Text>
                 )}
               </TouchableOpacity>
             </View>

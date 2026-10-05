@@ -37,6 +37,7 @@ import EmptyState from '../../../src/components/EmptyState';
 import Avatar from '../../../src/components/Avatar';
 import { useToast } from '../../../src/components/Toast';
 import { useNetwork } from '../../../src/context/NetworkContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
 import { shortDate, MEETING_TYPE_LABEL } from '../../../src/utils/formatters';
 
@@ -48,12 +49,12 @@ const LEVEL_LABELS = {
   CENTRAL: 'Central',
 };
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, isRTL }) {
   if (!value) return null;
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+    <View style={[styles.row, isRTL && { flexDirection: 'row-reverse' }]}>
+      <Text style={[styles.rowLabel, isRTL && { textAlign: 'right' }]}>{label}</Text>
+      <Text style={[styles.rowValue, isRTL ? { textAlign: 'left' } : { textAlign: 'right' }]}>{value}</Text>
     </View>
   );
 }
@@ -64,6 +65,7 @@ export default function MeetingDetailScreen() {
   const { user } = useAuth();
   const toast = useToast();
   const { isOnline } = useNetwork();
+  const { t, isRTL } = useLanguage();
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -616,7 +618,7 @@ export default function MeetingDetailScreen() {
   }
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>;
-  if (!meeting) return <EmptyState icon="❌" title="Meeting not found" />;
+  if (!meeting) return <EmptyState icon="❌" title={t('meetings.notFound', 'Meeting not found')} />;
 
   const m = meeting;
   const attendees = m.attendance || [];
@@ -629,14 +631,14 @@ export default function MeetingDetailScreen() {
   const isGbm = !isCng && !isJrg && (m.body === 'GENERAL_BODY' || m.typeCode === 'GBM' || m.type === 'GBM');
 
   const streamBadge = isCng
-    ? { label: 'National Congress', color: '#0369a1', bg: '#e0f2fe' }
+    ? { label: t('meetings.nationalCongress', 'National Congress'), color: '#0369a1', bg: '#e0f2fe' }
     : isJrg
-    ? { label: 'Jirga Meeting', color: '#6b21a8', bg: '#f3e8ff' }
+    ? { label: t('meetings.jirgaMeeting', 'Jirga Meeting'), color: '#6b21a8', bg: '#f3e8ff' }
     : isCm
-    ? { label: 'Committee Meeting', color: '#92400e', bg: '#fef3c7' }
+    ? { label: t('meetings.committeeMeeting', 'Committee Meeting'), color: '#92400e', bg: '#fef3c7' }
     : isGbm
-    ? { label: 'General Body Meeting', color: '#065f46', bg: '#ecfdf5' }
-    : { label: 'Executive Meeting', color: '#4338ca', bg: '#eef2ff' };
+    ? { label: t('meetings.generalBodyMeeting', 'General Body Meeting'), color: '#065f46', bg: '#ecfdf5' }
+    : { label: t('meetings.executiveMeeting', 'Executive Meeting'), color: '#4338ca', bg: '#eef2ff' };
 
   const stateColor = m.state === 'CANCELLED' ? Colors.error : (m.state === 'FINALIZED' ? Colors.success : Colors.warning);
   const stateBg = m.state === 'CANCELLED' ? Colors.errorBg : (m.state === 'FINALIZED' ? Colors.successBg : Colors.warningBg);
@@ -657,40 +659,40 @@ export default function MeetingDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header Card */}
         <Card style={styles.headerCard}>
-          <Text style={styles.meetingTitle}>
-            {m.title || MEETING_TYPE_LABEL[m.typeCode] || m.type || 'Meeting'}
+          <Text style={[styles.meetingTitle, isRTL && { textAlign: 'right' }]}>
+            {m.title || MEETING_TYPE_LABEL[m.typeCode] || m.type || t('meetings.meeting', 'Meeting')}
           </Text>
-          <View style={styles.badges}>
+          <View style={[styles.badges, isRTL && { flexDirection: 'row-reverse' }]}>
             <Badge label={streamBadge.label} color={streamBadge.color} bg={streamBadge.bg} />
-            <Badge label={m.state || 'SCHEDULED'} color={stateColor} bg={stateBg} />
+            <Badge label={t(`status.${m.state || 'SCHEDULED'}`, m.state || 'SCHEDULED')} color={stateColor} bg={stateBg} />
             {!isOnline && (
-              <Badge label="Offline (Cached)" color="#DC2626" bg="#FEE2E2" />
+              <Badge label={t('common.offlineCached', 'Offline (Cached)')} color="#DC2626" bg="#FEE2E2" />
             )}
           </View>
         </Card>
 
         {/* Action Bar */}
-        <View style={styles.actionsRow}>
+        <View style={[styles.actionsRow, isRTL && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => setShowPhotos(true)}>
-            <Text style={styles.actionBtnText}>📷 Photos ({photos.length})</Text>
+            <Text style={styles.actionBtnText}>📷 {t('meetings.photosWithCount', 'Photos ({{count}})', { count: photos.length })}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={() => setShowDocs(true)}>
-            <Text style={styles.actionBtnText}>📎 Docs ({documents.length})</Text>
+            <Text style={styles.actionBtnText}>📎 {t('meetings.docsWithCount', 'Docs ({{count}})', { count: documents.length })}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, !isOnline && { opacity: 0.5 }]}
             onPress={handleExportPdf}
             disabled={!isOnline}
           >
-            <Text style={[styles.actionBtnText, !isOnline && { color: Colors.textMuted }]}>📄 PDF</Text>
+            <Text style={[styles.actionBtnText, !isOnline && { color: Colors.textMuted }]}>📄 {t('common.pdf', 'PDF')}</Text>
           </TouchableOpacity>
           {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
             <>
               <TouchableOpacity style={[styles.actionBtn, styles.actionBtnPrimary]} onPress={openFinalizeModal}>
-                <Text style={[styles.actionBtnText, { color: '#fff' }]}>✅ Finalize</Text>
+                <Text style={[styles.actionBtnText, { color: '#fff' }]}>✅ {t('meetings.finalize', 'Finalize')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.actionBtn} onPress={() => setShowCancel(true)}>
-                <Text style={[styles.actionBtnText, { color: Colors.error }]}>❌ Cancel</Text>
+                <Text style={[styles.actionBtnText, { color: Colors.error }]}>❌ {t('meetings.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -699,13 +701,13 @@ export default function MeetingDetailScreen() {
         {/* Visual Photos Preview if photos exist */}
         {photos.length > 0 && (
           <Card style={{ marginBottom: Spacing.md }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
-              <Text style={styles.sectionTitle}>Uploaded Photos ({photos.length})</Text>
+            <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.sectionTitle}>{t('meetings.uploadedPhotos', 'Uploaded Photos ({{count}})', { count: photos.length })}</Text>
               <TouchableOpacity onPress={() => setShowPhotos(true)}>
-                <Text style={{ fontSize: FontSize.xs, color: Colors.primary, fontWeight: '700' }}>View Gallery ↗</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.primary, fontWeight: '700' }}>{t('meetings.viewGallery', 'View Gallery ↗')}</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[{ gap: 8 }, isRTL && { flexDirection: 'row-reverse' }]}>
               {photos.map((p, idx) => (
                 <TouchableOpacity
                   key={idx}
@@ -724,67 +726,70 @@ export default function MeetingDetailScreen() {
 
         {/* Details Card */}
         <Card style={{ marginBottom: Spacing.md }}>
-          <Text style={styles.sectionTitle}>Meeting Information</Text>
-          <InfoRow label="Start Time" value={m.startAt ? new Date(m.startAt).toLocaleString('en-PK') : undefined} />
-          <InfoRow label="End Time" value={m.endAt ? new Date(m.endAt).toLocaleString('en-PK') : undefined} />
-          <InfoRow label="Venue" value={m.venue} />
-          <InfoRow label="Chairperson" value={chairperson?.fullName ? `${chairperson.fullName}${chairperson.memberId ? ` · ${chairperson.memberId}` : ''}` : undefined} />
-          <InfoRow label="Unit" value={m.unitName || m.unitId?.name || (m.unitLevel ? LEVEL_LABELS[m.unitLevel] || m.unitLevel : undefined)} />
+          <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('meetings.meetingInformation', 'Meeting Information')}</Text>
+          <InfoRow label={t('meetings.startTime', 'Start Time')} value={m.startAt ? new Date(m.startAt).toLocaleString() : undefined} isRTL={isRTL} />
+          <InfoRow label={t('meetings.endTime', 'End Time')} value={m.endAt ? new Date(m.endAt).toLocaleString() : undefined} isRTL={isRTL} />
+          <InfoRow label={t('meetings.venue', 'Venue')} value={m.venue} isRTL={isRTL} />
+          <InfoRow label={t('meetings.chairperson', 'Chairperson')} value={chairperson?.fullName ? `${chairperson.fullName}${chairperson.memberId ? ` · ${chairperson.memberId}` : ''}` : undefined} isRTL={isRTL} />
+          <InfoRow label={t('meetings.unit', 'Unit')} value={m.unitName || m.unitId?.name || (m.unitLevel ? LEVEL_LABELS[m.unitLevel] || m.unitLevel : undefined)} isRTL={isRTL} />
           {m.gps?.lat != null && m.gps?.lng != null && (
-            <InfoRow label="Venue GPS" value={`${Number(m.gps.lat).toFixed(4)}, ${Number(m.gps.lng).toFixed(4)}`} />
+            <InfoRow label={t('meetings.venueGps', 'Venue GPS')} value={`${Number(m.gps.lat).toFixed(4)}, ${Number(m.gps.lng).toFixed(4)}`} isRTL={isRTL} />
           )}
         </Card>
 
         {/* Agenda */}
         {m.agenda ? (
           <Card style={{ marginBottom: Spacing.md }}>
-            <Text style={styles.sectionTitle}>Agenda</Text>
-            <Text style={styles.bodyText}>{m.agenda}</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('meetings.agenda', 'Agenda')}</Text>
+            <Text style={[styles.bodyText, isRTL && { textAlign: 'right' }]}>{m.agenda}</Text>
           </Card>
         ) : null}
 
         {/* Decisions / Previous Work (if recorded) */}
         {m.decisions ? (
           <Card style={{ marginBottom: Spacing.md }}>
-            <Text style={styles.sectionTitle}>Decisions / Minutes</Text>
-            <Text style={styles.bodyText}>{m.decisions}</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('meetings.decisionsMinutes', 'Decisions / Minutes')}</Text>
+            <Text style={[styles.bodyText, isRTL && { textAlign: 'right' }]}>{m.decisions}</Text>
           </Card>
         ) : null}
 
         {/* Upcoming Strategy */}
         {m.upcomingStrategy ? (
           <Card style={{ marginBottom: Spacing.md }}>
-            <Text style={styles.sectionTitle}>Upcoming Strategy</Text>
-            <Text style={styles.bodyText}>{m.upcomingStrategy}</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('meetings.upcomingStrategy', 'Upcoming Strategy')}</Text>
+            <Text style={[styles.bodyText, isRTL && { textAlign: 'right' }]}>{m.upcomingStrategy}</Text>
           </Card>
         ) : null}
 
         {/* Description / Notes */}
         {m.description ? (
           <Card style={{ marginBottom: Spacing.md }}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.bodyText}>{m.description}</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('meetings.description', 'Description')}</Text>
+            <Text style={[styles.bodyText, isRTL && { textAlign: 'right' }]}>{m.description}</Text>
           </Card>
         ) : null}
 
         {/* Attendance Summary */}
         {attendees.length > 0 && (
           <Card>
-            <Text style={styles.sectionTitle}>
-              Attendance ({attendees.filter((a) => a.status === 'PRESENT' || a.present).length} Present / {attendees.length} Total)
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>
+              {t('meetings.attendanceRatio', 'Attendance ({{present}} Present / {{total}} Total)', {
+                present: attendees.filter((a) => a.status === 'PRESENT' || a.present).length,
+                total: attendees.length,
+              })}
             </Text>
             {attendees.map((a, i) => {
               const safeName = a.memberId?.fullName || a.memberIdCode || a.name || '—';
               const isPresent = a.status === 'PRESENT' || a.present;
-              const badgeLabel = isPresent ? 'Present' : 'Absent';
+              const badgeLabel = isPresent ? t('status.present', 'Present') : t('status.absent', 'Absent');
               const badgeColor = isPresent ? Colors.success : Colors.error;
               const badgeBg = isPresent ? Colors.successBg : Colors.errorBg;
               return (
-                <View key={i} style={styles.attendeeRow}>
+                <View key={i} style={[styles.attendeeRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Avatar name={safeName === '—' ? '?' : safeName} size={32} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.attendeeName} numberOfLines={1}>{safeName}</Text>
-                    {a.memberId?.memberId && <Text style={styles.attendeeCode}>{a.memberId.memberId}</Text>}
+                    <Text style={[styles.attendeeName, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{safeName}</Text>
+                    {a.memberId?.memberId && <Text style={[styles.attendeeCode, isRTL && { textAlign: 'right' }]}>{a.memberId.memberId}</Text>}
                   </View>
                   <Badge label={badgeLabel} color={badgeColor} bg={badgeBg} />
                 </View>
@@ -797,44 +802,50 @@ export default function MeetingDetailScreen() {
       {/* ================= PHOTOS MODAL ================= */}
       <Modal visible={showPhotos} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowPhotos(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity onPress={() => setShowPhotos(false)}>
-              <Text style={styles.modalCancel}>Close</Text>
+              <Text style={styles.modalCancel}>{t('common.close', 'Close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Meeting Photos ({photos.length})</Text>
+            <Text style={styles.modalTitle}>{t('meetings.meetingPhotos', 'Meeting Photos ({{count}})', { count: photos.length })}</Text>
             {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' ? (
               <TouchableOpacity onPress={handleUploadPhoto} disabled={uploadingPhoto}>
-                {uploadingPhoto ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>+ Add</Text>}
+                {uploadingPhoto ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>{t('common.add', '+ Add')}</Text>}
               </TouchableOpacity>
             ) : <View style={{ width: 40 }} />}
           </View>
           <ScrollView contentContainerStyle={styles.formContent}>
             {photoError ? (
-              <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
-                <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Photo Rejection Details:</Text>
-                <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4, lineHeight: 17 }}>{photoError}</Text>
+              <View style={[styles.errorBox, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>{t('meetings.photoRejectionDetails', '⚠️ Photo Rejection Details:')}</Text>
+                <Text style={[{ color: '#b91c1c', fontSize: 12, marginTop: 4, lineHeight: 17 }, isRTL && { textAlign: 'right' }]}>{photoError}</Text>
               </View>
             ) : null}
 
             {photos.length === 0 ? (
-              <EmptyState icon="📷" title="No photos uploaded" subtitle="Take or upload meeting photos for geo-fencing and record sealing." />
+              <EmptyState icon="📷" title={t('meetings.noPhotosUploaded', 'No photos uploaded')} subtitle={t('meetings.noPhotosSubtitle', 'Take or upload meeting photos for geo-fencing and record sealing.')} />
             ) : (
               <>
                 {curPhoto && (
                   <View style={styles.photoMainCard}>
                     <Image source={{ uri: curPhoto.url }} style={styles.photoMainImage} resizeMode="contain" />
                     <View style={styles.photoMeta}>
-                      <Text style={styles.photoMetaTitle}>Photo {activePhotoIdx + 1} of {photos.length}</Text>
+                      <Text style={[styles.photoMetaTitle, isRTL && { textAlign: 'right' }]}>
+                        {t('meetings.photoIndex', 'Photo {{current}} of {{total}}', { current: activePhotoIdx + 1, total: photos.length })}
+                      </Text>
                       {curPhoto.capturedAt && (
-                        <Text style={styles.photoMetaText}>🕒 Captured: {new Date(curPhoto.capturedAt).toLocaleString()}</Text>
+                        <Text style={[styles.photoMetaText, isRTL && { textAlign: 'right' }]}>
+                          🕒 {t('meetings.capturedAt', 'Captured: {{date}}', { date: new Date(curPhoto.capturedAt).toLocaleString() })}
+                        </Text>
                       )}
                       {curPhoto.gps?.lat != null && curPhoto.gps?.lng != null && (
                         <TouchableOpacity onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${curPhoto.gps.lat},${curPhoto.gps.lng}`)}>
-                          <Text style={styles.photoMetaLink}>📍 GPS: {Number(curPhoto.gps.lat).toFixed(4)}, {Number(curPhoto.gps.lng).toFixed(4)} (Open in Maps ↗)</Text>
+                          <Text style={[styles.photoMetaLink, isRTL && { textAlign: 'right' }]}>
+                            📍 GPS: {Number(curPhoto.gps.lat).toFixed(4)}, {Number(curPhoto.gps.lng).toFixed(4)} ({t('meetings.openInMaps', 'Open in Maps ↗')})
+                          </Text>
                         </TouchableOpacity>
                       )}
                       {curPhoto.sha256 && (
-                        <Text style={styles.photoMetaCode}>SHA-256: {curPhoto.sha256.slice(0, 16)}...</Text>
+                        <Text style={[styles.photoMetaCode, isRTL && { textAlign: 'right' }]}>SHA-256: {curPhoto.sha256.slice(0, 16)}...</Text>
                       )}
                     </View>
                   </View>
@@ -842,7 +853,7 @@ export default function MeetingDetailScreen() {
 
                 {/* Thumbnails */}
                 {photos.length > 1 && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginVertical: 12 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[{ gap: 8, marginVertical: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
                     {photos.map((p, idx) => (
                       <TouchableOpacity
                         key={idx}
@@ -863,56 +874,56 @@ export default function MeetingDetailScreen() {
       {/* ================= DOCUMENTS MODAL ================= */}
       <Modal visible={showDocs} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowDocs(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity onPress={() => setShowDocs(false)}>
-              <Text style={styles.modalCancel}>Close</Text>
+              <Text style={styles.modalCancel}>{t('common.close', 'Close')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Attached Documents</Text>
+            <Text style={styles.modalTitle}>{t('meetings.attachedDocuments', 'Attached Documents')}</Text>
             <View style={{ width: 40 }} />
           </View>
           <ScrollView contentContainerStyle={styles.formContent}>
             {docError ? (
-              <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
-                <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Document Error:</Text>
-                <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{docError}</Text>
+              <View style={[styles.errorBox, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ {t('meetings.documentError', 'Document Error:')}</Text>
+                <Text style={[{ color: '#b91c1c', fontSize: 12, marginTop: 4 }, isRTL && { textAlign: 'right' }]}>{docError}</Text>
               </View>
             ) : null}
 
             {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
               <Card style={{ marginBottom: Spacing.lg }}>
-                <Text style={styles.fieldLabel}>Upload New Document</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.uploadNewDocument', 'Upload New Document')}</Text>
                 <View style={styles.pickerWrap}>
                   <Picker selectedValue={docKind} onValueChange={(v) => setDocKind(v)} style={styles.picker}>
-                    <Picker.Item label="Agenda Document" value="AGENDA" />
-                    <Picker.Item label="Previous Report" value="PREVIOUS_REPORT" />
-                    <Picker.Item label="Signed Minutes" value="MINUTES" />
-                    <Picker.Item label="Other Supporting Document" value="OTHER" />
+                    <Picker.Item label={t('meetings.docAgenda', 'Agenda Document')} value="AGENDA" />
+                    <Picker.Item label={t('meetings.docPreviousReport', 'Previous Report')} value="PREVIOUS_REPORT" />
+                    <Picker.Item label={t('meetings.docMinutes', 'Signed Minutes')} value="MINUTES" />
+                    <Picker.Item label={t('meetings.docOther', 'Other Supporting Document')} value="OTHER" />
                   </Picker>
                 </View>
                 <TouchableOpacity style={[styles.actionBtn, styles.actionBtnPrimary, { marginTop: 10 }]} onPress={handleUploadDoc} disabled={uploadingDoc}>
-                  {uploadingDoc ? <ActivityIndicator color="#fff" /> : <Text style={[styles.actionBtnText, { color: '#fff' }]}>📁 Select & Upload File</Text>}
+                  {uploadingDoc ? <ActivityIndicator color="#fff" /> : <Text style={[styles.actionBtnText, { color: '#fff' }]}>📁 {t('meetings.selectUploadFile', 'Select & Upload File')}</Text>}
                 </TouchableOpacity>
               </Card>
             )}
 
-            <Text style={styles.sectionTitle}>Attached Files ({documents.length})</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('meetings.attachedFiles', 'Attached Files ({{count}})', { count: documents.length })}</Text>
             {documents.length === 0 ? (
-              <Text style={{ color: Colors.textMuted, fontSize: FontSize.sm, marginVertical: 12 }}>No documents attached to this meeting yet.</Text>
+              <Text style={[{ color: Colors.textMuted, fontSize: FontSize.sm, marginVertical: 12 }, isRTL && { textAlign: 'right' }]}>{t('meetings.noDocumentsAttached', 'No documents attached to this meeting yet.')}</Text>
             ) : (
               documents.map((d, i) => (
                 <Card key={i} style={{ marginBottom: Spacing.sm }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1, marginRight: Spacing.sm }}>
+                  <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <View style={[{ flex: 1, marginRight: Spacing.sm }, isRTL && { marginRight: 0, marginLeft: Spacing.sm, alignItems: 'flex-end' }]}>
                       <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: Colors.text }} numberOfLines={1}>
-                        📄 {d.filename || 'Document'}
+                        📄 {d.filename || t('common.document', 'Document')}
                       </Text>
                       <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
-                        {d.kind} · {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString() : 'Uploaded'}
+                        {d.kind} · {d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString() : t('common.uploaded', 'Uploaded')}
                       </Text>
                     </View>
                     {d.url && (
                       <TouchableOpacity style={styles.docOpenBtn} onPress={() => Linking.openURL(d.url)}>
-                        <Text style={styles.docOpenBtnText}>Open ↗</Text>
+                        <Text style={styles.docOpenBtnText}>{t('common.open', 'Open ↗')}</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -927,28 +938,28 @@ export default function MeetingDetailScreen() {
       <Modal visible={showCancel} transparent animationType="fade" onRequestClose={() => setShowCancel(false)}>
         <View style={styles.overlayBg}>
           <View style={styles.dialogCard}>
-            <Text style={styles.dialogTitle}>Cancel Meeting</Text>
-            <Text style={styles.dialogSubtitle}>Please provide a reason for cancelling this meeting:</Text>
+            <Text style={[styles.dialogTitle, isRTL && { textAlign: 'right' }]}>{t('meetings.cancelMeeting', 'Cancel Meeting')}</Text>
+            <Text style={[styles.dialogSubtitle, isRTL && { textAlign: 'right' }]}>{t('meetings.cancelReasonPrompt', 'Please provide a reason for cancelling this meeting:')}</Text>
             {cancelError ? (
               <View style={{ backgroundColor: '#fee2e2', padding: 8, borderRadius: 6, marginVertical: 6 }}>
                 <Text style={{ color: '#b91c1c', fontSize: 12, fontWeight: '600' }}>⚠️ {cancelError}</Text>
               </View>
             ) : null}
             <TextInput
-              style={[styles.fieldInput, { minHeight: 80, textAlignVertical: 'top', marginTop: 10 }]}
-              placeholder="Cancellation reason..."
+              style={[styles.fieldInput, { minHeight: 80, textAlignVertical: 'top', marginTop: 10 }, isRTL && { textAlign: 'right' }]}
+              placeholder={t('meetings.cancelReasonPlaceholder', 'Cancellation reason...')}
               placeholderTextColor={Colors.textLight}
               value={cancelReason}
               onChangeText={setCancelReason}
               multiline
               autoFocus
             />
-            <View style={styles.dialogActions}>
+            <View style={[styles.dialogActions, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity style={styles.dialogBtnSecondary} onPress={() => setShowCancel(false)}>
-                <Text style={styles.dialogBtnSecondaryText}>Go Back</Text>
+                <Text style={styles.dialogBtnSecondaryText}>{t('common.goBack', 'Go Back')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.dialogBtnDanger} onPress={handleCancelSubmit} disabled={cancelling}>
-                {cancelling ? <ActivityIndicator color="#fff" /> : <Text style={styles.dialogBtnDangerText}>Confirm Cancel</Text>}
+                {cancelling ? <ActivityIndicator color="#fff" /> : <Text style={styles.dialogBtnDangerText}>{t('meetings.confirmCancel', 'Confirm Cancel')}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -959,30 +970,30 @@ export default function MeetingDetailScreen() {
       <Modal visible={showFinalize} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowFinalize(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity onPress={() => setShowFinalize(false)}>
-                <Text style={styles.modalCancel}>Cancel</Text>
+                <Text style={styles.modalCancel}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Finalize Meeting</Text>
+              <Text style={styles.modalTitle}>{t('meetings.finalizeMeeting', 'Finalize Meeting')}</Text>
               <TouchableOpacity onPress={submitFinalize} disabled={finalizingBusy}>
-                {finalizingBusy ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>Finalize</Text>}
+                {finalizingBusy ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>{t('meetings.finalize', 'Finalize')}</Text>}
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
               {finalizeError ? (
-                <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 }}>
-                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Finalization Error:</Text>
-                  <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{finalizeError}</Text>
+                <View style={[styles.errorBox, isRTL && { alignItems: 'flex-end' }]}>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>{t('meetings.finalizationError', '⚠️ Finalization Error:')}</Text>
+                  <Text style={[{ color: '#b91c1c', fontSize: 12, marginTop: 4 }, isRTL && { textAlign: 'right' }]}>{finalizeError}</Text>
                 </View>
               ) : null}
 
               {/* Previous work / Decisions */}
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Previous Work / Decisions *</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.previousWorkDecisions', 'Previous Work / Decisions')} *</Text>
                 <TextInput
-                  style={[styles.fieldInput, styles.fieldMultiline]}
-                  placeholder="Record summary of decisions and previous work discussions..."
+                  style={[styles.fieldInput, styles.fieldMultiline, isRTL && { textAlign: 'right' }]}
+                  placeholder={t('meetings.recordDecisionsPlaceholder', 'Record summary of decisions and previous work discussions...')}
                   placeholderTextColor={Colors.textLight}
                   value={previouswork}
                   onChangeText={setPreviouswork}
@@ -992,10 +1003,10 @@ export default function MeetingDetailScreen() {
 
               {/* Upcoming Strategy */}
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Upcoming Strategy (optional)</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.upcomingStrategyOptional', 'Upcoming Strategy (optional)')}</Text>
                 <TextInput
-                  style={[styles.fieldInput, styles.fieldMultiline]}
-                  placeholder="Strategy points for next session..."
+                  style={[styles.fieldInput, styles.fieldMultiline, isRTL && { textAlign: 'right' }]}
+                  placeholder={t('meetings.strategyPlaceholder', 'Strategy points for next session...')}
                   placeholderTextColor={Colors.textLight}
                   value={upcomingStrategy}
                   onChangeText={setUpcomingStrategy}
@@ -1005,10 +1016,10 @@ export default function MeetingDetailScreen() {
 
               {/* Activity Notes */}
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Activity Notes (optional)</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.activityNotesOptional', 'Activity Notes (optional)')}</Text>
                 <TextInput
-                  style={[styles.fieldInput, styles.fieldMultiline]}
-                  placeholder="General notes or observations..."
+                  style={[styles.fieldInput, styles.fieldMultiline, isRTL && { textAlign: 'right' }]}
+                  placeholder={t('meetings.generalNotesPlaceholder', 'General notes or observations...')}
                   placeholderTextColor={Colors.textLight}
                   value={notes}
                   onChangeText={setNotes}
@@ -1020,36 +1031,36 @@ export default function MeetingDetailScreen() {
               {m.unitLevel !== 'CENTRAL' && (
                 <Card style={{ marginBottom: Spacing.lg }}>
                   <TouchableOpacity
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                    style={[{ flexDirection: 'row', alignItems: 'center', gap: 10 }, isRTL && { flexDirection: 'row-reverse' }]}
                     onPress={() => toggleSupervisorAttended(!supervisorAttended)}
                   >
                     <View style={[styles.checkbox, supervisorAttended && styles.checkboxActive]}>
                       {supervisorAttended && <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>✓</Text>}
                     </View>
                     <Text style={{ fontSize: FontSize.sm, fontWeight: '700', color: Colors.text }}>
-                      Supervisor Attended
+                      {t('meetings.supervisorAttended', 'Supervisor Attended')}
                     </Text>
                   </TouchableOpacity>
 
                   {supervisorAttended && (
                     <View style={{ marginTop: 12 }}>
                       {selectedSupervisorObj ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceAlt, padding: 10, borderRadius: 8 }}>
-                          <View style={{ flex: 1 }}>
+                        <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surfaceAlt, padding: 10, borderRadius: 8 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                          <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
                             <Text style={{ fontWeight: '700', fontSize: FontSize.sm, color: Colors.text }}>{selectedSupervisorObj.fullName}</Text>
                             <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
                               {selectedSupervisorObj.unitName} ({LEVEL_LABELS[selectedSupervisorObj.unitLevel] || selectedSupervisorObj.unitLevel})
                             </Text>
                           </View>
                           <TouchableOpacity onPress={() => setSupervisorMemberId('')}>
-                            <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: FontSize.xs }}>Change</Text>
+                            <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: FontSize.xs }}>{t('common.change', 'Change')}</Text>
                           </TouchableOpacity>
                         </View>
                       ) : (
                         <>
                           <TextInput
-                            style={[styles.fieldInput, { marginBottom: 6 }]}
-                            placeholder="Search supervisor by name or unit..."
+                            style={[styles.fieldInput, { marginBottom: 6 }, isRTL && { textAlign: 'right' }]}
+                            placeholder={t('meetings.searchSupervisorPlaceholder', 'Search supervisor by name or unit...')}
                             placeholderTextColor={Colors.textLight}
                             value={supervisorQuery}
                             onChangeText={setSupervisorQuery}
@@ -1059,12 +1070,12 @@ export default function MeetingDetailScreen() {
                           ) : (
                             <View style={styles.supervisorList}>
                               {filteredSupervisors.length === 0 ? (
-                                <Text style={{ padding: 10, fontSize: FontSize.xs, color: Colors.textMuted }}>No supervisors found.</Text>
+                                <Text style={[{ padding: 10, fontSize: FontSize.xs, color: Colors.textMuted }, isRTL && { textAlign: 'right' }]}>{t('meetings.noSupervisorsFound', 'No supervisors found.')}</Text>
                               ) : (
                                 filteredSupervisors.slice(0, 10).map((s) => (
                                   <TouchableOpacity
                                     key={s._id}
-                                    style={styles.supervisorItem}
+                                    style={[styles.supervisorItem, isRTL && { alignItems: 'flex-end' }]}
                                     onPress={() => setSupervisorMemberId(s._id)}
                                   >
                                     <Text style={{ fontWeight: '600', fontSize: FontSize.sm, color: Colors.text }}>{s.fullName}</Text>
@@ -1085,17 +1096,20 @@ export default function MeetingDetailScreen() {
 
               {/* Attendance Checklist */}
               <View style={{ marginBottom: Spacing.md }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Text style={styles.sectionTitle}>
-                    Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} Present / {attendance.length} Total)
+                    {t('meetings.attendanceRatio', 'Attendance ({{present}} Present / {{total}} Total)', {
+                      present: attendance.filter((r) => r.status === 'PRESENT').length,
+                      total: attendance.length,
+                    })}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <View style={[{ flexDirection: 'row', gap: 8, marginBottom: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
                   <TouchableOpacity style={styles.bulkAttBtn} onPress={() => markAllAttendance('PRESENT')}>
-                    <Text style={styles.bulkAttBtnText}>Mark All Present</Text>
+                    <Text style={styles.bulkAttBtnText}>{t('meetings.markAllPresent', 'Mark All Present')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.bulkAttBtn} onPress={() => markAllAttendance('ABSENT')}>
-                    <Text style={styles.bulkAttBtnText}>Mark All Absent</Text>
+                    <Text style={styles.bulkAttBtnText}>{t('meetings.markAllAbsent', 'Mark All Absent')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1105,14 +1119,14 @@ export default function MeetingDetailScreen() {
                   attendance.map((r) => {
                     const isPresent = r.status === 'PRESENT';
                     return (
-                      <View key={r.memberId} style={styles.finalizeAttRow}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
+                      <View key={r.memberId} style={[styles.finalizeAttRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                        <View style={[{ flex: 1, marginRight: 8 }, isRTL && { marginRight: 0, marginLeft: 8, alignItems: 'flex-end' }]}>
                           <Text style={{ fontSize: FontSize.sm, fontWeight: '600', color: Colors.text }}>{r.name}</Text>
                           <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
                             {r.roleText ? `${r.roleText} · ` : ''}{r.memberCode || ''}
                           </Text>
                         </View>
-                        <View style={styles.attOptionsRow}>
+                        <View style={[styles.attOptionsRow, isRTL && { flexDirection: 'row-reverse' }]}>
                           <TouchableOpacity
                             style={[
                               styles.attOptionPill,
@@ -1121,7 +1135,7 @@ export default function MeetingDetailScreen() {
                             onPress={() => setAttendanceStatus(r.memberId, isPresent ? 'ABSENT' : 'PRESENT')}
                           >
                             <Text style={[styles.attOptionPillText, isPresent ? { color: '#fff', fontWeight: '700' } : { color: Colors.textMuted }]}>
-                              {isPresent ? '✓ Present' : 'Absent'}
+                              {isPresent ? t('status.presentCheck', '✓ Present') : t('status.absent', 'Absent')}
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -1231,4 +1245,5 @@ const styles = StyleSheet.create({
   attPillLate: { backgroundColor: Colors.warning, borderColor: Colors.warning },
   attPillAbsent: { backgroundColor: Colors.error, borderColor: Colors.error },
   attOptionPillText: { fontSize: 11, fontWeight: '700', color: Colors.textMuted },
+  errorBox: { backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 14 },
 });

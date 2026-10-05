@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../api/client';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 
 import dialog from '../components/dialog';
 export default function PendingApprovalPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast();
   const [items, setItems] = useState([]);
@@ -20,9 +22,6 @@ export default function PendingApprovalPage() {
 
   async function load() {
     try {
-      // scope:'all' covers the unscoped-admin case — the queue is
-      // meant to be cross-unit for higher admins. Anyone with a
-      // territorial scope is clamped to it server-side anyway.
       const params = { status: 'PENDING_APPROVAL', limit: 50, scope: 'all' };
       if (isAreaAdminScoped && user?.scope?.areaId) {
         params.areaId = user.scope.areaId;
@@ -39,50 +38,49 @@ export default function PendingApprovalPage() {
     try {
       await api.post(`/members/${id}/approve`);
       await load();
-      toast.success(`${name || 'Member'} approved — they can now log in with their CNIC.`, { title: 'Member approved' });
+      toast.success(t('members.memberApproved', { name: name || t('members.title', 'Member') }), { title: t('members.approve', 'Member approved') });
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not approve member', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('members.couldNotApprove', 'Could not approve member'), duration: 7000 });
     } finally { setBusy(false); }
   }
 
   async function reject(id, name) {
-    const reason = await dialog.prompt('Reason for rejection:');
+    const reason = await dialog.prompt(t('members.rejectReasonPrompt', 'Reason for rejection:'));
     if (!reason) return;
     setBusy(true); setErr('');
     try {
       await api.post(`/members/${id}/reject`, { reason });
       await load();
-      toast.success(`${name || 'Member'}'s application was rejected.`, { title: 'Member rejected' });
+      toast.success(t('members.memberRejected', { name: name || t('members.title', 'Member') }), { title: t('members.reject', 'Member rejected') });
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not reject member', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('members.couldNotReject', 'Could not reject member'), duration: 7000 });
     } finally { setBusy(false); }
   }
 
   return (
     <div>
       <div className="page-header">
-        <h2>{isAreaAdminScoped ? 'Members awaiting your approval' : 'Approval Queue'}</h2>
+        <h2>{isAreaAdminScoped ? t('members.membersAwaitingApproval', 'Members awaiting your approval') : t('members.approvalQueue', 'Approval Queue')}</h2>
       </div>
       {isAreaAdminScoped && (
         <p className="muted" style={{ marginTop: -4 }}>
-          You only see members in your area. Approve or reject each application below.
-          After approval, you can assign them a cabinet role from <Link to="/unit/cabinet">Assign Cabinet Roles</Link>.
+          {t('members.areaScopedNotice', 'You only see members in your area. Approve or reject each application below.')}
         </p>
       )}
       {err && <div className="alert error">{err}</div>}
       <table className="list">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>CNIC</th>
-            <th>Phone</th>
-            <th>Unit</th>
-            <th>Submitted</th>
+            <th>{t('members.fullName', 'Name')}</th>
+            <th>{t('members.cnic', 'CNIC')}</th>
+            <th>{t('members.phone', 'Phone')}</th>
+            <th>{t('members.unit', 'Unit')}</th>
+            <th>{t('members.submitted', 'Submitted')}</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {items.length === 0 && <tr><td colSpan="6" className="muted">No pending members.</td></tr>}
+          {items.length === 0 && <tr><td colSpan="6" className="muted">{t('members.noPendingMembers', 'No pending members.')}</td></tr>}
           {items.map((m) => (
             <tr key={m._id}>
               <td><Link to={`/members/${m._id}`}>{m.fullName}</Link></td>
@@ -91,8 +89,8 @@ export default function PendingApprovalPage() {
               <td>{m.basicUnitId?.name}</td>
               <td>{new Date(m.createdAt).toLocaleDateString()}</td>
               <td style={{ whiteSpace: 'nowrap' }}>
-                <button className="btn" disabled={busy} onClick={() => approve(m._id, m.fullName)}>Approve</button>{' '}
-                <button className="btn danger" disabled={busy} onClick={() => reject(m._id, m.fullName)}>Reject</button>
+                <button className="btn" disabled={busy} onClick={() => approve(m._id, m.fullName)}>{t('members.approve', 'Approve')}</button>{' '}
+                <button className="btn danger" disabled={busy} onClick={() => reject(m._id, m.fullName)}>{t('members.reject', 'Reject')}</button>
               </td>
             </tr>
           ))}

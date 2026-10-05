@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { confirmAction } from '../../../../src/utils/dialog';
@@ -22,6 +23,7 @@ import EmptyState from '../../../../src/components/EmptyState';
 
 const DOMAIN_LABELS = {
   EXPENSE_APPROVAL: 'Expense approval',
+  DONATION_APPROVAL: 'Donation approval',
   MEMBER_APPROVAL: 'Member approval',
   ROLE_APPROVAL: 'Role approval',
   TRANSFER_APPROVAL: 'Transfer approval',
@@ -31,6 +33,7 @@ const DOMAINS = Object.keys(DOMAIN_LABELS);
 const TIER_CODES = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 
 export default function WorkflowsScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const toast = useToast();
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -80,7 +83,7 @@ export default function WorkflowsScreen() {
           <View style={styles.hero}>
             <View style={styles.heroHeader}>
               <Ionicons name="git-network" size={28} color={Colors.primary} />
-              <Text style={styles.heroTitle}>Workflow Manager</Text>
+              <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.units.workflows', 'Workflow Manager')}</Text>
             </View>
             <Text style={styles.heroSub}>
               Approval chains per domain. Default GLOBAL chains have one stage matching the legacy gate.

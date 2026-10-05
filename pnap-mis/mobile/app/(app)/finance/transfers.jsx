@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { api, errorMessage, resolveMediaUrl, isNetworkError } from '../../../src/api/client';
 import {
@@ -63,6 +64,7 @@ const FLOW_LABEL = DIRECTION_LABEL;
 const PAYMENT_MODES = ['BANK_TRANSFER', 'CASH', 'MOBILE_WALLET', 'CHEQUE'];
 
 export default function TransfersScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
@@ -72,6 +74,26 @@ export default function TransfersScreen() {
   const isSmall = width < 480;
   const isTablet = width >= 768;
   const isDesktop = width >= 1024;
+
+  const getLevelLabel = (level) => {
+    switch (level) {
+      case 'BASIC_UNIT': return t('levels.basicUnit', 'Basic Unit');
+      case 'AREA': return t('levels.area', 'Area');
+      case 'DISTRICT': return t('levels.district', 'District');
+      case 'PROVINCE': return t('levels.province', 'Province');
+      case 'CENTRAL': return t('levels.central', 'Center');
+      default: return LEVEL_LABEL[level] || level;
+    }
+  };
+
+  const getDirectionLabel = (dir) => {
+    switch (dir) {
+      case 'UP': return t('transfers.upward', 'Upward');
+      case 'DOWN': return t('transfers.downward', 'Downward');
+      case 'SAME_TIER': return t('transfers.sameTier', 'Same tier');
+      default: return DIRECTION_LABEL[dir] || dir;
+    }
+  };
 
   const queryBody = params.body || '';
   const isJirgaView = queryBody === 'JIRGA';
@@ -733,18 +755,18 @@ export default function TransfersScreen() {
   });
 
   const unitDisplayName = isJirgaView
-    ? (activeLevel === 'CENTRAL' ? 'PKNAP Central' : (ctx?.unitName ? `${ctx.unitName} Sobayi Jirga` : 'Province Jirga'))
-    : (ctx?.unitName || (activeLevel === 'CENTRAL' ? 'PKNAP Central' : 'My Unit'));
+    ? (activeLevel === 'CENTRAL' ? t('finance.pknapCentral', 'PKNAP Central') : (ctx?.unitName ? `${ctx.unitName} ${t('finance.sobayiJirga', 'Sobayi Jirga')}` : t('finance.sobayiJirga', 'Province Jirga')))
+    : (ctx?.unitName || (activeLevel === 'CENTRAL' ? t('finance.pknapCentral', 'PKNAP Central') : t('finance.myUnit', 'My Unit')));
 
   const pageTitle = isJirgaView
-    ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Fund Transfers' : `Sobayi Jirga Fund Transfers · ${ctx?.unitName || 'Province'}`)
-    : (isCommitteeView ? `Committee Transfers · ${unitDisplayName}` : `Executive Transfers · ${unitDisplayName}`);
+    ? (activeLevel === 'CENTRAL' ? t('finance.qomiJirgaTransfers', 'Qomi Jirga Fund Transfers') : `${t('finance.sobayiJirgaTransfers', 'Sobayi Jirga Fund Transfers')} · ${ctx?.unitName || t('common.province', 'Province')}`)
+    : (isCommitteeView ? `${t('finance.committeeTransfers', 'Committee Transfers')} · ${unitDisplayName}` : `${t('finance.executiveTransfers', 'Executive Transfers')} · ${unitDisplayName}`);
 
   const [exporting, setExporting] = useState(null);
 
   async function handleExport(fmt) {
     if (!isOnline) {
-      toast.info('Exporting requires an active internet connection.');
+      toast.info(t('finance.exportRequiresOnline', 'Exporting requires an active internet connection.'));
       return;
     }
     if (exporting) return;
@@ -762,9 +784,9 @@ export default function TransfersScreen() {
       const safeName = (ctx?.unitName || (activeLevel === 'CENTRAL' ? 'central' : 'unit')).replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `${safeName}-transfers.${fmt}`;
       await downloadAndShare(`/exports/unit/transfers/${fmt}`, filename, qParams);
-      toast.success(`${fmt.toUpperCase()} export downloaded.`);
+      toast.success(t('finance.exportDownloaded', '{{fmt}} export downloaded.', { fmt: fmt.toUpperCase() }));
     } catch (e) {
-      toast.error(e.message || `Export ${fmt.toUpperCase()} failed.`);
+      toast.error(e.message || t('finance.exportFailed', 'Export {{fmt}} failed.', { fmt: fmt.toUpperCase() }));
     } finally {
       setExporting(null);
     }
@@ -775,9 +797,9 @@ export default function TransfersScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.restrictedBox}>
           <Ionicons name="lock-closed-outline" size={48} color={Colors.error} style={{ marginBottom: 12 }} />
-          <Text style={styles.restrictedTitle}>Finance Access Required</Text>
-          <Text style={styles.restrictedText}>
-            Your current role does not include finance permissions, so Fund Transfers is unavailable.
+          <Text style={[styles.restrictedTitle, isRTL && { textAlign: 'right' }]}>{t('finance.accessRequired', 'Finance Access Required')}</Text>
+          <Text style={[styles.restrictedText, isRTL && { textAlign: 'right' }]}>
+            {t('finance.noFinancePerms', 'Your current role does not include finance permissions, so Fund Transfers is unavailable.')}
           </Text>
         </View>
       </SafeAreaView>
@@ -793,39 +815,39 @@ export default function TransfersScreen() {
             <View style={styles.guidanceIconBox}>
               <Ionicons name="people-outline" size={40} color={Colors.primary} />
             </View>
-            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
-            <Text style={styles.guidanceText}>
-              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            <Text style={[styles.guidanceTitle, isRTL && { textAlign: 'right' }]}>{t('activities.jirgaProvincialOnlyTitle', 'Jirga is only available at Provincial and Central tiers')}</Text>
+            <Text style={[styles.guidanceText, isRTL && { textAlign: 'right' }]}>
+              {t('activities.jirgaProvincialOnlyText', 'Under the party constitution, the Sobayi Jirga (صوبايي جرګه) operates at the Province level, and the Qomi Jirga / National Jirga (قومي جرګه) operates at the Central level. District and Area units operate via Zilla & Elaqayi Committees.')}
             </Text>
 
             <View style={styles.guidanceBtnCol}>
               {isHigherAdmin(user) && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnPrimary}
+                  style={[styles.guidanceBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                   }}
                 >
-                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>{t('activities.openQomiJirga', 'Open Qomi Jirga (Central)')}</Text>
                 </TouchableOpacity>
               )}
 
               {user?.scope?.provinceId && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnSecondary}
+                  style={[styles.guidanceBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
                   }}
                 >
-                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>{t('activities.openMySobayiJirga', 'Open My Sobayi Jirga')}</Text>
                 </TouchableOpacity>
               )}
 
               {isHigherAdmin(user) && provinces && provinces.length > 0 && (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
+                  <Text style={[styles.guidanceSubHead, isRTL && { textAlign: 'right' }]}>{t('activities.orSwitchProvincialJirga', 'OR SWITCH TO PROVINCIAL SOBAYI JIRGA:')}</Text>
                   <View style={styles.provGrid}>
                     {provinces.map((prov) => (
                       <TouchableOpacity
@@ -833,7 +855,7 @@ export default function TransfersScreen() {
                         style={styles.provPillBtn}
                         onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
                       >
-                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                        <Text style={styles.provPillBtnText}>{prov.name} {t('finance.sobayiJirga', 'Sobayi Jirga')} →</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -851,23 +873,23 @@ export default function TransfersScreen() {
       <View style={[styles.mainContainer, isTablet && styles.mainContainerTablet]}>
         
         {/* Header */}
-        <View style={[styles.header, isSmall && styles.headerSmall]}>
-          <View style={styles.headerTitleWrap}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <View style={[styles.header, isSmall && styles.headerSmall, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.headerTitleWrap, isRTL && { alignItems: 'flex-end' }]}>
+            <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }]}>
               <Text style={styles.pageTitle}>{pageTitle}</Text>
               {!isOnline && (
                 <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>{t('finance.offlineCached', 'Offline (Cached)')}</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.pageSubtitle}>
-              {unitDisplayName} · {activeLevel.replace('_', ' ')}
+            <Text style={[styles.pageSubtitle, isRTL && { textAlign: 'right' }]}>
+              {unitDisplayName} · {getLevelLabel(activeLevel)}
             </Text>
           </View>
-          <View style={styles.headerActions}>
+          <View style={[styles.headerActions, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
-              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
+              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => handleExport('pdf')}
               disabled={!isOnline || !!exporting}
             >
@@ -881,7 +903,7 @@ export default function TransfersScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
+              style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => handleExport('xlsx')}
               disabled={!isOnline || !!exporting}
             >
@@ -895,37 +917,37 @@ export default function TransfersScreen() {
               )}
             </TouchableOpacity>
             {canSend && (
-              <TouchableOpacity style={styles.primaryBtn} onPress={openInitiate}>
+              <TouchableOpacity style={[styles.primaryBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={openInitiate}>
                 <Ionicons name="send" size={15} color="#fff" />
-                <Text style={styles.primaryBtnText}>{isTablet ? '+ Initiate Transfer' : 'Transfer'}</Text>
+                <Text style={styles.primaryBtnText}>{isTablet ? t('finance.initiateTransfer', '+ Initiate Transfer') : t('finance.transfer', 'Transfer')}</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
 
         {/* Scope banner */}
-        <View style={styles.banner}>
-          <Ionicons name="information-circle-outline" size={18} color={Colors.primary} style={{ marginRight: 8, marginTop: 1 }} />
-          <Text style={styles.bannerText}>
+        <View style={[styles.banner, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Ionicons name="information-circle-outline" size={18} color={Colors.primary} style={isRTL ? { marginLeft: 8, marginTop: 1 } : { marginRight: 8, marginTop: 1 }} />
+          <Text style={[styles.bannerText, isRTL && { textAlign: 'right' }]}>
             <Text style={{ fontWeight: '700', color: Colors.text }}>{unitDisplayName}</Text>{' '}
             {activeLevel === 'CENTRAL'
-              ? 'may send funds to any unit in the organization.'
+              ? t('finance.scopeBannerCentral', 'may send funds to any unit in the organization.')
               : activeLevel === 'PROVINCE'
-                ? 'may send funds to any unit in the organization, including other provinces.'
-                : 'may send funds to any unit within its own province, or to the Center.'}
-            {' '}The destination unit receives and acknowledges the funds.
+                ? t('finance.scopeBannerProvince', 'may send funds to any unit in the organization, including other provinces.')
+                : t('finance.scopeBannerSub', 'may send funds to any unit within its own province, or to the Center.')}
+            {' '}{t('finance.scopeBannerAck', 'The destination unit receives and acknowledges the funds.')}
           </Text>
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabRow}>
-          <TouchableOpacity style={[styles.tab, tab === 'outgoing' && styles.tabActive]} onPress={() => setTab('outgoing')}>
-            <Ionicons name="arrow-up-circle-outline" size={16} color={tab === 'outgoing' ? Colors.primary : Colors.textMuted} style={{ marginRight: 6 }} />
-            <Text style={[styles.tabText, tab === 'outgoing' && styles.tabTextActive]}>Outgoing Transfers</Text>
+        <View style={[styles.tabRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <TouchableOpacity style={[styles.tab, tab === 'outgoing' && styles.tabActive, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => setTab('outgoing')}>
+            <Ionicons name="arrow-up-circle-outline" size={16} color={tab === 'outgoing' ? Colors.primary : Colors.textMuted} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={[styles.tabText, tab === 'outgoing' && styles.tabTextActive]}>{t('finance.outgoingTransfers', 'Outgoing Transfers')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.tab, tab === 'incoming' && styles.tabActive]} onPress={() => setTab('incoming')}>
-            <Ionicons name="arrow-down-circle-outline" size={16} color={tab === 'incoming' ? Colors.primary : Colors.textMuted} style={{ marginRight: 6 }} />
-            <Text style={[styles.tabText, tab === 'incoming' && styles.tabTextActive]}>Incoming Transfers</Text>
+          <TouchableOpacity style={[styles.tab, tab === 'incoming' && styles.tabActive, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => setTab('incoming')}>
+            <Ionicons name="arrow-down-circle-outline" size={16} color={tab === 'incoming' ? Colors.primary : Colors.textMuted} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={[styles.tabText, tab === 'incoming' && styles.tabTextActive]}>{t('finance.incomingTransfers', 'Incoming Transfers')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -939,58 +961,58 @@ export default function TransfersScreen() {
             showsHorizontalScrollIndicator={true}
           >
             <View style={{ minWidth: isTablet ? '100%' : 920, width: isTablet ? '100%' : undefined }}>
-              <View style={styles.thRow}>
-                <Text style={[styles.th, { width: isTablet ? '11%' : 95 }]}>Date</Text>
-                <Text style={[styles.th, { width: isTablet ? '23%' : 220 }]}>{tab === 'outgoing' ? 'To Destination' : 'From Sender'}</Text>
-                <Text style={[styles.th, { width: isTablet ? '13%' : 120 }]}>Mode</Text>
-                <Text style={[styles.th, { width: isTablet ? '13%' : 120 }]}>Reference</Text>
-                <Text style={[styles.th, { width: isTablet ? '12%' : 110, textAlign: 'right' }]}>Amount</Text>
-                <Text style={[styles.th, { width: isTablet ? '9%' : 80, textAlign: 'center' }]}>Receipt</Text>
-                <Text style={[styles.th, { width: isTablet ? '10%' : 115 }]}>State</Text>
-                <Text style={[styles.th, { width: isTablet ? '14%' : 160, textAlign: 'center' }]}>Actions</Text>
+              <View style={[styles.thRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Text style={[styles.th, { width: isTablet ? '11%' : 95 }, isRTL && { textAlign: 'right' }]}>{t('finance.date', 'Date')}</Text>
+                <Text style={[styles.th, { width: isTablet ? '23%' : 220 }, isRTL && { textAlign: 'right' }]}>{tab === 'outgoing' ? t('finance.toDestination', 'To Destination') : t('finance.fromSender', 'From Sender')}</Text>
+                <Text style={[styles.th, { width: isTablet ? '13%' : 120 }, isRTL && { textAlign: 'right' }]}>{t('finance.mode', 'Mode')}</Text>
+                <Text style={[styles.th, { width: isTablet ? '13%' : 120 }, isRTL && { textAlign: 'right' }]}>{t('finance.reference', 'Reference')}</Text>
+                <Text style={[styles.th, { width: isTablet ? '12%' : 110, textAlign: isRTL ? 'left' : 'right' }]}>{t('finance.amount', 'Amount')}</Text>
+                <Text style={[styles.th, { width: isTablet ? '9%' : 80, textAlign: 'center' }]}>{t('finance.receipt', 'Receipt')}</Text>
+                <Text style={[styles.th, { width: isTablet ? '10%' : 115 }, isRTL && { textAlign: 'right' }]}>{t('finance.status', 'State')}</Text>
+                <Text style={[styles.th, { width: isTablet ? '14%' : 160, textAlign: 'center' }]}>{t('common.actions', 'Actions')}</Text>
               </View>
 
               {displayedItems.length === 0 ? (
-                <Text style={styles.emptyText}>No {isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive')} transfers in this view.</Text>
+                <Text style={[styles.emptyText, isRTL && { textAlign: 'right' }]}>{t('finance.noTransfersInView', 'No transfers in this view.')}</Text>
               ) : (
-                displayedItems.map((t) => (
-                  <View key={t._id} style={styles.tr}>
-                    <Text style={[styles.td, { width: isTablet ? '11%' : 95 }]} numberOfLines={1}>
-                      {shortDate(t.createdAt)}
+                displayedItems.map((tItem) => (
+                  <View key={tItem._id} style={[styles.tr, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.td, { width: isTablet ? '11%' : 95 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                      {shortDate(tItem.createdAt)}
                     </Text>
                     
-                    <View style={[styles.td, { width: isTablet ? '23%' : 220, flexDirection: 'row', alignItems: 'center' }]}>
+                    <View style={[styles.td, { width: isTablet ? '23%' : 220, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }]}>
                       <View style={{
-                        backgroundColor: t.body === 'JIRGA' ? '#f3e8ff' : (t.body === 'COMMITTEE' ? '#e0f2fe' : '#f1f5f9'),
-                        paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, marginRight: 6,
-                        borderWidth: t.body === 'JIRGA' ? 1 : 0, borderColor: '#d8b4fe'
+                        backgroundColor: tItem.body === 'JIRGA' ? '#f3e8ff' : (tItem.body === 'COMMITTEE' ? '#e0f2fe' : '#f1f5f9'),
+                        paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, [isRTL ? 'marginLeft' : 'marginRight']: 6,
+                        borderWidth: tItem.body === 'JIRGA' ? 1 : 0, borderColor: '#d8b4fe'
                       }}>
                         <Text style={{
-                          color: t.body === 'JIRGA' ? '#6b21a8' : (t.body === 'COMMITTEE' ? '#0369a1' : '#475569'),
+                          color: tItem.body === 'JIRGA' ? '#6b21a8' : (tItem.body === 'COMMITTEE' ? '#0369a1' : '#475569'),
                           fontSize: 9, fontWeight: '700'
                         }}>
-                          {t.body === 'JIRGA' ? 'Jirga' : (t.body === 'COMMITTEE' ? 'Comm' : 'Exec')}
+                          {tItem.body === 'JIRGA' ? t('nav.jirga', 'Jirga') : (tItem.body === 'COMMITTEE' ? t('finance.commShort', 'Comm') : t('finance.execShort', 'Exec'))}
                         </Text>
                       </View>
-                      <Text numberOfLines={2} style={{ flex: 1, fontSize: FontSize.sm, color: Colors.text, fontWeight: '600' }}>
-                        {counterparty(t)}
+                      <Text numberOfLines={2} style={[{ flex: 1, fontSize: FontSize.sm, color: Colors.text, fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>
+                        {counterparty(tItem)}
                       </Text>
                     </View>
 
-                    <Text style={[styles.td, { width: isTablet ? '13%' : 120 }]} numberOfLines={1}>{t.mode?.replace('_', ' ')}</Text>
-                    <Text style={[styles.td, { width: isTablet ? '13%' : 120, color: Colors.textMuted }]} numberOfLines={1}>{t.reference || '—'}</Text>
-                    <Text style={[styles.td, { width: isTablet ? '12%' : 110, textAlign: 'right', fontWeight: '700', color: Colors.text }]} numberOfLines={1}>
-                      {PKR(t.amount)}
+                    <Text style={[styles.td, { width: isTablet ? '13%' : 120 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{tItem.mode?.replace('_', ' ')}</Text>
+                    <Text style={[styles.td, { width: isTablet ? '13%' : 120, color: Colors.textMuted }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{tItem.reference || '—'}</Text>
+                    <Text style={[styles.td, { width: isTablet ? '12%' : 110, textAlign: isRTL ? 'left' : 'right', fontWeight: '700', color: Colors.text }]} numberOfLines={1}>
+                      {PKR(tItem.amount)}
                     </Text>
                     
                     <View style={[styles.td, { width: isTablet ? '9%' : 80, alignItems: 'center', justifyContent: 'center' }]}>
-                      {t.receiptImageUrl ? (
+                      {tItem.receiptImageUrl ? (
                         <TouchableOpacity 
                           style={styles.receiptPill}
-                          onPress={() => setPreviewUrl(resolveMediaUrl(t.receiptImageUrl))}
+                          onPress={() => setPreviewUrl(resolveMediaUrl(tItem.receiptImageUrl))}
                         >
                           <Ionicons name="image" size={13} color={Colors.primary} />
-                          <Text style={styles.receiptPillText}>View</Text>
+                          <Text style={styles.receiptPillText}>{t('common.view', 'View')}</Text>
                         </TouchableOpacity>
                       ) : (
                         <Text style={{ color: Colors.textMuted }}>—</Text>
@@ -998,27 +1020,27 @@ export default function TransfersScreen() {
                     </View>
 
                     <View style={[styles.td, { width: isTablet ? '10%' : 115, justifyContent: 'center' }]}>
-                      <Badge variant={t._isOffline ? 'warning' : (t.state === 'ACKNOWLEDGED' ? 'success' : t.state === 'REJECTED' ? 'error' : (t.state === 'CANCELLED' ? 'muted' : 'warning'))} label={t._isOffline ? 'OFFLINE' : t.state} />
-                      {t.state === 'REJECTED' && t.decisionNote && (
-                        <Text style={{ fontSize: 10, color: Colors.error, marginTop: 2 }} numberOfLines={2}>
-                          {t.decisionNote}
+                      <Badge variant={tItem._isOffline ? 'warning' : (tItem.state === 'ACKNOWLEDGED' ? 'success' : tItem.state === 'REJECTED' ? 'error' : (tItem.state === 'CANCELLED' ? 'muted' : 'warning'))} label={tItem._isOffline ? 'OFFLINE' : tItem.state} />
+                      {tItem.state === 'REJECTED' && tItem.decisionNote && (
+                        <Text style={[{ fontSize: 10, color: Colors.error, marginTop: 2 }, isRTL && { textAlign: 'right' }]} numberOfLines={2}>
+                          {tItem.decisionNote}
                         </Text>
                       )}
                     </View>
 
-                    <View style={[styles.td, { width: isTablet ? '14%' : 160, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
-                      {tab === 'incoming' && t.state === 'PENDING_ACK' ? (
+                    <View style={[styles.td, { width: isTablet ? '14%' : 160, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
+                      {tab === 'incoming' && tItem.state === 'PENDING_ACK' ? (
                         <>
-                          <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.primary }]} onPress={() => openApproveModal(t)}>
-                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Approve</Text>
+                          <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.primary }]} onPress={() => openApproveModal(tItem)}>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{t('finance.approve', 'Approve')}</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.error }]} onPress={() => openRejectModal(t._id)}>
-                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Reject</Text>
+                          <TouchableOpacity style={[styles.btnSmall, { backgroundColor: Colors.error }]} onPress={() => openRejectModal(tItem._id)}>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{t('finance.reject', 'Reject')}</Text>
                           </TouchableOpacity>
                         </>
-                      ) : tab === 'outgoing' && t.state === 'PENDING_ACK' ? (
-                        <TouchableOpacity style={[styles.btnSmall, { backgroundColor: '#e11d48' }]} onPress={() => openCancelModal(t)}>
-                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Cancel</Text>
+                      ) : tab === 'outgoing' && tItem.state === 'PENDING_ACK' ? (
+                        <TouchableOpacity style={[styles.btnSmall, { backgroundColor: '#e11d48' }]} onPress={() => openCancelModal(tItem)}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{t('common.cancel', 'Cancel')}</Text>
                         </TouchableOpacity>
                       ) : (
                         <Text style={{ color: Colors.textMuted, fontSize: 11 }}>—</Text>
@@ -1039,11 +1061,11 @@ export default function TransfersScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.modalCard, isTablet && styles.modalCardTablet]}>
             
             {/* Modal Header */}
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <View>
-                <Text style={styles.modalTitle}>Initiate Fund Transfer</Text>
-                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>
-                  Transfer funds securely to any destination within policy.
+                <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('finance.initiateTransferTitle', 'Initiate Fund Transfer')}</Text>
+                <Text style={[{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.initiateTransferSubtitle', 'Transfer funds securely to any destination within policy.')}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setTransferModalOpen(false)} style={styles.closeBtn}>
@@ -1052,19 +1074,19 @@ export default function TransfersScreen() {
             </View>
             
             {/* Modal Body: 2 Columns on Tablet/Desktop, 1 Column on Mobile */}
-            <View style={[styles.transferModalLayout, isTablet && styles.transferModalLayoutTablet]}>
+            <View style={[styles.transferModalLayout, isTablet && styles.transferModalLayoutTablet, isRTL && isTablet && { flexDirection: 'row-reverse' }]}>
               
               {/* Left Column: Destination Selector (Direct Picker or Org Tree) */}
               <View style={[styles.treeCol, isTablet && styles.treeColTablet]}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={styles.fieldLabel}>Choose Destination *</Text>
-                  <View style={styles.destModeToggle}>
+                <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }]}>
+                  <Text style={styles.fieldLabel}>{t('finance.chooseDestination', 'Choose Destination *')}</Text>
+                  <View style={[styles.destModeToggle, isRTL && { flexDirection: 'row-reverse' }]}>
                     <TouchableOpacity
                       style={[styles.destModeBtn, destMode === 'LIST' && styles.destModeBtnActive]}
                       onPress={() => setDestMode('LIST')}
                     >
                       <Text style={[styles.destModeText, destMode === 'LIST' && styles.destModeTextActive]}>
-                        Direct List
+                        {t('finance.directList', 'Direct List')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1072,7 +1094,7 @@ export default function TransfersScreen() {
                       onPress={() => setDestMode('TREE')}
                     >
                       <Text style={[styles.destModeText, destMode === 'TREE' && styles.destModeTextActive]}>
-                        Org Tree
+                        {t('finance.orgTree', 'Org Tree')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1086,15 +1108,15 @@ export default function TransfersScreen() {
                   >
                     {/* Quick PKNAP Central option */}
                     <TouchableOpacity
-                      style={[styles.quickDestBtn, picked?.id === 'CENTRAL' && styles.quickDestBtnSelected]}
-                      onPress={() => setPicked({ id: 'CENTRAL', name: 'PKNAP Central', level: 'CENTRAL' })}
+                      style={[styles.quickDestBtn, picked?.id === 'CENTRAL' && styles.quickDestBtnSelected, isRTL && { flexDirection: 'row-reverse' }]}
+                      onPress={() => setPicked({ id: 'CENTRAL', name: t('finance.pknapCentral', 'PKNAP Central'), level: 'CENTRAL' })}
                     >
                       <Ionicons name="globe-outline" size={16} color={Colors.primary} />
-                      <Text style={styles.quickDestText}>PKNAP Central (قومي مرکز)</Text>
+                      <Text style={styles.quickDestText}>{t('finance.pknapCentralOption', 'PKNAP Central (قومي مرکز)')}</Text>
                     </TouchableOpacity>
 
                     {/* Province Selection */}
-                    <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>1. Select Province</Text>
+                    <Text style={[styles.fieldSubLabel, { marginTop: 8 }, isRTL && { textAlign: 'right' }]}>{t('finance.stepSelectProvince', '1. Select Province')}</Text>
                     <View style={styles.pickerWrap}>
                       <Picker
                         selectedValue={pickProv}
@@ -1107,7 +1129,7 @@ export default function TransfersScreen() {
                         }}
                         style={styles.picker}
                       >
-                        <Picker.Item label="-- Choose Province --" value="" />
+                        <Picker.Item label={t('finance.chooseProvince', '-- Choose Province --')} value="" />
                         {listProvinces.map((p) => (
                           <Picker.Item key={p._id} label={p.name} value={p._id} />
                         ))}
@@ -1117,7 +1139,7 @@ export default function TransfersScreen() {
                     {/* District Selection */}
                     {listDistricts.length > 0 && (
                       <>
-                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>2. Select District</Text>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }, isRTL && { textAlign: 'right' }]}>{t('finance.stepSelectDistrict', '2. Select District')}</Text>
                         <View style={styles.pickerWrap}>
                           <Picker
                             selectedValue={pickDist}
@@ -1130,7 +1152,7 @@ export default function TransfersScreen() {
                             }}
                             style={styles.picker}
                           >
-                            <Picker.Item label="-- Choose District --" value="" />
+                            <Picker.Item label={t('finance.chooseDistrict', '-- Choose District --')} value="" />
                             {listDistricts.map((d) => (
                               <Picker.Item key={d._id} label={d.name} value={d._id} />
                             ))}
@@ -1142,7 +1164,7 @@ export default function TransfersScreen() {
                     {/* Area Selection */}
                     {listAreas.length > 0 && (
                       <>
-                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>3. Select Area</Text>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }, isRTL && { textAlign: 'right' }]}>{t('finance.stepSelectArea', '3. Select Area')}</Text>
                         <View style={styles.pickerWrap}>
                           <Picker
                             selectedValue={pickArea}
@@ -1155,7 +1177,7 @@ export default function TransfersScreen() {
                             }}
                             style={styles.picker}
                           >
-                            <Picker.Item label="-- Choose Area --" value="" />
+                            <Picker.Item label={t('finance.chooseArea', '-- Choose Area --')} value="" />
                             {listAreas.map((a) => (
                               <Picker.Item key={a._id} label={a.name} value={a._id} />
                             ))}
@@ -1167,7 +1189,7 @@ export default function TransfersScreen() {
                     {/* Basic Unit Selection */}
                     {listUnits.length > 0 && (
                       <>
-                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }]}>4. Select Basic Unit</Text>
+                        <Text style={[styles.fieldSubLabel, { marginTop: 8 }, isRTL && { textAlign: 'right' }]}>{t('finance.stepSelectBasicUnit', '4. Select Basic Unit')}</Text>
                         <View style={styles.pickerWrap}>
                           <Picker
                             selectedValue={picked?.level === 'BASIC_UNIT' ? picked.id : ''}
@@ -1179,7 +1201,7 @@ export default function TransfersScreen() {
                             }}
                             style={styles.picker}
                           >
-                            <Picker.Item label="-- Choose Basic Unit --" value="" />
+                            <Picker.Item label={t('finance.chooseBasicUnit', '-- Choose Basic Unit --')} value="" />
                             {listUnits.map((u) => (
                               <Picker.Item key={u._id} label={u.name} value={u._id} />
                             ))}
@@ -1208,35 +1230,35 @@ export default function TransfersScreen() {
               >
                 {/* Inline Error Alert Banner */}
                 {modalErr ? (
-                  <View style={styles.alertError}>
-                    <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 8 }} />
-                    <Text style={styles.alertErrorText}>{modalErr}</Text>
+                  <View style={[styles.alertError, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Ionicons name="alert-circle" size={18} color={Colors.error} style={isRTL ? { marginLeft: 8 } : { marginRight: 8 }} />
+                    <Text style={[styles.alertErrorText, isRTL && { textAlign: 'right' }]}>{modalErr}</Text>
                   </View>
                 ) : null}
 
                 {/* Transfer From */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Transfer From (Source)</Text>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('finance.transferFromSource', 'Transfer From (Source)')}</Text>
                   <View style={styles.endpointCard}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={styles.endpointLevel}>{LEVEL_LABEL[activeLevel] || activeLevel}</Text>
+                    <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                      <Text style={styles.endpointLevel}>{getLevelLabel(activeLevel)}</Text>
                       {sourceBalance !== null && (
                         <Text style={{ fontSize: 12, fontWeight: '700', color: sourceBalance > 0 ? '#15803d' : '#b91c1c' }}>
-                          Available: {PKR(sourceBalance)}
+                          {t('finance.available', 'Available:')} {PKR(sourceBalance)}
                         </Text>
                       )}
                     </View>
-                    <Text style={styles.endpointName}>{unitDisplayName}</Text>
+                    <Text style={[styles.endpointName, isRTL && { textAlign: 'right' }]}>{unitDisplayName}</Text>
                     {pendingOutAmount > 0 && (
-                      <Text style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
-                        ⚠️ {PKR(pendingOutAmount)} committed in unacknowledged Outgoing transfers
+                      <Text style={[{ fontSize: 11, color: '#d97706', marginTop: 4 }, isRTL && { textAlign: 'right' }]}>
+                        {t('finance.committedInUnack', '⚠️ {{amount}} committed in unacknowledged Outgoing transfers', { amount: PKR(pendingOutAmount) })}
                       </Text>
                     )}
                     {sourceBalance !== null && sourceBalance <= 0 && (
-                      <View style={{ backgroundColor: '#fef2f2', borderColor: '#fca5a5', borderWidth: 1, borderRadius: 6, padding: 8, marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="alert-circle" size={16} color={Colors.error} style={{ marginRight: 6 }} />
-                        <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '600', flex: 1 }}>
-                          Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).
+                      <View style={[{ backgroundColor: '#fef2f2', borderColor: '#fca5a5', borderWidth: 1, borderRadius: 6, padding: 8, marginTop: 8, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }]}>
+                        <Ionicons name="alert-circle" size={16} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                        <Text style={[{ color: '#b91c1c', fontSize: 11, fontWeight: '600', flex: 1 }, isRTL && { textAlign: 'right' }]}>
+                          {t('finance.balanceZeroErr', 'Transfer cannot proceed: available balance is PKR 0 (funds are already committed in pending outgoing transfers or exhausted).')}
                         </Text>
                       </View>
                     )}
@@ -1245,40 +1267,40 @@ export default function TransfersScreen() {
 
                 {/* Selected Destination Card */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Selected Destination</Text>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('finance.selectedDestination', 'Selected Destination')}</Text>
                   {!picked ? (
                     <View style={[styles.endpointCard, { backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }]}>
-                      <Text style={{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }}>
-                        👈 Pick a destination unit from the organization tree.
+                      <Text style={[{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }, isRTL && { textAlign: 'right' }]}>
+                        {t('finance.pickDestinationHelp', '👈 Pick a destination unit from the organization tree.')}
                       </Text>
                     </View>
                   ) : previewLoading ? (
-                    <View style={[styles.endpointCard, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+                    <View style={[styles.endpointCard, { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }]}>
                       <ActivityIndicator size="small" color={Colors.primary} />
-                      <Text style={{ color: Colors.textMuted }}>Validating transfer routing...</Text>
+                      <Text style={{ color: Colors.textMuted }}>{t('finance.validatingRouting', 'Validating transfer routing...')}</Text>
                     </View>
                   ) : previewErr ? (
                     <View style={[styles.endpointCard, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
-                      <Text style={{ color: Colors.error, fontSize: FontSize.sm, fontWeight: '600' }}>{previewErr}</Text>
+                      <Text style={[{ color: Colors.error, fontSize: FontSize.sm, fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>{previewErr}</Text>
                     </View>
                   ) : preview ? (
                     <View style={[styles.endpointCard, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
                         <Text style={[styles.endpointName, { color: '#166534' }]}>{preview.destination.name}</Text>
                         {preview.direction && (
                           <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                             <Text style={{ fontSize: 10, fontWeight: '700', color: '#15803d' }}>
-                              {DIRECTION_LABEL[preview.direction] || preview.direction}
+                              {getDirectionLabel(preview.direction)}
                             </Text>
                           </View>
                         )}
                       </View>
-                      <Text style={{ fontSize: FontSize.xs, color: '#15803d', marginTop: 2, fontWeight: '600' }}>
-                        {LEVEL_LABEL[preview.destination.level] || preview.destination.level}
+                      <Text style={[{ fontSize: FontSize.xs, color: '#15803d', marginTop: 2, fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>
+                        {getLevelLabel(preview.destination.level)}
                       </Text>
                       {preview.path && preview.path.length > 0 && (
-                        <Text style={{ fontSize: 11, color: '#166534', marginTop: 4 }}>
-                          Hierarchy: {preview.path.map(p => p.name).join(' → ')}
+                        <Text style={[{ fontSize: 11, color: '#166534', marginTop: 4 }, isRTL && { textAlign: 'right' }]}>
+                          {t('finance.hierarchy', 'Hierarchy:')} {preview.path.map(p => p.name).join(' → ')}
                         </Text>
                       )}
                     </View>
@@ -1287,9 +1309,9 @@ export default function TransfersScreen() {
 
                 {/* Amount */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Amount (PKR) <Text style={{ color: Colors.error }}>*</Text></Text>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('finance.amountPkrRequired', 'Amount (PKR) *')}</Text>
                   <TextInput 
-                    style={styles.fieldInput} 
+                    style={[styles.fieldInput, isRTL && { textAlign: 'right' }]} 
                     keyboardType="numeric"
                     placeholder="e.g. 50000"
                     placeholderTextColor={Colors.textMuted}
@@ -1300,16 +1322,16 @@ export default function TransfersScreen() {
                     }}
                   />
                   {sourceBalance !== null && (
-                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
-                      Maximum transferable: <Text style={{ fontWeight: '700', color: sourceBalance > 0 ? '#15803d' : '#b91c1c' }}>{PKR(sourceBalance)}</Text>
+                    <Text style={[{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }, isRTL && { textAlign: 'right' }]}>
+                      {t('finance.maxTransferable', 'Maximum transferable:')} <Text style={{ fontWeight: '700', color: sourceBalance > 0 ? '#15803d' : '#b91c1c' }}>{PKR(sourceBalance)}</Text>
                     </Text>
                   )}
                 </View>
 
                 {/* Mode & Reference in 2 columns on Tablet */}
-                <View style={[styles.rowFields, isTablet && styles.rowFieldsTablet]}>
+                <View style={[styles.rowFields, isTablet && styles.rowFieldsTablet, isRTL && isTablet && { flexDirection: 'row-reverse' }]}>
                   <View style={[styles.field, isTablet && { flex: 1 }]}>
-                    <Text style={styles.fieldLabel}>Payment Mode</Text>
+                    <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('finance.paymentMode', 'Payment Mode')}</Text>
                     <View style={styles.pickerWrapper}>
                       <Picker
                         selectedValue={form.mode}
@@ -1323,9 +1345,9 @@ export default function TransfersScreen() {
                   </View>
 
                   <View style={[styles.field, isTablet && { flex: 1 }]}>
-                    <Text style={styles.fieldLabel}>Reference / Cheque No.</Text>
+                    <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('finance.refChequeNo', 'Reference / Cheque No.')}</Text>
                     <TextInput 
-                      style={styles.fieldInput} 
+                      style={[styles.fieldInput, isRTL && { textAlign: 'right' }]} 
                       placeholder="e.g. TXN-998811"
                       placeholderTextColor={Colors.textMuted}
                       value={form.reference}
@@ -1336,10 +1358,10 @@ export default function TransfersScreen() {
 
                 {/* Notes */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Notes</Text>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('finance.notes', 'Notes')}</Text>
                   <TextInput 
-                    style={[styles.fieldInput, { height: 60 }]} 
-                    placeholder="Optional transfer note for receiver"
+                    style={[styles.fieldInput, { height: 60 }, isRTL && { textAlign: 'right' }]} 
+                    placeholder={t('finance.notesPlaceholder', 'Optional transfer note for receiver')}
                     placeholderTextColor={Colors.textMuted}
                     multiline
                     value={form.note}
@@ -1349,27 +1371,27 @@ export default function TransfersScreen() {
 
                 {/* Receipt upload */}
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Receipt / Payment Proof <Text style={{ color: Colors.error }}>*</Text></Text>
-                  <TouchableOpacity style={styles.uploadBtn} onPress={pickImage}>
-                    <Ionicons name="cloud-upload-outline" size={20} color={Colors.primary} style={{ marginRight: 8 }} />
-                    <Text style={styles.uploadBtnText}>{receipt ? 'Change Receipt Image' : 'Attach Receipt Image (PNG / JPG)'}</Text>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('finance.receiptProofRequired', 'Receipt / Payment Proof *')}</Text>
+                  <TouchableOpacity style={[styles.uploadBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={pickImage}>
+                    <Ionicons name="cloud-upload-outline" size={20} color={Colors.primary} style={isRTL ? { marginLeft: 8 } : { marginRight: 8 }} />
+                    <Text style={styles.uploadBtnText}>{receipt ? t('finance.changeReceiptImage', 'Change Receipt Image') : t('finance.attachReceiptImage', 'Attach Receipt Image (PNG / JPG)')}</Text>
                   </TouchableOpacity>
                   {receipt && (
-                    <View style={styles.receiptPreview}>
+                    <View style={[styles.receiptPreview, isRTL && { flexDirection: 'row-reverse' }]}>
                       <Image source={{ uri: receipt.uri }} style={styles.receiptThumb} />
-                      <Text style={styles.receiptName} numberOfLines={1}>{receipt.name || 'receipt.jpg'}</Text>
+                      <Text style={[styles.receiptName, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{receipt.name || 'receipt.jpg'}</Text>
                       <Ionicons name="checkmark-circle" size={18} color="#15803d" />
                     </View>
                   )}
                 </View>
 
                 {/* Action buttons */}
-                <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10, marginTop: 14 }]}>
                   <TouchableOpacity 
                     style={[styles.btnSecondary, { flex: 1, alignItems: 'center', paddingVertical: 12 }]} 
                     onPress={() => setTransferModalOpen(false)}
                   >
-                    <Text style={styles.btnSecondaryText}>Cancel</Text>
+                    <Text style={styles.btnSecondaryText}>{t('common.cancel', 'Cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     style={[
@@ -1380,7 +1402,7 @@ export default function TransfersScreen() {
                     onPress={handleProceedToConfirm}
                     disabled={sourceBalance !== null && sourceBalance <= 0}
                   >
-                    <Text style={[styles.primaryBtnText, { fontSize: FontSize.sm }]}>Proceed to Confirm ➔</Text>
+                    <Text style={[styles.primaryBtnText, { fontSize: FontSize.sm }]}>{t('finance.proceedToConfirm', 'Proceed to Confirm ➔')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1396,65 +1418,65 @@ export default function TransfersScreen() {
         <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
           <View style={styles.modalBackdrop}>
             <View style={[styles.confirmModal, { maxWidth: 540 }]}>
-              <Text style={styles.confirmTitle}>Confirm Transfer Summary</Text>
-              <Text style={styles.confirmSubtitle}>Please review transfer details before dispatching funds.</Text>
+              <Text style={[styles.confirmTitle, isRTL && { textAlign: 'right' }]}>{t('finance.confirmSummary', 'Confirm Transfer Summary')}</Text>
+              <Text style={[styles.confirmSubtitle, isRTL && { textAlign: 'right' }]}>{t('finance.confirmSubtitle', 'Please review transfer details before dispatching funds.')}</Text>
 
               <View style={styles.summaryTable}>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryKey}>From</Text>
-                  <Text style={styles.summaryVal}>{unitDisplayName} ({LEVEL_LABEL[activeLevel] || activeLevel})</Text>
+                <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('common.from', 'From')}</Text>
+                  <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{unitDisplayName} ({getLevelLabel(activeLevel)})</Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryKey}>To</Text>
-                  <Text style={styles.summaryVal}>{preview.destination.name}</Text>
+                <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('common.to', 'To')}</Text>
+                  <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{preview.destination.name}</Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryKey}>Destination Level</Text>
-                  <Text style={styles.summaryVal}>{preview.destination.level}</Text>
+                <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.destinationLevel', 'Destination Level')}</Text>
+                  <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{getLevelLabel(preview.destination.level)}</Text>
                 </View>
                 {preview.path && (
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryKey}>Hierarchy</Text>
-                    <Text style={styles.summaryVal}>{preview.path.map(p => p.name).join(' → ')}</Text>
+                  <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.hierarchyLabel', 'Hierarchy')}</Text>
+                    <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{preview.path.map(p => p.name).join(' → ')}</Text>
                   </View>
                 )}
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryKey}>Amount</Text>
-                  <Text style={[styles.summaryVal, { fontWeight: '800', color: Colors.primary, fontSize: FontSize.base }]}>
+                <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.amount', 'Amount')}</Text>
+                  <Text style={[styles.summaryVal, { fontWeight: '800', color: Colors.primary, fontSize: FontSize.base }, isRTL && { textAlign: 'left' }]}>
                     {form.amount ? PKR(parseFloat(form.amount)) : '—'}
                   </Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryKey}>Receipt</Text>
-                  <Text style={styles.summaryVal}>{receipt ? `Attached (${receipt.name || 'image'})` : 'None'}</Text>
+                <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.receipt', 'Receipt')}</Text>
+                  <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{receipt ? `${t('finance.attached', 'Attached')} (${receipt.name || 'image'})` : t('common.none', 'None')}</Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryKey}>Mode</Text>
-                  <Text style={styles.summaryVal}>{form.mode} {form.reference ? `· ${form.reference}` : ''}</Text>
+                <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.mode', 'Mode')}</Text>
+                  <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{form.mode} {form.reference ? `· ${form.reference}` : ''}</Text>
                 </View>
                 {form.note ? (
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryKey}>Notes</Text>
-                    <Text style={styles.summaryVal}>{form.note}</Text>
+                  <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.notes', 'Notes')}</Text>
+                    <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{form.note}</Text>
                   </View>
                 ) : null}
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10, marginTop: 20, justifyContent: 'flex-end' }]}>
                 <TouchableOpacity 
                   style={[styles.btnSecondary, { paddingHorizontal: 16, paddingVertical: 10 }]} 
                   disabled={submitting} 
                   onPress={() => setConfirmOpen(false)}
                 >
-                  <Text style={styles.btnSecondaryText}>Back</Text>
+                  <Text style={styles.btnSecondaryText}>{t('common.back', 'Back')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.primaryBtn, { paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }]} 
+                  style={[styles.primaryBtn, { paddingHorizontal: 18, paddingVertical: 10, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }]} 
                   disabled={submitting} 
                   onPress={initiate}
                 >
                   {submitting && <ActivityIndicator size="small" color="#fff" />}
-                  <Text style={styles.primaryBtnText}>{submitting ? 'Transferring…' : 'Confirm & Send'}</Text>
+                  <Text style={styles.primaryBtnText}>{submitting ? t('finance.transferring', 'Transferring…') : t('finance.confirmAndSend', 'Confirm & Send')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1467,41 +1489,44 @@ export default function TransfersScreen() {
         <Modal visible={cancelModalOpen} transparent animationType="fade" onRequestClose={() => !cancelling && setCancelModalOpen(false)}>
           <View style={styles.modalBackdrop}>
             <View style={[styles.confirmModal, { maxWidth: 500 }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={styles.confirmTitle}>Cancel Pending Transfer</Text>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }]}>
+                <Text style={styles.confirmTitle}>{t('finance.cancelPendingTitle', 'Cancel Pending Transfer')}</Text>
                 <TouchableOpacity onPress={() => !cancelling && setCancelModalOpen(false)}>
                   <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.confirmSubtitle}>
-                Are you sure you want to cancel the transfer of <Text style={{ fontWeight: '700', color: Colors.text }}>{PKR(cancelTarget.amount)}</Text> to <Text style={{ fontWeight: '700', color: Colors.text }}>{cancelTarget.destinationName}</Text>?
+              <Text style={[styles.confirmSubtitle, isRTL && { textAlign: 'right' }]}>
+                {t('finance.cancelPendingSubtitle', 'Are you sure you want to cancel the transfer of {{amount}} to {{destination}}?', {
+                  amount: PKR(cancelTarget.amount),
+                  destination: cancelTarget.destinationName
+                })}
               </Text>
-              <Text style={{ fontSize: 12, color: '#15803d', marginTop: 6, fontWeight: '600' }}>
-                ✓ Committed funds will be restored immediately to your available balance.
+              <Text style={[{ fontSize: 12, color: '#15803d', marginTop: 6, fontWeight: '600' }, isRTL && { textAlign: 'right' }]}>
+                {t('finance.cancelRestoredNotice', '✓ Committed funds will be restored immediately to your available balance.')}
               </Text>
 
               {cancelErr ? (
-                <View style={[styles.alertError, { marginTop: 12 }]}>
-                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 6 }} />
-                  <Text style={styles.alertErrorText}>{cancelErr}</Text>
+                <View style={[styles.alertError, { marginTop: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={[styles.alertErrorText, isRTL && { textAlign: 'right' }]}>{cancelErr}</Text>
                 </View>
               ) : null}
 
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10, marginTop: 20, justifyContent: 'flex-end' }]}>
                 <TouchableOpacity 
                   style={[styles.btnSecondary, { paddingHorizontal: 16, paddingVertical: 10 }]} 
                   disabled={cancelling} 
                   onPress={() => setCancelModalOpen(false)}
                 >
-                  <Text style={styles.btnSecondaryText}>Keep Transfer</Text>
+                  <Text style={styles.btnSecondaryText}>{t('finance.keepTransfer', 'Keep Transfer')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[{ backgroundColor: Colors.error, borderRadius: Radius.md, paddingHorizontal: 18, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }]} 
+                  style={[{ backgroundColor: Colors.error, borderRadius: Radius.md, paddingHorizontal: 18, paddingVertical: 10, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }]} 
                   disabled={cancelling} 
                   onPress={handleConfirmCancel}
                 >
                   {cancelling && <ActivityIndicator size="small" color="#fff" />}
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: FontSize.sm }}>{cancelling ? 'Cancelling…' : 'Yes, Cancel Transfer'}</Text>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: FontSize.sm }}>{cancelling ? t('common.cancelling', 'Cancelling…') : t('finance.yesCancelTransfer', 'Yes, Cancel Transfer')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1514,10 +1539,10 @@ export default function TransfersScreen() {
         <Modal visible={approveModalOpen} transparent animationType="slide" onRequestClose={() => !approving && setApproveModalOpen(false)}>
           <View style={styles.modalBackdrop}>
             <View style={[styles.confirmModal, { maxHeight: '90%', width: '92%', maxWidth: 540 }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.confirmTitle}>Review & Acknowledge</Text>
-                  <Text style={{ fontSize: 12, color: Colors.textMuted }}>Verify payment receipt and details before accepting funds.</Text>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }]}>
+                <View style={[{ flex: 1, [isRTL ? 'marginLeft' : 'marginRight']: 8 }]}>
+                  <Text style={[styles.confirmTitle, isRTL && { textAlign: 'right' }]}>{t('finance.reviewAndAcknowledge', 'Review & Acknowledge')}</Text>
+                  <Text style={[{ fontSize: 12, color: Colors.textMuted }, isRTL && { textAlign: 'right' }]}>{t('finance.reviewSubtitle', 'Verify payment receipt and details before accepting funds.')}</Text>
                 </View>
                 <TouchableOpacity onPress={() => !approving && setApproveModalOpen(false)}>
                   <Ionicons name="close" size={24} color={Colors.text} />
@@ -1526,39 +1551,39 @@ export default function TransfersScreen() {
 
               <ScrollView showsVerticalScrollIndicator={false}>
                 {approveErr ? (
-                  <View style={[styles.alertError, { marginBottom: 12 }]}>
-                    <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 6 }} />
-                    <Text style={styles.alertErrorText}>{approveErr}</Text>
+                  <View style={[styles.alertError, { marginBottom: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Ionicons name="alert-circle" size={18} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                    <Text style={[styles.alertErrorText, isRTL && { textAlign: 'right' }]}>{approveErr}</Text>
                   </View>
                 ) : null}
 
                 {/* Summary Table */}
                 <View style={styles.summaryTable}>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryKey}>From Unit</Text>
-                    <Text style={styles.summaryVal}>{approveTarget.sourceName} ({LEVEL_LABEL[approveTarget.sourceLevel] || approveTarget.sourceLevel})</Text>
+                  <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.fromUnit', 'From Unit')}</Text>
+                    <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{approveTarget.sourceName} ({getLevelLabel(approveTarget.sourceLevel)})</Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryKey}>Amount</Text>
-                    <Text style={[styles.summaryVal, { fontWeight: '800', color: '#15803d', fontSize: FontSize.md }]}>
+                  <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.amount', 'Amount')}</Text>
+                    <Text style={[styles.summaryVal, { fontWeight: '800', color: '#15803d', fontSize: FontSize.md }, isRTL && { textAlign: 'left' }]}>
                       {PKR(approveTarget.amount)}
                     </Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryKey}>Payment Mode</Text>
-                    <Text style={styles.summaryVal}>{approveTarget.mode} {approveTarget.reference ? `· Ref: ${approveTarget.reference}` : ''}</Text>
+                  <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.paymentMode', 'Payment Mode')}</Text>
+                    <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{approveTarget.mode} {approveTarget.reference ? `· ${t('finance.ref', 'Ref')}: ${approveTarget.reference}` : ''}</Text>
                   </View>
                   {approveTarget.note ? (
-                    <View style={styles.summaryRow}>
-                      <Text style={styles.summaryKey}>Sender Note</Text>
-                      <Text style={styles.summaryVal}>{approveTarget.note}</Text>
+                    <View style={[styles.summaryRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Text style={[styles.summaryKey, isRTL && { textAlign: 'right' }]}>{t('finance.senderNote', 'Sender Note')}</Text>
+                      <Text style={[styles.summaryVal, isRTL && { textAlign: 'left' }]}>{approveTarget.note}</Text>
                     </View>
                   ) : null}
                 </View>
 
                 {/* Receipt Image Box */}
-                <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text, marginTop: 14, marginBottom: 6 }}>
-                  Payment Proof / Receipt
+                <Text style={[{ fontSize: 13, fontWeight: '700', color: Colors.text, marginTop: 14, marginBottom: 6 }, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.paymentProofReceipt', 'Payment Proof / Receipt')}
                 </Text>
                 {approveTarget.receiptImageUrl ? (
                   <View style={{ borderRadius: Radius.md, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border, backgroundColor: '#0f172a' }}>
@@ -1568,42 +1593,42 @@ export default function TransfersScreen() {
                       resizeMode="contain" 
                     />
                     <TouchableOpacity 
-                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, backgroundColor: 'rgba(15, 23, 42, 0.8)' }}
+                      style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, backgroundColor: 'rgba(15, 23, 42, 0.8)' }]}
                       onPress={() => {
                         setPreviewUrl(resolveMediaUrl(approveTarget.receiptImageUrl));
                       }}
                     >
                       <Ionicons name="expand-outline" size={16} color="#fff" />
-                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Tap to view full size</Text>
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>{t('finance.tapToViewFull', 'Tap to view full size')}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <View style={{ padding: 14, backgroundColor: '#fef3c7', borderRadius: Radius.md, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={[{ padding: 14, backgroundColor: '#fef3c7', borderRadius: Radius.md, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }]}>
                     <Ionicons name="warning-outline" size={20} color="#b45309" />
-                    <Text style={{ color: '#92400e', fontSize: 12, flex: 1 }}>No receipt image was attached by the sender.</Text>
+                    <Text style={[{ color: '#92400e', fontSize: 12, flex: 1 }, isRTL && { textAlign: 'right' }]}>{t('finance.noReceiptAttached', 'No receipt image was attached by the sender.')}</Text>
                   </View>
                 )}
 
                 {/* Optional Note */}
-                <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginTop: 14, marginBottom: 4 }}>
-                  Acknowledgment Note (Optional)
+                <Text style={[{ fontSize: 12, fontWeight: '600', color: Colors.textMuted, marginTop: 14, marginBottom: 4 }, isRTL && { textAlign: 'right' }]}>
+                  {t('finance.ackNoteOptional', 'Acknowledgment Note (Optional)')}
                 </Text>
                 <TextInput
-                  style={[styles.fieldInput, { height: 44 }]}
-                  placeholder="e.g. Verified via Bank Alfalah ref #12345"
+                  style={[styles.fieldInput, { height: 44 }, isRTL && { textAlign: 'right' }]}
+                  placeholder={t('finance.ackNotePlaceholder', 'e.g. Verified via Bank Alfalah ref #12345')}
                   placeholderTextColor={Colors.textMuted}
                   value={approveNote}
                   onChangeText={setApproveNote}
                 />
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, justifyContent: 'flex-end', paddingTop: 10, borderTopWidth: 1, borderTopColor: Colors.border }}>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10, marginTop: 16, justifyContent: 'flex-end', paddingTop: 10, borderTopWidth: 1, borderTopColor: Colors.border }]}>
                 <TouchableOpacity 
                   style={[styles.btnSecondary, { paddingHorizontal: 14, paddingVertical: 10 }]} 
                   disabled={approving} 
                   onPress={() => setApproveModalOpen(false)}
                 >
-                  <Text style={styles.btnSecondaryText}>Close</Text>
+                  <Text style={styles.btnSecondaryText}>{t('common.close', 'Close')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[{ backgroundColor: Colors.error, borderRadius: Radius.md, paddingHorizontal: 14, paddingVertical: 10, justifyContent: 'center' }]} 
@@ -1614,16 +1639,71 @@ export default function TransfersScreen() {
                     openRejectModal(id);
                   }}
                 >
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: FontSize.sm }}>Reject</Text>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: FontSize.sm }}>{t('finance.reject', 'Reject')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[{ backgroundColor: '#15803d', borderRadius: Radius.md, paddingHorizontal: 16, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }]} 
+                  style={[{ backgroundColor: '#15803d', borderRadius: Radius.md, paddingHorizontal: 16, paddingVertical: 10, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }]} 
                   disabled={approving} 
                   onPress={handleConfirmApprove}
                 >
                   {approving && <ActivityIndicator size="small" color="#fff" />}
                   <Text style={{ color: '#fff', fontWeight: '700', fontSize: FontSize.sm }}>
-                    {approving ? 'Acknowledging…' : `Accept Funds (${PKR(approveTarget.amount)})`}
+                    {approving ? t('finance.acknowledging', 'Acknowledging…') : `${t('finance.acceptFunds', 'Accept Funds')} (${PKR(approveTarget.amount)})`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModalOpen && (
+        <Modal visible={rejectModalOpen} transparent animationType="fade" onRequestClose={() => !rejecting && setRejectModalOpen(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.confirmModal, { maxWidth: 500 }]}>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }]}>
+                <Text style={styles.confirmTitle}>{t('finance.rejectModalTitle', 'Reject Transfer')}</Text>
+                <TouchableOpacity onPress={() => !rejecting && setRejectModalOpen(false)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.confirmSubtitle, isRTL && { textAlign: 'right' }]}>
+                {t('finance.rejectModalSubtitle', 'Please provide a reason for rejecting this transfer.')}
+              </Text>
+
+              {rejectErr ? (
+                <View style={[styles.alertError, { marginTop: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Ionicons name="alert-circle" size={18} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={[styles.alertErrorText, isRTL && { textAlign: 'right' }]}>{rejectErr}</Text>
+                </View>
+              ) : null}
+
+              <TextInput
+                style={[styles.fieldInput, { height: 70, marginTop: 12 }, isRTL && { textAlign: 'right' }]}
+                placeholder={t('finance.rejectReasonPlaceholder', 'Reason for rejection (required)')}
+                placeholderTextColor={Colors.textMuted}
+                multiline
+                value={rejectReason}
+                onChangeText={setRejectReason}
+              />
+
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 10, marginTop: 20, justifyContent: 'flex-end' }]}>
+                <TouchableOpacity
+                  style={[styles.btnSecondary, { paddingHorizontal: 16, paddingVertical: 10 }]}
+                  disabled={rejecting}
+                  onPress={() => setRejectModalOpen(false)}
+                >
+                  <Text style={styles.btnSecondaryText}>{t('common.cancel', 'Cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[{ backgroundColor: Colors.error, borderRadius: Radius.md, paddingHorizontal: 18, paddingVertical: 10, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 6 }]}
+                  disabled={rejecting}
+                  onPress={handleConfirmReject}
+                >
+                  {rejecting && <ActivityIndicator size="small" color="#fff" />}
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: FontSize.sm }}>
+                    {rejecting ? t('finance.rejecting', 'Rejecting…') : t('finance.confirmRejection', 'Confirm Rejection')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1637,8 +1717,8 @@ export default function TransfersScreen() {
         <Modal visible={!!previewUrl} transparent animationType="fade" onRequestClose={() => setPreviewUrl(null)}>
           <View style={styles.modalBackdrop}>
             <View style={[styles.confirmModal, { maxWidth: 640, width: '94%' }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={styles.confirmTitle}>Receipt / Proof of Payment</Text>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }]}>
+                <Text style={styles.confirmTitle}>{t('finance.receiptPreviewTitle', 'Receipt / Proof of Payment')}</Text>
                 <TouchableOpacity onPress={() => setPreviewUrl(null)}>
                   <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
@@ -1648,9 +1728,9 @@ export default function TransfersScreen() {
                 style={{ width: '100%', height: Math.min(420, height * 0.5), borderRadius: 8, backgroundColor: '#0f172a' }} 
                 resizeMode="contain" 
               />
-              <View style={{ marginTop: 16, alignItems: 'flex-end' }}>
+              <View style={[{ marginTop: 16, alignItems: isRTL ? 'flex-start' : 'flex-end' }]}>
                 <TouchableOpacity style={styles.btnSecondary} onPress={() => setPreviewUrl(null)}>
-                  <Text style={styles.btnSecondaryText}>Close</Text>
+                  <Text style={styles.btnSecondaryText}>{t('common.close', 'Close')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

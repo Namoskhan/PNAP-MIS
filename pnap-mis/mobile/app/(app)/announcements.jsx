@@ -18,6 +18,7 @@ import { api, errorMessage } from '../../src/api/client';
 import { useAuth } from '../../src/context/AuthContext';
 import { useUnit } from '../../src/context/UnitContext';
 import { canPostAnnouncement } from '../../src/utils/permissions';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { useToast } from '../../src/components/Toast';
 import Card from '../../src/components/Card';
 import Badge from '../../src/components/Badge';
@@ -26,37 +27,38 @@ import EmptyState from '../../src/components/EmptyState';
 import DatePicker from '../../src/components/DatePicker';
 import { Colors, FontSize, Radius, Spacing } from '../../src/constants/colors';
 
-const AUDIENCE_MODES = [
-  {
-    value: 'PERSON',
-    icon: 'person-outline',
-    label: 'A specific person',
-    help: 'Direct message — only that member will see it.',
-  },
-  {
-    value: 'OWN',
-    icon: 'business-outline',
-    label: 'This unit only',
-    help: "Visible to everyone in the unit you're posting from.",
-  },
-  {
-    value: 'SUBTREE',
-    icon: 'git-network-outline',
-    label: 'This unit + below',
-    help: 'Cascades down to every sub-unit beneath you.',
-  },
-  {
-    value: 'GLOBAL',
-    icon: 'globe-outline',
-    label: 'Everyone (org-wide)',
-    help: 'Visible to every member in PKNAP.',
-  },
-];
-
 export default function AnnouncementsScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const { ctx } = useUnit();
   const toast = useToast();
+
+  const audienceModes = useMemo(() => [
+    {
+      value: 'PERSON',
+      icon: 'person-outline',
+      label: t('announcements.modes.personLabel', 'A specific person'),
+      help: t('announcements.modes.personHelp', 'Direct message — only that member will see it.'),
+    },
+    {
+      value: 'OWN',
+      icon: 'business-outline',
+      label: t('announcements.modes.ownLabel', 'This unit only'),
+      help: t('announcements.modes.ownHelp', "Visible to everyone in the unit you're posting from."),
+    },
+    {
+      value: 'SUBTREE',
+      icon: 'git-network-outline',
+      label: t('announcements.modes.subtreeLabel', 'This unit + below'),
+      help: t('announcements.modes.subtreeHelp', 'Cascades down to every sub-unit beneath you.'),
+    },
+    {
+      value: 'GLOBAL',
+      icon: 'globe-outline',
+      label: t('announcements.modes.globalLabel', 'Everyone (org-wide)'),
+      help: t('announcements.modes.globalHelp', 'Visible to every member in PKNAP.'),
+    },
+  ], [t]);
 
   const canPost = canPostAnnouncement(user);
 
@@ -166,11 +168,11 @@ export default function AnnouncementsScreen() {
 
   async function submit() {
     if (!form.title.trim() || !form.body.trim()) {
-      toast.error('Title and body are required.');
+      toast.error(t('announcements.titleAndBodyRequired', 'Title and body are required.'));
       return;
     }
     if (form.mode === 'PERSON' && !form.targetMemberId) {
-      toast.error('Please pick a member to send the message to.');
+      toast.error(t('announcements.pickMemberRequired', 'Please pick a member to send the message to.'));
       return;
     }
 
@@ -197,7 +199,7 @@ export default function AnnouncementsScreen() {
       }
 
       await api.post('/announcements', payload);
-      toast.success(form.mode === 'PERSON' ? 'Direct message sent.' : 'Announcement posted.');
+      toast.success(form.mode === 'PERSON' ? t('announcements.messageSent', 'Direct message sent.') : t('announcements.announcementPosted', 'Announcement posted.'));
       setComposeOpen(false);
       load(true);
     } catch (e) {
@@ -209,17 +211,17 @@ export default function AnnouncementsScreen() {
 
   function removeAnnouncement(id, title) {
     Alert.alert(
-      'Delete Announcement',
-      `Are you sure you want to delete "${title || 'this announcement'}"?`,
+      t('announcements.deleteAnnouncement', 'Delete Announcement'),
+      t('announcements.deleteConfirm', 'Are you sure you want to delete this announcement?'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('announcements.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('announcements.delete', 'Delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               await api.delete(`/announcements/${id}`);
-              toast.success('Announcement deleted.');
+              toast.success(t('announcements.deleted', 'Announcement deleted.'));
               load(true);
             } catch (e) {
               toast.error(errorMessage(e));
@@ -241,22 +243,26 @@ export default function AnnouncementsScreen() {
       (String(a.authorUserId) === String(user?._id) || user?.roles?.includes('SUPER_ADMIN'));
 
     return (
-      <Card style={[styles.annCard, a.pinned && styles.annCardPinned, isDirect && styles.annCardDirect]}>
+      <Card style={[
+        styles.annCard,
+        a.pinned && (isRTL ? styles.annCardPinnedRTL : styles.annCardPinned),
+        isDirect && (isRTL ? styles.annCardDirectRTL : styles.annCardDirect),
+      ]}>
         {a.pinned && (
-          <View style={styles.pinBadge}>
-            <Ionicons name="pin" size={13} color="#b45309" />
-            <Text style={styles.pinText}>Pinned Announcement</Text>
+          <View style={[styles.pinBadge, isRTL ? { alignSelf: 'flex-start', flexDirection: 'row-reverse' } : { alignSelf: 'flex-end', flexDirection: 'row' }]}>
+            <Ionicons name="pin" size={13} color="#b45309" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+            <Text style={styles.pinText}>{t('announcements.pinnedAnnouncement', 'Pinned Announcement')}</Text>
           </View>
         )}
 
-        <View style={styles.cardHeader}>
+        <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.annTitle}>{a.title}</Text>
-            <View style={styles.metaRow}>
+            <Text style={[styles.annTitle, isRTL && { textAlign: 'right' }]}>{a.title}</Text>
+            <View style={[styles.metaRow, isRTL && { flexDirection: 'row-reverse' }]}>
               {isDirect ? (
                 <>
-                  <Badge label="Direct message" color="#0369a1" bg="#e0f2fe" />
-                  <Text style={styles.metaText}>to {targetLabel}</Text>
+                  <Badge label={t('announcements.directMessage', 'Direct message')} color="#0369a1" bg="#e0f2fe" />
+                  <Text style={styles.metaText}>{t('announcements.toMember', { name: targetLabel })}</Text>
                 </>
               ) : (
                 <>
@@ -280,18 +286,18 @@ export default function AnnouncementsScreen() {
           )}
         </View>
 
-        <Text style={styles.annBody}>{a.body}</Text>
+        <Text style={[styles.annBody, isRTL && { textAlign: 'right' }]}>{a.body}</Text>
 
-        <View style={styles.cardFooter}>
-          <View style={styles.authorRow}>
+        <View style={[styles.cardFooter, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.authorRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="person-circle-outline" size={16} color={Colors.textMuted} />
-            <Text style={styles.authorText}>By {a.authorName || 'Admin'}</Text>
+            <Text style={styles.authorText}>{t('announcements.by', { name: a.authorName || t('announcements.admin', 'Admin') })}</Text>
           </View>
 
           {a.expiresAt && (
-            <View style={styles.expiryRow}>
+            <View style={[styles.expiryRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-              <Text style={styles.expiryText}>Expires: {new Date(a.expiresAt).toLocaleDateString()}</Text>
+              <Text style={styles.expiryText}>{t('announcements.expires', 'Expires')}: {new Date(a.expiresAt).toLocaleDateString()}</Text>
             </View>
           )}
         </View>
@@ -302,18 +308,18 @@ export default function AnnouncementsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Announcements · اعلانات</Text>
-          <Text style={styles.headerSub}>
-            Broadcasts from your unit, tiers above, and direct messages.
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>{t('announcements.title', 'Announcements')}</Text>
+          <Text style={[styles.headerSub, isRTL && { textAlign: 'right' }]}>
+            {t('announcements.subtitle', 'Broadcasts from your unit, tiers above, and direct messages.')}
           </Text>
         </View>
 
         {canPost && (
-          <TouchableOpacity style={styles.composeBtn} onPress={openCompose}>
+          <TouchableOpacity style={[styles.composeBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={openCompose}>
             <Ionicons name="add" size={18} color="#fff" />
-            <Text style={styles.composeBtnText}>New</Text>
+            <Text style={styles.composeBtnText}>{t('announcements.newAnnouncement', 'New')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -338,8 +344,8 @@ export default function AnnouncementsScreen() {
           !loading && (
             <EmptyState
               icon="📣"
-              title="No announcements"
-              subtitle="Broadcasts and important updates will appear here."
+              title={t('announcements.noAnnouncements', 'No announcements')}
+              subtitle={t('announcements.emptySubtitle', 'Broadcasts and important updates will appear here.')}
             />
           )
         }
@@ -353,9 +359,9 @@ export default function AnnouncementsScreen() {
       {/* Compose Modal */}
       <Modal visible={composeOpen} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Text style={styles.modalTitle}>
-              {form.mode === 'PERSON' ? 'Send Direct Message' : 'Post Announcement'}
+              {form.mode === 'PERSON' ? t('announcements.sendDirectMessage', 'Send Direct Message') : t('announcements.postAnnouncement', 'Post Announcement')}
             </Text>
             <TouchableOpacity onPress={() => setComposeOpen(false)} style={styles.modalClose}>
               <Ionicons name="close" size={24} color={Colors.textMuted} />
@@ -364,9 +370,9 @@ export default function AnnouncementsScreen() {
 
           <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 40 }}>
             {/* Audience Modes */}
-            <Text style={styles.fieldLabel}>Audience</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('announcements.audience', 'Audience')}</Text>
             <View style={styles.audienceGrid}>
-              {AUDIENCE_MODES.map((m) => {
+              {audienceModes.map((m) => {
                 const isSelected = form.mode === m.value;
                 return (
                   <TouchableOpacity
@@ -390,12 +396,12 @@ export default function AnnouncementsScreen() {
             </View>
 
             {form.mode !== 'PERSON' && (
-              <View style={styles.postingFromHint}>
+              <View style={[styles.postingFromHint, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Ionicons name="location-outline" size={14} color={Colors.primary} />
                 <Text style={styles.postingFromText}>
                   {ctx?.unitLevel
-                    ? `Posting from: ${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName || ''}`
-                    : 'Posting at Central tier.'}
+                    ? t('announcements.postingFrom', { unit: `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName || ''}` })
+                    : t('announcements.postingAtCentral', 'Posting at Central tier.')}
                 </Text>
               </View>
             )}
@@ -403,9 +409,9 @@ export default function AnnouncementsScreen() {
             {/* Recipient Picker for Direct Message */}
             {form.mode === 'PERSON' && (
               <View style={styles.recipientSection}>
-                <Text style={styles.fieldLabel}>Recipient Member</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('announcements.recipient', 'Recipient Member')}</Text>
                 {form.targetMemberId ? (
-                  <View style={styles.pickedMemberBox}>
+                  <View style={[styles.pickedMemberBox, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Avatar name={form.targetMemberLabel} size={32} color={Colors.primary} />
                     <Text style={styles.pickedMemberText}>{form.targetMemberLabel}</Text>
                     <TouchableOpacity
@@ -414,14 +420,14 @@ export default function AnnouncementsScreen() {
                         setForm((f) => ({ ...f, targetMemberId: '', targetMemberLabel: '' }))
                       }
                     >
-                      <Text style={styles.changeRecipientText}>Change</Text>
+                      <Text style={styles.changeRecipientText}>{t('announcements.change', 'Change')}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
                   <View>
                     <TextInput
-                      style={styles.input}
-                      placeholder={membersLoading ? 'Loading members…' : 'Search by name, ID, CNIC or phone...'}
+                      style={[styles.input, isRTL && { textAlign: 'right' }]}
+                      placeholder={membersLoading ? t('announcements.loadingMembers', 'Loading members…') : t('announcements.searchPlaceholder', 'Search by name, ID, CNIC or phone...')}
                       value={memberQuery}
                       onChangeText={setMemberQuery}
                       disabled={membersLoading}
@@ -433,23 +439,23 @@ export default function AnnouncementsScreen() {
                     ) : (
                       <ScrollView style={styles.memberResultsList} nestedScrollEnabled>
                         {filteredMembers.length === 0 ? (
-                          <Text style={styles.noMembersText}>No matching active members.</Text>
+                          <Text style={[styles.noMembersText, isRTL && { textAlign: 'right' }]}>{t('announcements.noMatchingMembers', 'No matching active members.')}</Text>
                         ) : (
                           filteredMembers.map((m) => (
                             <TouchableOpacity
                               key={m._id}
-                              style={styles.memberResultRow}
+                              style={[styles.memberResultRow, isRTL && { flexDirection: 'row-reverse' }]}
                               onPress={() => pickMember(m)}
                             >
                               <Avatar name={m.fullName} size={30} color={Colors.textMuted} />
-                              <View style={{ flex: 1, marginLeft: 8 }}>
+                              <View style={[{ flex: 1, marginHorizontal: 8 }, isRTL && { alignItems: 'flex-end' }]}>
                                 <Text style={styles.memberResultName}>{m.fullName}</Text>
                                 <Text style={styles.memberResultSub}>
                                   {m.memberId || m.cnic}
                                   {m.phone ? ` · ${m.phone}` : ''}
                                 </Text>
                               </View>
-                              <Ionicons name="chevron-forward" size={16} color={Colors.textLight} />
+                              <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={16} color={Colors.textLight} />
                             </TouchableOpacity>
                           ))
                         )}
@@ -461,13 +467,13 @@ export default function AnnouncementsScreen() {
             )}
 
             {/* Title */}
-            <Text style={styles.fieldLabel}>Title</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('announcements.announcementTitle', 'Title')}</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isRTL && { textAlign: 'right' }]}
               placeholder={
                 form.mode === 'PERSON'
-                  ? "e.g., Reminder about Friday's meeting"
-                  : 'e.g., Quarterly Review on Friday'
+                  ? t('announcements.directTitlePlaceholder')
+                  : t('announcements.broadcastTitlePlaceholder')
               }
               value={form.title}
               onChangeText={(text) => setForm((f) => ({ ...f, title: text }))}
@@ -475,10 +481,10 @@ export default function AnnouncementsScreen() {
             />
 
             {/* Body */}
-            <Text style={styles.fieldLabel}>Body / Content</Text>
+            <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('announcements.body', 'Body / Content')}</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Details, announcement message, agenda, action items…"
+              style={[styles.input, styles.textArea, isRTL && { textAlign: 'right' }]}
+              placeholder={t('announcements.bodyPlaceholder')}
               value={form.body}
               onChangeText={(text) => setForm((f) => ({ ...f, body: text }))}
               multiline
@@ -488,17 +494,17 @@ export default function AnnouncementsScreen() {
 
             {/* Expires At */}
             <DatePicker
-              label="Expiry Date (optional)"
+              label={t('announcements.expires', 'Expiry Date (optional)')}
               value={form.expiresAt}
               onChange={(val) => setForm((f) => ({ ...f, expiresAt: val }))}
-              placeholder="Select expiry date"
+              placeholder={t('announcements.expires', 'Select expiry date')}
             />
 
             {/* Pin to Top */}
-            <View style={styles.switchRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.switchLabel}>Pin to Top</Text>
-                <Text style={styles.switchSub}>Keep this announcement highlighted at the top of the feed.</Text>
+            <View style={[styles.switchRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={styles.switchLabel}>{t('announcements.pinToTop', 'Pin to Top')}</Text>
+                <Text style={styles.switchSub}>{t('announcements.emptySubtitle', 'Keep this announcement highlighted at the top of the feed.')}</Text>
               </View>
               <Switch
                 value={form.pinned}
@@ -509,9 +515,9 @@ export default function AnnouncementsScreen() {
           </ScrollView>
 
           {/* Modal Footer */}
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setComposeOpen(false)}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={styles.cancelBtnText}>{t('announcements.cancel', 'Cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.submitBtn}
@@ -522,7 +528,7 @@ export default function AnnouncementsScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.submitBtnText}>
-                  {form.mode === 'PERSON' ? 'Send Message' : 'Post Announcement'}
+                  {form.mode === 'PERSON' ? t('announcements.sendMessage', 'Send Message') : t('announcements.post', 'Post')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -581,9 +587,23 @@ const styles = StyleSheet.create({
     borderLeftColor: '#f59e0b',
     backgroundColor: '#fffbeb',
   },
+  annCardPinnedRTL: {
+    borderColor: '#f59e0b',
+    borderRightWidth: 4,
+    borderRightColor: '#f59e0b',
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.border,
+    backgroundColor: '#fffbeb',
+  },
   annCardDirect: {
     borderLeftWidth: 4,
     borderLeftColor: '#0284c7',
+  },
+  annCardDirectRTL: {
+    borderRightWidth: 4,
+    borderRightColor: '#0284c7',
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.border,
   },
   pinBadge: {
     flexDirection: 'row',

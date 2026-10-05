@@ -3,12 +3,14 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, TextInput
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
 
 export default function ReportsBrandingScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -57,7 +59,7 @@ export default function ReportsBrandingScreen() {
         },
         changeNote: 'Updated report branding',
       });
-      toast.success('Report branding saved.');
+      toast.success(t('admin.settings.brandingSaved', 'Report branding saved. Applies to the next export.'));
     } catch (e) {
       setErr(errorMessage(e));
       toast.error(errorMessage(e));
@@ -69,7 +71,7 @@ export default function ReportsBrandingScreen() {
   if (busy) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading report branding...</Text>
+        <Text style={styles.loadingText}>{t('common.loading', 'Loading report branding...')}</Text>
       </View>
     );
   }
@@ -79,11 +81,13 @@ export default function ReportsBrandingScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Ionicons name="document-text" size={24} color={Colors.primary} style={{ marginRight: Spacing.sm }} />
-          <Text style={styles.title}>Exports & Reports</Text>
+        <View style={[styles.headerTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Ionicons name="document-text" size={24} color={Colors.primary} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('admin.settings.reportBranding', 'Report Branding')}</Text>
         </View>
-        <Text style={styles.subtitle}>Header logo, footer text, and accent color for PDF / XLSX exports. Changes apply to the next export.</Text>
+        <Text style={[styles.subtitle, isRTL && { textAlign: 'right' }]}>
+          {t('admin.settings.reportBrandingSub', 'Header logo, footer text, and accent color for PDF / XLSX exports. Changes apply to the next export.')}
+        </Text>
       </View>
 
       {err ? <Text style={styles.errorText}>{err}</Text> : null}
@@ -91,14 +95,14 @@ export default function ReportsBrandingScreen() {
       {form && (
         <>
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="image" size={16} color={Colors.textLight} style={{ marginRight: Spacing.sm }} />
-              <Text style={styles.cardTitle}>Export logo</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Ionicons name="image" size={16} color={Colors.textLight} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.exportLogo', 'Export logo')}</Text>
             </View>
             <View style={styles.cardBody}>
-              <View style={styles.toggleRow}>
+              <View style={[styles.toggleRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.toggleInfo}>
-                  <Text style={styles.toggleLabel}>Show logo on PDF exports</Text>
+                  <Text style={[styles.toggleLabel, isRTL && { textAlign: 'right' }]}>{t('admin.settings.showLogoOnPdf', 'Show logo on PDF exports')}</Text>
                 </View>
                 <Switch
                   value={form.showLogoOnPdf}
@@ -107,9 +111,9 @@ export default function ReportsBrandingScreen() {
                   trackColor={{ false: Colors.border, true: Colors.primary }}
                 />
               </View>
-              <View style={[styles.toggleRow, { borderBottomWidth: 0 }]}>
+              <View style={[styles.toggleRow, isRTL && { flexDirection: 'row-reverse' }, { borderBottomWidth: 0 }]}>
                 <View style={styles.toggleInfo}>
-                  <Text style={styles.toggleLabel}>Show logo on Excel exports</Text>
+                  <Text style={[styles.toggleLabel, isRTL && { textAlign: 'right' }]}>{t('admin.settings.showLogoOnXlsx', 'Show logo on Excel exports')}</Text>
                 </View>
                 <Switch
                   value={form.showLogoOnXlsx}
@@ -121,28 +125,32 @@ export default function ReportsBrandingScreen() {
 
               <View style={styles.logoPreviewContainer}>
                 {printLogo ? (
-                  <View style={styles.logoPreviewRow}>
+                  <View style={[styles.logoPreviewRow, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Image source={{ uri: printLogo }} style={styles.logoImage} resizeMode="contain" />
-                    <Text style={styles.hint}>Current print logo. Replace it in the Logo Manager ("Print" slot).</Text>
+                    <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>
+                      {t('admin.settings.currentPrintLogo', 'Current print logo. Replace it in the Logo Manager ("Print" slot).')}
+                    </Text>
                   </View>
                 ) : (
-                  <Text style={styles.hint}>No print logo uploaded yet — exports render text-only headers. Upload one in the Logo Manager ("Print" slot).</Text>
+                  <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>
+                    {t('admin.settings.noPrintLogoUploaded', 'No print logo uploaded yet — exports render text-only headers. Upload one in the Logo Manager ("Print" slot).')}
+                  </Text>
                 )}
               </View>
             </View>
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="document" size={16} color={Colors.textLight} style={{ marginRight: Spacing.sm }} />
-              <Text style={styles.cardTitle}>PDF header & footer</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Ionicons name="document" size={16} color={Colors.textLight} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.pdfHeaderFooter', 'PDF header & footer')}</Text>
             </View>
             <View style={styles.cardBody}>
-              <Text style={styles.fieldLabel}>Header accent color</Text>
-              <View style={styles.colorInputRow}>
+              <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('admin.settings.headerAccentColor', 'Header accent color')}</Text>
+              <View style={[styles.colorInputRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={[styles.colorSwatch, { backgroundColor: effectiveHeaderColor }]} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.pdfHeaderColor}
                   onChangeText={(val) => setForm(p => ({ ...p, pdfHeaderColor: val.trim() }))}
                   placeholder={`Theme primary (${themePrimary})`}
@@ -152,26 +160,26 @@ export default function ReportsBrandingScreen() {
                 />
                 {(form.pdfHeaderColor && canWrite) ? (
                   <TouchableOpacity style={styles.clearBtn} onPress={() => setForm(p => ({ ...p, pdfHeaderColor: '' }))}>
-                    <Text style={styles.clearBtnText}>Clear</Text>
+                    <Text style={styles.clearBtnText}>{t('admin.settings.useThemeColor', 'Use theme color')}</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
-              <Text style={styles.hint}>The separator bar under PDF headers. Leave empty to follow the theme's primary color.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.headerAccentColorHelp', "The separator bar under PDF headers. Leave empty to follow the theme's primary color.")}</Text>
 
-              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }]}>PDF footer text</Text>
+              <Text style={[styles.fieldLabel, { marginTop: Spacing.md }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.pdfFooterText', 'PDF footer text')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={form.pdfFooterText}
                 onChangeText={(val) => setForm(p => ({ ...p, pdfFooterText: val }))}
                 placeholder="e.g. © PKNAP — internal use only"
                 editable={canWrite}
                 maxLength={300}
               />
-              <Text style={styles.hint}>Shown at the bottom of every PDF page. Empty falls back to the copyright text from System Identity.</Text>
+              <Text style={[styles.hint, isRTL && { textAlign: 'right' }]}>{t('admin.settings.pdfFooterTextHelp', 'Shown at the bottom of every PDF page. Empty falls back to the copyright text from System Identity.')}</Text>
 
               {/* Live Preview */}
               <View style={styles.previewBox}>
-                <View style={styles.previewHeaderRow}>
+                <View style={[styles.previewHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   {form.showLogoOnPdf && printLogo && (
                     <Image source={{ uri: printLogo }} style={styles.previewLogo} resizeMode="contain" />
                   )}
@@ -189,12 +197,12 @@ export default function ReportsBrandingScreen() {
           </View>
 
           {canWrite && (
-            <View style={styles.footer}>
+            <View style={[styles.footer, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push('/admin/settings')} disabled={saving}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={save} disabled={saving}>
-                <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save changes'}</Text>
+                <Text style={styles.saveBtnText}>{saving ? t('common.saving', 'Saving...') : `✓ ${t('admin.settings.saveBranding', 'Save Branding')}`}</Text>
               </TouchableOpacity>
             </View>
           )}

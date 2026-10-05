@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { confirmAction } from '../../../../src/utils/dialog';
@@ -37,6 +38,7 @@ const TIER_CODES = ['', 'BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL']
 const BODIES = ['', 'EXECUTIVE', 'COMMITTEE'];
 
 export default function ResponsibilityTemplatesScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const toast = useToast();
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -91,7 +93,7 @@ export default function ResponsibilityTemplatesScreen() {
           <View style={styles.hero}>
             <View style={styles.heroHeader}>
               <Ionicons name="clipboard" size={28} color={Colors.primary} />
-              <Text style={styles.heroTitle}>Responsibility Manager</Text>
+              <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.units.responsibilityTemplates', 'Responsibility Manager')}</Text>
             </View>
             <Text style={styles.heroSub}>
               Auto-assign tasks when meetings are finalized or activities completed.

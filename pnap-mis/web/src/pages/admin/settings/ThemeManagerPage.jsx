@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchSettings, patchSettings, listPresets, applyPreset } from '../../../api/branding';
@@ -23,40 +24,40 @@ import dialog from '../../../components/dialog';
 // surface inline under the offending tokens.
 
 const TOKEN_GROUPS = [
-  { title: 'Brand', tokens: [
-    { key: 'primary',     label: 'Primary',     contrastWith: 'textInverse', contrastLabel: 'button label' },
-    { key: 'primaryDark', label: 'Primary dark' },
-    { key: 'secondary',   label: 'Secondary' },
-    { key: 'accent',      label: 'Accent' },
+  { titleKey: 'admin.settings.groupBrand', title: 'Brand', tokens: [
+    { key: 'primary',     labelKey: 'admin.settings.tokenPrimary',     label: 'Primary',     contrastWith: 'textInverse', contrastLabelKey: 'admin.settings.contrastButtonLabel', contrastLabel: 'button label' },
+    { key: 'primaryDark', labelKey: 'admin.settings.tokenPrimaryDark', label: 'Primary dark' },
+    { key: 'secondary',   labelKey: 'admin.settings.tokenSecondary',   label: 'Secondary' },
+    { key: 'accent',      labelKey: 'admin.settings.tokenAccent',      label: 'Accent' },
   ]},
-  { title: 'Surfaces', tokens: [
-    { key: 'background', label: 'Page background' },
-    { key: 'surface',    label: 'Card surface',     contrastWith: 'textPrimary', contrastLabel: 'body text' },
-    { key: 'sidebarBg',  label: 'Sidebar background', contrastWith: 'sidebarFg', contrastLabel: 'sidebar text' },
-    { key: 'sidebarFg',  label: 'Sidebar text' },
-    { key: 'navbarBg',   label: 'Top-bar background' },
+  { titleKey: 'admin.settings.groupSurfaces', title: 'Surfaces', tokens: [
+    { key: 'background', labelKey: 'admin.settings.tokenBackground', label: 'Page background' },
+    { key: 'surface',    labelKey: 'admin.settings.tokenSurface',    label: 'Card surface',       contrastWith: 'textPrimary', contrastLabelKey: 'admin.settings.contrastBodyText',    contrastLabel: 'body text' },
+    { key: 'sidebarBg',  labelKey: 'admin.settings.tokenSidebarBg',  label: 'Sidebar background', contrastWith: 'sidebarFg',   contrastLabelKey: 'admin.settings.contrastSidebarText', contrastLabel: 'sidebar text' },
+    { key: 'sidebarFg',  labelKey: 'admin.settings.tokenSidebarFg',  label: 'Sidebar text' },
+    { key: 'navbarBg',   labelKey: 'admin.settings.tokenNavbarBg',   label: 'Top-bar background' },
   ]},
-  { title: 'Text', tokens: [
-    { key: 'textPrimary', label: 'Primary text', contrastWith: 'background', contrastLabel: 'body on bg' },
-    { key: 'textMuted',   label: 'Muted text',   contrastWith: 'background', contrastLabel: 'muted on bg', contrastTarget: 3 },
-    { key: 'textInverse', label: 'Inverse text', contrastWith: 'primary',    contrastLabel: 'button label' },
+  { titleKey: 'admin.settings.groupText', title: 'Text', tokens: [
+    { key: 'textPrimary', labelKey: 'admin.settings.tokenTextPrimary', label: 'Primary text', contrastWith: 'background', contrastLabelKey: 'admin.settings.contrastBodyOnBg',    contrastLabel: 'body on bg' },
+    { key: 'textMuted',   labelKey: 'admin.settings.tokenTextMuted',   label: 'Muted text',   contrastWith: 'background', contrastLabelKey: 'admin.settings.contrastMutedOnBg',   contrastLabel: 'muted on bg', contrastTarget: 3 },
+    { key: 'textInverse', labelKey: 'admin.settings.tokenTextInverse', label: 'Inverse text', contrastWith: 'primary',    contrastLabelKey: 'admin.settings.contrastButtonLabel', contrastLabel: 'button label' },
   ]},
-  { title: 'Borders', tokens: [
-    { key: 'borderSoft',   label: 'Soft border' },
-    { key: 'borderStrong', label: 'Strong border' },
+  { titleKey: 'admin.settings.groupBorders', title: 'Borders', tokens: [
+    { key: 'borderSoft',   labelKey: 'admin.settings.tokenBorderSoft',   label: 'Soft border' },
+    { key: 'borderStrong', labelKey: 'admin.settings.tokenBorderStrong', label: 'Strong border' },
   ]},
-  { title: 'Status', tokens: [
-    { key: 'success', label: 'Success' },
-    { key: 'warning', label: 'Warning' },
-    { key: 'danger',  label: 'Danger' },
-    { key: 'info',    label: 'Info' },
+  { titleKey: 'admin.settings.groupStatus', title: 'Status', tokens: [
+    { key: 'success', labelKey: 'admin.settings.tokenSuccess', label: 'Success' },
+    { key: 'warning', labelKey: 'admin.settings.tokenWarning', label: 'Warning' },
+    { key: 'danger',  labelKey: 'admin.settings.tokenDanger',  label: 'Danger' },
+    { key: 'info',    labelKey: 'admin.settings.tokenInfo',    label: 'Info' },
   ]},
-  { title: 'Tier badges', tokens: [
-    { key: 'tierCentral',   label: 'Central',    contrastWith: 'surface', contrastLabel: 'pill on card', contrastTarget: 3 },
-    { key: 'tierProvince',  label: 'Province',   contrastWith: 'surface', contrastLabel: 'pill on card', contrastTarget: 3 },
-    { key: 'tierDistrict',  label: 'District',   contrastWith: 'surface', contrastLabel: 'pill on card', contrastTarget: 3 },
-    { key: 'tierArea',      label: 'Area',       contrastWith: 'surface', contrastLabel: 'pill on card', contrastTarget: 3 },
-    { key: 'tierBasicUnit', label: 'Basic Unit', contrastWith: 'surface', contrastLabel: 'pill on card', contrastTarget: 3 },
+  { titleKey: 'admin.settings.groupTiers', title: 'Tier badges', tokens: [
+    { key: 'tierCentral',   labelKey: 'admin.settings.tokenTierCentral',   label: 'Central',    contrastWith: 'surface', contrastLabelKey: 'admin.settings.contrastPillOnCard', contrastLabel: 'pill on card', contrastTarget: 3 },
+    { key: 'tierProvince',  labelKey: 'admin.settings.tokenTierProvince',  label: 'Province',   contrastWith: 'surface', contrastLabelKey: 'admin.settings.contrastPillOnCard', contrastLabel: 'pill on card', contrastTarget: 3 },
+    { key: 'tierDistrict',  labelKey: 'admin.settings.tokenTierDistrict',  label: 'District',   contrastWith: 'surface', contrastLabelKey: 'admin.settings.contrastPillOnCard', contrastLabel: 'pill on card', contrastTarget: 3 },
+    { key: 'tierArea',      labelKey: 'admin.settings.tokenTierArea',      label: 'Area',       contrastWith: 'surface', contrastLabelKey: 'admin.settings.contrastPillOnCard', contrastLabel: 'pill on card', contrastTarget: 3 },
+    { key: 'tierBasicUnit', labelKey: 'admin.settings.tokenTierBasicUnit', label: 'Basic Unit', contrastWith: 'surface', contrastLabelKey: 'admin.settings.contrastPillOnCard', contrastLabel: 'pill on card', contrastTarget: 3 },
   ]},
 ];
 
@@ -78,6 +79,7 @@ function themeFromResponse(res) {
 const EMPTY_THEME = { activeMode: 'LIGHT', presetName: 'PKNAP_DEFAULT', light: {}, dark: {} };
 
 export default function ThemeManagerPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const branding = useBranding();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
@@ -168,14 +170,14 @@ export default function ThemeManagerPage() {
   }
 
   async function applyPresetByCode(code) {
-    if (!await dialog.confirm(`Apply preset "${code}"? This overwrites the current theme. You can rollback from Settings History after saving.`)) return;
+    if (!await dialog.confirm(t('admin.settings.applyPresetConfirm', 'Apply preset "{{code}}"? This overwrites the current theme. You can rollback from Settings History after saving.', { code }))) return;
     setSaving(true); setServerErrors([]);
     try {
       const updated = await applyPreset(code);
       // apply-preset answers { settings, versionNumber } — NOT { theme }.
       commitTheme(themeFromResponse(updated), 'apply preset');
       branding.refresh?.();
-      toast.success?.(`Preset "${code}" applied.`);
+      toast.success?.(t('admin.settings.presetApplied', 'Preset "{{code}}" applied.', { code }));
     } catch (e) {
       // Surface the validator's per-token detail like the save path
       // does — a bare "failed validation" gives the admin nothing
@@ -214,7 +216,7 @@ export default function ThemeManagerPage() {
     a.download = `pnap-theme-${(theme.presetName || 'custom').toLowerCase()}-${stamp}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    toast.success?.('Theme exported.');
+    toast.success?.(t('admin.settings.themeExported', 'Theme exported.'));
   }
 
   async function applyImportedTheme(parsed) {
@@ -233,7 +235,7 @@ export default function ThemeManagerPage() {
       });
       commitTheme(themeFromResponse(updated), 'import theme');
       branding.refresh?.();
-      toast.success?.('Theme imported & saved.');
+      toast.success?.(t('admin.settings.themeImported', 'Theme imported & saved.'));
       setImportOpen(false);
     } catch (e) {
       const details = e?.response?.data?.error?.details;
@@ -262,7 +264,7 @@ export default function ThemeManagerPage() {
       });
       commitTheme(themeFromResponse(updated), 'save theme');
       branding.refresh?.();
-      toast.success?.('Theme saved.');
+      toast.success?.(t('admin.settings.themeSaved', 'Theme saved.'));
     } catch (e) {
       // The themeValidator returns a structured error list under
       // err.response.data.error.details.errors. Surface it inline.
@@ -286,7 +288,7 @@ export default function ThemeManagerPage() {
     return (
       <div className="rm-loading">
         <span className="scope-spinner" aria-hidden="true" />
-        <span className="muted">Loading theme…</span>
+        <span className="muted">{t('common.loading', 'Loading…')}</span>
       </div>
     );
   }
@@ -298,7 +300,7 @@ export default function ThemeManagerPage() {
           <div className="alert error" style={{ marginBottom: 12 }}>
             {err || 'The theme could not be loaded.'}
           </div>
-          <button className="rm-hero-btn outline" onClick={load}>⟳ Retry</button>
+          <button className="rm-hero-btn outline" onClick={load}>⟳ {t('common.retry', 'Retry')}</button>
         </div>
       </div>
     );
@@ -312,18 +314,17 @@ export default function ThemeManagerPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><PaletteIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Theme Manager</h2>
+            <h2 className="rm-hero-title">{t('admin.settings.themeManager', 'Theme Manager')}</h2>
             <div className="rm-hero-sub">
-              Edit color palettes for light + dark modes. WCAG contrast checks run server-side at save —
-              tokens that fail are highlighted inline.
+              {t('admin.settings.themeManagerSub', 'Edit color palettes for light + dark modes. WCAG contrast checks run server-side at save — tokens that fail are highlighted inline.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← Back</Link>
-            <button className="rm-hero-btn outline" onClick={load} disabled={saving}>⟳ Refresh</button>
-            <button className="rm-hero-btn outline" onClick={exportTheme} disabled={saving || !theme}>⤓ Export</button>
+            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('admin.settings.backToSettings', '← Back')}</Link>
+            <button className="rm-hero-btn outline" onClick={load} disabled={saving}>⟳ {t('common.refresh', 'Refresh')}</button>
+            <button className="rm-hero-btn outline" onClick={exportTheme} disabled={saving || !theme}>⤓ {t('common.export', 'Export')}</button>
             {canWrite && (
-              <button className="rm-hero-btn outline" onClick={() => setImportOpen(true)} disabled={saving}>⤒ Import</button>
+              <button className="rm-hero-btn outline" onClick={() => setImportOpen(true)} disabled={saving}>⤒ {t('common.import', 'Import')}</button>
             )}
           </div>
         </div>
@@ -347,7 +348,7 @@ export default function ThemeManagerPage() {
       <div className="rm-card">
         <div className="rm-card-bar">
           <span className="rm-card-bar-icon" aria-hidden="true"><MoonIcon size={15} /></span>
-          <span className="rm-card-bar-label">Active mode</span>
+          <span className="rm-card-bar-label">{t('admin.settings.activeMode', 'Active mode')}</span>
         </div>
         <div className="rm-card-body">
           <div style={{ display: 'flex', gap: 8 }}>
@@ -363,11 +364,11 @@ export default function ThemeManagerPage() {
                   style={{ flex: 1, padding: 14, fontFamily: 'inherit', fontSize: 13, cursor: 'pointer' }}
                 >
                   <span className="rm-perm-tile-label">
-                    <strong>{m}</strong>
-                    {' — '}
-                    {m === 'LIGHT' ? 'force light palette'
-                      : m === 'DARK' ? 'force dark palette'
-                      : 'follow OS preference'}
+                    {m === 'LIGHT'
+                      ? t('admin.settings.modeLight', 'LIGHT — force light palette')
+                      : m === 'DARK'
+                      ? t('admin.settings.modeDark', 'DARK — force dark palette')
+                      : t('admin.settings.modeAuto', 'AUTO — follow OS preference')}
                   </span>
                 </button>
               );
@@ -380,7 +381,7 @@ export default function ThemeManagerPage() {
       <div className="rm-card" style={{ marginTop: 12 }}>
         <div className="rm-card-bar">
           <span className="rm-card-bar-icon" aria-hidden="true"><PaletteIcon size={15} /></span>
-          <span className="rm-card-bar-label">Presets</span>
+          <span className="rm-card-bar-label">{t('admin.settings.presets', 'Presets')}</span>
           <span className="rm-card-bar-count">{theme.presetName}</span>
         </div>
         <div className="rm-card-body">
@@ -405,7 +406,7 @@ export default function ThemeManagerPage() {
           <div className="rm-card">
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><TargetIcon size={15} /></span>
-              <span className="rm-card-bar-label">Editing palette</span>
+              <span className="rm-card-bar-label">{t('admin.settings.editingPalette', 'Editing palette')}</span>
               <div style={{ display: 'flex', gap: 6 }}>
                 {['LIGHT', 'DARK'].map((m) => (
                   <button
@@ -428,22 +429,22 @@ export default function ThemeManagerPage() {
           {TOKEN_GROUPS.map((group) => (
             <div key={group.title} className="rm-card" style={{ marginTop: 10 }}>
               <div className="rm-card-bar">
-                <span className="rm-card-bar-label">{group.title}</span>
+                <span className="rm-card-bar-label">{t(group.titleKey, group.title)}</span>
               </div>
               <div className="rm-card-body">
                 <div className="form-grid">
-                  {group.tokens.map((t) => {
-                    const errKey = `${editingMode}::${t.key}`;
+                  {group.tokens.map((token) => {
+                    const errKey = `${editingMode}::${token.key}`;
                     const tokenErrors = errorsByToken[errKey] || [];
                     return (
-                      <div key={t.key} className="field full">
+                      <div key={token.key} className="field full">
                         <ColorPicker
-                          label={t.label}
-                          value={editingPalette[t.key] || ''}
-                          onChange={(v) => setToken(t.key, v)}
-                          contrastWith={t.contrastWith ? editingPalette[t.contrastWith] : undefined}
-                          contrastTarget={t.contrastTarget}
-                          contrastLabel={t.contrastLabel}
+                          label={t(token.labelKey, token.label)}
+                          value={editingPalette[token.key] || ''}
+                          onChange={(v) => setToken(token.key, v)}
+                          contrastWith={token.contrastWith ? editingPalette[token.contrastWith] : undefined}
+                          contrastTarget={token.contrastTarget}
+                          contrastLabel={token.contrastLabelKey ? t(token.contrastLabelKey, token.contrastLabel) : token.contrastLabel}
                           disabled={!canWrite}
                         />
                         {tokenErrors.length > 0 && (
@@ -465,12 +466,12 @@ export default function ThemeManagerPage() {
           <div className="rm-card" style={{ position: 'sticky', top: 16 }}>
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><CameraIcon size={15} /></span>
-              <span className="rm-card-bar-label">Preview · {editingMode}</span>
+              <span className="rm-card-bar-label">{t('admin.settings.preview', 'Preview')} · {editingMode}</span>
             </div>
             <div className="rm-card-body" style={{ padding: 8 }}>
               <ThemePreviewPane palette={editingPalette} />
               <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>
-                Scoped sample — your color edits don't affect the rest of the page until you click Save.
+                {t('admin.settings.previewScopedSample', "Scoped sample — your color edits don't affect the rest of the page until you click Save.")}
               </p>
             </div>
           </div>
@@ -484,16 +485,16 @@ export default function ThemeManagerPage() {
               so without this the only way to tell was to press it and
               watch for a toast. */}
           <span className="muted" style={{ marginRight: 'auto', fontSize: 12.5, alignSelf: 'center' }}>
-            {dirty ? 'Unsaved changes' : 'All changes saved'}
+            {dirty ? t('admin.settings.unsavedChanges', 'Unsaved changes') : t('admin.settings.allChangesSaved', 'All changes saved')}
           </span>
-          <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>× Cancel</Link>
+          <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('common.cancel', '× Cancel')}</Link>
           <button
             className="rm-hero-btn solid"
             disabled={saving || !dirty}
             onClick={save}
             title={dirty ? 'Save the current palette' : 'No changes to save'}
           >
-            {saving ? 'Saving…' : '✓ Save theme'}
+            {saving ? t('common.saving', 'Saving…') : `✓ ${t('admin.settings.saveTheme', 'Save theme')}`}
           </button>
         </div>
       )}
@@ -510,6 +511,7 @@ export default function ThemeManagerPage() {
 }
 
 function ThemeImportDialog({ onClose, onApply, busy }) {
+  const { t } = useTranslation();
   const [parsed, setParsed] = useState(null);
   const [fileName, setFileName] = useState('');
   const [err, setErr] = useState('');
@@ -523,9 +525,9 @@ function ThemeImportDialog({ onClose, onApply, busy }) {
       const json = JSON.parse(text);
       // Accept both the wrapped export shape (`{theme: {...}}`) and a
       // bare `{light, dark}` payload from older / hand-rolled files.
-      const t = json?.theme || json;
-      if (!t || typeof t !== 'object') throw new Error('File is not a valid theme JSON');
-      if (!t.light && !t.dark) throw new Error('Theme must include "light" and/or "dark" palettes');
+      const themePayload = json?.theme || json;
+      if (!themePayload || typeof themePayload !== 'object') throw new Error('File is not a valid theme JSON');
+      if (!themePayload.light && !themePayload.dark) throw new Error('Theme must include "light" and/or "dark" palettes');
       setParsed(json);
     } catch (e) {
       setErr(e.message);
@@ -538,15 +540,15 @@ function ThemeImportDialog({ onClose, onApply, busy }) {
     if (f) handleFile(f);
   }
 
-  const t = parsed?.theme || parsed;
-  const lightKeys = t?.light ? Object.keys(t.light).length : 0;
-  const darkKeys = t?.dark ? Object.keys(t.dark).length : 0;
+  const themePayload = parsed?.theme || parsed;
+  const lightKeys = themePayload?.light ? Object.keys(themePayload.light).length : 0;
+  const darkKeys = themePayload?.dark ? Object.keys(themePayload.dark).length : 0;
 
   return (
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: 560 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>Import theme</h3>
+          <h3 style={{ margin: 0 }}>{t('admin.settings.importTheme', 'Import theme')}</h3>
           <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {err && <div className="alert error">{err}</div>}
@@ -567,10 +569,10 @@ function ThemeImportDialog({ onClose, onApply, busy }) {
         >
           <div style={{ fontSize: 24, marginBottom: 6 }}><FolderIcon size={15} /></div>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>
-            {fileName ? fileName : 'Drop a theme JSON here or click to browse'}
+            {fileName ? fileName : t('admin.settings.dropThemeJson', 'Drop a theme JSON here or click to browse')}
           </div>
           <div className="muted" style={{ fontSize: 12 }}>
-            Files exported from this Theme Manager are accepted as-is.
+            {t('admin.settings.exportedFilesAccepted', 'Files exported from this Theme Manager are accepted as-is.')}
           </div>
           <input
             ref={inputRef}
@@ -585,12 +587,12 @@ function ThemeImportDialog({ onClose, onApply, busy }) {
           <div className="rm-card" style={{ marginTop: 12 }}>
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><FolderIcon size={15} /></span>
-              <span className="rm-card-bar-label">Preview</span>
-              <span className="rm-card-bar-count">{t?.presetName || 'CUSTOM'}</span>
+              <span className="rm-card-bar-label">{t('admin.settings.preview', 'Preview')}</span>
+              <span className="rm-card-bar-count">{themePayload?.presetName || 'CUSTOM'}</span>
             </div>
             <div className="rm-card-body">
               <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-                <li>Active mode: <code>{t?.activeMode || '—'}</code></li>
+                <li>Active mode: <code>{themePayload?.activeMode || '—'}</code></li>
                 <li>Light palette tokens: {lightKeys}</li>
                 <li>Dark palette tokens: {darkKeys}</li>
               </ul>
@@ -602,13 +604,13 @@ function ThemeImportDialog({ onClose, onApply, busy }) {
         )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button className="btn secondary" onClick={onClose}>Cancel</button>
+          <button className="btn secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
           <button
             className="btn"
             disabled={!parsed || busy}
             onClick={() => onApply(parsed)}
           >
-            {busy ? 'Applying…' : 'Apply & save'}
+            {busy ? t('common.applying', 'Applying…') : t('admin.settings.applyAndSave', 'Apply & save')}
           </button>
         </div>
       </div>

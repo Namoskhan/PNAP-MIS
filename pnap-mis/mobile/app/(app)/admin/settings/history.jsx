@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, Alert }
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
@@ -35,6 +36,7 @@ function DiffRow({ d }) {
 }
 
 export default function SettingsHistoryScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -64,7 +66,7 @@ export default function SettingsHistoryScreen() {
       await api.post(`/settings/versions/${v.versionNumber}/restore`, {
         changeNote: `Manual rollback to v${v.versionNumber}`
       });
-      toast.success(`Restored from v${v.versionNumber}.`);
+      toast.success(t('admin.settings.restoredFrom', 'Restored from v{{version}}.', { version: v.versionNumber }));
       if (Platform.OS === 'web') {
         window.location.reload();
       } else {
@@ -76,7 +78,7 @@ export default function SettingsHistoryScreen() {
   }
 
   async function doRestore(v) {
-    const confirmText = `Restore branding to version v${v.versionNumber}?\n\nThis creates a NEW version (history is preserved). The current theme + identity will be replaced with the snapshot from this point in time.`;
+    const confirmText = t('admin.settings.restoreConfirm', 'Restore branding to version v{{version}}?\n\nThis creates a NEW version (history is preserved). The current theme + identity will be replaced with the snapshot from this point in time.', { version: v.versionNumber });
     
     if (Platform.OS === 'web') {
       if (window.confirm(confirmText)) {
@@ -84,11 +86,11 @@ export default function SettingsHistoryScreen() {
       }
     } else {
       Alert.alert(
-        'Restore Version',
+        t('admin.settings.rollback', 'Restore Version'),
         confirmText,
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Restore', style: 'destructive', onPress: () => performRestore(v) },
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+          { text: t('admin.settings.rollback', 'Restore'), style: 'destructive', onPress: () => performRestore(v) },
         ]
       );
     }
@@ -97,7 +99,7 @@ export default function SettingsHistoryScreen() {
   if (busy && items.length === 0) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading history...</Text>
+        <Text style={styles.loadingText}>{t('common.loading', 'Loading history...')}</Text>
       </View>
     );
   }
@@ -105,18 +107,20 @@ export default function SettingsHistoryScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Ionicons name="time" size={24} color={Colors.primary} style={{ marginRight: Spacing.sm }} />
-          <Text style={styles.title}>Settings History</Text>
+        <View style={[styles.headerTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Ionicons name="time" size={24} color={Colors.primary} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('admin.settings.settingsHistory', 'Settings History')}</Text>
         </View>
-        <Text style={styles.subtitle}>Append-only timeline of every branding change. Tap any row to inspect the diff; tap Restore to roll back. Restoring creates a new version — history is never lost.</Text>
+        <Text style={[styles.subtitle, isRTL && { textAlign: 'right' }]}>
+          {t('admin.settings.settingsHistorySub', 'Append-only timeline of every branding change. Tap any row to inspect the diff; tap Restore to roll back. Restoring creates a new version — history is never lost.')}
+        </Text>
       </View>
 
       {err ? <Text style={styles.errorText}>{err}</Text> : null}
 
       {!busy && items.length === 0 && (
         <View style={styles.card}>
-          <Text style={styles.emptyText}>No branding changes yet.</Text>
+          <Text style={[styles.emptyText, isRTL && { textAlign: 'right' }]}>{t('admin.settings.noChangesYet', 'No branding changes yet.')}</Text>
         </View>
       )}
 
@@ -124,6 +128,7 @@ export default function SettingsHistoryScreen() {
         const isOpen = expanded === v.versionNumber;
         const kind = KIND_BADGES[v.kind] || KIND_BADGES.UPDATE;
         const diffCount = (v.diff || []).length;
+        const kindKey = `admin.settings.kind_${(v.kind || 'edit').toLowerCase()}`;
         
         return (
           <View key={v.versionNumber} style={styles.card}>
@@ -132,25 +137,25 @@ export default function SettingsHistoryScreen() {
               onPress={() => setExpanded(isOpen ? null : v.versionNumber)}
               activeOpacity={0.7}
             >
-              <View style={styles.headerTopLine}>
+              <View style={[styles.headerTopLine, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Text style={styles.versionLabel}>v{v.versionNumber}</Text>
                 <View style={[styles.badge, { backgroundColor: `${kind.color}1a` }]}>
                   <Text style={[styles.badgeText, { color: kind.color }]}>
-                    {kind.label}
+                    {t(kindKey, kind.label)}
                     {v.kind === 'RESTORE' && v.restoredFrom ? ` ← v${v.restoredFrom}` : ''}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }} />
                 <Text style={styles.dateText}>{v.changedAt ? new Date(v.changedAt).toLocaleString() : '—'}</Text>
-                <Ionicons name={isOpen ? "chevron-down" : "chevron-forward"} size={16} color={Colors.textLight} style={{ marginLeft: Spacing.sm }} />
+                <Ionicons name={isOpen ? "chevron-down" : (isRTL ? "chevron-back" : "chevron-forward")} size={16} color={Colors.textLight} style={isRTL ? { marginRight: Spacing.sm } : { marginLeft: Spacing.sm }} />
               </View>
               
-              <View style={styles.headerBottomLine}>
-                <Text style={styles.noteText} numberOfLines={1}>
-                  {v.changeNote || <Text style={{ color: Colors.textLight }}>no note</Text>}
+              <View style={[styles.headerBottomLine, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Text style={[styles.noteText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                  {v.changeNote || <Text style={{ color: Colors.textLight }}>{t('admin.settings.noNote', 'no note')}</Text>}
                 </Text>
                 <Text style={styles.diffCountText}>
-                  {diffCount} change{diffCount === 1 ? '' : 's'}
+                  {t('admin.settings.changesCount', '{{count}} change', { count: diffCount })}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -158,28 +163,28 @@ export default function SettingsHistoryScreen() {
             {isOpen && (
               <View style={styles.cardBody}>
                 {diffCount === 0 ? (
-                  <Text style={styles.emptyDiffText}>No leaf-level changes captured (likely a snapshot reset / import).</Text>
+                  <Text style={[styles.emptyDiffText, isRTL && { textAlign: 'right' }]}>{t('admin.settings.noLeafChanges', 'No leaf-level changes captured (likely a snapshot reset / import).')}</Text>
                 ) : (
                   <View style={styles.diffTable}>
-                    <View style={styles.diffHeaderRow}>
-                      <Text style={[styles.diffHeaderCell, { flex: 1 }]}>Path</Text>
-                      <Text style={[styles.diffHeaderCell, { flex: 1 }]}>Before</Text>
-                      <Text style={[styles.diffHeaderCell, { flex: 1 }]}>After</Text>
+                    <View style={[styles.diffHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <Text style={[styles.diffHeaderCell, { flex: 1 }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.path', 'Path')}</Text>
+                      <Text style={[styles.diffHeaderCell, { flex: 1 }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.before', 'Before')}</Text>
+                      <Text style={[styles.diffHeaderCell, { flex: 1 }, isRTL && { textAlign: 'right' }]}>{t('admin.settings.after', 'After')}</Text>
                     </View>
                     {(v.diff || []).slice(0, 30).map((d, i) => (
                       <DiffRow key={i} d={d} />
                     ))}
                     {diffCount > 30 && (
-                      <Text style={styles.moreDiffsText}>... and {diffCount - 30} more</Text>
+                      <Text style={[styles.moreDiffsText, isRTL && { textAlign: 'right' }]}>{t('admin.settings.andMoreChanges', '… and {{count}} more', { count: diffCount - 30 })}</Text>
                     )}
                   </View>
                 )}
 
                 {canWrite && v.versionNumber > 0 && (
-                  <View style={styles.restoreRow}>
-                    <TouchableOpacity style={styles.restoreBtn} onPress={() => doRestore(v)}>
-                      <Ionicons name="refresh" size={16} color={Colors.error} style={{ marginRight: 6 }} />
-                      <Text style={styles.restoreBtnText}>Restore this version</Text>
+                  <View style={[styles.restoreRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <TouchableOpacity style={[styles.restoreBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => doRestore(v)}>
+                      <Ionicons name="refresh" size={16} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                      <Text style={styles.restoreBtnText}>{t('admin.settings.restoreThisVersion', 'Restore this version')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}

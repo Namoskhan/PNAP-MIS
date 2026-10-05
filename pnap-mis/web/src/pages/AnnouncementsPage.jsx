@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useUnit } from '../context/UnitContext';
@@ -7,19 +8,19 @@ import { useToast } from '../components/Toast';
 
 import dialog from '../components/dialog';
 import { XIcon } from '../components/icons';
-// Audience modes — drives both the form and the visibility/payload
-// the backend receives. PERSON = direct message, others = broadcast.
-const AUDIENCE_MODES = [
-  { value: 'PERSON',  label: 'A specific person',          help: 'Direct message — only that member will see it.' },
-  { value: 'OWN',     label: 'This unit only',             help: 'Visible to everyone in the unit you\'re posting from.' },
-  { value: 'SUBTREE', label: 'This unit + everything below', help: 'Cascades down to every sub-unit beneath you.' },
-  { value: 'GLOBAL',  label: 'Everyone (org-wide)',        help: 'Visible to every member in PKNAP.' },
-];
 
 export default function AnnouncementsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { ctx } = useUnit();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
+
+  const audienceModes = useMemo(() => [
+    { value: 'PERSON',  label: t('announcements.modes.personLabel', 'A specific person'),          help: t('announcements.modes.personHelp', 'Direct message — only that member will see it.') },
+    { value: 'OWN',     label: t('announcements.modes.ownLabel', 'This unit only'),             help: t('announcements.modes.ownHelp', "Visible to everyone in the unit you're posting from.") },
+    { value: 'SUBTREE', label: t('announcements.modes.subtreeLabel', 'This unit + everything below'), help: t('announcements.modes.subtreeHelp', 'Cascades down to every sub-unit beneath you.') },
+    { value: 'GLOBAL',  label: t('announcements.modes.globalLabel', 'Everyone (org-wide)'),        help: t('announcements.modes.globalHelp', 'Visible to every member in PKNAP.') },
+  ], [t]);
 
   // Driven by the dynamic permission catalogue — Super Admin can
   // grant POST_ANNOUNCEMENT to additional roles from Role Management.
@@ -112,9 +113,9 @@ export default function AnnouncementsPage() {
 
   async function submit() {
     setErr('');
-    if (!form.title || !form.body) { setErr('Title and body are required.'); return; }
+    if (!form.title || !form.body) { setErr(t('announcements.titleAndBodyRequired', 'Title and body are required.')); return; }
     if (form.mode === 'PERSON' && !form.targetMemberId) {
-      setErr('Pick the member you want to message.'); return;
+      setErr(t('announcements.pickMemberRequired', 'Pick the member you want to message.')); return;
     }
     try {
       const payload = {
@@ -136,26 +137,24 @@ export default function AnnouncementsPage() {
         }
       }
       await api.post('/announcements', payload);
-      toast.success?.(form.mode === 'PERSON' ? 'Message sent.' : 'Announcement posted.');
+      toast.success?.(form.mode === 'PERSON' ? t('announcements.messageSent', 'Message sent.') : t('announcements.announcementPosted', 'Announcement posted.'));
       setForm({ title: '', body: '', mode: 'OWN', pinned: false, expiresAt: '', targetMemberId: '', targetMemberLabel: '' });
       setMemberQuery('');
       setComposeOpen(false);
       load();
     } catch (e) {
-      // Carry the server's actual reason — the previous fixed string
-      // hid things the user can act on, like a rejected target member.
-      toast.error(errorMessage(e), { title: 'Could not post announcement', duration: 9000 });
+      toast.error(errorMessage(e), { title: t('announcements.couldNotPost', 'Could not post announcement'), duration: 9000 });
     }
   }
 
   async function remove(id) {
-    if (!await dialog.confirm('Delete this announcement?')) return;
+    if (!await dialog.confirm(t('announcements.deleteConfirm', 'Delete this announcement?'))) return;
     try {
       await api.delete(`/announcements/${id}`);
       load();
-      toast.success('Announcement deleted.');
+      toast.success(t('announcements.deleted', 'Announcement deleted.'));
     } catch (e) {
-      toast.error(errorMessage(e), { title: 'Could not delete announcement', duration: 7000 });
+      toast.error(errorMessage(e), { title: t('announcements.couldNotDelete', 'Could not delete announcement'), duration: 7000 });
     }
   }
 
@@ -167,28 +166,28 @@ export default function AnnouncementsPage() {
     setForm((f) => ({ ...f, targetMemberId: m._id, targetMemberLabel: `${m.fullName} · ${m.memberId || m.cnic}` }));
   }
 
-  const audienceMeta = AUDIENCE_MODES.find((m) => m.value === form.mode);
+  const audienceMeta = audienceModes.find((m) => m.value === form.mode);
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h2>Announcements</h2>
-          <div className="subtitle">Broadcasts from your unit, tiers above, and direct messages addressed to you.</div>
+          <h2>{t('announcements.title', 'Announcements')}</h2>
+          <div className="subtitle">{t('announcements.subtitle', 'Broadcasts from your unit, tiers above, and direct messages addressed to you.')}</div>
         </div>
         {canPost && (
-          <button className="btn" onClick={openCompose}>+ New Announcement</button>
+          <button className="btn" onClick={openCompose}>{t('announcements.newAnnouncement', '+ New Announcement')}</button>
         )}
       </div>
 
       {err && <div className="alert error">{err}</div>}
 
-      {busy && <p className="muted">Loading…</p>}
+      {busy && <p className="muted">{t('common.loading', 'Loading…')}</p>}
       {!busy && visibleItems.length === 0 && (
         <div className="empty-smart">
           <div className="empty-icon">📣</div>
-          <h3>No announcements</h3>
-          <p>When the Senior Mawin Sec. or General Sec. posts, it'll appear here.</p>
+          <h3>{t('announcements.noAnnouncements', 'No announcements')}</h3>
+          <p>{t('announcements.emptySubtitle', "When the Senior Mawin Sec. or General Sec. posts, it'll appear here.")}</p>
         </div>
       )}
 
@@ -200,14 +199,14 @@ export default function AnnouncementsPage() {
             : 'a member';
           return (
             <div key={a._id} className={`ann-card ${a.pinned ? 'pinned' : ''} ${isDirect ? 'direct' : ''}`}>
-              {a.pinned && <div className="ann-pin-badge">📌 Pinned</div>}
+              {a.pinned && <div className="ann-pin-badge">📌 {t('announcements.pinned', 'Pinned')}</div>}
               <div className="ann-card-head">
                 <h3>{a.title}</h3>
                 <div className="ann-card-meta">
                   {isDirect ? (
                     <>
-                      <span className="badge ACTIVE">Direct message</span>
-                      <span className="muted">to {targetLabel}</span>
+                      <span className="badge ACTIVE">{t('announcements.directMessage', 'Direct message')}</span>
+                      <span className="muted">{t('announcements.toMember', { name: targetLabel })}</span>
                     </>
                   ) : (
                     <>
@@ -220,9 +219,9 @@ export default function AnnouncementsPage() {
               </div>
               <p className="ann-body">{a.body}</p>
               <div className="ann-foot">
-                <span className="muted">By {a.authorName || 'Admin'}</span>
+                <span className="muted">{t('announcements.by', { name: a.authorName || t('announcements.admin', 'Admin') })}</span>
                 {(canPost && (String(a.authorUserId) === String(user?._id) || user?.roles?.includes('SUPER_ADMIN'))) && (
-                  <button className="btn ghost danger" onClick={() => remove(a._id)}>Delete</button>
+                  <button className="btn ghost danger" onClick={() => remove(a._id)}>{t('announcements.delete', 'Delete')}</button>
                 )}
               </div>
             </div>
@@ -234,14 +233,14 @@ export default function AnnouncementsPage() {
         <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setComposeOpen(false); }}>
           <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Post Announcement">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <h3 style={{ margin: 0 }}>{form.mode === 'PERSON' ? 'Send Direct Message' : 'Post Announcement'}</h3>
+              <h3 style={{ margin: 0 }}>{form.mode === 'PERSON' ? t('announcements.sendDirectMessage', 'Send Direct Message') : t('announcements.postAnnouncement', 'Post Announcement')}</h3>
               <button type="button" className="btn secondary" onClick={() => setComposeOpen(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
             </div>
 
             <div className="field full" style={{ marginBottom: 12 }}>
-              <label>Audience</label>
+              <label>{t('announcements.audience', 'Audience')}</label>
               <div className="audience-grid">
-                {AUDIENCE_MODES.map((m) => (
+                {audienceModes.map((m) => (
                   <button
                     key={m.value}
                     type="button"
@@ -256,15 +255,15 @@ export default function AnnouncementsPage() {
               {form.mode !== 'PERSON' && (
                 <div className="hint" style={{ marginTop: 6 }}>
                   {ctx?.unitLevel
-                    ? `Posting from: ${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName || ''}`
-                    : 'Posting at Central tier.'}
+                    ? t('announcements.postingFrom', { unit: `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName || ''}` })
+                    : t('announcements.postingAtCentral', 'Posting at Central tier.')}
                 </div>
               )}
             </div>
 
             {form.mode === 'PERSON' && (
               <div className="field full" style={{ marginBottom: 12 }}>
-                <label>Recipient</label>
+                <label>{t('announcements.recipient', 'Recipient')}</label>
                 {form.targetMemberId ? (
                   <div className="audience-picked">
                     <span>{form.targetMemberLabel}</span>
@@ -272,19 +271,19 @@ export default function AnnouncementsPage() {
                       type="button"
                       className="btn ghost"
                       onClick={() => setForm({ ...form, targetMemberId: '', targetMemberLabel: '' })}
-                    >Change</button>
+                    >{t('announcements.change', 'Change')}</button>
                   </div>
                 ) : (
                   <>
                     <input
-                      placeholder={membersLoading ? 'Loading members…' : 'Search by name, ID, or CNIC'}
+                      placeholder={membersLoading ? t('announcements.loadingMembers', 'Loading members…') : t('announcements.searchPlaceholder', 'Search by name, ID, or CNIC')}
                       value={memberQuery}
                       onChange={(e) => setMemberQuery(e.target.value)}
                       disabled={membersLoading}
                     />
                     <div className="audience-results">
                       {!membersLoading && filteredMembers.length === 0 && (
-                        <div className="audience-empty">No matching members.</div>
+                        <div className="audience-empty">{t('announcements.noMatchingMembers', 'No matching members.')}</div>
                       )}
                       {filteredMembers.map((m) => (
                         <button
@@ -305,33 +304,33 @@ export default function AnnouncementsPage() {
 
             <div className="form-grid">
               <div className="field full">
-                <label>Title</label>
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={140} placeholder={form.mode === 'PERSON' ? 'e.g., Reminder about Friday\'s meeting' : 'e.g., Quarterly Review on Friday'} />
+                <label>{t('announcements.announcementTitle', 'Title')}</label>
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={140} placeholder={form.mode === 'PERSON' ? t('announcements.directTitlePlaceholder') : t('announcements.broadcastTitlePlaceholder')} />
               </div>
               <div className="field full">
-                <label>Body</label>
+                <label>{t('announcements.body', 'Body')}</label>
                 <textarea
                   rows={5}
                   value={form.body}
                   onChange={(e) => setForm({ ...form, body: e.target.value })}
                   maxLength={4000}
-                  placeholder="Details, agenda, action items…"
+                  placeholder={t('announcements.bodyPlaceholder')}
                 />
               </div>
               <div className="field">
-                <label>Expires (optional)</label>
+                <label>{t('announcements.expires', 'Expires (optional)')}</label>
                 <input type="datetime-local" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />
               </div>
               <div className="field">
                 <label>
                   <input type="checkbox" checked={form.pinned} onChange={(e) => setForm({ ...form, pinned: e.target.checked })} style={{ marginRight: 6 }} />
-                  Pin to top
+                  {t('announcements.pinToTop', 'Pin to top')}
                 </label>
               </div>
             </div>
             <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              <button className="btn secondary" type="button" onClick={() => setComposeOpen(false)}>Cancel</button>
-              <button className="btn" onClick={submit}>{form.mode === 'PERSON' ? 'Send Message' : 'Post'}</button>
+              <button className="btn secondary" type="button" onClick={() => setComposeOpen(false)}>{t('announcements.cancel', 'Cancel')}</button>
+              <button className="btn" onClick={submit}>{form.mode === 'PERSON' ? t('announcements.sendMessage', 'Send Message') : t('announcements.post', 'Post')}</button>
             </div>
           </div>
         </div>

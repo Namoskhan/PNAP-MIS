@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, isHigherAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
@@ -94,8 +95,10 @@ function gmapsLink(lat, lng) {
 export default function ActivitiesScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+  const isTablet = width >= 768;
 
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
@@ -645,20 +648,20 @@ export default function ActivitiesScreen() {
     };
 
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.confirm) {
-      if (window.confirm(`Mark "${a.title || 'this activity'}" as complete?`)) {
+      if (window.confirm(t('activities.completeConfirm', { title: a.title || t('activities.title', 'Activity') }))) {
         await doComplete();
       }
     } else {
-      Alert.alert('Complete Activity', `Mark "${a.title || 'this activity'}" as complete?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Complete', onPress: doComplete },
+      Alert.alert(t('activities.completeTitle', 'Complete Activity'), t('activities.completeConfirm', { title: a.title || t('activities.title', 'Activity') }), [
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+        { text: t('activities.complete', 'Complete'), onPress: doComplete },
       ]);
     }
   }
 
   async function handleCancelActivity(a) {
     if (a.state === 'COMPLETED') {
-      toast.error('Cannot cancel a completed activity.');
+      toast.error(t('activities.cannotCancelCompleted', 'Cannot cancel a completed activity.'));
       return;
     }
 
@@ -668,7 +671,7 @@ export default function ActivitiesScreen() {
           throw new Error('OFFLINE_MODE');
         }
         await api.post(`/activities/${a._id}/cancel`, {});
-        toast.success(`"${a.title || 'Activity'}" cancelled.`);
+        toast.success(t('activities.activityCancelled', { title: a.title || t('activities.title', 'Activity') }));
         load(true);
       } catch (e) {
         if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
@@ -686,7 +689,7 @@ export default function ActivitiesScreen() {
           setItems(updatedItems);
           const cacheKey = `activities_${activeLevel}_${resolvedUnitId}_${targetBody}`;
           await setCache(cacheKey, updatedItems);
-          toast.success(`Activity cancelled offline. Will sync when online.`);
+          toast.success(t('activities.activityCancelledOffline', 'Activity cancelled offline. Will sync when online.'));
           return;
         }
         toast.error(errorMessage(e));
@@ -694,13 +697,13 @@ export default function ActivitiesScreen() {
     };
 
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.confirm) {
-      if (window.confirm(`Are you sure you want to cancel "${a.title || 'this activity'}"?`)) {
+      if (window.confirm(t('activities.cancelConfirm', { title: a.title || t('activities.title', 'Activity') }))) {
         await doCancel();
       }
     } else {
-      Alert.alert('Cancel Activity', `Are you sure you want to cancel "${a.title || 'this activity'}"?`, [
-        { text: 'No', style: 'cancel' },
-        { text: 'Yes, Cancel', style: 'destructive', onPress: doCancel },
+      Alert.alert(t('activities.cancelTitle', 'Cancel Activity'), t('activities.cancelConfirm', { title: a.title || t('activities.title', 'Activity') }), [
+        { text: t('common.no', 'No'), style: 'cancel' },
+        { text: t('activities.cancel', 'Yes, Cancel'), style: 'destructive', onPress: doCancel },
       ]);
     }
   }
@@ -710,24 +713,24 @@ export default function ActivitiesScreen() {
     const isJrg = a.body === 'JIRGA';
     const isCm = a.body === 'COMMITTEE';
 
-    const typeBadgeLabel = isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'));
+    const typeBadgeLabel = isCng ? t('meetings.nationalCongress', 'Congress') : (isJrg ? t('common.jirga', 'Jirga') : (isCm ? t('common.committee', 'Committee') : t('meetings.executive', 'Executive')));
     const typeBadgeBg = isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'));
     const typeBadgeColor = isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'));
 
     const photoCount = (a.photos || []).length;
 
     return (
-      <View style={styles.tr}>
+      <View style={[styles.tr, isRTL && { flexDirection: 'row-reverse' }]}>
         {/* When */}
         <View style={[styles.td, { width: 140 }]}>
-          <Text style={styles.tdText}>{new Date(a.startAt).toLocaleString()}</Text>
+          <Text style={[styles.tdText, isRTL && { textAlign: 'right' }]}>{new Date(a.startAt).toLocaleString()}</Text>
         </View>
 
         {/* Type */}
         <View style={[styles.td, { width: 160 }]}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+          <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, alignItems: 'center' }, isRTL && { flexDirection: 'row-reverse' }]}>
             <Badge label={typeBadgeLabel} color={typeBadgeColor} bg={typeBadgeBg} />
-            <Text style={styles.tdText}>{a.type || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode}</Text>
+            <Text style={[styles.tdText, isRTL && { textAlign: 'right' }]}>{a.type || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode}</Text>
           </View>
         </View>
 
@@ -735,14 +738,14 @@ export default function ActivitiesScreen() {
         <View style={[styles.td, { width: 200 }]}>
           <Link href={`/activities/${a._id}`} asChild>
             <TouchableOpacity>
-              <Text style={[styles.tdText, { color: Colors.primary, fontWeight: '600' }]} numberOfLines={2}>
-                {a.title || 'Untitled'}
+              <Text style={[styles.tdText, { color: Colors.primary, fontWeight: '600' }, isRTL && { textAlign: 'right' }]} numberOfLines={2}>
+                {a.title || t('activities.untitled', 'Untitled')}
               </Text>
             </TouchableOpacity>
           </Link>
           {a.unitLevel && (
             <View style={{ marginTop: 3 }}>
-              <Text style={{ fontSize: 10, color: Colors.textMuted }}>
+              <Text style={[{ fontSize: 10, color: Colors.textMuted }, isRTL && { textAlign: 'right' }]}>
                 {formatUnitArrangedBy(a, { isCommitteeView, isJirgaView, isCongressView })}
               </Text>
             </View>
@@ -751,7 +754,7 @@ export default function ActivitiesScreen() {
 
         {/* Venue */}
         <View style={[styles.td, { width: 120 }]}>
-          <Text style={styles.tdText} numberOfLines={2}>{a.venue || '—'}</Text>
+          <Text style={[styles.tdText, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{a.venue || '—'}</Text>
         </View>
 
         {/* State */}
@@ -775,7 +778,7 @@ export default function ActivitiesScreen() {
             >
               <Ionicons name="camera-outline" size={14} color={Colors.primary} />
               <Text style={[styles.rowBtnGhostText, { color: Colors.primary }]}>
-                {photoCount} · View
+                {photoCount} · {t('common.view', 'View')}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -784,11 +787,11 @@ export default function ActivitiesScreen() {
         </View>
 
         {/* Actions */}
-        <View style={[styles.td, { width: 240, flexDirection: 'row', gap: 6, alignItems: 'center' }]}>
+        <View style={[styles.td, { width: 240, flexDirection: isRTL ? 'row-reverse' : 'row', gap: 6, alignItems: 'center' }]}>
           <Link href={`/activities/${a._id}`} asChild>
             <TouchableOpacity style={styles.rowBtnGhost}>
               <Ionicons name="eye-outline" size={14} color={Colors.textMuted} />
-              <Text style={styles.rowBtnGhostText}>View</Text>
+              <Text style={styles.rowBtnGhostText}>{t('common.view', 'View')}</Text>
             </TouchableOpacity>
           </Link>
           {canManage && a.state !== 'COMPLETED' && a.state !== 'CANCELLED' && (
@@ -799,21 +802,21 @@ export default function ActivitiesScreen() {
                 disabled={uploadingPhotos}
               >
                 <Ionicons name="camera-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.rowBtnGhostText}>Photos</Text>
+                <Text style={styles.rowBtnGhostText}>{t('activities.photos', 'Photos')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.rowBtnFinalize}
                 onPress={() => handleCompleteActivity(a)}
               >
-                <Text style={styles.rowBtnFinalizeText}>Complete</Text>
+                <Text style={styles.rowBtnFinalizeText}>{t('activities.complete', 'Complete')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.rowBtnDanger}
                 onPress={() => handleCancelActivity(a)}
               >
-                <Text style={styles.rowBtnDangerText}>Cancel</Text>
+                <Text style={styles.rowBtnDangerText}>{t('activities.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -827,23 +830,23 @@ export default function ActivitiesScreen() {
     const isJrg = a.body === 'JIRGA';
     const isCm = a.body === 'COMMITTEE';
 
-    const typeBadgeLabel = isCng ? 'Congress' : (isJrg ? 'Jirga' : (isCm ? 'Committee' : 'Executive'));
+    const typeBadgeLabel = isCng ? t('meetings.nationalCongress', 'Congress') : (isJrg ? t('common.jirga', 'Jirga') : (isCm ? t('common.committee', 'Committee') : t('meetings.executive', 'Executive')));
     const typeBadgeBg = isCng ? '#e0f2fe' : (isJrg ? '#f3e8ff' : (isCm ? '#e0f2fe' : '#f1f5f9'));
     const typeBadgeColor = isCng ? '#0369a1' : (isJrg ? '#6b21a8' : (isCm ? '#0369a1' : '#475569'));
 
     const photoCount = (a.photos || []).length;
     const statusColor = a._isOffline ? '#D97706' : (a.state === 'COMPLETED' ? '#15803d' : (a.state === 'CANCELLED' ? '#b91c1c' : '#b45309'));
     const statusBg = a._isOffline ? '#FEF3C7' : (a.state === 'COMPLETED' ? '#dcfce7' : (a.state === 'CANCELLED' ? '#fee2e2' : '#fef3c7'));
-    const statusLabel = a._isOffline ? 'OFFLINE (PENDING SYNC)' : (a.state || 'DRAFT');
+    const statusLabel = a._isOffline ? t('common.offlinePendingSync', 'OFFLINE (PENDING SYNC)') : (a.state || 'DRAFT');
 
     return (
       <Card style={styles.activityCard}>
         {/* Top Badges Row */}
-        <View style={styles.cardBadgesRow}>
-          <View style={styles.cardBadgesLeft}>
+        <View style={[styles.cardBadgesRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.cardBadgesLeft, isRTL && { flexDirection: 'row-reverse' }]}>
             <Badge label={typeBadgeLabel} color={typeBadgeColor} bg={typeBadgeBg} />
             <Badge
-              label={a.type || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode || 'Activity'}
+              label={a.type || ACTIVITY_TYPE_LABEL[a.typeCode] || a.typeCode || t('activities.title', 'Activity')}
               color={Colors.primary}
               bg="#eff6ff"
             />
@@ -853,17 +856,17 @@ export default function ActivitiesScreen() {
 
         {/* Title */}
         <Link href={`/activities/${a._id}`} asChild>
-          <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 }}>
-            <Text style={[styles.cardActivityTitle, { flex: 1, marginRight: 8 }]}>{a.title || 'Untitled Activity'}</Text>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          <TouchableOpacity style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 4 }, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={[styles.cardActivityTitle, { flex: 1, marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }, isRTL && { textAlign: 'right' }]}>{a.title || t('activities.untitled', 'Untitled Activity')}</Text>
+            <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={18} color={Colors.textMuted} />
           </TouchableOpacity>
         </Link>
 
         {/* Arranged by Unit */}
         {a.unitLevel && (
-          <View style={styles.cardUnitRow}>
+          <View style={[styles.cardUnitRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="business-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.cardUnitText} numberOfLines={1}>
+            <Text style={[styles.cardUnitText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
               {formatUnitArrangedBy(a, { isCommitteeView, isJirgaView, isCongressView })}
             </Text>
           </View>
@@ -871,91 +874,91 @@ export default function ActivitiesScreen() {
 
         {/* Info Grid: Date/Time & Venue */}
         <View style={styles.cardInfoGrid}>
-          <View style={styles.cardInfoRow}>
+          <View style={[styles.cardInfoRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
-            <Text style={styles.cardInfoText}>{new Date(a.startAt).toLocaleString()}</Text>
+            <Text style={[styles.cardInfoText, isRTL && { textAlign: 'right' }]}>{new Date(a.startAt).toLocaleString()}</Text>
           </View>
           {a.venue ? (
-            <View style={styles.cardInfoRow}>
+            <View style={[styles.cardInfoRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="location-outline" size={14} color={Colors.error} />
-              <Text style={styles.cardInfoText} numberOfLines={1}>{a.venue}</Text>
+              <Text style={[styles.cardInfoText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{a.venue}</Text>
             </View>
           ) : null}
         </View>
 
         {/* Description */}
         {a.description ? (
-          <Text style={styles.cardDescText} numberOfLines={3}>{a.description}</Text>
+          <Text style={[styles.cardDescText, isRTL && { textAlign: 'right' }]} numberOfLines={3}>{a.description}</Text>
         ) : null}
 
         {/* Campaign Metrics */}
         {a.campaignMetrics && Object.values(a.campaignMetrics).some((v) => Number(v) > 0) && (
-          <View style={styles.metricsPillsRow}>
+          <View style={[styles.metricsPillsRow, isRTL && { flexDirection: 'row-reverse' }]}>
             {Number(a.campaignMetrics.peopleContacted) > 0 && (
               <View style={styles.metricBadge}>
                 <Text style={styles.metricBadgeVal}>{a.campaignMetrics.peopleContacted}</Text>
-                <Text style={styles.metricBadgeLbl}>Contacted</Text>
+                <Text style={styles.metricBadgeLbl}>{t('activities.contacted', 'Contacted')}</Text>
               </View>
             )}
             {Number(a.campaignMetrics.householdsVisited) > 0 && (
               <View style={styles.metricBadge}>
                 <Text style={styles.metricBadgeVal}>{a.campaignMetrics.householdsVisited}</Text>
-                <Text style={styles.metricBadgeLbl}>Households</Text>
+                <Text style={styles.metricBadgeLbl}>{t('activities.households', 'Households')}</Text>
               </View>
             )}
             {Number(a.campaignMetrics.actualJoiners) > 0 && (
               <View style={styles.metricBadge}>
                 <Text style={styles.metricBadgeVal}>{a.campaignMetrics.actualJoiners}</Text>
-                <Text style={styles.metricBadgeLbl}>Joiners</Text>
+                <Text style={styles.metricBadgeLbl}>{t('activities.joiners', 'Joiners')}</Text>
               </View>
             )}
           </View>
         )}
 
         {/* Bottom Actions Row */}
-        <View style={styles.cardBottomBar}>
+        <View style={[styles.cardBottomBar, isRTL && { flexDirection: 'row-reverse' }]}>
           {photoCount > 0 ? (
             <TouchableOpacity
-              style={styles.cardPhotoTag}
+              style={[styles.cardPhotoTag, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => {
                 setPhotosFor(a);
                 setActivePhotoIdx(0);
               }}
             >
               <Ionicons name="images-outline" size={14} color={Colors.primary} />
-              <Text style={styles.cardPhotoTagText}>{photoCount} Photo{photoCount === 1 ? '' : 's'}</Text>
+              <Text style={styles.cardPhotoTagText}>{photoCount} {t('activities.photos', 'Photos')}</Text>
             </TouchableOpacity>
           ) : (
-            <View style={styles.cardNoPhotoTag}>
+            <View style={[styles.cardNoPhotoTag, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="image-outline" size={14} color={Colors.textLight} />
-              <Text style={styles.cardNoPhotoText}>0 Photos</Text>
+              <Text style={styles.cardNoPhotoText}>0 {t('activities.photos', 'Photos')}</Text>
             </View>
           )}
 
-          <View style={styles.cardButtonCluster}>
+          <View style={[styles.cardButtonCluster, isRTL && { flexDirection: 'row-reverse' }]}>
             <Link href={`/activities/${a._id}`} asChild>
-              <TouchableOpacity style={styles.cardActionBtnSecondary}>
+              <TouchableOpacity style={[styles.cardActionBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Ionicons name="eye-outline" size={14} color={Colors.text} />
-                <Text style={styles.cardActionBtnSecondaryText}>View</Text>
+                <Text style={styles.cardActionBtnSecondaryText}>{t('activities.view', 'View')}</Text>
               </TouchableOpacity>
             </Link>
             {canManage && a.state !== 'COMPLETED' && a.state !== 'CANCELLED' && (
               <>
                 <TouchableOpacity
-                  style={styles.cardActionBtnSecondary}
+                  style={[styles.cardActionBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => handlePhotoUploadPress(a)}
                   disabled={uploadingPhotos}
                 >
                   <Ionicons name="camera-outline" size={14} color={Colors.text} />
-                  <Text style={styles.cardActionBtnSecondaryText}>Photo</Text>
+                  <Text style={styles.cardActionBtnSecondaryText}>{t('activities.photo', 'Photo')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.cardActionBtnComplete}
+                  style={[styles.cardActionBtnComplete, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => handleCompleteActivity(a)}
                 >
                   <Ionicons name="checkmark-circle" size={14} color="#fff" />
-                  <Text style={styles.cardActionBtnCompleteText}>Complete</Text>
+                  <Text style={styles.cardActionBtnCompleteText}>{t('activities.complete', 'Complete')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -973,28 +976,28 @@ export default function ActivitiesScreen() {
   }
 
   const tableHeader = () => (
-    <View style={styles.thRow}>
-      <Text style={[styles.th, { width: 140 }]}>When</Text>
-      <Text style={[styles.th, { width: 160 }]}>Type</Text>
-      <Text style={[styles.th, { width: 200 }]}>Title</Text>
-      <Text style={[styles.th, { width: 120 }]}>Venue</Text>
-      <Text style={[styles.th, { width: 100 }]}>State</Text>
-      <Text style={[styles.th, { width: 95 }]}>Photos</Text>
-      <Text style={[styles.th, { width: 240 }]}>Actions</Text>
+    <View style={[styles.thRow, isRTL && { flexDirection: 'row-reverse' }]}>
+      <Text style={[styles.th, { width: 140 }, isRTL && { textAlign: 'right' }]}>{t('activities.when', 'When')}</Text>
+      <Text style={[styles.th, { width: 160 }, isRTL && { textAlign: 'right' }]}>{t('activities.type', 'Type')}</Text>
+      <Text style={[styles.th, { width: 200 }, isRTL && { textAlign: 'right' }]}>{t('activities.titleCol', 'Title')}</Text>
+      <Text style={[styles.th, { width: 120 }, isRTL && { textAlign: 'right' }]}>{t('activities.venue', 'Venue')}</Text>
+      <Text style={[styles.th, { width: 100 }, isRTL && { textAlign: 'right' }]}>{t('activities.state', 'State')}</Text>
+      <Text style={[styles.th, { width: 95 }, isRTL && { textAlign: 'right' }]}>{t('activities.photos', 'Photos')}</Text>
+      <Text style={[styles.th, { width: 240 }, isRTL && { textAlign: 'right' }]}>{t('activities.actions', 'Actions')}</Text>
     </View>
   );
 
   const pageTitle = isCongressView
-    ? 'National Congress Activities'
+    ? `${t('activities.nationalCongress', 'National Congress Activities')} · PKNAP Central`
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Activities' : 'Sobayi Jirga Activities')
-      : (isCommitteeView ? 'Committee Activities' : 'Activities'));
+      ? (activeLevel === 'CENTRAL' ? t('activities.qomiJirga', 'Qomi Jirga Activities') : `${t('activities.sobayiJirga', 'Sobayi Jirga Activities')} · ${ctx?.unitName || ''}`)
+      : (isCommitteeView ? `${t('activities.committeeActivities', 'Committee Activities')} · ${ctx?.unitName || ''}` : `${t('activities.executiveActivities', 'Activities')} · ${ctx?.unitName || ''}`));
 
   const recordBtnLabel = isCongressView
-    ? '+ Record Congress Activity'
+    ? t('activities.recordCongress', '+ Record Congress Activity')
     : (isJirgaView
-      ? '+ Record Jirga Activity'
-      : (isCommitteeView ? '+ Record Committee Activity' : '+ Record Activity'));
+      ? t('activities.recordJirga', '+ Record Jirga Activity')
+      : (isCommitteeView ? t('activities.recordCommittee', '+ Record Committee Activity') : t('activities.recordActivity', '+ Record Activity')));
 
   // If user opened Congress stream but is below Central tier, show guidance card
   if (isCongressView && activeLevel !== 'CENTRAL') {
@@ -1005,20 +1008,20 @@ export default function ActivitiesScreen() {
             <View style={styles.guidanceIconBox}>
               <Ionicons name="people-outline" size={40} color={Colors.primary} />
             </View>
-            <Text style={styles.guidanceTitle}>National Congress operates exclusively at the Central Level</Text>
-            <Text style={styles.guidanceText}>
-              Under the PKNAP constitution, the <Text style={{ fontWeight: '700' }}>National Congress (قومي کانګرس)</Text> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <Text style={{ fontWeight: '700' }}>Sobayi Jirga</Text> (Province) and <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text> (District & Area).
+            <Text style={[styles.guidanceTitle, isRTL && { textAlign: 'center' }]}>{t('activities.congressCentralOnlyTitle', 'National Congress operates exclusively at the Central Level')}</Text>
+            <Text style={[styles.guidanceText, isRTL && { textAlign: 'center' }]}>
+              {t('activities.congressCentralOnlyText', 'Under the PKNAP constitution, the National Congress is the supreme representative assembly operating at the Central tier. Lower tiers operate via Sobayi Jirga and Zilla & Elaqayi Committees.')}
             </Text>
 
             <View style={styles.guidanceBtnCol}>
               <TouchableOpacity
-                style={styles.guidanceBtnPrimary}
+                style={[styles.guidanceBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => {
                   setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                 }}
               >
-                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.guidanceBtnPrimaryText}>Switch to Central Unit Context →</Text>
+                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: isRTL ? 0 : 6, marginLeft: isRTL ? 6 : 0 }} />
+                <Text style={styles.guidanceBtnPrimaryText}>{t('activities.switchToCentral', 'Switch to Central Unit Context →')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1036,47 +1039,47 @@ export default function ActivitiesScreen() {
             <View style={styles.guidanceIconBox}>
               <Ionicons name="people-outline" size={40} color={Colors.primary} />
             </View>
-            <Text style={styles.guidanceTitle}>Jirga is only available at Provincial and Central tiers</Text>
-            <Text style={styles.guidanceText}>
-              Under the party constitution, the <Text style={{ fontWeight: '700' }}>Sobayi Jirga (صوبايي جرګه)</Text> operates at the Province level, and the <Text style={{ fontWeight: '700' }}>Qomi Jirga / National Jirga (قومي جرګه)</Text> operates at the Central level. District and Area units operate via <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text>.
+            <Text style={[styles.guidanceTitle, isRTL && { textAlign: 'center' }]}>{t('activities.jirgaProvincialOnlyTitle', 'Jirga is only available at Provincial and Central tiers')}</Text>
+            <Text style={[styles.guidanceText, isRTL && { textAlign: 'center' }]}>
+              {t('activities.jirgaProvincialOnlyText', 'Under the party constitution, the Sobayi Jirga operates at the Province level, and the Qomi Jirga operates at the Central level. District and Area units operate via Zilla & Elaqayi Committees.')}
             </Text>
 
             <View style={styles.guidanceBtnCol}>
               {isHigherAdmin(user) && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnPrimary}
+                  style={[styles.guidanceBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                   }}
                 >
-                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnPrimaryText}>Open Qomi Jirga (Central)</Text>
+                  <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: isRTL ? 0 : 6, marginLeft: isRTL ? 6 : 0 }} />
+                  <Text style={styles.guidanceBtnPrimaryText}>{t('activities.openQomiJirga', 'Open Qomi Jirga (Central)')}</Text>
                 </TouchableOpacity>
               )}
 
               {user?.scope?.provinceId && (
                 <TouchableOpacity
-                  style={styles.guidanceBtnSecondary}
+                  style={[styles.guidanceBtnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setCtx({ unitLevel: 'PROVINCE', unitId: user.scope.provinceId, unitName: user.scope.provinceName || 'Province' });
                   }}
                 >
-                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.guidanceBtnSecondaryText}>Open My Sobayi Jirga</Text>
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} style={{ marginRight: isRTL ? 0 : 6, marginLeft: isRTL ? 6 : 0 }} />
+                  <Text style={styles.guidanceBtnSecondaryText}>{t('activities.openMySobayiJirga', 'Open My Sobayi Jirga')}</Text>
                 </TouchableOpacity>
               )}
 
               {isHigherAdmin(user) && provinces && provinces.length > 0 && (
                 <View style={{ marginTop: 12 }}>
-                  <Text style={styles.guidanceSubHead}>OR SWITCH TO PROVINCIAL SOBAYI JIRGA:</Text>
-                  <View style={styles.provGrid}>
+                  <Text style={[styles.guidanceSubHead, isRTL && { textAlign: 'right' }]}>{t('activities.orSwitchProvincialJirga', 'OR SWITCH TO PROVINCIAL SOBAYI JIRGA:')}</Text>
+                  <View style={[styles.provGrid, isRTL && { flexDirection: 'row-reverse' }]}>
                     {provinces.map((prov) => (
                       <TouchableOpacity
                         key={prov._id}
                         style={styles.provPillBtn}
                         onPress={() => setCtx({ unitLevel: 'PROVINCE', unitId: prov._id, unitName: prov.name })}
                       >
-                        <Text style={styles.provPillBtnText}>{prov.name} Sobayi Jirga →</Text>
+                        <Text style={styles.provPillBtnText}>{prov.name} {t('common.jirga', 'Jirga')} →</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1091,25 +1094,26 @@ export default function ActivitiesScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text style={styles.pageTitle}>{pageTitle}</Text>
+          <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={[styles.pageTitle, isRTL && { textAlign: 'right' }]}>{pageTitle}</Text>
             {!isOnline && (
               <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>{t('common.offlineCached', 'Offline (Cached)')}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.pageSubtitle}>
+          <Text style={[styles.pageSubtitle, isRTL && { textAlign: 'right' }]}>
             {ctx?.unitName ? `${ctx.unitName} · ` : ''}{activeLevel.replace('_', ' ')}
           </Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={[styles.headerActions, isRTL && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity
             style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
             onPress={() => handleExport('pdf')}
             disabled={!isOnline || !!exporting}
+            accessibilityLabel={t('activities.exportPdf', 'Export PDF')}
           >
             {exporting === 'pdf' ? (
               <ActivityIndicator size="small" color={Colors.primary} />
@@ -1121,6 +1125,7 @@ export default function ActivitiesScreen() {
             style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
             onPress={() => handleExport('xlsx')}
             disabled={!isOnline || !!exporting}
+            accessibilityLabel={t('activities.exportExcel', 'Export Excel')}
           >
             {exporting === 'xlsx' ? (
               <ActivityIndicator size="small" color={Colors.primary} />
@@ -1130,9 +1135,9 @@ export default function ActivitiesScreen() {
           </TouchableOpacity>
 
           {canManage && (
-            <TouchableOpacity style={styles.primaryBtn} onPress={openCreate}>
+            <TouchableOpacity style={[styles.primaryBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={openCreate}>
               <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.primaryBtnText}>Record</Text>
+              <Text style={styles.primaryBtnText}>{isTablet ? recordBtnLabel : t('activities.record', 'Record')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1150,11 +1155,11 @@ export default function ActivitiesScreen() {
             !loading ? (
               <View style={styles.emptyWrap}>
                 <Ionicons name="flag-outline" size={44} color={Colors.textLight} style={{ marginBottom: 10 }} />
-                <Text style={styles.emptyTitle}>No activities recorded yet</Text>
+                <Text style={styles.emptyTitle}>{t('activities.noActivities', 'No activities recorded yet')}</Text>
                 <Text style={styles.emptySubtitle}>
                   {canManage
-                    ? 'Tap the Record button above to log a new activity.'
-                    : 'No activities found for this unit.'}
+                    ? t('activities.tapToRecord', 'Tap the Record button above to log a new activity.')
+                    : t('activities.noActivitiesUnit', 'No activities found for this unit.')}
                 </Text>
               </View>
             ) : null
@@ -1176,7 +1181,7 @@ export default function ActivitiesScreen() {
                 !loading ? (
                   <View style={{ padding: 24, alignItems: 'center' }}>
                     <Text style={{ color: Colors.textMuted }}>
-                      No {isCongressView ? 'Congress' : (isJirgaView ? 'Jirga' : (isCommitteeView ? 'committee' : 'executive'))} activities recorded yet.
+                      {t('activities.noActivities', 'No activities recorded yet.')}
                     </Text>
                   </View>
                 ) : null
@@ -1191,100 +1196,106 @@ export default function ActivitiesScreen() {
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowForm(false)}><Text style={styles.modalCancel}>Cancel</Text></TouchableOpacity>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <TouchableOpacity onPress={() => setShowForm(false)}><Text style={styles.modalCancel}>{t('common.cancel', 'Cancel')}</Text></TouchableOpacity>
               <Text style={styles.modalTitle}>
-                {isCongressView ? 'Record Congress Activity' : (isJirgaView ? 'Record Jirga Activity' : (isCommitteeView ? 'Record Committee Activity' : 'Record Activity'))}
+                {isCongressView ? t('activities.recordCongress', 'Record Congress Activity') : (isJirgaView ? t('activities.recordJirga', 'Record Jirga Activity') : (isCommitteeView ? t('activities.recordCommittee', 'Record Committee Activity') : t('activities.newActivity', 'Record Activity')))}
               </Text>
               <TouchableOpacity onPress={handleCreate} disabled={saving}>
-                {saving ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>Save</Text>}
+                {saving ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>{t('common.save', 'Save')}</Text>}
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.formContent} keyboardShouldPersistTaps="handled">
               {formError ? (
                 <View style={{ backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5', marginBottom: 16 }}>
-                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ Could not record activity:</Text>
+                  <Text style={{ color: '#b91c1c', fontSize: 13, fontWeight: '700' }}>⚠️ {t('activities.couldNotRecord', 'Could not record activity')}:</Text>
                   <Text style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{formError}</Text>
                 </View>
               ) : null}
 
               {/* Type Dropdown */}
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Type *</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('activities.activityType', 'Type')} *</Text>
                 <View style={styles.pickerWrapper}>
                   <Picker
                     selectedValue={form.typeCode}
                     onValueChange={(val) => setForm((f) => ({ ...f, typeCode: val }))}
                   >
-                    {availableTypes.map((t) => (
-                      <Picker.Item key={t.code} label={t.label || t.code} value={t.code} />
+                    {availableTypes.map((tItem) => (
+                      <Picker.Item key={tItem.code} label={tItem.label || tItem.code} value={tItem.code} />
                     ))}
                   </Picker>
                 </View>
               </View>
 
-              <FormField label="Title *" value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder="Activity title" />
+              <FormField isRTL={isRTL} label={`${t('activities.activityTitle', 'Title')} *`} value={form.title} onChangeText={(v) => setForm((f) => ({ ...f, title: v }))} placeholder={t('activities.titlePlaceholder', 'Activity title')} />
 
               <DateTimePicker
-                label="Start Date & Time *"
+                label={`${t('activities.startDateTime', 'Start Date & Time')} *`}
                 value={form.startAt}
                 mode="datetime"
-                placeholder="Select start date & time"
+                placeholder={t('activities.selectStartDateTime', 'Select start date & time')}
                 onChange={(val) => setForm((f) => ({ ...f, startAt: val }))}
               />
 
               <DateTimePicker
-                label="End Date & Time"
+                label={t('activities.endDateTime', 'End Date & Time')}
                 value={form.endAt}
                 mode="datetime"
-                placeholder="Select end date & time"
+                placeholder={t('activities.selectEndDateTime', 'Select end date & time')}
                 onChange={(val) => setForm((f) => ({ ...f, endAt: val }))}
               />
 
-              <FormField label="Venue" value={form.venue} onChangeText={(v) => setForm((f) => ({ ...f, venue: v }))} placeholder="Venue location" />
-              <FormField label="Description" value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Activity details and description" multiline />
+              <FormField isRTL={isRTL} label={t('activities.venue', 'Venue')} value={form.venue} onChangeText={(v) => setForm((f) => ({ ...f, venue: v }))} placeholder={t('activities.venuePlaceholder', 'Venue location')} />
+              <FormField isRTL={isRTL} label={t('activities.description', 'Description')} value={form.description} onChangeText={(v) => setForm((f) => ({ ...f, description: v }))} placeholder={t('activities.descPlaceholder', 'Activity details and description')} multiline />
 
               {/* Campaign fields */}
               {form.typeCode === 'CAMPAIGN' && (
                 <View style={styles.campaignSection}>
-                  <Text style={styles.campaignSectionTitle}>Campaign Metrics</Text>
+                  <Text style={[styles.campaignSectionTitle, isRTL && { textAlign: 'right' }]}>{t('activities.campaignMetrics', 'Campaign Metrics')}</Text>
                   <FormField
-                    label="Households Visited"
+                    isRTL={isRTL}
+                    label={t('activities.householdsVisited', 'Households Visited')}
                     value={form.campaign_householdsVisited}
                     onChangeText={(v) => setForm((f) => ({ ...f, campaign_householdsVisited: v }))}
                     placeholder="0"
                     keyboardType="numeric"
                   />
                   <FormField
-                    label="People Contacted"
+                    isRTL={isRTL}
+                    label={t('activities.peopleContacted', 'People Contacted')}
                     value={form.campaign_peopleContacted}
                     onChangeText={(v) => setForm((f) => ({ ...f, campaign_peopleContacted: v }))}
                     placeholder="0"
                     keyboardType="numeric"
                   />
                   <FormField
-                    label="Pamphlets Distributed"
+                    isRTL={isRTL}
+                    label={t('activities.pamphletsDistributed', 'Pamphlets Distributed')}
                     value={form.campaign_pamphletsDistributed}
                     onChangeText={(v) => setForm((f) => ({ ...f, campaign_pamphletsDistributed: v }))}
                     placeholder="0"
                     keyboardType="numeric"
                   />
                   <FormField
-                    label="Expected Joiners"
+                    isRTL={isRTL}
+                    label={t('activities.expectedJoiners', 'Expected Joiners')}
                     value={form.campaign_expectedJoiners}
                     onChangeText={(v) => setForm((f) => ({ ...f, campaign_expectedJoiners: v }))}
                     placeholder="0"
                     keyboardType="numeric"
                   />
                   <FormField
-                    label="Actual Joiners"
+                    isRTL={isRTL}
+                    label={t('activities.actualJoiners', 'Actual Joiners')}
                     value={form.campaign_actualJoiners}
                     onChangeText={(v) => setForm((f) => ({ ...f, campaign_actualJoiners: v }))}
                     placeholder="0"
                     keyboardType="numeric"
                   />
                   <FormField
-                    label="Volunteer Hours"
+                    isRTL={isRTL}
+                    label={t('activities.volunteerHours', 'Volunteer Hours')}
                     value={form.campaign_volunteerHours}
                     onChangeText={(v) => setForm((f) => ({ ...f, campaign_volunteerHours: v }))}
                     placeholder="0"
@@ -1301,11 +1312,11 @@ export default function ActivitiesScreen() {
       {photosFor && (
         <Modal visible={!!photosFor} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPhotosFor(null)}>
           <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Activity Photos</Text>
-                <Text style={styles.modalSub} numberOfLines={1}>
-                  {photosFor.title || photosFor.type} · {new Date(photosFor.startAt).toLocaleDateString()} · {(photosFor.photos || []).length} photo{(photosFor.photos || []).length === 1 ? '' : 's'}
+                <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('activities.activityPhotos', 'Activity Photos')}</Text>
+                <Text style={[styles.modalSub, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                  {photosFor.title || photosFor.type} · {new Date(photosFor.startAt).toLocaleDateString()} · {(photosFor.photos || []).length} {t('activities.photos', 'photos')}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setPhotosFor(null)}>
@@ -1323,7 +1334,7 @@ export default function ActivitiesScreen() {
 
               {(!photosFor.photos || photosFor.photos.length === 0) ? (
                 <View style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ color: Colors.textMuted }}>No photos attached to this activity yet.</Text>
+                  <Text style={{ color: Colors.textMuted }}>{t('activities.noPhotosAttached', 'No photos attached to this activity yet.')}</Text>
                 </View>
               ) : (
                 <>
@@ -1343,62 +1354,62 @@ export default function ActivitiesScreen() {
 
                         {/* Metadata Details */}
                         <View style={styles.photoMetaCard}>
-                          <Text style={styles.photoMetaTitle}>Photo {activePhotoIdx + 1} of {photos.length}</Text>
+                          <Text style={[styles.photoMetaTitle, isRTL && { textAlign: 'right' }]}>{t('activities.photo', 'Photo')} {activePhotoIdx + 1} / {photos.length}</Text>
                           
-                          <View style={styles.photoMetaRow}>
-                            <Text style={styles.photoMetaLabel}>Captured:</Text>
+                          <View style={[styles.photoMetaRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                            <Text style={styles.photoMetaLabel}>{t('activities.captured', 'Captured:')}</Text>
                             <Text style={styles.photoMetaVal}>
-                              {cur.capturedAt ? `${new Date(cur.capturedAt).toLocaleString()} (${ageLabel(cur.capturedAt)})` : '— not recorded —'}
+                              {cur.capturedAt ? `${new Date(cur.capturedAt).toLocaleString()} (${ageLabel(cur.capturedAt)})` : t('activities.notRecorded', '— not recorded —')}
                             </Text>
                           </View>
 
-                          <View style={styles.photoMetaRow}>
-                            <Text style={styles.photoMetaLabel}>GPS:</Text>
+                          <View style={[styles.photoMetaRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                            <Text style={styles.photoMetaLabel}>{t('activities.gps', 'GPS:')}</Text>
                             <View style={{ flex: 1 }}>
                               {cur.gps?.lat != null && cur.gps?.lng != null ? (
                                 <View>
                                   <Text style={styles.photoMetaVal}>{fmtCoord(cur.gps.lat)}, {fmtCoord(cur.gps.lng)}</Text>
                                   <TouchableOpacity onPress={() => Linking.openURL(gmapsLink(cur.gps.lat, cur.gps.lng))}>
-                                    <Text style={styles.linkText}>Open in Google Maps ↗</Text>
+                                    <Text style={styles.linkText}>{t('activities.openGoogleMaps', 'Open in Google Maps ↗')}</Text>
                                   </TouchableOpacity>
                                 </View>
                               ) : (
-                                <Text style={styles.photoMetaVal}>— not recorded —</Text>
+                                <Text style={styles.photoMetaVal}>{t('activities.notRecorded', '— not recorded —')}</Text>
                               )}
                             </View>
                           </View>
 
                           {cur.sha256 ? (
-                            <View style={styles.photoMetaRow}>
-                              <Text style={styles.photoMetaLabel}>SHA-256:</Text>
+                            <View style={[styles.photoMetaRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                              <Text style={styles.photoMetaLabel}>{t('activities.sha256', 'SHA-256:')}</Text>
                               <Text style={[styles.photoMetaVal, { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 11 }]}>
                                 {cur.sha256.slice(0, 16)}...{cur.sha256.slice(-8)}
                               </Text>
                             </View>
                           ) : null}
 
-                          <View style={styles.photoMetaRow}>
-                            <Text style={styles.photoMetaLabel}>File:</Text>
+                          <View style={[styles.photoMetaRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                            <Text style={styles.photoMetaLabel}>{t('activities.file', 'File:')}</Text>
                             <TouchableOpacity onPress={() => Linking.openURL(cur.url)}>
-                              <Text style={styles.linkText}>Open full size ↗</Text>
+                              <Text style={styles.linkText}>{t('activities.openFullSize', 'Open full size ↗')}</Text>
                             </TouchableOpacity>
                           </View>
 
                           {photos.length > 1 && (
-                            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                            <View style={[{ flexDirection: 'row', gap: 10, marginTop: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
                               <TouchableOpacity
                                 style={[styles.btnSecondary, activePhotoIdx === 0 && { opacity: 0.5 }]}
                                 disabled={activePhotoIdx === 0}
                                 onPress={() => setActivePhotoIdx((i) => Math.max(0, i - 1))}
                               >
-                                <Text style={styles.btnSecondaryText}>← Prev</Text>
+                                <Text style={styles.btnSecondaryText}>{t('common.prev', '← Prev')}</Text>
                               </TouchableOpacity>
                               <TouchableOpacity
                                 style={[styles.btnSecondary, activePhotoIdx === photos.length - 1 && { opacity: 0.5 }]}
                                 disabled={activePhotoIdx === photos.length - 1}
                                 onPress={() => setActivePhotoIdx((i) => Math.min(photos.length - 1, i + 1))}
                               >
-                                <Text style={styles.btnSecondaryText}>Next →</Text>
+                                <Text style={styles.btnSecondaryText}>{t('common.next', 'Next →')}</Text>
                               </TouchableOpacity>
                             </View>
                           )}
@@ -1434,12 +1445,12 @@ export default function ActivitiesScreen() {
   );
 }
 
-function FormField({ label, value, onChangeText, placeholder, multiline, keyboardType }) {
+function FormField({ label, value, onChangeText, placeholder, multiline, keyboardType, isRTL }) {
   return (
     <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{label}</Text>
       <TextInput
-        style={[styles.fieldInput, multiline && styles.fieldMultiline]}
+        style={[styles.fieldInput, multiline && styles.fieldMultiline, isRTL && { textAlign: 'right' }]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder || label}

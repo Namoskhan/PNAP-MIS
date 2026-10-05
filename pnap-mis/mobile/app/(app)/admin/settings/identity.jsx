@@ -3,23 +3,25 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput } from 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
 
 const FIELDS = [
-  { key: 'systemName', label: 'System name', help: 'The full product name. Shown wherever you brand the product itself.', max: 80 },
-  { key: 'shortName', label: 'Short name / abbreviation', help: 'Sidebar header + compact UI surfaces.', max: 40 },
-  { key: 'organizationName', label: 'Organization name', help: 'The organization that owns this deployment.', max: 120 },
-  { key: 'loginTitle', label: 'Login page title', help: 'Heading on the login screen.', max: 120 },
-  { key: 'browserTabTitle', label: 'Browser tab title', help: 'Sets <title> on every page.', max: 80 },
-  { key: 'metaDescription', label: 'Meta description', help: 'SEO / link-preview blurb.', max: 300 },
-  { key: 'footerText', label: 'Footer text', help: 'Shown at the bottom of dashboards.', max: 300 },
-  { key: 'copyrightText', label: 'Copyright text', help: 'Shown on PDF / XLSX exports.', max: 120 },
+  { key: 'systemName', labelKey: 'admin.settings.systemName', label: 'System name', helpKey: 'admin.settings.systemNameHelp', help: 'The full product name. Shown wherever you brand the product itself.', max: 80 },
+  { key: 'shortName', labelKey: 'admin.settings.shortName', label: 'Short name / abbreviation', helpKey: 'admin.settings.shortNameHelp', help: 'Sidebar header + compact UI surfaces.', max: 40 },
+  { key: 'organizationName', labelKey: 'admin.settings.organizationName', label: 'Organization name', helpKey: 'admin.settings.organizationNameHelp', help: 'The organization that owns this deployment.', max: 120 },
+  { key: 'loginTitle', labelKey: 'admin.settings.loginTitle', label: 'Login page title', helpKey: 'admin.settings.loginTitleHelp', help: 'Heading on the login screen.', max: 120 },
+  { key: 'browserTabTitle', labelKey: 'admin.settings.browserTabTitle', label: 'Browser tab title', helpKey: 'admin.settings.browserTabTitleHelp', help: 'Sets <title> on every page.', max: 80 },
+  { key: 'metaDescription', labelKey: 'admin.settings.metaDescription', label: 'Meta description', helpKey: 'admin.settings.metaDescriptionHelp', help: 'SEO / link-preview blurb.', max: 300 },
+  { key: 'footerText', labelKey: 'admin.settings.footerText', label: 'Footer text', helpKey: 'admin.settings.footerTextHelp', help: 'Shown at the bottom of dashboards.', max: 300 },
+  { key: 'copyrightText', labelKey: 'admin.settings.copyrightText', label: 'Copyright text', helpKey: 'admin.settings.copyrightTextHelp', help: 'Shown on PDF / XLSX exports.', max: 120 },
 ];
 
 export default function SystemIdentityScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -51,7 +53,7 @@ export default function SystemIdentityScreen() {
         if (form[f.key] !== undefined) identity[f.key] = form[f.key];
       }
       await api.patch('/settings', { identity, changeNote: 'Updated system identity via mobile' });
-      toast.success('Identity saved.');
+      toast.success(t('admin.settings.identitySaved', 'Identity saved.'));
       load();
     } catch (e) {
       setErr(errorMessage(e));
@@ -63,26 +65,26 @@ export default function SystemIdentityScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <View style={styles.heroHeader}>
-          <View style={styles.heroIconBg}>
+      <View style={[styles.hero, isRTL && { flexDirection: 'row-reverse' }]}>
+        <View style={[styles.heroHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.heroIconBg, isRTL ? { marginLeft: Spacing.md, marginRight: 0 } : { marginRight: Spacing.md }]}>
             <Ionicons name="pricetag" size={24} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>System Identity</Text>
-            <Text style={styles.heroSub}>
-              System name, short name, organization, footer, browser tab title.
+            <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.systemIdentity', 'System Identity')}</Text>
+            <Text style={[styles.heroSub, isRTL && { textAlign: 'right' }]}>
+              {t('admin.settings.systemIdentitySub', 'System name, short name, organization, footer, browser tab title.')}
             </Text>
           </View>
         </View>
-        <View style={styles.heroActions}>
-          <TouchableOpacity style={styles.btnOutline} onPress={() => router.back()} disabled={busy || saving}>
-            <Ionicons name="arrow-back" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-            <Text style={styles.btnOutlineText}>Back</Text>
+        <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
+          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={busy || saving}>
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={styles.btnOutlineText}>{t('admin.settings.backToSettings', 'Back')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnOutline} onPress={load} disabled={busy || saving}>
-            <Ionicons name="refresh" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-            <Text style={styles.btnOutlineText}>Refresh</Text>
+          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={load} disabled={busy || saving}>
+            <Ionicons name="refresh" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={styles.btnOutlineText}>{t('common.refresh', 'Refresh')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -92,36 +94,36 @@ export default function SystemIdentityScreen() {
       {!busy && form && (
         <>
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="clipboard" size={18} color={Colors.textLight} />
-              <Text style={styles.cardTitle}>Strings</Text>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right', marginRight: Spacing.sm, marginLeft: 0 }]}>{t('admin.settings.strings', 'Strings')}</Text>
             </View>
             <View style={styles.cardBody}>
               {FIELDS.map((f) => (
                 <View style={styles.field} key={f.key}>
-                  <Text style={styles.label}>{f.label}</Text>
+                  <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t(f.labelKey, f.label)}</Text>
                   <TextInput
-                    style={[styles.input, !canWrite && styles.inputDisabled]}
+                    style={[styles.input, !canWrite && styles.inputDisabled, isRTL && { textAlign: 'right' }]}
                     value={form[f.key] || ''}
                     maxLength={f.max}
                     onChangeText={(v) => setForm((p) => ({ ...p, [f.key]: v }))}
                     editable={canWrite}
                   />
-                  <Text style={styles.hintText}>{f.help}</Text>
+                  <Text style={[styles.hintText, isRTL && { textAlign: 'right' }]}>{t(f.helpKey, f.help)}</Text>
                 </View>
               ))}
             </View>
           </View>
 
           {canWrite && (
-            <View style={styles.footer}>
-              <TouchableOpacity style={styles.btnOutline} onPress={() => router.back()} disabled={saving}>
-                <Ionicons name="close" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-                <Text style={styles.btnOutlineText}>Cancel</Text>
+            <View style={[styles.footer, isRTL && { flexDirection: 'row-reverse' }]}>
+              <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={saving}>
+                <Ionicons name="close" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                <Text style={styles.btnOutlineText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.btnSolid, saving && styles.btnDisabled]} onPress={save} disabled={saving}>
-                <Ionicons name="checkmark" size={16} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.btnSolidText}>{saving ? 'Saving...' : 'Save changes'}</Text>
+              <TouchableOpacity style={[styles.btnSolid, saving && styles.btnDisabled, isRTL && { flexDirection: 'row-reverse' }]} onPress={save} disabled={saving}>
+                <Ionicons name="checkmark" size={16} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                <Text style={styles.btnSolidText}>{saving ? t('common.saving', 'Saving...') : t('admin.settings.saveIdentity', 'Save changes')}</Text>
               </TouchableOpacity>
             </View>
           )}

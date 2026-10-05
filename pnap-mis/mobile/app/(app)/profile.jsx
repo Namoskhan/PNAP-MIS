@@ -20,6 +20,8 @@ import { roleLabel, isPureMember, isSuperAdmin } from '../../src/utils/permissio
 import { resolveMediaUrl } from '../../src/api/client';
 import { Storage } from '../../src/utils/storage';
 import { useToast } from '../../src/components/Toast';
+import { useLanguage } from '../../src/context/LanguageContext';
+import LanguageSelector from '../../src/components/LanguageSelector';
 import { getScopedCacheMeta, syncUserScopeCache } from '../../src/services/scopeDataCache';
 import Avatar from '../../src/components/Avatar';
 import Card from '../../src/components/Card';
@@ -27,16 +29,16 @@ import Badge from '../../src/components/Badge';
 import { Colors, FontSize, Radius, Spacing } from '../../src/constants/colors';
 import { shortDate, formatCnic } from '../../src/utils/formatters';
 
-function InfoItem({ icon, label, value, badge, isLast }) {
+function InfoItem({ icon, label, value, badge, isLast, isRTL }) {
   if (!value && !badge) return null;
   return (
-    <View style={[styles.infoItem, isLast && styles.infoItemLast]}>
+    <View style={[styles.infoItem, isLast && styles.infoItemLast, isRTL && { flexDirection: 'row-reverse' }]}>
       <View style={styles.infoIconWrap}>
         <Ionicons name={icon || 'information-circle-outline'} size={18} color={Colors.primary} />
       </View>
-      <View style={styles.infoContent}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue} numberOfLines={2}>
+      <View style={[styles.infoContent, isRTL && { alignItems: 'flex-end' }]}>
+        <Text style={[styles.infoLabel, isRTL && { textAlign: 'right' }]}>{label}</Text>
+        <Text style={[styles.infoValue, isRTL && { textAlign: 'right' }]} numberOfLines={2}>
           {value || '—'}
         </Text>
       </View>
@@ -48,6 +50,7 @@ function InfoItem({ icon, label, value, badge, isLast }) {
 export default function ProfileScreen() {
   const { user, logout, allRoles, activeRole, setActiveRole, refreshMe } = useAuth();
   const { ctx, homeLevel, homeUnitName } = useUnit() || {};
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -90,13 +93,13 @@ export default function ProfileScreen() {
     try {
       const res = await syncUserScopeCache(user, ctx, { force: true });
       if (res?.success) {
-        toast?.success?.('Offline scope cache updated successfully');
+        toast?.success?.(t('profile.syncCacheSuccess', 'Offline scope cache updated successfully'));
       } else {
-        toast?.info?.('Could not reach server to refresh cache. Existing cache retained.');
+        toast?.info?.(t('profile.syncCacheRetained', 'Could not reach server to refresh cache. Existing cache retained.'));
       }
       await refreshCacheMeta();
     } catch {
-      toast?.error?.('Failed to sync offline cache');
+      toast?.error?.(t('profile.syncCacheFailed', 'Failed to sync offline cache'));
     } finally {
       setSyncingCache(false);
     }
@@ -126,18 +129,22 @@ export default function ProfileScreen() {
 
   function handleLogout() {
     if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to sign out?')) {
+      if (typeof window !== 'undefined' && window.confirm(t('profile.signOutConfirmMessage', 'Are you sure you want to sign out of your account?'))) {
         performLogout();
       }
     } else {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out of your account?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: performLogout,
-        },
-      ]);
+      Alert.alert(
+        t('profile.signOutConfirmTitle', 'Sign Out'),
+        t('profile.signOutConfirmMessage', 'Are you sure you want to sign out of your account?'),
+        [
+          { text: t('profile.cancel', 'Cancel'), style: 'cancel' },
+          {
+            text: t('profile.signOut', 'Sign Out'),
+            style: 'destructive',
+            onPress: performLogout,
+          },
+        ]
+      );
     }
   }
 
@@ -163,7 +170,7 @@ export default function ProfileScreen() {
           
           {/* Profile Header Card */}
           <Card style={styles.profileCard}>
-            <View style={styles.profileHeader}>
+            <View style={[styles.profileHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={styles.avatarWrapper}>
                 {user.photoUrl ? (
                   <Image
@@ -176,16 +183,16 @@ export default function ProfileScreen() {
                 <View style={styles.statusDot} />
               </View>
 
-              <View style={styles.profileInfo}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.profileName} numberOfLines={2}>
-                    {user.fullName || 'Member'}
+              <View style={[styles.profileInfo, isRTL && { alignItems: 'flex-end' }]}>
+                <View style={[styles.nameRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.profileName, isRTL && { textAlign: 'right' }]} numberOfLines={2}>
+                    {user.fullName || t('roles.MEMBER', 'Member')}
                   </Text>
-                  {isSuper && <Badge label="Super Admin" color="#fff" bg="#0f172a" />}
+                  {isSuper && <Badge label={t('roles.SUPER_ADMIN', 'Super Admin')} color="#fff" bg="#0f172a" />}
                 </View>
 
                 {user.memberNo || user.memberId || mem.memberId ? (
-                  <View style={styles.memberIdBadge}>
+                  <View style={[styles.memberIdBadge, isRTL && { flexDirection: 'row-reverse' }]}>
                     <Ionicons name="id-card-outline" size={13} color={Colors.primary} />
                     <Text style={styles.memberIdText}>
                       ID: {user.memberNo || mem.memberId || user.memberId}
@@ -194,13 +201,13 @@ export default function ProfileScreen() {
                 ) : null}
 
                 {user.email ? (
-                  <Text style={styles.profileContact} numberOfLines={1}>
+                  <Text style={[styles.profileContact, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
                     <Ionicons name="mail-outline" size={12} color={Colors.textMuted} /> {user.email}
                   </Text>
                 ) : null}
 
                 {user.phone ? (
-                  <Text style={styles.profileContact} numberOfLines={1}>
+                  <Text style={[styles.profileContact, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
                     <Ionicons name="call-outline" size={12} color={Colors.textMuted} /> {user.phone}
                   </Text>
                 ) : null}
@@ -211,46 +218,46 @@ export default function ProfileScreen() {
           {/* Active Roles & View As Selector */}
           {allRoles.length > 0 && (
             <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeaderRow}>
-                <View style={styles.sectionTitleWrap}>
+              <View style={[styles.sectionHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                <View style={[styles.sectionTitleWrap, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.sectionTitle}>Assigned Roles & Personas</Text>
+                  <Text style={styles.sectionTitle}>{t('profile.assignedRoles', 'Assigned Roles & Personas')}</Text>
                 </View>
                 {allRoles.length > 1 && (
-                  <Text style={styles.switchRoleHint}>Tap to switch view</Text>
+                  <Text style={styles.switchRoleHint}>{t('profile.tapToSwitch', 'Tap to switch view')}</Text>
                 )}
               </View>
 
-              <View style={styles.rolePills}>
+              <View style={[styles.rolePills, isRTL && { flexDirection: 'row-reverse' }]}>
                 {allRoles.map((r) => {
                   const isCurrentActive = activeRole === r || (!activeRole && allRoles.length === 1);
                   return (
                     <TouchableOpacity
                       key={r}
                       onPress={() => setActiveRole(r)}
-                      style={[styles.rolePillBtn, isCurrentActive && styles.rolePillBtnActive]}
+                      style={[styles.rolePillBtn, isCurrentActive && styles.rolePillBtnActive, isRTL && { flexDirection: 'row-reverse' }]}
                       activeOpacity={0.7}
                     >
                       <Ionicons
                         name={isCurrentActive ? 'radio-button-on' : 'radio-button-off'}
                         size={14}
                         color={isCurrentActive ? '#fff' : Colors.primary}
-                        style={{ marginRight: 5 }}
+                        style={isRTL ? { marginLeft: 5 } : { marginRight: 5 }}
                       />
                       <Text style={[styles.rolePillText, isCurrentActive && styles.rolePillTextActive]}>
-                        {roleLabel(user, r)}
+                        {t(`roles.${r}`, roleLabel(user, r))}
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
 
-              <View style={styles.roleExplanationBox}>
-                <Ionicons name="information-circle-outline" size={15} color="#0369a1" style={{ marginRight: 6 }} />
-                <Text style={styles.roleExplanationText}>
+              <View style={[styles.roleExplanationBox, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="information-circle-outline" size={15} color="#0369a1" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                <Text style={[styles.roleExplanationText, isRTL && { textAlign: 'right' }]}>
                   {activeRole
-                    ? `Currently viewing app features with permissions for: ${roleLabel(user, activeRole)}.`
-                    : 'Viewing with your default administrative permissions.'}
+                    ? t('profile.viewingWithPermissions', 'Currently viewing app features with permissions for: {{role}}.', { role: t(`roles.${activeRole}`, roleLabel(user, activeRole)) })
+                    : t('profile.viewingDefault', 'Viewing with your default administrative permissions.')}
                 </Text>
               </View>
             </Card>
@@ -258,14 +265,14 @@ export default function ProfileScreen() {
 
           {/* Organizational Unit & Scope Card */}
           <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeaderRow}>
-              <View style={styles.sectionTitleWrap}>
+            <View style={[styles.sectionHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={[styles.sectionTitleWrap, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Ionicons name="business-outline" size={18} color={Colors.primary} />
-                <Text style={styles.sectionTitle}>Organizational Unit</Text>
+                <Text style={styles.sectionTitle}>{t('profile.organizationalUnit', 'Organizational Unit')}</Text>
               </View>
               {ctx?.unitLevel && (
                 <Badge
-                  label={ctx.unitLevel.replace('_', ' ')}
+                  label={t(`units.${ctx.unitLevel.toLowerCase()}`, ctx.unitLevel.replace('_', ' '))}
                   color="#1e40af"
                   bg="#dbeafe"
                 />
@@ -275,41 +282,41 @@ export default function ProfileScreen() {
             {hasLocalUnit ? (
               <View style={styles.infoList}>
                 {province ? (
-                  <InfoItem icon="map-outline" label="Province" value={province} />
+                  <InfoItem icon="map-outline" label={t('profile.province', 'Province')} value={province} isRTL={isRTL} />
                 ) : null}
                 {district ? (
-                  <InfoItem icon="navigate-outline" label="District" value={district} />
+                  <InfoItem icon="navigate-outline" label={t('profile.district', 'District')} value={district} isRTL={isRTL} />
                 ) : null}
                 {area ? (
-                  <InfoItem icon="location-outline" label="Area" value={area} />
+                  <InfoItem icon="location-outline" label={t('profile.area', 'Area')} value={area} isRTL={isRTL} />
                 ) : null}
                 {basicUnit ? (
-                  <InfoItem icon="home-outline" label="Basic Unit" value={basicUnit} isLast />
+                  <InfoItem icon="home-outline" label={t('profile.basicUnit', 'Basic Unit')} value={basicUnit} isLast isRTL={isRTL} />
                 ) : null}
               </View>
             ) : isSuper || isCentral ? (
-              <View style={styles.centralScopeBox}>
+              <View style={[styles.centralScopeBox, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.centralScopeIcon}>
                   <Ionicons name="globe-outline" size={24} color="#0f766e" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.centralScopeTitle}>PKNAP Central Organization</Text>
-                  <Text style={styles.centralScopeSub}>
-                    National level jurisdiction with organization-wide access.
+                <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                  <Text style={[styles.centralScopeTitle, isRTL && { textAlign: 'right' }]}>{t('profile.centralOrg', 'PKNAP Central Organization')}</Text>
+                  <Text style={[styles.centralScopeSub, isRTL && { textAlign: 'right' }]}>
+                    {t('profile.centralScopeSub', 'National level jurisdiction with organization-wide access.')}
                   </Text>
                 </View>
               </View>
             ) : (
-              <View style={styles.centralScopeBox}>
+              <View style={[styles.centralScopeBox, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.centralScopeIcon}>
                   <Ionicons name="business-outline" size={24} color="#0284c7" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.centralScopeTitle}>
-                    {ctx?.unitName || homeUnitName || 'Central Unit'}
+                <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                  <Text style={[styles.centralScopeTitle, isRTL && { textAlign: 'right' }]}>
+                    {ctx?.unitName || homeUnitName || t('profile.centralOrg', 'Central Unit')}
                   </Text>
-                  <Text style={styles.centralScopeSub}>
-                    Operating level: {ctx?.unitLevel || homeLevel || 'General'}
+                  <Text style={[styles.centralScopeSub, isRTL && { textAlign: 'right' }]}>
+                    {t('profile.operatingLevel', 'Operating level: {{level}}', { level: t(`units.${(ctx?.unitLevel || homeLevel || 'General').toLowerCase()}`, ctx?.unitLevel || homeLevel || 'General') })}
                   </Text>
                 </View>
               </View>
@@ -317,10 +324,10 @@ export default function ProfileScreen() {
 
             {/* If working context is different from home unit */}
             {ctx?.unitName && (basicUnit || area || district) && ctx.unitName !== (basicUnit || area || district) && (
-              <View style={styles.workingContextBox}>
-                <Text style={styles.workingContextLabel}>Active Working Context:</Text>
+              <View style={[styles.workingContextBox, isRTL && { alignItems: 'flex-end' }]}>
+                <Text style={styles.workingContextLabel}>{t('profile.workingContext', 'Active Working Context:')}</Text>
                 <Text style={styles.workingContextValue}>
-                  {ctx.unitName} ({ctx.unitLevel?.replace('_', ' ')})
+                  {ctx.unitName} ({t(`units.${ctx.unitLevel?.toLowerCase()}`, ctx.unitLevel?.replace('_', ' '))})
                 </Text>
               </View>
             )}
@@ -329,14 +336,14 @@ export default function ProfileScreen() {
           {/* Member Details Card */}
           {(user.cnic || mem.cnic || mem.bloodGroup || mem.occupation || mem.education || mem.status) && (
             <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeaderRow}>
-                <View style={styles.sectionTitleWrap}>
+              <View style={[styles.sectionHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                <View style={[styles.sectionTitleWrap, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Ionicons name="person-circle-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.sectionTitle}>Personal & Member Information</Text>
+                  <Text style={styles.sectionTitle}>{t('profile.personalInfo', 'Personal & Member Information')}</Text>
                 </View>
                 {mem.status && (
                   <Badge
-                    label={mem.status}
+                    label={t(`common.${mem.status.toLowerCase()}`, mem.status)}
                     color={mem.status === 'ACTIVE' ? '#15803d' : '#b45309'}
                     bg={mem.status === 'ACTIVE' ? '#dcfce7' : '#fef3c7'}
                   />
@@ -347,50 +354,56 @@ export default function ProfileScreen() {
                 {user.cnic || mem.cnic ? (
                   <InfoItem
                     icon="card-outline"
-                    label="National ID (CNIC)"
+                    label={t('profile.cnic', 'National ID (CNIC)')}
                     value={formatCnic(user.cnic || mem.cnic)}
+                    isRTL={isRTL}
                   />
                 ) : null}
 
                 {mem.fatherOrHusbandName ? (
                   <InfoItem
                     icon="people-outline"
-                    label="Father / Husband Name"
+                    label={t('profile.fatherOrHusbandName', 'Father / Husband Name')}
                     value={mem.fatherOrHusbandName}
+                    isRTL={isRTL}
                   />
                 ) : null}
 
                 {mem.bloodGroup ? (
                   <InfoItem
                     icon="water-outline"
-                    label="Blood Group"
+                    label={t('profile.bloodGroup', 'Blood Group')}
                     value={mem.bloodGroup}
                     badge={<Badge label={mem.bloodGroup} color="#b91c1c" bg="#fee2e2" />}
+                    isRTL={isRTL}
                   />
                 ) : null}
 
                 {mem.occupation ? (
                   <InfoItem
                     icon="briefcase-outline"
-                    label="Occupation"
+                    label={t('profile.occupation', 'Occupation')}
                     value={mem.occupation}
+                    isRTL={isRTL}
                   />
                 ) : null}
 
                 {mem.education ? (
                   <InfoItem
                     icon="school-outline"
-                    label="Education"
+                    label={t('profile.education', 'Education')}
                     value={mem.education}
+                    isRTL={isRTL}
                   />
                 ) : null}
 
                 {mem.dateJoined ? (
                   <InfoItem
                     icon="calendar-outline"
-                    label="Joined Organization"
+                    label={t('profile.joinedOrg', 'Joined Organization')}
                     value={shortDate(mem.dateJoined)}
                     isLast
+                    isRTL={isRTL}
                   />
                 ) : null}
               </View>
@@ -399,13 +412,13 @@ export default function ProfileScreen() {
 
           {/* Offline & Session Status */}
           <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 8 }, isRTL && { flexDirection: 'row-reverse' }]}>
                 <Ionicons name="shield-checkmark" size={18} color="#16a34a" />
-                <Text style={styles.sectionTitle}>Offline & Session Security</Text>
+                <Text style={styles.sectionTitle}>{t('profile.offlineSecurity', 'Offline & Session Security')}</Text>
               </View>
               <Badge
-                text={sessionInfo.isRemembered ? '7-Day Offline' : 'Standard'}
+                text={sessionInfo.isRemembered ? t('profile.offline7Days', '7-Day Offline') : t('profile.standardSession', 'Standard')}
                 variant={sessionInfo.isRemembered ? 'success' : 'default'}
               />
             </View>
@@ -413,32 +426,35 @@ export default function ProfileScreen() {
             <View style={styles.infoList}>
               <InfoItem
                 icon="time-outline"
-                label="Session Validity"
+                label={t('profile.sessionValidity', 'Session Validity')}
                 value={
                   sessionInfo.isRemembered
-                    ? `Active for ~${sessionInfo.expiryDays} day(s) without credentials`
-                    : 'Standard session'
+                    ? t('profile.sessionActiveDays', 'Active for ~{{days}} day(s) without credentials', { days: sessionInfo.expiryDays })
+                    : t('profile.sessionStandard', 'Standard session')
                 }
+                isRTL={isRTL}
               />
               <InfoItem
                 icon="cloud-offline-outline"
-                label="Offline Field Access"
-                value="Enabled — you can view data, create meetings, register members, and record finance offline."
+                label={t('profile.offlineFieldAccess', 'Offline Field Access')}
+                value={t('profile.offlineFieldAccessDesc', 'Enabled — you can view data, create meetings, register members, and record finance offline.')}
+                isRTL={isRTL}
               />
               <InfoItem
                 icon="server-outline"
-                label="Scope Data Cached"
+                label={t('profile.scopeDataCached', 'Scope Data Cached')}
                 value={
                   cacheMeta?.lastSync
                     ? `${new Date(cacheMeta.lastSync).toLocaleDateString()} ${new Date(cacheMeta.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${cacheMeta.unitLevel || 'Scope'}: ${cacheMeta.unitName || 'Central'})`
-                    : 'Auto-syncs in background'
+                    : t('profile.autoSyncBackground', 'Auto-syncs in background')
                 }
                 isLast
+                isRTL={isRTL}
               />
             </View>
 
             <TouchableOpacity
-              style={styles.syncCacheBtn}
+              style={[styles.syncCacheBtn, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={handleSyncCache}
               disabled={syncingCache}
             >
@@ -447,19 +463,27 @@ export default function ProfileScreen() {
               ) : (
                 <>
                   <Ionicons name="cloud-download-outline" size={16} color="#ffffff" />
-                  <Text style={styles.syncCacheBtnText}>Update Offline Scope Cache</Text>
+                  <Text style={styles.syncCacheBtnText}>{t('profile.updateOfflineCache', 'Update Offline Scope Cache')}</Text>
                 </>
               )}
             </TouchableOpacity>
           </Card>
 
+          {/* Language Selection */}
+          <LanguageSelector
+            variant="card"
+            onLanguageChanged={() => {
+              toast?.success?.(t('mobile.languageUpdated', 'Language updated successfully'));
+            }}
+          />
+
           {/* Account Actions */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Account Actions</Text>
+            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('profile.accountActions', 'Account Actions')}</Text>
             
-            <View style={styles.actionButtonsRow}>
+            <View style={[styles.actionButtonsRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
-                style={styles.refreshBtn}
+                style={[styles.refreshBtn, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={handleRefresh}
                 disabled={refreshing}
               >
@@ -468,13 +492,13 @@ export default function ProfileScreen() {
                 ) : (
                   <>
                     <Ionicons name="refresh-outline" size={16} color={Colors.primary} />
-                    <Text style={styles.refreshBtnText}>Sync Profile</Text>
+                    <Text style={styles.refreshBtnText}>{t('profile.syncProfile', 'Sync Profile')}</Text>
                   </>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.logoutBtn}
+                style={[styles.logoutBtn, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={handleLogout}
                 disabled={signingOut}
               >
@@ -483,7 +507,7 @@ export default function ProfileScreen() {
                 ) : (
                   <>
                     <Ionicons name="log-out-outline" size={16} color="#fff" />
-                    <Text style={styles.logoutText}>Sign Out</Text>
+                    <Text style={styles.logoutText}>{t('profile.signOut', 'Sign Out')}</Text>
                   </>
                 )}
               </TouchableOpacity>

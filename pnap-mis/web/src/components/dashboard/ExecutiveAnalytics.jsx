@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import useAnalytics from './useAnalytics';
 import DashboardSection from './DashboardSection';
 import ScopeBreadcrumb from './ScopeBreadcrumb';
@@ -49,6 +50,7 @@ const BELOW = {
 };
 
 export default function ExecutiveAnalytics() {
+  const { t } = useTranslation();
   const [scope, setScope] = useState(EMPTY_SCOPE);
   const [filters, setFilters] = useState({ days: 30, memberStatus: '', orgStatus: '' });
 
@@ -87,7 +89,7 @@ export default function ExecutiveAnalytics() {
     });
   }, []);
 
-  const windowLabel = `last ${filters.days} days`;
+  const windowLabel = t('dashboard.lastDays', { days: filters.days, defaultValue: `last ${filters.days} days` });
   const s = summary.data;
   const trail = scopeInfo.data?.trail;
   const scopeName = trail?.length ? trail[trail.length - 1].name : 'Pakistan';
@@ -117,9 +119,11 @@ export default function ExecutiveAnalytics() {
     <div style={{ marginTop: 18 }}>
       <div className="page-header" style={{ marginBottom: 10 }}>
         <div>
-          <h2 style={{ marginBottom: 2 }}>Executive National MIS</h2>
+          <h2 style={{ marginBottom: 2 }}>{t('dashboard.executiveNationalMis', 'Executive National MIS')}</h2>
           <div className="subtitle">
-            Organizational health {scope.provinceId ? `for ${scopeName}` : 'across the whole country'} — {windowLabel}
+            {scope.provinceId
+              ? t('dashboard.orgHealthFor', { scope: scopeName, defaultValue: `Organizational health for ${scopeName}` })
+              : t('dashboard.orgHealthAcrossCountry', 'Organizational health across the whole country')} — {windowLabel}
           </div>
         </div>
       </div>
@@ -142,7 +146,7 @@ export default function ExecutiveAnalytics() {
             className="btn secondary sm"
             onClick={() => navigateTo('NATIONAL')}
           >
-            Back to the whole country
+            {t('dashboard.backToWholeCountry', 'Back to the whole country')}
           </button>
         </div>
       )}
@@ -158,17 +162,17 @@ export default function ExecutiveAnalytics() {
       {summary.error && <div className="alert error" style={{ marginBottom: 10 }}>{summary.error}</div>}
 
       <DashboardSection
-        title="Executive Summary"
-        subtitle={`Headline figures for ${scopeName}`}
+        title={t('dashboard.executiveSummary', 'Executive Summary')}
+        subtitle={t('dashboard.headlineFiguresFor', { scope: scopeName, defaultValue: `Headline figures for ${scopeName}` })}
         eager
       >
         <ExecutiveSummary data={s} loading={summary.loading} windowLabel={windowLabel} />
       </DashboardSection>
 
       <DashboardSection
-        title="Organization Analytics"
-        subtitle="Drill down through provinces, districts, areas and basic units"
-        badge={scopeInfo.data?.childLevel ? undefined : 'Leaf'}
+        title={t('dashboard.organizationAnalytics', 'Organization Analytics')}
+        subtitle={t('dashboard.drillDownThrough', 'Drill down through provinces, districts, areas and basic units')}
+        badge={scopeInfo.data?.childLevel ? undefined : t('dashboard.leaf', 'Leaf')}
       >
         <OrganizationAnalytics
           params={params}
@@ -179,8 +183,8 @@ export default function ExecutiveAnalytics() {
       </DashboardSection>
 
       <DashboardSection
-        title="Membership Analytics"
-        subtitle="Total and new membership, broken down by tier"
+        title={t('dashboard.membershipAnalytics', 'Membership Analytics')}
+        subtitle={t('dashboard.membershipTierBreakdown', 'Total and new membership, broken down by tier')}
         badge={s ? s.membership.total.toLocaleString() : undefined}
       >
         <MembershipAnalytics
@@ -191,25 +195,25 @@ export default function ExecutiveAnalytics() {
       </DashboardSection>
 
       <DashboardSection
-        title="Meetings"
-        subtitle="Scheduled and conducted meetings by tier and body"
+        title={t('meetings.title', 'Meetings')}
+        subtitle={t('dashboard.meetingsAnalyticsSub', 'Scheduled and conducted meetings by tier and body')}
         badge={s ? s.meetings.total.toLocaleString() : undefined}
       >
         <MeetingsAnalytics params={params} windowLabel={windowLabel} />
       </DashboardSection>
 
       <DashboardSection
-        title="Campaigns"
-        subtitle="Running, upcoming and completed campaigns"
+        title={t('dashboard.campaigns', 'Campaigns')}
+        subtitle={t('dashboard.campaignsAnalyticsSub', 'Running, upcoming and completed campaigns')}
         badge={s ? s.campaigns.total.toLocaleString() : undefined}
       >
         <CampaignsAnalytics params={params} windowLabel={windowLabel} />
       </DashboardSection>
 
       <DashboardSection
-        title="Reports"
-        subtitle="Filing status, unit reports and performance reports"
-        badge={s ? `${s.reports.outstanding.toLocaleString()} owed` : undefined}
+        title={t('reports.title', 'Reports')}
+        subtitle={t('dashboard.reportsAnalyticsSub', 'Filing status, unit reports and performance reports')}
+        badge={s ? `${s.reports.outstanding.toLocaleString()} ${t('dashboard.owed', 'owed')}` : undefined}
       >
         <ReportsAnalytics
           params={params}
@@ -223,15 +227,15 @@ export default function ExecutiveAnalytics() {
       </DashboardSection>
 
       <DashboardSection
-        title="Activity Monitoring"
-        subtitle="What counts as activity, and who is doing it"
+        title={t('dashboard.activityMonitoring', 'Activity Monitoring')}
+        subtitle={t('dashboard.activityMonitoringSub', 'What counts as activity, and who is doing it')}
       >
         <ActivityMonitoring params={params} summary={s} windowLabel={windowLabel} />
       </DashboardSection>
 
       <DashboardSection
-        title="Inactive Organization"
-        subtitle="Dormant units, with the responsible officer"
+        title={t('dashboard.inactiveOrganization', 'Inactive Organization')}
+        subtitle={t('dashboard.dormantUnitsWithOfficer', 'Dormant units, with the responsible officer')}
         badge={s ? (s.organization.basicUnits.inactive + s.membership.inactive).toLocaleString() : undefined}
       >
         <div style={{ display: 'grid', gap: 10 }}>

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { api, errorMessage } from '../../../src/api/client';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { isSuperAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
 import Card from '../../../src/components/Card';
@@ -38,6 +39,7 @@ const ROLE_LABEL = {
 };
 
 export default function PendingApprovalsScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const toast = useToast();
   const [items, setItems] = useState([]);
@@ -47,12 +49,12 @@ export default function PendingApprovalsScreen() {
 
   // Quick level filters for mobile
   const filters = [
-    { label: 'All', value: '' },
-    { label: 'Basic', value: 'BASIC_UNIT' },
-    { label: 'Area', value: 'AREA' },
-    { label: 'District', value: 'DISTRICT' },
-    { label: 'Prov', value: 'PROVINCE' },
-    { label: 'Central', value: 'CENTRAL' },
+    { labelKey: 'common.all', fallback: 'All', value: '' },
+    { labelKey: 'units.basicUnit', fallback: 'Basic', value: 'BASIC_UNIT' },
+    { labelKey: 'units.area', fallback: 'Area', value: 'AREA' },
+    { labelKey: 'units.district', fallback: 'District', value: 'DISTRICT' },
+    { labelKey: 'units.province', fallback: 'Prov', value: 'PROVINCE' },
+    { labelKey: 'units.central', fallback: 'Central', value: 'CENTRAL' },
   ];
 
   async function loadItems() {
@@ -74,22 +76,28 @@ export default function PendingApprovalsScreen() {
   }, [levelFilter]);
 
   const decide = (id, decision) => {
+    const isApprove = decision === 'APPROVED';
+    const actionLabel = isApprove ? t('common.approve', 'Approve') : t('common.reject', 'Reject');
+    const msg = isApprove
+      ? t('pendingApprovals.confirmApproveMsg', 'Are you sure you want to approve this role assignment?')
+      : t('pendingApprovals.confirmRejectMsg', 'Are you sure you want to reject this role assignment?');
+
     Alert.alert(
-      `${decision === 'APPROVED' ? 'Approve' : 'Reject'} Role`,
-      `Are you sure you want to ${decision.toLowerCase()} this role assignment?`,
+      `${actionLabel} ${t('common.role', 'Role')}`,
+      msg,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: decision === 'APPROVED' ? 'Approve' : 'Reject',
-          style: decision === 'APPROVED' ? 'default' : 'destructive',
+          text: actionLabel,
+          style: isApprove ? 'default' : 'destructive',
           onPress: async () => {
             setBusy(true);
             try {
               await api.post(`/roles/${id}/decide`, { decision });
               await loadItems();
-              toast.success(`Role ${decision.toLowerCase()}.`);
+              toast.success(isApprove ? t('pendingApprovals.roleApproved', 'Role approved.') : t('pendingApprovals.roleRejected', 'Role rejected.'));
             } catch (e) {
-              toast.error(errorMessage(e), { title: 'Action Failed' });
+              toast.error(errorMessage(e), { title: t('common.actionFailed', 'Action Failed') });
             } finally {
               setBusy(false);
             }
@@ -101,38 +109,38 @@ export default function PendingApprovalsScreen() {
 
   const renderItem = ({ item: p }) => (
     <Card style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Badge label={p.unitLevel.replace('_', ' ')} color="#fff" bg={Colors.primary} />
+      <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+        <Badge label={t(`units.${p.unitLevel}`, p.unitLevel.replace('_', ' '))} color="#fff" bg={Colors.primary} />
         <Text style={styles.dateText}>{new Date(p.createdAt).toLocaleDateString()}</Text>
       </View>
       
-      <View style={styles.infoRow}>
-        <Text style={styles.label}>Role</Text>
-        <Text style={styles.value}>
-          {ROLE_LABEL[p.roleCode] || p.roleCode}
+      <View style={[styles.infoRow, isRTL && { flexDirection: 'row-reverse' }]}>
+        <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('common.role', 'Role')}</Text>
+        <Text style={[styles.value, isRTL && { textAlign: 'right' }]}>
+          {t(`roles.${p.roleCode}`, ROLE_LABEL[p.roleCode] || p.roleCode)}
           {p.customRoleName ? ` (${p.customRoleName})` : ''}
         </Text>
       </View>
       
-      <View style={styles.infoRow}>
-        <Text style={styles.label}>Member</Text>
-        <Text style={styles.value}>
+      <View style={[styles.infoRow, isRTL && { flexDirection: 'row-reverse' }]}>
+        <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('common.member', 'Member')}</Text>
+        <Text style={[styles.value, isRTL && { textAlign: 'right' }]}>
           {p.memberId?.fullName} <Text style={styles.mutedText}>({p.memberId?.memberId || p.memberId?.cnic})</Text>
         </Text>
       </View>
       
-      <View style={styles.infoRow}>
-        <Text style={styles.label}>Initiated By</Text>
-        <Text style={styles.value}>{p.initiatedBy?.fullName || '—'}</Text>
+      <View style={[styles.infoRow, isRTL && { flexDirection: 'row-reverse' }]}>
+        <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('pendingApprovals.initiatedBy', 'Initiated By')}</Text>
+        <Text style={[styles.value, isRTL && { textAlign: 'right' }]}>{p.initiatedBy?.fullName || '—'}</Text>
       </View>
 
-      <View style={styles.actions}>
+      <View style={[styles.actions, isRTL && { flexDirection: 'row-reverse', justifyContent: 'flex-start' }]}>
         <TouchableOpacity 
           style={[styles.btn, styles.btnReject, busy && styles.btnDisabled]} 
           disabled={busy} 
           onPress={() => decide(p._id, 'REJECTED')}
         >
-          <Text style={styles.btnRejectText}>Reject</Text>
+          <Text style={styles.btnRejectText}>{t('common.reject', 'Reject')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -140,7 +148,7 @@ export default function PendingApprovalsScreen() {
           disabled={busy} 
           onPress={() => decide(p._id, 'APPROVED')}
         >
-          <Text style={styles.btnApproveText}>Approve</Text>
+          <Text style={styles.btnApproveText}>{t('common.approve', 'Approve')}</Text>
         </TouchableOpacity>
       </View>
     </Card>
@@ -149,31 +157,36 @@ export default function PendingApprovalsScreen() {
   if (!isSuperAdmin(user)) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>Only Super Admins can access this override screen.</Text>
+        <Text style={styles.errorText}>{t('pendingApprovals.unauthorized', 'Only Super Admins can access this override screen.')}</Text>
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Pending Approvals</Text>
-        <Text style={styles.subtitle}>System-wide admin overrides</Text>
+      <View style={[styles.header, isRTL && { alignItems: 'flex-end' }]}>
+        <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('nav.pendingApprovals', 'Pending Approvals')}</Text>
+        <Text style={[styles.subtitle, isRTL && { textAlign: 'right' }]}>{t('pendingApprovals.adminOverrides', 'System-wide admin overrides')}</Text>
       </View>
 
       <View style={styles.filters}>
         <FlatList
           horizontal
+          inverted={isRTL}
           showsHorizontalScrollIndicator={false}
           data={filters}
           keyExtractor={(item) => item.value}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.filterChip, levelFilter === item.value && styles.filterChipActive]}
+              style={[
+                styles.filterChip,
+                levelFilter === item.value && styles.filterChipActive,
+                isRTL ? { marginLeft: Spacing.sm, marginRight: 0 } : { marginRight: Spacing.sm, marginLeft: 0 }
+              ]}
               onPress={() => setLevelFilter(item.value)}
             >
               <Text style={[styles.filterChipText, levelFilter === item.value && styles.filterChipTextActive]}>
-                {item.label}
+                {t(item.labelKey, item.fallback)}
               </Text>
             </TouchableOpacity>
           )}
@@ -188,7 +201,13 @@ export default function PendingApprovalsScreen() {
           keyExtractor={(item) => item._id}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={<EmptyState icon="⏳" title="No pending roles" message="There are no role assignments waiting for a decision." />}
+          ListEmptyComponent={
+            <EmptyState
+              icon="⏳"
+              title={t('pendingApprovals.noPendingRoles', 'No pending roles')}
+              message={t('pendingApprovals.noPendingMessage', 'There are no role assignments waiting for a decision.')}
+            />
+          }
         />
       )}
     </SafeAreaView>

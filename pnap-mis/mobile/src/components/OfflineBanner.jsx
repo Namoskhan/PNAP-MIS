@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNetwork } from '../context/NetworkContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Colors, FontSize, Spacing, Radius } from '../constants/colors';
 import { getOfflineQueue, removeOfflineAction } from '../services/offlineStorage';
 import { shortDate } from '../utils/formatters';
@@ -20,6 +21,7 @@ import { shortDate } from '../utils/formatters';
 export default function OfflineBanner() {
   const insets = useSafeAreaInsets();
   const { isOnline, pendingCount, failedCount, isSyncing, syncNow, clearFailed, retryFailed } = useNetwork();
+  const { t, isRTL } = useLanguage();
   const [showQueueModal, setShowQueueModal] = useState(false);
   const [queueItems, setQueueItems] = useState([]);
   const [loadingQueue, setLoadingQueue] = useState(false);
@@ -100,18 +102,18 @@ export default function OfflineBanner() {
               />
             )}
 
-            <Text style={styles.text} numberOfLines={1}>
+            <Text style={[styles.text, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
               {isSyncing
-                ? 'Syncing offline records with server...'
+                ? t('mobile.syncing', 'Syncing offline records with server…')
                 : !isOnline
-                ? `Offline Mode ${pendingCount > 0 ? `• ${pendingCount} pending sync` : '• Changes saved locally'}${hasFailed ? ` (${failedCount} failed)` : ''}`
+                ? `${t('mobile.offlineMode', 'Offline Mode')} ${pendingCount > 0 ? `• ${pendingCount} ${t('mobile.syncPending', 'pending sync')}` : `• ${t('mobile.offlineDesc', 'Changes saved locally')}`}${hasFailed ? ` (${failedCount} failed)` : ''}`
                 : pendingCount > 0
-                ? `${pendingCount} offline ${pendingCount === 1 ? 'item' : 'items'} ready to sync${hasFailed ? ` (${failedCount} failed)` : ''}`
-                : `${failedCount} item${failedCount === 1 ? '' : 's'} failed validation • Tap to view`}
+                ? `${pendingCount} ${t('mobile.syncPending', 'items ready to sync')}${hasFailed ? ` (${failedCount} failed)` : ''}`
+                : `${failedCount} items failed • Tap to view`}
             </Text>
           </View>
 
-          <View style={styles.rightActions}>
+          <View style={[styles.rightActions, isRTL && { flexDirection: 'row-reverse' }]}>
             {isOnline && pendingCount > 0 && !isSyncing && (
               <TouchableOpacity
                 style={styles.syncBtn}
@@ -119,15 +121,15 @@ export default function OfflineBanner() {
                 activeOpacity={0.7}
               >
                 <Ionicons name="refresh" size={13} color="#fff" />
-                <Text style={styles.syncBtnText}>Sync Now</Text>
+                <Text style={styles.syncBtnText}>{t('mobile.syncNow', 'Sync Now')}</Text>
               </TouchableOpacity>
             )}
 
             <Ionicons
-              name="chevron-forward"
+              name={isRTL ? 'chevron-back' : 'chevron-forward'}
               size={14}
               color="rgba(255,255,255,0.8)"
-              style={{ marginLeft: 4 }}
+              style={isRTL ? { marginRight: 4 } : { marginLeft: 4 }}
             />
           </View>
         </TouchableOpacity>

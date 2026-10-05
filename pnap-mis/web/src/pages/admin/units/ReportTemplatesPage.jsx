@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
@@ -14,6 +15,7 @@ const TIER_CODES = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 const FORMATS = ['PDF', 'XLSX', 'BOTH'];
 
 export default function ReportTemplatesPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -56,16 +58,15 @@ export default function ReportTemplatesPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><FileTextIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Report Templates</h2>
+            <h2 className="rm-hero-title">{t('admin.units.reportTemplates', 'Report Templates')}</h2>
             <div className="rm-hero-sub">
-              Composable PDF / XLSX reports built from pre-built sections.
-              New section kinds need a code review; templates compose existing ones.
+              {t('admin.units.reportTemplatesSub', 'Composable PDF and XLSX reports built from pre-built sections.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('admin.refresh', 'Refresh')}</button>
             {canWrite && (
-              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>＋ New template</button>
+              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>{t('admin.units.newTemplate', '＋ New template')}</button>
             )}
           </div>
         </div>

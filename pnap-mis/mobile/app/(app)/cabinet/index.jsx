@@ -34,6 +34,7 @@ import Avatar from '../../../src/components/Avatar';
 import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 import { shortDate } from '../../../src/utils/formatters';
+import { useLanguage } from '../../../src/context/LanguageContext';
 
 const ROLE_LABEL = {
   SECRETARY: 'Secretary',
@@ -54,6 +55,15 @@ const ROLE_LABEL = {
   OTHER: 'Other',
 };
 
+function getCabinetRoleLabel(r, customName, t) {
+  if (t) {
+    const key = `roles.${r}`;
+    const translated = t(key);
+    if (translated && translated !== key) return translated;
+  }
+  return ROLE_LABEL[r] || customName || r;
+}
+
 const END_REASONS = [
   { value: 'RESIGNED', label: 'Resigned', hint: 'Stepped down of their own accord' },
   { value: 'TERM_ENDED', label: 'Term ended', hint: 'Served the full term' },
@@ -64,6 +74,7 @@ const END_REASONS = [
 ];
 
 export default function CabinetScreen() {
+  const { t, isRTL } = useLanguage();
   const { user } = useAuth();
   const { ctx, setCtx } = useUnit();
   const toast = useToast();
@@ -321,8 +332,8 @@ export default function CabinetScreen() {
     if (isCentral && allProvinces.length > 0) {
       return (
         <View style={styles.switcherBox}>
-          <Text style={styles.switcherLabel}>Assign Province Cabinet for:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcherScroll}>
+          <Text style={[styles.switcherLabel, isRTL && { textAlign: 'right' }]}>{t('cabinet.assignProvinceCabinet')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.switcherScroll, isRTL && { flexDirection: 'row-reverse' }]}>
             {allProvinces.map((p) => {
               const active = ctx?.unitLevel === 'PROVINCE' && String(ctx?.unitId) === String(p._id);
               return (
@@ -345,8 +356,8 @@ export default function CabinetScreen() {
     if (isProvince && districtsInProvince.length > 0) {
       return (
         <View style={styles.switcherBox}>
-          <Text style={styles.switcherLabel}>Assign District Cabinet for:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcherScroll}>
+          <Text style={[styles.switcherLabel, isRTL && { textAlign: 'right' }]}>{t('cabinet.assignDistrictCabinet')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.switcherScroll, isRTL && { flexDirection: 'row-reverse' }]}>
             {districtsInProvince.map((d) => {
               const active = ctx?.unitLevel === 'DISTRICT' && String(ctx?.unitId) === String(d._id);
               return (
@@ -369,8 +380,8 @@ export default function CabinetScreen() {
     if (isDistrict && areasInDistrict.length > 0) {
       return (
         <View style={styles.switcherBox}>
-          <Text style={styles.switcherLabel}>Assign Area Cabinet for:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcherScroll}>
+          <Text style={[styles.switcherLabel, isRTL && { textAlign: 'right' }]}>{t('cabinet.assignAreaCabinet')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.switcherScroll, isRTL && { flexDirection: 'row-reverse' }]}>
             {areasInDistrict.map((a) => {
               const active = ctx?.unitLevel === 'AREA' && String(ctx?.unitId) === String(a._id);
               return (
@@ -393,8 +404,8 @@ export default function CabinetScreen() {
     if (isArea && basicUnitsInArea.length > 0) {
       return (
         <View style={styles.switcherBox}>
-          <Text style={styles.switcherLabel}>Assign Basic Unit Cabinet for:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.switcherScroll}>
+          <Text style={[styles.switcherLabel, isRTL && { textAlign: 'right' }]}>{t('cabinet.assignBasicUnitCabinet')}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.switcherScroll, isRTL && { flexDirection: 'row-reverse' }]}>
             {basicUnitsInArea.map((b) => {
               const active = ctx?.unitLevel === 'BASIC_UNIT' && String(ctx?.unitId) === String(b._id);
               return (
@@ -419,23 +430,23 @@ export default function CabinetScreen() {
 
   function renderRoleCard({ item: row }) {
     const isFilled = row.state === 'FILLED';
-    const roleName = ROLE_LABEL[row.roleCode] || row.customRoleName || row.roleCode;
+    const roleName = getCabinetRoleLabel(row.roleCode, row.customRoleName, t);
 
     return (
       <Card style={styles.card}>
-        <View style={styles.cardTop}>
+        <View style={[styles.cardTop, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={{ flex: 1 }}>
-            <View style={styles.roleTitleRow}>
-              <Text style={styles.roleTitle}>{roleName}</Text>
+            <View style={[styles.roleTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.roleTitle, isRTL && { textAlign: 'right' }]}>{roleName}</Text>
               {row.isCustom ? <Badge label="CUSTOM" status="ACTIVE" style={{ paddingVertical: 1 }} /> : null}
             </View>
-            <View style={styles.roleBadgeRow}>
+            <View style={[styles.roleBadgeRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Badge
-                label={row.isMandatory ? 'Required' : 'Optional'}
+                label={row.isMandatory ? t('cabinet.required') : t('cabinet.optional')}
                 status={row.isMandatory ? 'ACTIVE' : 'INACTIVE'}
               />
               <Badge
-                label={isFilled ? 'Filled' : 'Vacant'}
+                label={isFilled ? t('cabinet.filled') : t('cabinet.vacant')}
                 status={isFilled ? 'ACTIVE' : 'PENDING_APPROVAL'}
               />
             </View>
@@ -446,16 +457,18 @@ export default function CabinetScreen() {
 
         <View style={styles.cardBottom}>
           {isFilled ? (
-            <View style={styles.memberInfoRow}>
+            <View style={[styles.memberInfoRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Avatar name={row.member?.fullName || '?'} size={38} />
-              <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                <Text style={styles.memberName}>{row.member?.fullName || '—'}</Text>
-                <Text style={styles.memberMeta}>
+              <View style={[{ flex: 1 }, isRTL ? { marginRight: Spacing.sm } : { marginLeft: Spacing.sm }]}>
+                <Text style={[styles.memberName, isRTL && { textAlign: 'right' }]}>{row.member?.fullName || '—'}</Text>
+                <Text style={[styles.memberMeta, isRTL && { textAlign: 'right' }]}>
                   {row.member?.phone ? `📞 ${row.member.phone}` : ''}
                   {row.member?.memberId ? ` · ID: ${row.member.memberId}` : ''}
                 </Text>
                 {row.assignment?.startedAt ? (
-                  <Text style={styles.dateMeta}>Since {shortDate(row.assignment.startedAt)}</Text>
+                  <Text style={[styles.dateMeta, isRTL && { textAlign: 'right' }]}>
+                    {t('cabinet.since', { date: shortDate(row.assignment.startedAt) })}
+                  </Text>
                 ) : null}
               </View>
               {canAssignDirectly && (
@@ -467,16 +480,16 @@ export default function CabinetScreen() {
                     setEndOpen(true);
                   }}
                 >
-                  <Text style={styles.endBtnText}>End role</Text>
+                  <Text style={styles.endBtnText}>{t('cabinet.endRole')}</Text>
                 </TouchableOpacity>
               )}
             </View>
           ) : (
-            <View style={styles.vacantRow}>
-              <Text style={styles.vacantText}>— vacant position —</Text>
+            <View style={[styles.vacantRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.vacantText}>{t('cabinet.vacantPosition')}</Text>
               {canAssignDirectly && (
                 <TouchableOpacity
-                  style={styles.assignBtn}
+                  style={[styles.assignBtn, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => {
                     setAssignForRole(row);
                     setPickedMemberId('');
@@ -484,8 +497,8 @@ export default function CabinetScreen() {
                     setAssignOpen(true);
                   }}
                 >
-                  <Ionicons name="person-add" size={14} color="#fff" style={{ marginRight: 4 }} />
-                  <Text style={styles.assignBtnText}>Assign</Text>
+                  <Ionicons name="person-add" size={14} color="#fff" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+                  <Text style={styles.assignBtnText}>{t('cabinet.assign')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -498,16 +511,16 @@ export default function CabinetScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && { alignItems: 'flex-end' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerScope}>
-            {ctx?.unitLevel ? `${ctx.unitLevel.replace('_', ' ')} CABINET` : 'CABINET'}
+          <Text style={[styles.headerScope, isRTL && { textAlign: 'right' }]}>
+            {ctx?.unitLevel ? `${ctx.unitLevel.replace('_', ' ')} ${t('cabinet.title')}`.toUpperCase() : t('cabinet.title').toUpperCase()}
           </Text>
-          <Text style={styles.headerTitle}>{ctx?.unitName || 'Cabinet'}</Text>
-          <Text style={styles.headerSub}>
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>{ctx?.unitName || t('cabinet.title')}</Text>
+          <Text style={[styles.headerSub, isRTL && { textAlign: 'right' }]}>
             {isCentral
-              ? 'Assign Sobayi (Provincial) Executive roles for this province.'
-              : 'Appoint office-holders and review active cabinet positions.'}
+              ? t('cabinet.centralSubtitle')
+              : t('cabinet.subtitle')}
           </Text>
         </View>
       </View>
@@ -521,21 +534,25 @@ export default function CabinetScreen() {
         {/* Pending Proposals Section */}
         {!secretaryReadOnly && !isSeniorMawinOp && !isPresidentOnly && pending.length > 0 && (
           <View style={styles.pendingSection}>
-            <Text style={styles.sectionHeader}>Pending Proposals ({pending.length})</Text>
+            <Text style={[styles.sectionHeader, isRTL && { textAlign: 'right' }]}>
+              {t('cabinet.pendingProposals')} ({pending.length})
+            </Text>
             {pending.map((p) => (
               <Card key={p._id} style={styles.pendingCard}>
-                <View style={styles.pendingRow}>
+                <View style={[styles.pendingRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Avatar name={p.memberId?.fullName || '?'} size={38} />
-                  <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                    <Text style={styles.memberName}>{p.memberId?.fullName || '—'}</Text>
-                    <Text style={styles.pendingRole}>
-                      {ROLE_LABEL[p.roleCode] || p.customRoleName || p.roleCode}
+                  <View style={[{ flex: 1 }, isRTL ? { marginRight: Spacing.sm } : { marginLeft: Spacing.sm }]}>
+                    <Text style={[styles.memberName, isRTL && { textAlign: 'right' }]}>{p.memberId?.fullName || '—'}</Text>
+                    <Text style={[styles.pendingRole, isRTL && { textAlign: 'right' }]}>
+                      {getCabinRoleLabel ? getCabinetRoleLabel(p.roleCode, p.customRoleName, t) : (ROLE_LABEL[p.roleCode] || p.customRoleName || p.roleCode)}
                     </Text>
                     {p.initiatedBy?.fullName ? (
-                      <Text style={styles.dateMeta}>Proposed by {p.initiatedBy.fullName}</Text>
+                      <Text style={[styles.dateMeta, isRTL && { textAlign: 'right' }]}>
+                        {t('cabinet.proposedBy', { name: p.initiatedBy.fullName })}
+                      </Text>
                     ) : null}
                   </View>
-                  <View style={styles.decideActionRow}>
+                  <View style={[styles.decideActionRow, isRTL && { flexDirection: 'row-reverse' }]}>
                     <TouchableOpacity
                       style={styles.approveBtn}
                       onPress={() => handleDecide(p, 'APPROVED')}
@@ -558,12 +575,14 @@ export default function CabinetScreen() {
         )}
 
         {/* Cabinet Roles List */}
-        <Text style={styles.sectionHeader}>Cabinet Roles ({cabinet.length})</Text>
+        <Text style={[styles.sectionHeader, isRTL && { textAlign: 'right' }]}>
+          {t('cabinet.roles')} ({cabinet.length})
+        </Text>
         {cabinet.length === 0 && !loading && (
           <EmptyState
             icon="🏛️"
-            title="No cabinet roles"
-            message="No cabinet template found for this unit level."
+            title={t('cabinet.roles')}
+            message={t('cabinet.noApprovedMembers')}
           />
         )}
         {cabinet.map((row) => (
@@ -583,13 +602,13 @@ export default function CabinetScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalTitle}>
-                  Assign {ROLE_LABEL[assignForRole?.roleCode] || assignForRole?.customRoleName || assignForRole?.roleCode}
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={isRTL && { alignItems: 'flex-end' }}>
+                <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>
+                  {t('cabinet.assign')} · {getCabinetRoleLabel(assignForRole?.roleCode, assignForRole?.customRoleName, t)}
                 </Text>
-                <Text style={styles.modalSub}>
-                  {ctx?.unitName} ({filteredMembers.length} eligible members)
+                <Text style={[styles.modalSub, isRTL && { textAlign: 'right' }]}>
+                  {ctx?.unitName} ({filteredMembers.length} {t('cabinet.activeMembersCount', { filtered: filteredMembers.length, total: members.length })})
                 </Text>
               </View>
               <TouchableOpacity
@@ -601,13 +620,13 @@ export default function CabinetScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalSearchWrap}>
-              <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={{ marginRight: 8 }} />
+            <View style={[styles.modalSearchWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={isRTL ? { marginLeft: 8 } : { marginRight: 8 }} />
               <TextInput
-                style={styles.modalSearchInput}
+                style={[styles.modalSearchInput, isRTL && { textAlign: 'right' }]}
                 value={memberSearch}
                 onChangeText={setMemberSearch}
-                placeholder="Filter members by name, CNIC or phone…"
+                placeholder={t('cabinet.searchMemberPlaceholder')}
                 placeholderTextColor={Colors.textLight}
                 autoCapitalize="none"
               />
@@ -620,10 +639,10 @@ export default function CabinetScreen() {
 
             <ScrollView contentContainerStyle={styles.memberPickerList} keyboardShouldPersistTaps="handled">
               {filteredMembers.length === 0 && (
-                <Text style={styles.noMembersText}>
+                <Text style={[styles.noMembersText, isRTL && { textAlign: 'right' }]}>
                   {members.length === 0
-                    ? 'No active members registered in this unit yet.'
-                    : 'No members match your search.'}
+                    ? t('cabinet.noApprovedMembers')
+                    : t('common.noData')}
                 </Text>
               )}
               {filteredMembers.map((m) => {
@@ -631,15 +650,15 @@ export default function CabinetScreen() {
                 return (
                   <TouchableOpacity
                     key={m._id}
-                    style={[styles.memberCard, isSelected && styles.memberCardSelected]}
+                    style={[styles.memberCard, isSelected && styles.memberCardSelected, isRTL && { flexDirection: 'row-reverse' }]}
                     onPress={() => setPickedMemberId(m._id)}
                   >
                     <Avatar name={m.fullName} size={40} />
-                    <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                      <Text style={[styles.memberPickName, isSelected && { color: Colors.primary }]}>
+                    <View style={[{ flex: 1 }, isRTL ? { marginRight: Spacing.sm } : { marginLeft: Spacing.sm }]}>
+                      <Text style={[styles.memberPickName, isSelected && { color: Colors.primary }, isRTL && { textAlign: 'right' }]}>
                         {m.fullName}
                       </Text>
-                      <Text style={styles.memberPickMeta}>
+                      <Text style={[styles.memberPickMeta, isRTL && { textAlign: 'right' }]}>
                         {m.memberId ? `ID: ${m.memberId} · ` : ''}{m.cnic || 'No CNIC'} · {m.phone || 'No phone'}
                       </Text>
                     </View>
@@ -651,13 +670,13 @@ export default function CabinetScreen() {
               })}
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => { if (!busy) setAssignOpen(false); }}
                 disabled={busy}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>{t('cabinet.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveBtn, (!pickedMemberId || busy) && { opacity: 0.6 }]}
@@ -667,7 +686,7 @@ export default function CabinetScreen() {
                 {busy ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.saveText}>Confirm Assignment</Text>
+                  <Text style={styles.saveText}>{t('cabinet.confirmAssignment')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -683,11 +702,11 @@ export default function CabinetScreen() {
         onRequestClose={() => { if (!busy) setEndOpen(false); }}
       >
         <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalTitle}>End Role Assignment</Text>
-              <Text style={styles.modalSub}>
-                {ROLE_LABEL[endTarget?.roleCode] || endTarget?.customRoleName || endTarget?.roleCode} — {endTarget?.member?.fullName}
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={isRTL && { alignItems: 'flex-end' }}>
+              <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('cabinet.endRoleTitle')}</Text>
+              <Text style={[styles.modalSub, isRTL && { textAlign: 'right' }]}>
+                {getCabinetRoleLabel(endTarget?.roleCode, endTarget?.customRoleName, t)} — {endTarget?.member?.fullName}
               </Text>
             </View>
             <TouchableOpacity
@@ -700,36 +719,36 @@ export default function CabinetScreen() {
           </View>
 
           <ScrollView style={styles.endModalBody}>
-            <Text style={styles.endPrompt}>Why is this member leaving the office?</Text>
+            <Text style={[styles.endPrompt, isRTL && { textAlign: 'right' }]}>{t('cabinet.endRolePrompt')}</Text>
             {END_REASONS.map((r) => {
               const isSelected = endReason === r.value;
               return (
                 <TouchableOpacity
                   key={r.value}
-                  style={[styles.reasonCard, isSelected && styles.reasonCardSelected]}
+                  style={[styles.reasonCard, isSelected && styles.reasonCardSelected, isRTL && { flexDirection: 'row-reverse' }]}
                   onPress={() => setEndReason(r.value)}
                 >
                   <View style={[styles.radioDot, isSelected && styles.radioDotSelected]}>
                     {isSelected && <View style={styles.radioDotInner} />}
                   </View>
-                  <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                    <Text style={[styles.reasonLabel, isSelected && { color: Colors.primary }]}>
-                      {r.label}
+                  <View style={[{ flex: 1 }, isRTL ? { marginRight: Spacing.sm } : { marginLeft: Spacing.sm }]}>
+                    <Text style={[styles.reasonLabel, isSelected && { color: Colors.primary }, isRTL && { textAlign: 'right' }]}>
+                      {t(`cabinet.reasons.${r.value}`, r.label)}
                     </Text>
-                    <Text style={styles.reasonHint}>{r.hint}</Text>
+                    <Text style={[styles.reasonHint, isRTL && { textAlign: 'right' }]}>{t(`cabinet.hints.${r.value}`, r.hint)}</Text>
                   </View>
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
               style={styles.cancelBtn}
               onPress={() => { if (!busy) setEndOpen(false); }}
               disabled={busy}
             >
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t('cabinet.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.saveBtn, { backgroundColor: Colors.error }]}
@@ -739,7 +758,7 @@ export default function CabinetScreen() {
               {busy ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.saveText}>End Role</Text>
+                <Text style={styles.saveText}>{t('cabinet.endRole')}</Text>
               )}
             </TouchableOpacity>
           </View>

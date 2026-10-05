@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchSettings, patchSettings } from '../../../api/branding';
 import { useAuth } from '../../../context/AuthContext';
 import { useBranding } from '../../../context/BrandingContext';
@@ -14,25 +15,26 @@ import { ClipboardIcon, TagIcon } from '../../../components/icons';
 // update without a hard reload.
 
 const FIELDS = [
-  { key: 'systemName', label: 'System name',
+  { key: 'systemName', labelKey: 'admin.settings.systemName', helpKey: 'admin.settings.systemNameHelp', label: 'System name',
     help: 'The full product name. Shown wherever you brand the product itself.', max: 80 },
-  { key: 'shortName', label: 'Short name / abbreviation',
+  { key: 'shortName', labelKey: 'admin.settings.shortName', helpKey: 'admin.settings.shortNameHelp', label: 'Short name / abbreviation',
     help: 'Sidebar header + compact UI surfaces.', max: 40 },
-  { key: 'organizationName', label: 'Organization name',
+  { key: 'organizationName', labelKey: 'admin.settings.organizationName', helpKey: 'admin.settings.organizationNameHelp', label: 'Organization name',
     help: 'The organization that owns this deployment.', max: 120 },
-  { key: 'loginTitle', label: 'Login page title',
+  { key: 'loginTitle', labelKey: 'admin.settings.loginTitle', helpKey: 'admin.settings.loginTitleHelp', label: 'Login page title',
     help: 'Heading on the login screen.', max: 120 },
-  { key: 'browserTabTitle', label: 'Browser tab title',
+  { key: 'browserTabTitle', labelKey: 'admin.settings.browserTabTitle', helpKey: 'admin.settings.browserTabTitleHelp', label: 'Browser tab title',
     help: 'Sets <title> on every page.', max: 80 },
-  { key: 'metaDescription', label: 'Meta description',
+  { key: 'metaDescription', labelKey: 'admin.settings.metaDescription', helpKey: 'admin.settings.metaDescriptionHelp', label: 'Meta description',
     help: 'SEO / link-preview blurb.', max: 300 },
-  { key: 'footerText', label: 'Footer text',
+  { key: 'footerText', labelKey: 'admin.settings.footerText', helpKey: 'admin.settings.footerTextHelp', label: 'Footer text',
     help: 'Shown at the bottom of dashboards.', max: 300 },
-  { key: 'copyrightText', label: 'Copyright text',
+  { key: 'copyrightText', labelKey: 'admin.settings.copyrightText', helpKey: 'admin.settings.copyrightTextHelp', label: 'Copyright text',
     help: 'Shown on PDF / XLSX exports.', max: 120 },
 ];
 
 export default function SystemIdentityPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const branding = useBranding();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
@@ -63,7 +65,7 @@ export default function SystemIdentityPage() {
         if (form[f.key] !== undefined) identity[f.key] = form[f.key];
       }
       await patchSettings({ identity, changeNote: 'Updated system identity' });
-      toast.success?.('Identity saved.');
+      toast.success?.(t('admin.settings.identitySaved', 'Identity saved.'));
       branding.refresh?.();
       load();
     } catch (e) { setErr(errorMessage(e)); toast.error?.(errorMessage(e)); }
@@ -76,15 +78,14 @@ export default function SystemIdentityPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><TagIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">System Identity</h2>
+            <h2 className="rm-hero-title">{t('admin.settings.systemIdentity', 'System Identity')}</h2>
             <div className="rm-hero-sub">
-              System name, short name, organization, footer, browser tab title.
-              Saves apply globally on next focus / refresh.
+              {t('admin.settings.systemIdentitySub', 'System name, short name, organization, footer, browser tab title. Saves apply globally on next focus / refresh.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← Back</Link>
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('admin.settings.backToSettings', '← Back')}</Link>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('admin.refresh', 'Refresh')}</button>
           </div>
         </div>
       </div>
@@ -93,7 +94,7 @@ export default function SystemIdentityPage() {
       {busy && (
         <div className="rm-loading">
           <span className="scope-spinner" aria-hidden="true" />
-          <span className="muted">Loading…</span>
+          <span className="muted">{t('common.loading', 'Loading…')}</span>
         </div>
       )}
 
@@ -102,20 +103,20 @@ export default function SystemIdentityPage() {
           <div className="rm-card">
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><ClipboardIcon size={15} /></span>
-              <span className="rm-card-bar-label">Strings</span>
+              <span className="rm-card-bar-label">{t('admin.settings.strings', 'Strings')}</span>
             </div>
             <div className="rm-card-body">
               <div className="form-grid">
                 {FIELDS.map((f) => (
                   <div className="field full" key={f.key}>
-                    <label>{f.label}</label>
+                    <label>{t(f.labelKey, f.label)}</label>
                     <input
                       value={form[f.key] || ''}
                       maxLength={f.max}
                       onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))}
                       disabled={!canWrite}
                     />
-                    <div className="hint">{f.help}</div>
+                    <div className="hint">{t(f.helpKey, f.help)}</div>
                   </div>
                 ))}
               </div>
@@ -124,9 +125,9 @@ export default function SystemIdentityPage() {
 
           {canWrite && (
             <div className="rm-footer">
-              <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>× Cancel</Link>
+              <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('admin.cancel', '× Cancel')}</Link>
               <button className="rm-hero-btn solid" disabled={saving} onClick={save}>
-                {saving ? 'Saving…' : '✓ Save changes'}
+                {saving ? t('admin.saving', 'Saving…') : t('admin.saveChanges', '✓ Save changes')}
               </button>
             </div>
           )}

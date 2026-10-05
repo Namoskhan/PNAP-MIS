@@ -8,40 +8,19 @@ import {
   View,
 } from 'react-native';
 import useAnalytics from '../../hooks/useAnalytics';
+import { useLanguage } from '../../context/LanguageContext';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import Card from '../Card';
 import { AreaTrendChart, HBar, SmartKpi, StackedHBar, VBars, BRAND } from '../charts';
 
-const TIER_LABEL = {
-  CENTRAL: 'Central',
-  PROVINCE: 'Province',
-  DISTRICT: 'District',
-  AREA: 'Area',
-  BASIC_UNIT: 'Basic Unit',
-};
-
-const BODY_LABEL = {
-  EXECUTIVE: 'Cabinet',
-  COMMITTEE: 'Committee',
-  GENERAL_BODY: 'General Body',
-};
-
-const STATE_META = [
-  { key: 'DRAFT', label: 'Draft', color: '#94a3b8' },
-  { key: 'SCHEDULED', label: 'Scheduled', color: Colors.info },
-  { key: 'IN_PROGRESS', label: 'In progress', color: Colors.warning },
-  { key: 'PENDING_REPORT', label: 'Pending report', color: Colors.accent },
-  { key: 'FINALIZED', label: 'Finalized', color: Colors.success },
-  { key: 'CANCELLED', label: 'Cancelled', color: Colors.error },
-];
-
 function ChartCard({ title, sub, meta, children }) {
+  const { isRTL } = useLanguage();
   return (
     <Card style={styles.chartCard}>
-      <View style={styles.cardHeader}>
+      <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          {sub && <Text style={styles.cardSub}>{sub}</Text>}
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{title}</Text>
+          {sub && <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{sub}</Text>}
         </View>
         {meta && <Text style={styles.cardMeta}>{meta}</Text>}
       </View>
@@ -51,9 +30,33 @@ function ChartCard({ title, sub, meta, children }) {
 }
 
 export default function MeetingsAnalytics({ params, windowLabel = 'last 12 months' }) {
+  const { t, isRTL } = useLanguage();
   const [yearBasis, setYearBasis] = useState('CALENDAR');
   const [years, setYears] = useState(5);
   const [yearSplit, setYearSplit] = useState('BODY');
+
+  const tierLabels = {
+    CENTRAL: t('admin.central', 'Central'),
+    PROVINCE: t('units.province', 'Province'),
+    DISTRICT: t('units.district', 'District'),
+    AREA: t('units.area', 'Area'),
+    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
+  };
+
+  const bodyLabels = {
+    EXECUTIVE: t('admin.executiveCabinet', 'Cabinet'),
+    COMMITTEE: t('admin.committee', 'Committee'),
+    GENERAL_BODY: t('meetings.types.generalBody', 'General Body'),
+  };
+
+  const stateMeta = [
+    { key: 'DRAFT', label: t('common.draft', 'Draft'), color: '#94a3b8' },
+    { key: 'SCHEDULED', label: t('dashboard.plannedMeetings', 'Scheduled'), color: Colors.info },
+    { key: 'IN_PROGRESS', label: t('common.inProgress', 'In progress'), color: Colors.warning },
+    { key: 'PENDING_REPORT', label: t('dashboard.lateReports', 'Pending report'), color: Colors.accent },
+    { key: 'FINALIZED', label: t('dashboard.completedMeetings', 'Finalized'), color: Colors.success },
+    { key: 'CANCELLED', label: t('common.cancelled', 'Cancelled'), color: Colors.error },
+  ];
 
   const { data, loading, error } = useAnalytics('/dashboard/meetings', {
     ...params,
@@ -79,7 +82,7 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
 
   if (!data) return null;
 
-  const t = data.totals || {};
+  const totals = data.totals || {};
   const tiers = data.byTier || [];
   const yearly = data.yearly || [];
   const bodiesPresent = data.bodiesPresent || [];
@@ -95,33 +98,33 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
   return (
     <View style={styles.container}>
       {/* 4 KPIs */}
-      <View style={styles.kpiGrid}>
+      <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
         <SmartKpi
-          label="Total Meetings"
-          value={t.total}
+          label={t('dashboard.totalMeetings', 'Total Meetings')}
+          value={totals.total}
           icon="📅"
           iconBg="rgba(30, 64, 175, 0.12)"
           iconColor={Colors.primary}
         />
         <SmartKpi
-          label="Conducted"
-          value={t.conducted}
+          label={t('dashboard.conductedMeetings', 'Conducted')}
+          value={totals.conducted}
           icon="✅"
           iconBg="rgba(22, 163, 74, 0.12)"
           iconColor={Colors.success}
         />
       </View>
-      <View style={styles.kpiGrid}>
+      <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
         <SmartKpi
-          label="Scheduled"
-          value={t.scheduled}
+          label={t('dashboard.scheduledMeetings', 'Scheduled')}
+          value={totals.scheduled}
           icon="⏱️"
           iconBg="rgba(217, 119, 6, 0.12)"
           iconColor={Colors.warning}
         />
         <SmartKpi
-          label="Overdue Reports"
-          value={t.overdueReports}
+          label={t('dashboard.lateReports', 'Overdue Reports')}
+          value={totals.overdueReports}
           icon="⚠️"
           iconBg="rgba(239, 68, 68, 0.12)"
           iconColor={Colors.error}
@@ -130,9 +133,9 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
 
       {/* Meeting Trend */}
       <ChartCard
-        title="Meeting trend"
-        sub="Meetings per month"
-        meta={`${(t.total || 0).toLocaleString()} in window`}
+        title={t('dashboard.meetingsEachMonth', 'Meeting trend')}
+        sub={t('dashboard.meetingsPerMonth12', 'Meetings per month')}
+        meta={`${(totals.total || 0).toLocaleString()} ${t('common.in', 'in')} ${windowLabel}`}
       >
         {trendBuckets.length > 1 ? (
           <AreaTrendChart
@@ -142,28 +145,28 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
             trackColor={BRAND.tint}
           />
         ) : (
-          <Text style={styles.mutedText}>Not enough history yet.</Text>
+          <Text style={styles.mutedText}>{t('dashboard.notEnoughHistory', 'Not enough history yet.')}</Text>
         )}
       </ChartCard>
 
       {/* Meetings by State */}
-      <ChartCard title="Meetings by state" sub={`Lifecycle position, ${windowLabel}`}>
+      <ChartCard title={t('dashboard.meetingStatus', 'Meetings by state')} sub={`${t('common.status', 'Status')}: ${windowLabel}`}>
         <HBar
-          rows={STATE_META
+          rows={stateMeta
             .map((s) => ({ label: s.label, value: data.byState?.[s.key] || 0, color: s.color }))
             .filter((r) => r.value > 0)}
-          emptyLabel="No meetings in this window."
+          emptyLabel={t('dashboard.nothingRecordedWindow', 'No meetings in this window.')}
         />
       </ChartCard>
 
       {/* Yearly View */}
       <ChartCard
-        title="Conducted meetings by year"
-        sub={`${data.yearBasisLabel || 'Calendar years'} · All years`}
+        title={t('dashboard.completedMeetingsByYear', 'Conducted meetings by year')}
+        sub={`${data.yearBasisLabel || t('dashboard.januaryDecember', 'Calendar')} · ${t('dashboard.usesYearOptions', 'All years')}`}
       >
         {/* Year Basis & Years Selectors */}
         <View style={styles.controlsRow}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[{ gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
             {['CALENDAR', 'FISCAL', 'CONGRESS'].map((basis) => (
               <TouchableOpacity
                 key={basis}
@@ -171,14 +174,18 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
                 onPress={() => setYearBasis(basis)}
               >
                 <Text style={[styles.basisChipText, yearBasis === basis && styles.basisChipTextActive]}>
-                  {basis === 'CALENDAR' ? 'Calendar' : basis === 'FISCAL' ? 'Fiscal Jul–Jun' : 'Congress'}
+                  {basis === 'CALENDAR'
+                    ? t('dashboard.januaryDecember', 'Calendar')
+                    : basis === 'FISCAL'
+                    ? t('dashboard.julyJune', 'Fiscal Jul–Jun')
+                    : t('dashboard.congressToCongress', 'Congress')}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           {yearBasis !== 'CONGRESS' && (
-            <View style={styles.yearsRow}>
+            <View style={[styles.yearsRow, isRTL && { flexDirection: 'row-reverse' }]}>
               {[3, 5, 10].map((n) => (
                 <TouchableOpacity
                   key={n}
@@ -195,7 +202,7 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
         </View>
 
         {yearly.length === 0 ? (
-          <Text style={styles.mutedText}>No meetings on record.</Text>
+          <Text style={styles.mutedText}>{t('common.noData', 'No records found')}</Text>
         ) : (
           <>
             <VBars
@@ -210,7 +217,7 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
               horizontalScroll={yearly.length > 5}
             />
             <Text style={styles.footnote}>
-              Solid = conducted (finalized) · light track = total scheduled
+              {t('dashboard.darkLightBarsMeetingNote', 'Solid = conducted (finalized) · light track = total scheduled')}
             </Text>
           </>
         )}
@@ -219,17 +226,17 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
       {/* Yearly Split by Body or Tier */}
       {yearly.length > 0 && (bodiesPresent.length > 0 || tiersPresent.length > 0) && (
         <ChartCard
-          title={`Conducted by year, split by ${yearSplit === 'BODY' ? 'body' : 'tier'}`}
+          title={`${t('dashboard.completedMeetingsByYearAnd', 'Conducted by year, split by')} ${yearSplit === 'BODY' ? t('dashboard.byGroup', 'body') : t('dashboard.byLevel', 'tier')}`}
           sub={data.yearBasisLabel}
         >
-          <View style={styles.splitToggleRow}>
+          <View style={[styles.splitToggleRow, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
               style={[styles.splitBtn, yearSplit === 'BODY' && styles.splitBtnActive]}
               onPress={() => setYearSplit('BODY')}
               disabled={bodiesPresent.length === 0}
             >
               <Text style={[styles.splitBtnText, yearSplit === 'BODY' && styles.splitBtnTextActive]}>
-                By Body
+                {t('dashboard.byGroup', 'By Body')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -238,7 +245,7 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
               disabled={tiersPresent.length === 0}
             >
               <Text style={[styles.splitBtnText, yearSplit === 'TIER' && styles.splitBtnTextActive]}>
-                By Tier
+                {t('dashboard.byLevel', 'By Tier')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -254,33 +261,33 @@ export default function MeetingsAnalytics({ params, windowLabel = 'last 12 month
               yearSplit === 'BODY'
                 ? bodiesPresent.map((b, i) => ({
                     key: b,
-                    label: BODY_LABEL[b] || b,
+                    label: bodyLabels[b] || b,
                     color: [BRAND.dark, Colors.accent, Colors.warning][i % 3],
                   }))
                 : tiersPresent.map((tr, i) => ({
                     key: tr,
-                    label: TIER_LABEL[tr] || tr,
+                    label: tierLabels[tr] || tr,
                     color: [BRAND.darkest, BRAND.dark, BRAND.mid, BRAND.bright, Colors.success][i % 5],
                   }))
             }
-            emptyLabel="No conducted meetings on record."
+            emptyLabel={t('dashboard.noCompletedMeetingsFound', 'No conducted meetings on record.')}
           />
         </ChartCard>
       )}
 
       {/* Breakdown by Tier and Body */}
       {tiers.length > 0 && (
-        <ChartCard title="Breakdown by tier and body" sub={`Conducted vs scheduled, ${windowLabel}`}>
+        <ChartCard title={t('dashboard.meetingsByLevelAndGroup', 'Breakdown by tier and body')} sub={`${t('dashboard.completedAndPlannedMeetings', 'Conducted vs scheduled')}, ${windowLabel}`}>
           <StackedHBar
             rows={tiers.map((r) => ({
-              label: `${TIER_LABEL[r.level] || r.level} ${BODY_LABEL[r.body] || r.body}`,
+              label: `${tierLabels[r.level] || r.level} ${bodyLabels[r.body] || r.body}`,
               values: { conducted: r.conducted, scheduled: r.scheduled },
             }))}
             series={[
-              { key: 'conducted', label: 'Conducted', color: Colors.success },
-              { key: 'scheduled', label: 'Scheduled', color: Colors.warning },
+              { key: 'conducted', label: t('dashboard.completed', 'Conducted'), color: Colors.success },
+              { key: 'scheduled', label: t('dashboard.planned', 'Scheduled'), color: Colors.warning },
             ]}
-            emptyLabel="No meetings in this window."
+            emptyLabel={t('dashboard.nothingRecordedWindow', 'No meetings in this window.')}
           />
         </ChartCard>
       )}

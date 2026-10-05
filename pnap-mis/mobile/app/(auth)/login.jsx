@@ -16,6 +16,8 @@ import {
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/context/AuthContext';
+import { useLanguage } from '../../src/context/LanguageContext';
+import LanguageSelector from '../../src/components/LanguageSelector';
 import { errorMessage } from '../../src/api/client';
 import { Storage } from '../../src/utils/storage';
 import { useToast } from '../../src/components/Toast';
@@ -23,6 +25,7 @@ import { Colors, FontSize, Radius, Spacing } from '../../src/constants/colors';
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const toast = useToast();
 
@@ -87,13 +90,21 @@ export default function LoginScreen() {
         />
         <Text style={styles.appName}>PNAP MIS</Text>
         <Text style={styles.appTagline}>Management Information System</Text>
+        <LanguageSelector
+          variant="compact"
+          style={{
+            marginTop: 14,
+            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+            borderColor: 'rgba(255, 255, 255, 0.4)',
+          }}
+        />
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sign In</Text>
-            <Text style={styles.cardSubtitle}>Enter your CNIC, member ID, or phone number</Text>
+            <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('auth.signIn', 'Sign In')}</Text>
+            <Text style={[styles.cardSubtitle, isRTL && { textAlign: 'right' }]}>{t('auth.identifierPlaceholder', 'Enter your CNIC, member ID, or phone number')}</Text>
 
             {err ? (
               <View style={styles.errorBanner}>
@@ -102,12 +113,12 @@ export default function LoginScreen() {
             ) : null}
 
             <View style={styles.field}>
-              <Text style={styles.label}>Identifier</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('auth.identifierLabel', 'Identifier')}</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isRTL && { textAlign: 'right' }]}
                 value={identifier}
                 onChangeText={setIdentifier}
-                placeholder="CNIC / Member ID / Phone"
+                placeholder={t('auth.identifierPlaceholder', 'CNIC / Member ID / Phone')}
                 placeholderTextColor={Colors.textLight}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -117,10 +128,25 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('auth.passwordLabel', 'Password')}</Text>
               <View style={styles.passwordRow}>
+                {isRTL && (
+                  <TouchableOpacity
+                    onPress={() => setShowPassword((s) => !s)}
+                    style={styles.eyeBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                )}
                 <TextInput
-                  style={styles.passwordInput}
+                  style={[styles.passwordInput, isRTL && { textAlign: 'right' }]}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
@@ -130,41 +156,43 @@ export default function LoginScreen() {
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
                 />
-                <TouchableOpacity
-                  onPress={() => setShowPassword((s) => !s)}
-                  style={styles.eyeBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color={Colors.textMuted}
-                  />
-                </TouchableOpacity>
+                {!isRTL && (
+                  <TouchableOpacity
+                    onPress={() => setShowPassword((s) => !s)}
+                    style={styles.eyeBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={Colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
             {/* Keep me logged in switch */}
             <TouchableOpacity
-              style={styles.keepRow}
+              style={[styles.keepRow, isRTL && { flexDirection: 'row-reverse' }]}
               activeOpacity={0.7}
               onPress={() => setKeepLoggedIn((k) => !k)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: keepLoggedIn }}
             >
-              <View style={styles.keepInfo}>
-                <View style={styles.keepHeaderRow}>
+              <View style={[styles.keepInfo, isRTL && { alignItems: 'flex-end' }]}>
+                <View style={[styles.keepHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Ionicons
                     name={keepLoggedIn ? 'shield-checkmark' : 'shield-outline'}
                     size={16}
                     color={keepLoggedIn ? Colors.primary : Colors.textMuted}
-                    style={{ marginRight: 6 }}
+                    style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }}
                   />
-                  <Text style={styles.keepTitle}>Keep me logged in</Text>
+                  <Text style={styles.keepTitle}>{t('mobile.keepLoggedInShort', 'Keep me logged in')}</Text>
                 </View>
-                <Text style={styles.keepSub}>Stay signed in for 7 days (offline ready)</Text>
+                <Text style={[styles.keepSub, isRTL && { textAlign: 'right' }]}>{t('mobile.keepLoggedIn', 'Stay signed in for 7 days (offline ready)')}</Text>
               </View>
               <Switch
                 value={keepLoggedIn}
@@ -178,13 +206,13 @@ export default function LoginScreen() {
               {busy ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.btnText}>Sign In</Text>
+                <Text style={styles.btnText}>{t('auth.signIn', 'Sign In')}</Text>
               )}
             </TouchableOpacity>
 
             <Link href="/forgot-password" asChild>
               <TouchableOpacity style={styles.forgotBtn}>
-                <Text style={styles.forgotText}>Forgot password?</Text>
+                <Text style={styles.forgotText}>{t('auth.forgotPassword', 'Forgot password?')}</Text>
               </TouchableOpacity>
             </Link>
 
@@ -192,7 +220,7 @@ export default function LoginScreen() {
 
             <Link href="/register" asChild>
               <TouchableOpacity style={styles.registerBtn}>
-                <Text style={styles.registerBtnText}>New Member? <Text style={{ fontWeight: '700', color: Colors.primary }}>Register here</Text></Text>
+                <Text style={styles.registerBtnText}>{t('auth.register', 'Register')} · <Text style={{ fontWeight: '700', color: Colors.primary }}>{t('common.next', 'New Member? Register here')}</Text></Text>
               </TouchableOpacity>
             </Link>
           </View>

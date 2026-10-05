@@ -83,13 +83,14 @@ function applyScopeFilter(filter, unitLevel, unitId, scope, chain) {
 
 // ---------- Donations ----------
 exports.listDonations = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, scope, from, to, body } = req.query;
+  const { unitLevel, unitId, scope, state, from, to, body } = req.query;
   const filter = {};
   if (unitLevel && unitId) {
     const chain = await resolveUnitChain(unitLevel, unitId);
     if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
     applyScopeFilter(filter, unitLevel, unitId, scope, chain);
   }
+  if (state) filter.state = state;
   if (from || to) {
     filter.receivedAt = {};
     if (from) filter.receivedAt.$gte = new Date(from);
@@ -99,6 +100,8 @@ exports.listDonations = asyncHandler(async (req, res) => {
   if (bc) Object.assign(filter, bc);
   const items = await Donation.find(filter)
     .populate('donorMemberId', 'fullName memberId cnic')
+    .populate('recordedBy', 'fullName username email roles')
+    .populate('approvedBy', 'fullName username email')
     .populate('basicUnitId', 'name')
     .populate('areaId', 'name')
     .populate('districtId', 'name code')
@@ -145,9 +148,109 @@ exports.recordDonation = asyncHandler(async (req, res) => {
     receiptNo,
     fiscalYear: fy,
     receiptImageUrl: req.file ? `/uploads/${req.file.filename}` : undefined,
+    state: 'PENDING',
     recordedBy: req.user._id,
   });
+  await doc.populate('recordedBy', 'fullName username email roles');
+
+  activityService.record({
+    action: 'REPORT_SUBMITTED',
+    req,
+    chain,
+    unitLevel: d.unitLevel,
+    unitId: d.unitId,
+    targetType: 'Donation',
+    targetId: doc._id,
+    targetLabel: doc.receiptNo,
+  }).catch(() => {});
+
   created(res, doc);
+});
+
+exports.decideDonation = asyncHandler(async (req, res) => {
+  const d = await Donation.findById(req.params.id);
+  if (!d) throw new ApiError(404, 'NOT_FOUND', 'Donation not found');
+  if (d.state && d.state !== 'PENDING') {
+    throw new ApiError(400, 'INVALID_STATE', `Cannot decide donation in state ${d.state}`);
+  }
+  if (!['APPROVED', 'REJECTED'].includes(req.body.decision)) {
+    throw new ApiError(400, 'INVALID_DECISION', 'decision must be APPROVED or REJECTED');
+  }
+
+  const { config, stages } = await workflowEngine.resolveStages(
+    'DONATION_APPROVAL',
+    d.unitLevel,
+    { amount: d.amount },
+  );
+  if (!config || stages.length === 0) {
+    if (!canApprove(req.user)) {
+      throw new ApiError(403, 'FORBIDDEN', 'Only Secretary / President / Chairman / Admin may decide on donations');
+    }
+  } else {
+    const stage = workflowEngine.nextPendingStage(d, stages);
+    if (!stage) {
+      throw new ApiError(400, 'NO_PENDING_STAGE', 'No pending workflow stage to decide');
+    }
+    workflowEngine.canDecideAt(stage, req.user);
+
+    const newChain = workflowEngine.recordDecision(
+      d, stages, stage, req.user, req.body.decision, req.body.note,
+    );
+    d.approvalChain = newChain;
+    d.workflowConfigId = config._id;
+    d.workflowVersion = config.configVersion;
+  }
+
+  let finalState;
+  if (config) {
+    finalState = workflowEngine.computeFinalState(stages, d.approvalChain);
+  } else {
+    finalState = req.body.decision;
+  }
+
+  if (finalState === 'APPROVED') {
+    d.state = 'APPROVED';
+    d.approvedBy = req.user._id;
+    d.approvedAt = new Date();
+  } else if (finalState === 'REJECTED') {
+    d.state = 'REJECTED';
+    d.rejectedBy = req.user._id;
+    d.rejectedAt = new Date();
+    d.rejectionNote = req.body.note;
+  }
+
+  await d.save();
+  await d.populate('approvedBy', 'fullName username email');
+  await d.populate('recordedBy', 'fullName username email roles');
+
+  if (finalState === 'APPROVED' || finalState === 'REJECTED') {
+    const { notify } = require('../utils/notify');
+    notify(d.recordedBy, {
+      type: 'DONATION_DECIDED',
+      severity: finalState === 'APPROVED' ? 'SUCCESS' : 'WARNING',
+      title: finalState === 'APPROVED' ? 'Donation approved' : 'Donation rejected',
+      body: `Receipt #${d.receiptNo} · PKR ${(d.amount || 0).toLocaleString()} — ${d.donorName || d.donorType}`.trim(),
+      link: '/unit/finance',
+    }).catch(() => {});
+  }
+
+  activityService.record({
+    action: finalState === 'APPROVED' ? 'REPORT_APPROVED' : 'REPORT_REJECTED',
+    req,
+    chain: {
+      basicUnitId: d.basicUnitId,
+      areaId: d.areaId,
+      districtId: d.districtId,
+      provinceId: d.provinceId,
+    },
+    unitLevel: d.unitLevel,
+    unitId: d.unitId,
+    targetType: 'Donation',
+    targetId: d._id,
+    targetLabel: d.receiptNo,
+  }).catch(() => {});
+
+  ok(res, d);
 });
 
 // ---------- Expenses ----------
@@ -168,6 +271,9 @@ exports.listExpenses = asyncHandler(async (req, res) => {
   const bc = bodyClause(body);
   if (bc) Object.assign(filter, bc);
   const items = await Expense.find(filter)
+    .populate('recordedBy', 'fullName username email roles')
+    .populate('paidByMemberId', 'fullName memberId cnic')
+    .populate('approvedBy', 'fullName username email')
     .populate('basicUnitId', 'name')
     .populate('areaId', 'name')
     .populate('districtId', 'name code')
@@ -186,15 +292,6 @@ exports.recordExpense = asyncHandler(async (req, res) => {
   const chain = await resolveUnitChain(d.unitLevel, d.unitId);
   if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
 
-  // PR U3 — second-approver threshold sourced from UnitPolicy. The
-  // engine returns { requiresApproval, threshold, reason }; we use
-  // the boolean for the initial state. Falls back to the legacy
-  // hardcoded 10000 when policy doesn't specify a threshold.
-  const policy = await policyEngine.resolveFor(d.unitLevel, d.unitId);
-  const policyDecision = policyEngine.expenseRequiresSecondApprover(d.amount, policy);
-  const requiresApproval = policyDecision.threshold !== null
-    ? policyDecision.requiresApproval
-    : d.amount > EXPENSE_APPROVAL_THRESHOLD;
   const doc = await Expense.create({
     ...d,
     ...chain,
@@ -202,11 +299,10 @@ exports.recordExpense = asyncHandler(async (req, res) => {
     // to EXECUTIVE rather than reaching the model.
     body: requestedBody(d.body),
     evidenceUrl: `/uploads/${req.file.filename}`,
-    state: requiresApproval ? 'PENDING' : 'APPROVED',
-    approvedBy: requiresApproval ? undefined : req.user._id,
-    approvedAt: requiresApproval ? undefined : new Date(),
+    state: 'PENDING',
     recordedBy: req.user._id,
   });
+  await doc.populate('recordedBy', 'fullName username email roles');
 
   // Report Submission — filing a voucher-backed expense return is the
   // unit's financial reporting duty.
@@ -341,11 +437,14 @@ exports.summary = asyncHandler(async (req, res) => {
   const chain = await resolveUnitChain(unitLevel, unitId);
   if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
 
-  const dFilter = {};
-  const eFilter = {};
-  applyScopeFilter(dFilter, unitLevel, unitId, scope, chain);
+  const donApprovedMatch = {
+    $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }],
+  };
+
+  const dScope = {};
+  const eFilter = { state: 'APPROVED' };
+  applyScopeFilter(dScope, unitLevel, unitId, scope, chain);
   applyScopeFilter(eFilter, unitLevel, unitId, scope, chain);
-  eFilter.state = 'APPROVED';
 
   // Acknowledged outgoing transfers leave the books; acknowledged
   // incoming transfers arrive on the books. Cast unitId — aggregate
@@ -369,9 +468,14 @@ exports.summary = asyncHandler(async (req, res) => {
   // Optional body split — every one of the ledgers narrows
   // together so the KPI tiles and the Net Balance stay internally
   // consistent. Omitted `body` leaves all untouched (pooled).
+  // Combine filters properly with $and to prevent $or collisions
   const bc = bodyClause(body);
+  const dFilter = {
+    ...dScope,
+    $and: [donApprovedMatch],
+  };
   if (bc) {
-    Object.assign(dFilter, bc);
+    dFilter.$and.push(bc);
     Object.assign(eFilter, bc);
     Object.assign(outFilter, bc);
     Object.assign(pendingOutFilter, bc);
@@ -416,19 +520,26 @@ exports.monthlyStatements = asyncHandler(async (req, res) => {
   const chain = await resolveUnitChain(unitLevel, unitId);
   if (!chain) throw new ApiError(400, 'INVALID_UNIT', 'Unit not found');
 
-  const dFilter = {};
-  const eFilter = {};
-  applyScopeFilter(dFilter, unitLevel, unitId, scope, chain);
+  const donApprovedMatch = {
+    $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }],
+  };
+
+  const dScope = {};
+  const eFilter = { state: 'APPROVED' };
+  applyScopeFilter(dScope, unitLevel, unitId, scope, chain);
   applyScopeFilter(eFilter, unitLevel, unitId, scope, chain);
-  eFilter.state = 'APPROVED';
   const outFilter = { sourceLevel: unitLevel, sourceUnitId: toOid(unitId), state: 'ACKNOWLEDGED' };
   const inFilter = { destinationLevel: unitLevel, destinationUnitId: toOid(unitId), state: 'ACKNOWLEDGED' };
 
   // Same optional body split as summary() — all four ledgers narrow
   // together so a month's Net Balance can't mix the two bodies.
   const bc = bodyClause(body);
+  const dFilter = {
+    ...dScope,
+    $and: [donApprovedMatch],
+  };
   if (bc) {
-    Object.assign(dFilter, bc);
+    dFilter.$and.push(bc);
     Object.assign(eFilter, bc);
     Object.assign(outFilter, bc);
     Object.assign(inFilter, bc);
@@ -479,11 +590,15 @@ exports.monthlyStatements = asyncHandler(async (req, res) => {
 const Province = require('../models/Province');
 exports.globalOverview = asyncHandler(async (req, res) => {
   const provinces = await Province.find({ isActive: true }).select('name code').lean();
+  const donApprovedMatch = {
+    $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }],
+  };
   const [donAgg, expAgg, transAgg, perProvince] = await Promise.all([
-    Donation.aggregate([{ $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
+    Donation.aggregate([{ $match: donApprovedMatch }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     Expense.aggregate([{ $match: { state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     FundTransfer.aggregate([{ $match: { state: 'ACKNOWLEDGED' } }, { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }]),
     Donation.aggregate([
+      { $match: donApprovedMatch },
       { $group: { _id: '$provinceId', donations: { $sum: '$amount' }, donCount: { $sum: 1 } } },
     ]),
   ]);

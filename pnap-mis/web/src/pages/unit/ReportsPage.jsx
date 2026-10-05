@@ -238,46 +238,46 @@ export default function ReportsPage() {
   const hasSubordinates = ctx.unitLevel !== 'BASIC_UNIT';
 
   const scopeDescription = isCongressView ? (
-    'National Congress Assembly Records (Central)'
+    t('reports.nationalCongressAssemblyRecords', 'National Congress Assembly Records (Central)')
   ) : (isJirgaView ? (
-    scope === 'subtree' ? `Aggregated ${jirgaTier} Report (Including all subordinate tiers)` : `${jirgaTier} Direct Records Only`
+    scope === 'subtree' ? t('reports.aggregatedJirgaReport', 'Aggregated {{tier}} Report (Including all subordinate tiers)', { tier: jirgaTier }) : t('reports.directJirgaRecordsOnly', '{{tier}} Direct Records Only', { tier: jirgaTier })
   ) : (isCommitteeView ? {
-    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
-    AREA: scope === 'subtree' ? 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)' : 'Elaqai Committee Level Only (Records authored directly at Elaqai)',
-    DISTRICT: scope === 'subtree' ? 'Aggregated Zilla Committee Report (Roll-up of all subordinate Elaqai Committees & Basic Units + Zilla Committee activities)' : 'Zilla Committee Level Only (Records authored directly at Zilla)',
-    PROVINCE: scope === 'subtree' ? 'Aggregated Sobayi Committee Report (Roll-up of all subordinate Zilla, Elaqai Committees & Basic Units + Sobayi Committee activities)' : 'Sobayi Committee Level Only (Records authored directly at Sobayi)',
-    CENTRAL: scope === 'subtree' ? 'Aggregated Central Committee Report (Nationwide roll-up across all subordinate Sobayi, Zilla, and Elaqai Committees)' : 'Central Committee Level Only (Records authored directly at Central)',
+    BASIC_UNIT: t('reports.basicUnitDirect', 'Basic Unit Level (Direct unit records)'),
+    AREA: scope === 'subtree' ? t('reports.aggElaqai', 'Aggregated Elaqai Committee Report (Roll-up of all subordinate Basic Units + Elaqai Committee activities)') : t('reports.directElaqai', 'Elaqai Committee Level Only (Records authored directly at Elaqai)'),
+    DISTRICT: scope === 'subtree' ? t('reports.aggZilla', 'Aggregated Zilla Committee Report (Roll-up of all subordinate Elaqai Committees & Basic Units + Zilla Committee activities)') : t('reports.directZilla', 'Zilla Committee Level Only (Records authored directly at Zilla)'),
+    PROVINCE: scope === 'subtree' ? t('reports.aggSobayi', 'Aggregated Sobayi Committee Report (Roll-up of all subordinate Zilla, Elaqai Committees & Basic Units + Sobayi Committee activities)') : t('reports.directSobayi', 'Sobayi Committee Level Only (Records authored directly at Sobayi)'),
+    CENTRAL: scope === 'subtree' ? t('reports.aggCentral', 'Aggregated Central Committee Report (Nationwide roll-up across all subordinate Sobayi, Zilla, and Elaqai Committees)') : t('reports.directCentral', 'Central Committee Level Only (Records authored directly at Central)'),
   }[ctx.unitLevel] || '' : {
-    BASIC_UNIT: 'Basic Unit Level (Direct unit records)',
-    AREA: scope === 'subtree' ? 'Aggregated Area Report (Roll-up of all subordinate Basic Units + Area activities)' : 'Area Level Only (Records authored directly at Area)',
-    DISTRICT: scope === 'subtree' ? 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)' : 'District Level Only (Records authored directly at District)',
-    PROVINCE: scope === 'subtree' ? 'Aggregated Province Report (Roll-up of all subordinate Districts, Areas & Basic Units + Province activities)' : 'Province Level Only (Records authored directly at Province)',
-    CENTRAL: scope === 'subtree' ? 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)' : 'Central Level Only (Records authored directly at Central)',
+    BASIC_UNIT: t('reports.basicUnitDirect', 'Basic Unit Level (Direct unit records)'),
+    AREA: scope === 'subtree' ? t('reports.aggArea', 'Aggregated Area Report (Roll-up of all subordinate Basic Units + Area activities)') : t('reports.directArea', 'Area Level Only (Records authored directly at Area)'),
+    DISTRICT: scope === 'subtree' ? t('reports.aggDistrict', 'Aggregated District Report (Roll-up of all subordinate Areas & Basic Units + District activities)') : t('reports.directDistrict', 'District Level Only (Records authored directly at District)'),
+    PROVINCE: scope === 'subtree' ? t('reports.aggProvince', 'Aggregated Province Report (Roll-up of all subordinate Districts, Areas & Basic Units + Province activities)') : t('reports.directProvince', 'Province Level Only (Records authored directly at Province)'),
+    CENTRAL: scope === 'subtree' ? t('reports.aggOrgCentral', 'Aggregated Central Report (Nationwide roll-up across all subordinate tiers)') : t('reports.directOrgCentral', 'Central Level Only (Records authored directly at Central)'),
   }[ctx.unitLevel] || ''));
 
   const pageTitle = isCongressView
-    ? 'National Congress Reports · PKNAP Central'
+    ? t('reports.nationalCongressTitle', 'National Congress Reports · PKNAP Central')
     : (isJirgaView
-      ? `${jirgaTier} Reports · ${ctx.unitName}`
+      ? `${jirgaTier} ${t('reports.reports', 'Reports')} · ${ctx.unitName}`
       : (isCommitteeView
-      ? `${committeeTierFormatted} Reports · ${ctx.unitName}`
-      : `Reports · ${ctx.unitName}`));
+      ? `${committeeTierFormatted} ${t('reports.reports', 'Reports')} · ${ctx.unitName}`
+      : `${t('reports.reports', 'Reports')} · ${ctx.unitName}`));
 
   const meetingsReportTitle = isCongressView
-    ? 'National Congress Meetings & Activities Report'
+    ? t('reports.congressMeetingsReport', 'National Congress Meetings & Activities Report')
     : (isJirgaView
-      ? `${jirgaTier} Meetings & Activities Report`
+      ? `${jirgaTier} ${t('reports.meetingsAndActivitiesReport', 'Meetings & Activities Report')}`
       : (isCommitteeView
-      ? `${committeeTierFormatted} Meetings & Activities Report`
-      : 'Meetings & Activities Report'));
+      ? `${committeeTierFormatted} ${t('reports.meetingsAndActivitiesReport', 'Meetings & Activities Report')}`
+      : t('reports.meetingsAndActivitiesReport', 'Meetings & Activities Report')));
 
   const financeReportTitle = isCongressView
-    ? 'National Congress Finance Report'
+    ? t('reports.congressFinanceReport', 'National Congress Finance Report')
     : (isJirgaView
-      ? `${jirgaTier} Finance Report`
+      ? `${jirgaTier} ${t('reports.financeReport', 'Finance Report')}`
       : (isCommitteeView
-      ? `${committeeTierFormatted} Finance Report`
-      : 'Finance Report'));
+      ? `${committeeTierFormatted} ${t('reports.financeReport', 'Finance Report')}`
+      : t('reports.financeReport', 'Finance Report')));
 
   return (
     <div>
@@ -286,7 +286,7 @@ export default function ReportsPage() {
         <div>
           <h2 style={{ margin: 0 }}>{pageTitle}</h2>
           <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-            Active Tier: <strong>{ctx.unitLevel.replace('_', ' ')}</strong> · Unit: <strong>{ctx.unitName}</strong>
+            {t('reports.activeTier', 'Active Tier')}: <strong>{t('units.' + ctx.unitLevel.toLowerCase(), ctx.unitLevel.replace('_', ' '))}</strong> · {t('reports.unitLabel', 'Unit')}: <strong>{ctx.unitName}</strong>
           </div>
         </div>
         {!isCongressView && (
@@ -297,7 +297,7 @@ export default function ReportsPage() {
             onClick={() => setShowSwitcher((v) => !v)}
           >
             <span>🔄</span>
-            <span>{showSwitcher ? 'Hide Unit Switcher' : 'Switch Unit Context'}</span>
+            <span>{showSwitcher ? t('reports.hideUnitSwitcher', 'Hide Unit Switcher') : t('reports.switchUnitContext', 'Switch Unit Context')}</span>
           </button>
         )}
       </div>
@@ -313,12 +313,12 @@ export default function ReportsPage() {
 
       {/* Scope & Date Filter Card */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0, marginBottom: 12 }}>Report Scope &amp; Period Filter</h3>
+        <h3 style={{ marginTop: 0, marginBottom: 12 }}>{t('reports.scopeAndPeriodFilter', 'Report Scope & Period Filter')}</h3>
 
         {hasSubordinates && !isCongressView && (
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
-              Data Aggregation Scope
+              {t('reports.dataAggregationScope', 'Data Aggregation Scope')}
             </label>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button
@@ -327,7 +327,7 @@ export default function ReportsPage() {
                 style={{ flex: '1 1 220px', textAlign: 'center', padding: '10px 16px' }}
                 onClick={() => setScope('subtree')}
               >
-                📊 <strong>Aggregated</strong> (Include all subordinate units roll-up)
+                📊 <strong>{t('reports.aggregated', 'Aggregated')}</strong> ({t('reports.aggregatedSub', 'Include all subordinate units roll-up')})
               </button>
               <button
                 type="button"
@@ -335,7 +335,7 @@ export default function ReportsPage() {
                 style={{ flex: '1 1 200px', textAlign: 'center', padding: '10px 16px' }}
                 onClick={() => setScope('own')}
               >
-                🏢 <strong>This Unit Tier Only</strong> (Direct unit records)
+                🏢 <strong>{t('reports.thisUnitTierOnly', 'This Unit Tier Only')}</strong> ({t('reports.directUnitRecords', 'Direct unit records')})
               </button>
             </div>
           </div>
@@ -343,30 +343,30 @@ export default function ReportsPage() {
 
         {/* Quick Date Presets */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>Quick Date Range</label>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: 13 }}>{t('reports.quickDateRange', 'Quick Date Range')}</label>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('THIS_MONTH')}>This Month</button>
-            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('LAST_MONTH')}>Last Month</button>
-            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('30_DAYS')}>Last 30 Days</button>
-            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('YTD')}>Year to Date</button>
-            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px', color: 'var(--danger)' }} onClick={() => applyDatePreset('CLEAR')}>Clear Dates</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('THIS_MONTH')}>{t('reports.thisMonth', 'This Month')}</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('LAST_MONTH')}>{t('reports.lastMonth', 'Last Month')}</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('30_DAYS')}>{t('reports.last30Days', 'Last 30 Days')}</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => applyDatePreset('YTD')}>{t('reports.ytd', 'Year to Date')}</button>
+            <button type="button" className="btn secondary" style={{ fontSize: 12, padding: '4px 10px', color: 'var(--danger)' }} onClick={() => applyDatePreset('CLEAR')}>{t('reports.clearDates', 'Clear Dates')}</button>
           </div>
         </div>
 
         <div className="form-grid">
           <div className="field">
-            <label>From Date</label>
+            <label>{t('reports.fromDate', 'From Date')}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div className="field">
-            <label>To Date</label>
+            <label>{t('reports.toDate', 'To Date')}</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
         </div>
 
         {scopeDescription && (
           <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-soft)', background: 'var(--surface-alt)', padding: '10px 14px', borderRadius: 'var(--radius)', borderInlineStart: '4px solid var(--primary)' }}>
-            📊 <strong>Report Mode:</strong> {scopeDescription}
+            📊 <strong>{t('reports.reportMode', 'Report Mode:')}</strong> {scopeDescription}
           </div>
         )}
       </div>
@@ -376,10 +376,10 @@ export default function ReportsPage() {
         <h3 style={{ marginTop: 0 }}>{meetingsReportTitle}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
           {isCongressView
-            ? 'National Congress meetings (with embedded photos), congress activities, and responsibilities.'
+            ? t('reports.congressMeetingsDesc', 'National Congress meetings (with embedded photos), congress activities, and responsibilities.')
             : (isCommitteeView
-              ? 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.'
-              : 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.')}
+              ? t('reports.committeeMeetingsDesc', 'Committee meetings (with embedded photos), committee activities, and committee responsibilities.')
+              : t('reports.executiveMeetingsDesc', 'Executive & General Body meetings (with embedded photos), executive activities, and responsibilities.'))}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('meetings', 'pdf')}>{t('common.exportPdf', 'Download PDF')}</button>
@@ -389,9 +389,9 @@ export default function ReportsPage() {
 
       {/* Activities-Only Report Card */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Activities &amp; Field Operations Report</h3>
+        <h3 style={{ marginTop: 0 }}>{t('reports.activitiesReportTitle', 'Activities & Field Operations Report')}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
-          Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.
+          {t('reports.activitiesReportDesc', 'Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.')}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('activities', 'pdf')}>{t('common.exportPdf', 'Download PDF')}</button>
@@ -404,10 +404,10 @@ export default function ReportsPage() {
         <h3 style={{ marginTop: 0 }}>{financeReportTitle}</h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
           {isCongressView
-            ? 'National Congress donations ledger, expenses ledger, and congress net balance for the period.'
+            ? t('reports.congressFinanceDesc', 'National Congress donations ledger, expenses ledger, and congress net balance for the period.')
             : (isCommitteeView
-              ? 'Committee donations ledger, expenses ledger, and the committee net balance for the period.'
-              : 'Executive donations ledger, expenses ledger, fund transfers, and net balance for the period.')}
+              ? t('reports.committeeFinanceDesc', 'Committee donations ledger, expenses ledger, and the committee net balance for the period.')
+              : t('reports.executiveFinanceDesc', 'Executive donations ledger, expenses ledger, fund transfers, and net balance for the period.'))}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>{t('common.exportPdf', 'Download PDF')}</button>
@@ -418,20 +418,20 @@ export default function ReportsPage() {
       {/* Member Performance Report Card */}
       <div className="card">
         <h3 style={{ marginTop: 0 }}>
-          {isCongressView ? 'Congress Member Performance Report' : (isCommitteeView ? 'Committee Member Performance Report' : 'Individual Performance Report')}
+          {isCongressView ? t('reports.congressMemberPerfTitle', 'Congress Member Performance Report') : (isCommitteeView ? t('reports.committeeMemberPerfTitle', 'Committee Member Performance Report') : t('reports.memberPerformanceTitle', 'Individual Performance Report'))}
         </h3>
         <p className="muted" style={{ marginTop: -4, marginBottom: 12 }}>
           {isCongressView
-            ? 'Performance scorecard and attendance report for National Congress members.'
+            ? t('reports.congressMemberPerfDesc', 'Performance scorecard and attendance report for National Congress members.')
             : (isCommitteeView
-              ? 'Performance scorecard and attendance report for committee members.'
-              : 'Performance scorecard and attendance report for executive committee and subordinate members.')}
+              ? t('reports.committeeMemberPerfDesc', 'Performance scorecard and attendance report for committee members.')
+              : t('reports.executiveMemberPerfDesc', 'Performance scorecard and attendance report for executive committee and subordinate members.'))}
         </p>
         <div className="form-grid" style={{ alignItems: 'end' }}>
           <div className="field">
-            <label>{isCongressView ? 'Congress Member' : (isCommitteeView ? 'Committee Member' : 'Member')}</label>
+            <label>{isCongressView ? t('reports.congressMember', 'Congress Member') : (isCommitteeView ? t('reports.committeeMember', 'Committee Member') : t('reports.member', 'Member'))}</label>
             <select value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-              <option value="">— pick a member —</option>
+              <option value="">{t('reports.pickMember', '— pick a member —')}</option>
               {members.map((m) => (
                 <option key={m._id} value={m._id}>
                   {m.fullName} · {m.memberId || m.cnic}{m.roleText ? ` (${m.roleText})` : ''}
@@ -445,7 +445,7 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {memberId && reportLoading && <p className="muted" style={{ marginTop: 14 }}>Loading preview…</p>}
+        {memberId && reportLoading && <p className="muted" style={{ marginTop: 14 }}>{t('reports.loadingPreview', 'Loading preview…')}</p>}
         {memberId && !reportLoading && report && (
           <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
@@ -464,7 +464,7 @@ export default function ReportsPage() {
                   <div style={{ marginTop: 4, fontSize: 12 }}>
                     {report.roles.map((r, i) => (
                       <span key={i} className="badge ACTIVE" style={{ marginRight: 4 }}>
-                        {r.customRoleName || r.roleCode} @ {r.unitLevel}
+                        {r.customRoleName || t(`roles.${r.roleCode}`, r.roleCode)} @ {t(`units.${r.unitLevel?.toLowerCase()}`, r.unitLevel)}
                       </span>
                     ))}
                   </div>
@@ -474,38 +474,38 @@ export default function ReportsPage() {
 
             <div className="kpi-grid">
               <div className="kpi">
-                <div className="label">Meetings (roster)</div>
+                <div className="label">{t('reports.meetingsRoster', 'Meetings (roster)')}</div>
                 <div className="value">{report.meetings.totalRoster}</div>
-                <div className="hint">finalized in range</div>
+                <div className="hint">{t('reports.finalizedInRange', 'finalized in range')}</div>
               </div>
               <div className="kpi kpi-good">
-                <div className="label">Present</div>
+                <div className="label">{t('status.present', 'Present')}</div>
                 <div className="value">{report.meetings.present}</div>
               </div>
               <div className="kpi kpi-danger">
-                <div className="label">Absent</div>
+                <div className="label">{t('status.absent', 'Absent')}</div>
                 <div className="value">{report.meetings.absent}</div>
               </div>
               <div className="kpi">
-                <div className="label">Activities</div>
+                <div className="label">{t('activities.activities', 'Activities')}</div>
                 <div className="value">{report.activities.participated}</div>
-                <div className="hint">{report.activities.led} led</div>
+                <div className="hint">{t('reports.ledCount', '{{count}} led', { count: report.activities.led })}</div>
               </div>
               <div className="kpi">
-                <div className="label">Donations Collected</div>
+                <div className="label">{t('reports.donationsCollected', 'Donations Collected')}</div>
                 <div className="value">{PKR.format(report.donations.total)}</div>
-                <div className="hint">{report.donations.count} entries</div>
+                <div className="hint">{t('reports.entriesCount', '{{count}} entries', { count: report.donations.count })}</div>
               </div>
               <div className="kpi">
-                <div className="label">Responsibilities</div>
+                <div className="label">{t('reports.responsibilities', 'Responsibilities')}</div>
                 <div className="value">{report.responsibilities.completed}/{report.responsibilities.total}</div>
-                <div className="hint">{report.responsibilities.completionRate != null ? `${report.responsibilities.completionRate}% done` : '—'} · {report.responsibilities.pending} pending</div>
+                <div className="hint">{report.responsibilities.completionRate != null ? `${report.responsibilities.completionRate}% ${t('reports.done', 'done')}` : '—'} · {t('reports.pendingCount', '{{count}} pending', { count: report.responsibilities.pending })}</div>
               </div>
             </div>
 
             {(report.range.from || report.range.to) && (
               <p className="muted" style={{ marginTop: 12, fontSize: 12 }}>
-                Range: {report.range.from || '—'} → {report.range.to || 'today'}
+                {t('reports.range', 'Range: {{from}} → {{to}}', { from: report.range.from || '—', to: report.range.to || t('common.today', 'today') })}
               </p>
             )}
           </div>

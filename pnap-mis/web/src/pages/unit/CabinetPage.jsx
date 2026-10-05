@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -28,6 +29,15 @@ const ROLE_LABEL = {
   OTHER: 'Other',
 };
 
+function getCabinetRoleLabel(r, customName, t) {
+  if (t) {
+    const key = `roles.${r}`;
+    const translated = t(key);
+    if (translated && translated !== key) return translated;
+  }
+  return ROLE_LABEL[r] || customName || r;
+}
+
 // Mirrors the endReason enum in server validators/unitSchemas.js. Ordered
 // by how often a term actually ends this way, not alphabetically — the
 // common answers sit under the cursor and the irreversible-sounding ones
@@ -42,6 +52,7 @@ const END_REASONS = [
 ];
 
 export default function CabinetPage() {
+  const { t } = useTranslation();
   const { ctx, setCtx } = useUnit();
   const { user } = useAuth();
   const toast = useToast();
@@ -363,7 +374,7 @@ export default function CabinetPage() {
     }
   }
 
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) return <p>{t('dashboard.selectUnit', 'Select a unit context first.')}</p>;
 
   // Picker is shown for the AREA_ADMIN so they can switch between
   // their area-cabinet and any basic unit beneath it. SENIOR_MAWIN
@@ -415,7 +426,7 @@ export default function CabinetPage() {
 
   return (
     <div>
-      <div className="page-header"><h2>Cabinet · {ctx.unitName}</h2></div>
+      <div className="page-header"><h2>{t('cabinet.title', 'Cabinet')} · {ctx.unitName}</h2></div>
 
       {/* Central Admin picks a Province and assigns its Sobayi
           cabinet — the exact shape of the District picker below it
@@ -426,7 +437,7 @@ export default function CabinetPage() {
       {showProvinceCabinetPicker && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: 600 }}>Assign Province Cabinet for:</label>
+            <label style={{ fontWeight: 600 }}>{t('cabinet.assignProvinceCabinet', 'Assign Province Cabinet for:')}</label>
             <select
               value={ctx.unitLevel === 'PROVINCE' ? String(ctx.unitId) : ''}
               onChange={(e) => {
@@ -437,16 +448,14 @@ export default function CabinetPage() {
               }}
               style={{ minWidth: 280 }}
             >
-              <option value="">— pick a province —</option>
+              <option value="">{t('cabinet.pickProvince', '— pick a province —')}</option>
               {allProvinces.length === 0 && <option disabled>(no provinces yet)</option>}
               {allProvinces.map((p) => (
                 <option key={p._id} value={String(p._id)}>{p.name}{p.code ? ` (${p.code})` : ''}</option>
               ))}
             </select>
             <span className="muted" style={{ fontSize: 13 }}>
-              Pick a Province to assign its Sobayi cabinet (President / Saddar, Senior Vice President,
-              Vice President, General Secretary, Finance Sec., etc.). Members shown are everyone
-              registered under any district / area / BU within that province.
+              {t('cabinet.centralSubtitle', 'Assign Sobayi (Provincial) Executive roles for this province.')}
             </span>
           </div>
         </div>
@@ -455,7 +464,7 @@ export default function CabinetPage() {
       {showProvincePicker && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: 600 }}>Assign District Cabinet for:</label>
+            <label style={{ fontWeight: 600 }}>{t('cabinet.assignDistrictCabinet', 'Assign District Cabinet for:')}</label>
             <select
               value={ctx.unitLevel === 'DISTRICT' ? String(ctx.unitId) : ''}
               onChange={(e) => {
@@ -466,15 +475,14 @@ export default function CabinetPage() {
               }}
               style={{ minWidth: 280 }}
             >
-              <option value="">— pick a district in your province —</option>
+              <option value="">{t('cabinet.pickDistrict', '— pick a district in your province —')}</option>
               {districtsInProvince.length === 0 && <option disabled>(no districts yet)</option>}
               {districtsInProvince.map((d) => (
                 <option key={d._id} value={String(d._id)}>{d.name}{d.code ? ` (${d.code})` : ''}</option>
               ))}
             </select>
             <span className="muted" style={{ fontSize: 13 }}>
-              Pick a District to assign its Zilla cabinet (Secretary, Senior Mawin Sec., Finance Sec., etc.).
-              Members shown are everyone registered under any area/BU within that district.
+              {t('cabinet.subtitle', 'Appoint office-holders and review active cabinet positions.')}
             </span>
           </div>
         </div>
@@ -483,7 +491,7 @@ export default function CabinetPage() {
       {isDistrictAdminUser && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: 600 }}>Assign Area Cabinet for:</label>
+            <label style={{ fontWeight: 600 }}>{t('cabinet.assignAreaCabinet', 'Assign Area Cabinet for:')}</label>
             <select
               value={ctx.unitLevel === 'AREA' ? String(ctx.unitId) : ''}
               onChange={(e) => {
@@ -494,14 +502,14 @@ export default function CabinetPage() {
               }}
               style={{ minWidth: 280 }}
             >
-              <option value="">— pick an area in your district —</option>
+              <option value="">{t('cabinet.pickArea', '— pick an area in your district —')}</option>
               {areasInDistrict.length === 0 && <option disabled>(no areas yet)</option>}
               {areasInDistrict.map((a) => (
                 <option key={a._id} value={String(a._id)}>{a.name}</option>
               ))}
             </select>
             <span className="muted" style={{ fontSize: 13 }}>
-              Pick an Area to assign its Elaqai (Area) cabinet. Members shown are those registered under that area.
+              {t('cabinet.subtitle', 'Appoint office-holders and review active cabinet positions.')}
             </span>
           </div>
         </div>
@@ -510,7 +518,7 @@ export default function CabinetPage() {
       {showAreaPicker && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: 600 }}>Cabinet for:</label>
+            <label style={{ fontWeight: 600 }}>{t('cabinet.cabinetFor', 'Cabinet for:')}</label>
             <select
               value={ctx.unitLevel === 'BASIC_UNIT' ? String(ctx.unitId) : ''}
               onChange={(e) => pickUnit(e.target.value)}
@@ -520,13 +528,13 @@ export default function CabinetPage() {
                   the District Admin, so it is not listed here. */}
               {basicUnitsInArea.length === 0
                 ? <option value="">(no basic units yet)</option>
-                : ctx.unitLevel !== 'BASIC_UNIT' && <option value="">Select a basic unit…</option>}
+                : ctx.unitLevel !== 'BASIC_UNIT' && <option value="">{t('cabinet.pickBasicUnit', 'Select a basic unit…')}</option>}
               {basicUnitsInArea.map((b) => (
                 <option key={b._id} value={String(b._id)}>{b.name}</option>
               ))}
             </select>
             <span className="muted" style={{ fontSize: 13 }}>
-              Basic-Unit cabinet{areaName ? ` in ${areaName}` : ''} — assign Secretary / Senior Mawin / Finance Sec. and the optional roles.
+              {t('cabinet.subtitle', 'Appoint office-holders and review active cabinet positions.')}
             </span>
           </div>
         </div>
@@ -540,34 +548,33 @@ export default function CabinetPage() {
       {showAreaPicker && ctx.unitLevel !== 'BASIC_UNIT' ? (
         <div className="card">
           <p className="muted" style={{ margin: 0 }}>
-            No basic units exist in your area yet. Create one under{' '}
-            <strong>Manage Basic Units</strong>, then pick it above to assign its cabinet.
+            {t('cabinet.noBasicUnits', 'No basic units exist in your area yet. Create one under Manage Basic Units, then pick it above to assign its cabinet.')}
           </p>
         </div>
       ) : (
       <>
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Cabinet roles</h3>
+        <h3 style={{ marginTop: 0 }}>{t('cabinet.roles', 'Cabinet roles')}</h3>
         <div className="toolbar" style={{ marginBottom: 10 }}>
           <input
             type="search"
             value={memberSearch}
             onChange={(e) => setMemberSearch(e.target.value)}
-            placeholder="Filter members in dropdowns by name, CNIC or phone…"
+            placeholder={t('cabinet.filterPlaceholder', 'Filter members in dropdowns by name, CNIC or phone…')}
             style={{ minWidth: 320, flex: 1 }}
           />
           <span className="muted" style={{ alignSelf: 'center', fontSize: 13 }}>
-            {filteredMembers.length} of {members.length} active members
+            {t('cabinet.activeMembersCount', '{{filtered}} of {{total}} active members', { filtered: filteredMembers.length, total: members.length })}
           </span>
         </div>
         <table className="list">
           <thead>
             <tr>
-              <th>Role</th>
-              <th>Required?</th>
-              <th>Member</th>
-              <th>Phone</th>
-              <th>Status</th>
+              <th>{t('cabinet.role', 'Role')}</th>
+              <th>{t('cabinet.required', 'Required?')}</th>
+              <th>{t('cabinet.member', 'Member')}</th>
+              <th>{t('cabinet.phone', 'Phone')}</th>
+              <th>{t('cabinet.status', 'Status')}</th>
               <th></th>
             </tr>
           </thead>
@@ -589,7 +596,7 @@ export default function CabinetPage() {
                 onConfirmAssign={() => propose(row.roleCode, pickedMemberId)}
                 onEnd={() => endRole(
                   row.assignment._id,
-                  ROLE_LABEL[row.roleCode] || row.customRoleName || row.roleCode,
+                  getCabinRoleLabel ? getCabinetRoleLabel(row.roleCode, row.customRoleName, t) : (ROLE_LABEL[row.roleCode] || row.customRoleName || row.roleCode),
                   row.member?.fullName,
                 )}
               />
@@ -613,11 +620,11 @@ export default function CabinetPage() {
                 <div className="muted" style={{ fontSize: 13 }}>No cabinet roles assigned yet.</div>
               ) : (
                 <table className="list">
-                  <thead><tr><th>Role</th><th>Member</th><th>Phone</th></tr></thead>
+                  <thead><tr><th>{t('cabinet.role', 'Role')}</th><th>{t('cabinet.member', 'Member')}</th><th>{t('cabinet.phone', 'Phone')}</th></tr></thead>
                   <tbody>
                     {cabinet.map((row) => (
                       <tr key={row._id}>
-                        <td>{ROLE_LABEL[row.roleCode] || row.customRoleName || roleLabel(user, row.roleCode)}</td>
+                        <td>{getCabinetRoleLabel(row.roleCode, row.customRoleName, t)}</td>
                         <td>{row.member?.fullName || '—'}</td>
                         <td>{row.member?.phone || '—'}</td>
                       </tr>
@@ -645,11 +652,11 @@ export default function CabinetPage() {
                 <div className="muted" style={{ fontSize: 13 }}>No cabinet roles assigned yet.</div>
               ) : (
                 <table className="list">
-                  <thead><tr><th>Role</th><th>Member</th><th>Phone</th></tr></thead>
+                  <thead><tr><th>{t('cabinet.role', 'Role')}</th><th>{t('cabinet.member', 'Member')}</th><th>{t('cabinet.phone', 'Phone')}</th></tr></thead>
                   <tbody>
                     {cabinet.map((row) => (
                       <tr key={row._id}>
-                        <td>{ROLE_LABEL[row.roleCode] || row.customRoleName || roleLabel(user, row.roleCode)}</td>
+                        <td>{getCabinetRoleLabel(row.roleCode, row.customRoleName, t)}</td>
                         <td>{row.member?.fullName || '—'}</td>
                         <td>{row.member?.phone || '—'}</td>
                       </tr>
@@ -664,26 +671,26 @@ export default function CabinetPage() {
 
       {!secretaryReadOnly && !isSeniorMawinOp && !isPresidentOnly && (
       <div className="card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Pending approvals</h3>
+        <h3 style={{ marginTop: 0 }}>{t('cabinet.pendingApprovals', 'Pending approvals')}</h3>
         <p className="muted" style={{ marginTop: 0 }}>
-          Proposals raised by a Senior Mawin Secretary waiting for the Secretary's decision.
+          {t('cabinet.proposalsSub', "Proposals raised by a Senior Mawin Secretary waiting for the Secretary's decision.")}
         </p>
-        {pending.length === 0 && <p className="muted">No proposals waiting.</p>}
+        {pending.length === 0 && <p className="muted">{t('cabinet.noProposals', 'No proposals waiting.')}</p>}
         {pending.length > 0 && (
           <table className="list">
             <thead>
-              <tr><th>Role</th><th>Member</th><th>Initiator</th><th>Proposed at</th><th></th></tr>
+              <tr><th>{t('cabinet.role', 'Role')}</th><th>{t('cabinet.member', 'Member')}</th><th>{t('cabinet.initiator', 'Initiator')}</th><th>{t('cabinet.proposedAt', 'Proposed at')}</th><th></th></tr>
             </thead>
             <tbody>
               {pending.map((p) => (
                 <tr key={p._id}>
-                  <td>{ROLE_LABEL[p.roleCode] || p.customRoleName || roleLabel(user, p.roleCode)}</td>
+                  <td>{getCabinetRoleLabel(p.roleCode, p.customRoleName, t)}</td>
                   <td>{p.memberId?.fullName}</td>
                   <td>{p.initiatedBy?.fullName}</td>
                   <td>{new Date(p.createdAt).toLocaleString()}</td>
                   <td>
-                    <button className="btn" onClick={() => decide(p._id, 'APPROVED')}>Approve</button>{' '}
-                    <button className="btn danger" onClick={() => decide(p._id, 'REJECTED')}>Reject</button>
+                    <button className="btn" onClick={() => decide(p._id, 'APPROVED')}>{t('cabinet.approve', 'Approve')}</button>{' '}
+                    <button className="btn danger" onClick={() => decide(p._id, 'REJECTED')}>{t('cabinet.reject', 'Reject')}</button>
                   </td>
                 </tr>
               ))}
@@ -699,12 +706,10 @@ export default function CabinetPage() {
 }
 
 function CabinetRow({ row, canManage, isAssigning, pickedMemberId, setPickedMemberId, members, allMembersCount, busy, onAssignClick, onCancelAssign, onConfirmAssign, onEnd }) {
+  const { t } = useTranslation();
   const filled = row.state === 'FILLED';
-  // Built-in roles use ROLE_LABEL; custom catalog roles carry their
-  // human label in `customRoleName` (the catalogue's `label` field).
-  // Fall through to the raw code only if neither is available.
   const builtin = ROLE_LABEL[row.roleCode];
-  const primary = builtin || row.customRoleName || row.roleCode;
+  const primary = getCabinetRoleLabel(row.roleCode, row.customRoleName, t);
   return (
     <tr>
       <td>
@@ -712,28 +717,27 @@ function CabinetRow({ row, canManage, isAssigning, pickedMemberId, setPickedMemb
         {builtin && row.customRoleName ? <span className="muted"> ({row.customRoleName})</span> : null}
         {row.isCustom && <span className="badge ACTIVE" style={{ marginLeft: 8, fontSize: 10, padding: '1px 7px' }}>CUSTOM</span>}
       </td>
-      <td>{row.isMandatory ? <span className="badge ACTIVE">Required</span> : <span className="badge INACTIVE">Optional</span>}</td>
-      <td>{filled ? row.member?.fullName : <span className="muted">— vacant —</span>}</td>
+      <td>{row.isMandatory ? <span className="badge ACTIVE">{t('cabinet.required', 'Required')}</span> : <span className="badge INACTIVE">{t('cabinet.optional', 'Optional')}</span>}</td>
+      <td>{filled ? row.member?.fullName : <span className="muted">{t('cabinet.vacantPosition', '— vacant —')}</span>}</td>
       <td>{filled ? row.member?.phone : '—'}</td>
       <td>
         {filled
-          ? <span className="badge ACTIVE">Filled</span>
-          : <span className="badge PENDING_APPROVAL">Vacant</span>}
+          ? <span className="badge ACTIVE">{t('cabinet.filled', 'Filled')}</span>
+          : <span className="badge PENDING_APPROVAL">{t('cabinet.vacant', 'Vacant')}</span>}
       </td>
       <td style={{ whiteSpace: 'nowrap' }}>
-        {canManage && !filled && !isAssigning && <button className="btn" onClick={onAssignClick}>Assign</button>}
+        {canManage && !filled && !isAssigning && <button className="btn" onClick={onAssignClick}>{t('cabinet.assign', 'Assign')}</button>}
         {canManage && !filled && isAssigning && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             <select value={pickedMemberId} onChange={(e) => setPickedMemberId(e.target.value)}>
-              <option value="">Choose member</option>
+              <option value="">{t('cabinet.chooseMember', 'Choose member')}</option>
               {members.map((m) => (
                 <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>
               ))}
             </select>
             {allMembersCount === 0 && (
               <span className="muted" style={{ fontSize: 12 }}>
-                No approved members in this unit yet. Either approve someone who registered
-                here, or pick a different unit from the "Cabinet for:" picker above.
+                {t('cabinet.noApprovedMembers', 'No approved members in this unit yet.')}
               </span>
             )}
             {allMembersCount > 0 && members.length === 0 && (
@@ -741,11 +745,11 @@ function CabinetRow({ row, canManage, isAssigning, pickedMemberId, setPickedMemb
                 No matches for the search filter above. Clear it to see all {allMembersCount} members.
               </span>
             )}
-            <button className="btn" disabled={!pickedMemberId || busy} onClick={onConfirmAssign}>Confirm</button>
-            <button className="btn secondary" onClick={onCancelAssign}>Cancel</button>
+            <button className="btn" disabled={!pickedMemberId || busy} onClick={onConfirmAssign}>{t('cabinet.confirm', 'Confirm')}</button>
+            <button className="btn secondary" onClick={onCancelAssign}>{t('cabinet.cancel', 'Cancel')}</button>
           </div>
         )}
-        {canManage && filled && <button className="btn danger" onClick={onEnd}>End role</button>}
+        {canManage && filled && <button className="btn danger" onClick={onEnd}>{t('cabinet.endRole', 'End role')}</button>}
       </td>
     </tr>
   );

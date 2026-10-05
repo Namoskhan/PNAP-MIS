@@ -24,8 +24,15 @@ async function availableBalance(unitLevel, unitId, body) {
   const bodyMatch = body === 'EXECUTIVE'
     ? { $or: [{ body: 'EXECUTIVE' }, { body: { $exists: false } }, { body: null }] }
     : { body };
+  const donApprovedMatch = {
+    $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }],
+  };
+  const donFilter = {
+    ...ownUnit,
+    $and: [donApprovedMatch, bodyMatch],
+  };
   const [donations, expenses, outgoing, incoming] = await Promise.all([
-    Donation.aggregate([{ $match: { ...ownUnit, ...bodyMatch } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+    Donation.aggregate([{ $match: donFilter }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     Expense.aggregate([{ $match: { ...ownUnit, ...bodyMatch, state: 'APPROVED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     FundTransfer.aggregate([{ $match: { sourceLevel: unitLevel, sourceUnitId: unitObjectId, ...bodyMatch, state: { $in: ['PENDING_ACK', 'ACKNOWLEDGED'] } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
     FundTransfer.aggregate([{ $match: { destinationLevel: unitLevel, destinationUnitId: unitObjectId, ...bodyMatch, state: 'ACKNOWLEDGED' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),

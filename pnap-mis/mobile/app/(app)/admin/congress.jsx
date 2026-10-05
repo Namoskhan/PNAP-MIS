@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { api, errorMessage } from '../../../src/api/client';
 import { isHigherAdmin } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
@@ -27,31 +28,32 @@ import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Radius, Spacing } from '../../../src/constants/colors';
 
 const ROLE_OPTIONS = [
-  { value: 'ALL', label: 'All Roles' },
-  { value: 'GENERAL_SECRETARY', label: 'General Secretary' },
-  { value: 'PRESIDENT', label: 'President / Saddar' },
-  { value: 'SECRETARY', label: 'Secretary' },
-  { value: 'SENIOR_MAWIN', label: 'Senior Mawin Secretary' },
-  { value: 'FINANCE_SECRETARY', label: 'Finance Secretary' },
-  { value: 'SR_VICE_PRESIDENT', label: 'Sr. Vice President' },
-  { value: 'VICE_PRESIDENT', label: 'Vice President' },
-  { value: 'CHAIRMAN', label: 'Chairman' },
-  { value: 'CO_CHAIRMAN', label: 'Co-Chairman' },
-  { value: 'FIRST_SECRETARY', label: 'First Secretary' },
-  { value: 'OTHER', label: 'Other Cabinet Roles' },
-  { value: 'NO_ROLE', label: 'General Workers (No Role)' },
+  { value: 'ALL', labelKey: 'common.allRoles', fallback: 'All Roles' },
+  { value: 'GENERAL_SECRETARY', labelKey: 'roles.GENERAL_SECRETARY', fallback: 'General Secretary' },
+  { value: 'PRESIDENT', labelKey: 'roles.PRESIDENT', fallback: 'President / Saddar' },
+  { value: 'SECRETARY', labelKey: 'roles.SECRETARY', fallback: 'Secretary' },
+  { value: 'SENIOR_MAWIN', labelKey: 'roles.SENIOR_MAWIN', fallback: 'Senior Mawin Secretary' },
+  { value: 'FINANCE_SECRETARY', labelKey: 'roles.FINANCE_SECRETARY', fallback: 'Finance Secretary' },
+  { value: 'SR_VICE_PRESIDENT', labelKey: 'roles.SR_VICE_PRESIDENT', fallback: 'Sr. Vice President' },
+  { value: 'VICE_PRESIDENT', labelKey: 'roles.VICE_PRESIDENT', fallback: 'Vice President' },
+  { value: 'CHAIRMAN', labelKey: 'roles.CHAIRMAN', fallback: 'Chairman' },
+  { value: 'CO_CHAIRMAN', labelKey: 'roles.CO_CHAIRMAN', fallback: 'Co-Chairman' },
+  { value: 'FIRST_SECRETARY', labelKey: 'roles.FIRST_SECRETARY', fallback: 'First Secretary' },
+  { value: 'OTHER', labelKey: 'roles.OTHER', fallback: 'Other Cabinet Roles' },
+  { value: 'NO_ROLE', labelKey: 'roles.NO_ROLE', fallback: 'General Workers (No Role)' },
 ];
 
 const UNIT_LEVEL_OPTIONS = [
-  { value: 'ALL', label: 'All Tiers' },
-  { value: 'CENTRAL', label: 'Central Tier' },
-  { value: 'PROVINCE', label: 'Province Tier' },
-  { value: 'DISTRICT', label: 'District Tier' },
-  { value: 'AREA', label: 'Area Tier' },
-  { value: 'BASIC_UNIT', label: 'Basic Unit Tier' },
+  { value: 'ALL', labelKey: 'units.allTiers', fallback: 'All Tiers' },
+  { value: 'CENTRAL', labelKey: 'units.centralTier', fallback: 'Central Tier' },
+  { value: 'PROVINCE', labelKey: 'units.provinceTier', fallback: 'Province Tier' },
+  { value: 'DISTRICT', labelKey: 'units.districtTier', fallback: 'District Tier' },
+  { value: 'AREA', labelKey: 'units.areaTier', fallback: 'Area Tier' },
+  { value: 'BASIC_UNIT', labelKey: 'units.basicUnitTier', fallback: 'Basic Unit Tier' },
 ];
 
 export default function CongressScreen() {
+  const { t, isRTL } = useLanguage();
   const { ctx, provinces, setCtx } = useUnit();
   const { user } = useAuth();
   const toast = useToast();
@@ -175,11 +177,11 @@ export default function CongressScreen() {
 
   async function handleAssign() {
     if (!selectedMember) {
-      setModalError('Please pick a member to assign.');
+      setModalError(t('congress.pickMemberErr', 'Please pick a member to assign.'));
       return;
     }
     if (selectedMember.isAssignedToCongress) {
-      setModalError(`${selectedMember.fullName} is already assigned to National Congress.`);
+      setModalError(t('congress.alreadyAssignedErr', `${selectedMember.fullName} is already assigned to National Congress.`, { name: selectedMember.fullName }));
       return;
     }
     setAssigning(true);
@@ -192,7 +194,7 @@ export default function CongressScreen() {
         memberId: selectedMember._id,
         nominationNote: nominationNote.trim() || undefined,
       });
-      toast.success(`${selectedMember.fullName} successfully assigned to Congress.`);
+      toast.success(t('congress.assignedSuccess', `${selectedMember.fullName} successfully assigned to Congress.`, { name: selectedMember.fullName }));
       setSelectedMember(null);
       setNominationNote('');
       setModalError('');
@@ -207,27 +209,27 @@ export default function CongressScreen() {
   }
 
   function handleRemove(recordId, memberName) {
-    const msg = `Are you sure you want to remove ${memberName || 'this member'} from Congress?`;
+    const msg = t('congress.removeConfirmMsg', `Are you sure you want to remove ${memberName || 'this member'} from Congress?`, { name: memberName || t('congress.thisMember', 'this member') });
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.confirm(msg)) {
         api.post(`/congress/members/${recordId}/remove`)
           .then(() => {
-            toast.success('Member removed from Congress.');
+            toast.success(t('congress.removedSuccess', 'Member removed from Congress.'));
             reload();
           })
           .catch((e) => toast.error(errorMessage(e)));
       }
       return;
     }
-    Alert.alert('Remove Member', msg, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('congress.removeConfirmTitle', 'Remove Member'), msg, [
+      { text: t('common.cancel', 'Cancel'), style: 'cancel' },
       { 
-        text: 'Remove', 
+        text: t('common.remove', 'Remove'), 
         style: 'destructive', 
         onPress: async () => {
           try {
             await api.post(`/congress/members/${recordId}/remove`);
-            toast.success('Member removed from Congress.');
+            toast.success(t('congress.removedSuccess', 'Member removed from Congress.'));
             reload();
           } catch (e) {
             toast.error(errorMessage(e));
@@ -283,9 +285,9 @@ export default function CongressScreen() {
   if (ctx?.unitLevel !== 'CENTRAL') {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>National Congress · قومي کانګرس</Text>
-          <Text style={styles.headerSub}>Central Supreme Consultative & Representative Assembly</Text>
+        <View style={[styles.header, isRTL && { alignItems: 'flex-end' }]}>
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>{t('units.nationalCongress', 'National Congress · قومي کانګرس')}</Text>
+          <Text style={[styles.headerSub, isRTL && { textAlign: 'right' }]}>{t('congress.subtitle', 'Central Supreme Consultative & Representative Assembly')}</Text>
         </View>
 
         <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
@@ -293,20 +295,20 @@ export default function CongressScreen() {
             <View style={styles.guidanceIconBox}>
               <Ionicons name="people-outline" size={40} color={Colors.primary} />
             </View>
-            <Text style={styles.guidanceTitle}>National Congress operates exclusively at the Central Level</Text>
-            <Text style={styles.guidanceText}>
-              Under the PKNAP constitution, the <Text style={{ fontWeight: '700' }}>National Congress (قومي کانګرس)</Text> is the supreme representative assembly operating at the Central tier. Lower tiers operate via <Text style={{ fontWeight: '700' }}>Sobayi Jirga</Text> (Province) and <Text style={{ fontWeight: '700' }}>Zilla & Elaqayi Committees</Text> (District & Area).
+            <Text style={[styles.guidanceTitle, isRTL && { textAlign: 'right' }]}>{t('congress.centralOnlyTitle', 'National Congress operates exclusively at the Central Level')}</Text>
+            <Text style={[styles.guidanceText, isRTL && { textAlign: 'right' }]}>
+              {t('congress.centralOnlyText', 'Under the PKNAP constitution, the National Congress (قومي کانګرس) is the supreme representative assembly operating at the Central tier. Lower tiers operate via Sobayi Jirga (Province) and Zilla & Elaqayi Committees (District & Area).')}
             </Text>
 
             <View style={styles.guidanceBtnCol}>
               <TouchableOpacity
-                style={styles.guidanceBtnPrimary}
+                style={[styles.guidanceBtnPrimary, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => {
                   setCtx({ unitLevel: 'CENTRAL', unitId: 'CENTRAL', unitName: 'PKNAP Central' });
                 }}
               >
-                <Ionicons name="globe-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={styles.guidanceBtnPrimaryText}>Switch to Central Unit Context →</Text>
+                <Ionicons name="globe-outline" size={18} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                <Text style={styles.guidanceBtnPrimaryText}>{t('congress.switchToCentral', 'Switch to Central Unit Context →')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -319,71 +321,71 @@ export default function CongressScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>National Congress · قومي کانګرس</Text>
-        <Text style={styles.headerSub}>Central Supreme Consultative & Representative Assembly</Text>
+      <View style={[styles.header, isRTL && { alignItems: 'flex-end' }]}>
+        <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>{t('units.nationalCongress', 'National Congress · قومي کانګرس')}</Text>
+        <Text style={[styles.headerSub, isRTL && { textAlign: 'right' }]}>{t('congress.subtitle', 'Central Supreme Consultative & Representative Assembly')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {err ? <Text style={styles.errorText}>{err}</Text> : null}
+        {err ? <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{err}</Text> : null}
 
         {/* Quick Navigation Hub Card */}
         <Card style={styles.quickNavCard}>
-          <View style={styles.quickNavHeader}>
+          <View style={[styles.quickNavHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <Ionicons name="apps-outline" size={18} color={Colors.primary} />
-            <Text style={styles.quickNavTitle}>Congress Assembly Hub</Text>
+            <Text style={[styles.quickNavTitle, isRTL && { textAlign: 'right' }]}>{t('congress.assemblyHub', 'Congress Assembly Hub')}</Text>
           </View>
-          <View style={styles.quickNavGrid}>
+          <View style={[styles.quickNavGrid, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity
-              style={styles.quickNavBtn}
+              style={[styles.quickNavBtn, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => router.push('/meetings?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL')}
             >
               <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
-              <Text style={styles.quickNavBtnText}>Meetings</Text>
+              <Text style={styles.quickNavBtnText}>{t('nav.meetings', 'Meetings')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickNavBtn}
+              style={[styles.quickNavBtn, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => router.push('/activities?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL')}
             >
               <Ionicons name="flag-outline" size={16} color={Colors.primary} />
-              <Text style={styles.quickNavBtnText}>Activities</Text>
+              <Text style={styles.quickNavBtnText}>{t('nav.activities', 'Activities')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickNavBtn}
+              style={[styles.quickNavBtn, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => router.push('/finance?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL')}
             >
               <Ionicons name="cash-outline" size={16} color={Colors.primary} />
-              <Text style={styles.quickNavBtnText}>Finance</Text>
+              <Text style={styles.quickNavBtnText}>{t('nav.finance', 'Finance')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.quickNavBtn}
+              style={[styles.quickNavBtn, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => router.push('/admin/reports?body=CONGRESS&unitLevel=CENTRAL&unitId=CENTRAL')}
             >
               <Ionicons name="stats-chart-outline" size={16} color={Colors.primary} />
-              <Text style={styles.quickNavBtnText}>Reports</Text>
+              <Text style={styles.quickNavBtnText}>{t('nav.reports', 'Reports')}</Text>
             </TouchableOpacity>
           </View>
         </Card>
 
         {/* KPI Stats */}
-        <View style={styles.kpiGrid}>
+        <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
           <Card style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Total Members</Text>
+            <Text style={styles.kpiLabel}>{t('congress.totalMembers', 'Total Members')}</Text>
             <Text style={styles.kpiValue}>{loading ? '…' : stats.total}</Text>
           </Card>
           <Card style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Office Holders</Text>
+            <Text style={styles.kpiLabel}>{t('congress.officeHolders', 'Office Holders')}</Text>
             <Text style={styles.kpiValue}>{loading ? '…' : stats.officeHolders}</Text>
           </Card>
           <Card style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>General Workers</Text>
+            <Text style={styles.kpiLabel}>{t('congress.generalWorkers', 'General Workers')}</Text>
             <Text style={styles.kpiValue}>{loading ? '…' : stats.workers}</Text>
           </Card>
           <Card style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Provinces</Text>
+            <Text style={styles.kpiLabel}>{t('congress.provinces', 'Provinces')}</Text>
             <Text style={styles.kpiValue}>{loading ? '…' : stats.provinces}</Text>
           </Card>
         </View>
@@ -392,10 +394,10 @@ export default function CongressScreen() {
           <ActivityIndicator style={{ marginTop: Spacing.lg }} color={Colors.primary} />
         ) : (
           <>
-            <View style={styles.toolbarRow}>
+            <View style={[styles.toolbarRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <TextInput
-                style={styles.searchInput}
-                placeholder="Search member, CNIC, phone..."
+                style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
+                placeholder={t('congress.searchPlaceholder', 'Search member, CNIC, phone...')}
                 value={rosterSearch}
                 onChangeText={setRosterSearch}
                 clearButtonMode="while-editing"
@@ -419,14 +421,14 @@ export default function CongressScreen() {
               )}
             </View>
 
-            <View style={styles.pickerRow}>
+            <View style={[styles.pickerRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={rosterProvFilter}
                   onValueChange={(v) => setRosterProvFilter(v)}
                   style={styles.picker}
                 >
-                  <Picker.Item label="All Provinces" value="ALL" />
+                  <Picker.Item label={t('common.allProvinces', 'All Provinces')} value="ALL" />
                   {Array.from(new Set((data?.members || []).map(m => m.homeUnit?.provinceName).filter(Boolean))).map((prov) => (
                     <Picker.Item key={prov} label={prov} value={prov} />
                   ))}
@@ -440,7 +442,7 @@ export default function CongressScreen() {
                   style={styles.picker}
                 >
                   {ROLE_OPTIONS.map((opt) => (
-                    <Picker.Item key={opt.value} label={opt.label} value={opt.value} />
+                    <Picker.Item key={opt.value} label={t(opt.labelKey, opt.fallback)} value={opt.value} />
                   ))}
                 </Picker>
               </View>
@@ -448,19 +450,23 @@ export default function CongressScreen() {
 
             <View style={styles.rosterList}>
               {filteredRoster.length === 0 ? (
-                <EmptyState icon="👥" title="No members found" subtitle="No Congress members match your search or filters." />
+                <EmptyState
+                  icon="👥"
+                  title={t('congress.noMembersFound', 'No members found')}
+                  subtitle={t('congress.noMembersSubtitle', 'No Congress members match your search or filters.')}
+                />
               ) : (
                 filteredRoster.map((m) => {
                   const roles = m.activeRoles || [];
                   const recordId = m.congressRecordId;
                   return (
                     <Card key={m._id} style={styles.memberCard}>
-                      <View style={styles.memberHeaderRow}>
+                      <View style={[styles.memberHeaderRow, isRTL && { flexDirection: 'row-reverse' }]}>
                         <Avatar name={m.fullName} size={42} color={Colors.primary} />
-                        <View style={styles.memberMeta}>
-                          <Text style={styles.memberName}>{m.fullName}</Text>
-                          <Text style={styles.memberSub}>
-                            {m.memberId || 'ID —'} · {m.cnic} · {m.phone || 'No phone'}
+                        <View style={[styles.memberMeta, isRTL && { alignItems: 'flex-end' }]}>
+                          <Text style={[styles.memberName, isRTL && { textAlign: 'right' }]}>{m.fullName}</Text>
+                          <Text style={[styles.memberSub, isRTL && { textAlign: 'right' }]}>
+                            {m.memberId || 'ID —'} · {m.cnic} · {m.phone || t('common.noPhone', 'No phone')}
                           </Text>
                         </View>
                         {canManage && (
@@ -472,47 +478,47 @@ export default function CongressScreen() {
 
                       <View style={styles.detailsBlock}>
                         {/* Active Roles */}
-                        <View style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>Role:</Text>
-                          <View style={styles.detailValue}>
+                        <View style={[styles.detailRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                          <Text style={[styles.detailLabel, isRTL && { textAlign: 'right' }]}>{t('common.role', 'Role:')}</Text>
+                          <View style={[styles.detailValue, isRTL && { alignItems: 'flex-end' }]}>
                             {roles.length > 0 ? (
                               roles.map((r, idx) => (
-                                <View key={r._id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: idx !== roles.length - 1 ? 4 : 0 }}>
-                                  <Badge label={r.customRoleName || r.roleCode.replace(/_/g, ' ')} color="#166534" bg="#dcfce7" />
-                                  <Text style={styles.unitText}>· {r.unitName}</Text>
+                                <View key={r._id} style={[{ flexDirection: 'row', alignItems: 'center', marginBottom: idx !== roles.length - 1 ? 4 : 0 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                                  <Badge label={r.customRoleName || t('roles.' + r.roleCode, r.roleCode.replace(/_/g, ' '))} color="#166534" bg="#dcfce7" />
+                                  <Text style={styles.unitText}>· {r.unitName}{r.unitLevel ? ` (${t('units.' + r.unitLevel, r.unitLevel.replace(/_/g, ' '))})` : ''}</Text>
                                 </View>
                               ))
                             ) : m.assignedRoleSnapshot?.roleCode ? (
-                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Badge label={m.assignedRoleSnapshot.customRoleName || m.assignedRoleSnapshot.roleCode.replace(/_/g, ' ')} color="#166534" bg="#dcfce7" />
-                                <Text style={styles.unitText}>· {m.assignedRoleSnapshot.unitName}</Text>
+                              <View style={[{ flexDirection: 'row', alignItems: 'center' }, isRTL && { flexDirection: 'row-reverse' }]}>
+                                <Badge label={m.assignedRoleSnapshot.customRoleName || t('roles.' + m.assignedRoleSnapshot.roleCode, m.assignedRoleSnapshot.roleCode.replace(/_/g, ' '))} color="#166534" bg="#dcfce7" />
+                                <Text style={styles.unitText}>· {m.assignedRoleSnapshot.unitName}{m.assignedRoleSnapshot.unitLevel ? ` (${t('units.' + m.assignedRoleSnapshot.unitLevel, m.assignedRoleSnapshot.unitLevel.replace(/_/g, ' '))})` : ''}</Text>
                               </View>
                             ) : (
-                              <Text style={styles.noRoleText}>General Party Worker</Text>
+                              <Text style={[styles.noRoleText, isRTL && { textAlign: 'right' }]}>{t('congress.generalPartyWorker', 'General Party Worker')}</Text>
                             )}
                           </View>
                         </View>
 
                         {/* Hierarchy */}
-                        <View style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>Home:</Text>
-                          <View style={styles.detailValue}>
-                            <Text style={styles.hierarchyText}>
+                        <View style={[styles.detailRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                          <Text style={[styles.detailLabel, isRTL && { textAlign: 'right' }]}>{t('congress.home', 'Home:')}</Text>
+                          <View style={[styles.detailValue, isRTL && { alignItems: 'flex-end' }]}>
+                            <Text style={[styles.hierarchyText, isRTL && { textAlign: 'right' }]}>
                               {[
-                                m.homeUnit?.provinceName && `Prov: ${m.homeUnit.provinceName}`,
-                                m.homeUnit?.districtName && `Dist: ${m.homeUnit.districtName}`,
-                                m.homeUnit?.areaName && `Area: ${m.homeUnit.areaName}`,
-                                m.homeUnit?.basicUnitName && `BU: ${m.homeUnit.basicUnitName}`
+                                m.homeUnit?.provinceName && `${t('units.province', 'Prov')}: ${m.homeUnit.provinceName}`,
+                                m.homeUnit?.districtName && `${t('units.district', 'Dist')}: ${m.homeUnit.districtName}`,
+                                m.homeUnit?.areaName && `${t('units.area', 'Area')}: ${m.homeUnit.areaName}`,
+                                m.homeUnit?.basicUnitName && `${t('units.basicUnit', 'BU')}: ${m.homeUnit.basicUnitName}`
                               ].filter(Boolean).join(', ') || '—'}
                             </Text>
                           </View>
                         </View>
 
                         {/* Appointed Date */}
-                        <View style={styles.detailRow}>
-                          <Text style={styles.detailLabel}>Appointed:</Text>
-                          <View style={styles.detailValue}>
-                            <Text style={styles.footerLabel}>
+                        <View style={[styles.detailRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                          <Text style={[styles.detailLabel, isRTL && { textAlign: 'right' }]}>{t('congress.appointed', 'Appointed:')}</Text>
+                          <View style={[styles.detailValue, isRTL && { alignItems: 'flex-end' }]}>
+                            <Text style={[styles.footerLabel, isRTL && { textAlign: 'right' }]}>
                               {m.assignedAt ? new Date(m.assignedAt).toLocaleDateString() : '—'}
                             </Text>
                           </View>
@@ -538,10 +544,10 @@ export default function CongressScreen() {
         }}
       >
         <SafeAreaView style={styles.modalSafe}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.modalTitle}>Assign to National Congress</Text>
-              <Text style={styles.modalSubtitle}>Appoint party member to National Congress (Central)</Text>
+              <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('congress.assignTitle', 'Assign to National Congress')}</Text>
+              <Text style={[styles.modalSubtitle, isRTL && { textAlign: 'right' }]}>{t('congress.assignSubtitle', 'Appoint party member to National Congress (Central)')}</Text>
             </View>
             <TouchableOpacity
               onPress={() => {
@@ -557,11 +563,11 @@ export default function CongressScreen() {
           <View style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
               {/* Search Bar */}
-              <View style={styles.modalSearchWrap}>
-                <Ionicons name="search" size={16} color={Colors.textMuted} style={styles.searchIcon} />
+              <View style={[styles.modalSearchWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+                <Ionicons name="search" size={16} color={Colors.textMuted} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
                 <TextInput
-                  style={styles.modalSearchInput}
-                  placeholder="Search candidate by name, CNIC, phone…"
+                  style={[styles.modalSearchInput, isRTL && { textAlign: 'right' }]}
+                  placeholder={t('congress.candidateSearchPlaceholder', 'Search candidate by name, CNIC, phone…')}
                   placeholderTextColor={Colors.textMuted}
                   value={candidateSearch}
                   onChangeText={(t) => {
@@ -573,8 +579,8 @@ export default function CongressScreen() {
               </View>
 
               {/* Tier Filters */}
-              <Text style={styles.modalFilterLabel}>FILTER BY TIER</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizFilterScroll}>
+              <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>{t('congress.filterByTier', 'FILTER BY TIER')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizFilterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                 {UNIT_LEVEL_OPTIONS.map((opt) => (
                   <TouchableOpacity
                     key={opt.value}
@@ -585,15 +591,15 @@ export default function CongressScreen() {
                     }}
                   >
                     <Text style={[styles.filterChipText, candidateUnitLevel === opt.value && styles.filterChipTextActive]}>
-                      {opt.label}
+                      {t(opt.labelKey, opt.fallback)}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
               {/* Role Filters */}
-              <Text style={styles.modalFilterLabel}>FILTER BY ROLE</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizFilterScroll}>
+              <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>{t('congress.filterByRole', 'FILTER BY ROLE')}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizFilterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                 {ROLE_OPTIONS.slice(0, 8).map((opt) => (
                   <TouchableOpacity
                     key={opt.value}
@@ -604,7 +610,7 @@ export default function CongressScreen() {
                     }}
                   >
                     <Text style={[styles.filterChipText, candidateRole === opt.value && styles.filterChipTextActive]}>
-                      {opt.label}
+                      {t(opt.labelKey, opt.fallback)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -613,14 +619,14 @@ export default function CongressScreen() {
               {/* District Filter if province selected */}
               {districtsList.length > 0 && (
                 <>
-                  <Text style={styles.modalFilterLabel}>FILTER BY DISTRICT</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizFilterScroll}>
+                  <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>{t('congress.filterByDistrict', 'FILTER BY DISTRICT')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.horizFilterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
                     <TouchableOpacity
                       style={[styles.filterChip, candidateDistId === '' && styles.filterChipActive]}
                       onPress={() => setCandidateDistId('')}
                     >
                       <Text style={[styles.filterChipText, candidateDistId === '' && styles.filterChipTextActive]}>
-                        All Districts
+                        {t('congress.allDistricts', 'All Districts')}
                       </Text>
                     </TouchableOpacity>
                     {districtsList.map((d) => (
@@ -640,22 +646,24 @@ export default function CongressScreen() {
 
               {/* Inline Error Banner */}
               {modalError ? (
-                <View style={styles.modalErrBox}>
+                <View style={[styles.modalErrBox, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Ionicons name="alert-circle" size={18} color={Colors.error} />
-                  <Text style={styles.modalErrText}>{modalError}</Text>
+                  <Text style={[styles.modalErrText, isRTL && { textAlign: 'right' }]}>{modalError}</Text>
                 </View>
               ) : null}
 
               {/* Candidate List */}
-              <Text style={styles.modalFilterLabel}>SELECT CANDIDATE ({candidates.length})</Text>
+              <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>
+                {t('congress.selectCandidateCount', `SELECT CANDIDATE (${candidates.length})`, { count: candidates.length })}
+              </Text>
               {candidatesLoading ? (
                 <View style={styles.loaderWrap}>
                   <ActivityIndicator size="small" color={Colors.primary} />
-                  <Text style={styles.loaderText}>Searching eligible candidates…</Text>
+                  <Text style={styles.loaderText}>{t('congress.searchingCandidates', 'Searching eligible candidates…')}</Text>
                 </View>
               ) : candidates.length === 0 ? (
                 <View style={styles.emptyCandidate}>
-                  <Text style={styles.emptyCandidateText}>No eligible candidates found matching filters.</Text>
+                  <Text style={styles.emptyCandidateText}>{t('congress.noCandidatesFound', 'No eligible candidates found matching filters.')}</Text>
                 </View>
               ) : (
                 <ScrollView
@@ -674,6 +682,7 @@ export default function CongressScreen() {
                             styles.candidateRow,
                             isSelected && styles.candidateRowSelected,
                             isAssigned && styles.candidateRowDisabled,
+                            isRTL && { flexDirection: 'row-reverse' },
                           ]}
                           onPress={() => {
                             if (isAssigned) return;
@@ -684,31 +693,31 @@ export default function CongressScreen() {
                           activeOpacity={isAssigned ? 1 : 0.7}
                         >
                           <Avatar name={c.fullName} url={c.photoUrl} size={36} />
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <View style={[{ flex: 1 }, isRTL && { alignItems: 'flex-end' }]}>
+                            <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }, isRTL && { flexDirection: 'row-reverse' }]}>
                               <Text style={[styles.candidateName, isAssigned && { color: Colors.textMuted }]}>
                                 {c.fullName}
                               </Text>
                               {isAssigned && (
                                 <View style={styles.alreadyAssignedBadge}>
-                                  <Text style={styles.alreadyAssignedBadgeText}>In Congress</Text>
+                                  <Text style={styles.alreadyAssignedBadgeText}>{t('congress.inCongress', 'In Congress')}</Text>
                                 </View>
                               )}
                             </View>
-                            <Text style={styles.candidateMeta}>
+                            <Text style={[styles.candidateMeta, isRTL && { textAlign: 'right' }]}>
                               {c.memberId || 'ID —'} · {c.cnic || 'CNIC —'}
                             </Text>
                             {c.activeRoles && c.activeRoles.length > 0 ? (
-                              <Text style={styles.candidateRole}>
-                                {c.activeRoles[0].customRoleName || c.activeRoles[0].roleCode?.replace(/_/g, ' ')} ({c.activeRoles[0].unitName || 'Unit'})
+                              <Text style={[styles.candidateRole, isRTL && { textAlign: 'right' }]}>
+                                {c.activeRoles[0].customRoleName || t('roles.' + c.activeRoles[0].roleCode, c.activeRoles[0].roleCode?.replace(/_/g, ' '))} ({c.activeRoles[0].unitName || 'Unit'})
                               </Text>
                             ) : (c.primaryRole ? (
-                              <Text style={styles.candidateRole}>
-                                {c.primaryRole.roleCode?.replace(/_/g, ' ')} ({c.primaryRole.unitName || 'Unit'})
+                              <Text style={[styles.candidateRole, isRTL && { textAlign: 'right' }]}>
+                                {t('roles.' + c.primaryRole.roleCode, c.primaryRole.roleCode?.replace(/_/g, ' '))} ({c.primaryRole.unitName || 'Unit'})
                               </Text>
                             ) : (
-                              <Text style={styles.candidateWorker}>
-                                Party Worker · {c.homeUnit?.provinceName || c.districtName || 'General'}
+                              <Text style={[styles.candidateWorker, isRTL && { textAlign: 'right' }]}>
+                                {t('congress.partyWorker', 'Party Worker')} · {c.homeUnit?.provinceName || c.districtName || t('common.general', 'General')}
                               </Text>
                             ))}
                           </View>
@@ -727,10 +736,12 @@ export default function CongressScreen() {
               {/* Nomination Notes */}
               {selectedMember && (
                 <View style={styles.nominationForm}>
-                  <Text style={styles.modalFilterLabel}>NOMINATION REMARKS / TERMS (OPTIONAL)</Text>
+                  <Text style={[styles.modalFilterLabel, isRTL && { textAlign: 'right' }]}>
+                    {t('congress.nominationRemarks', 'NOMINATION REMARKS / TERMS (OPTIONAL)')}
+                  </Text>
                   <TextInput
-                    style={styles.textArea}
-                    placeholder="Enter appointment remarks, terms, or delegate notes…"
+                    style={[styles.textArea, isRTL && { textAlign: 'right' }]}
+                    placeholder={t('congress.remarksPlaceholder', 'Enter appointment remarks, terms, or delegate notes…')}
                     placeholderTextColor={Colors.textMuted}
                     value={nominationNote}
                     onChangeText={setNominationNote}
@@ -749,7 +760,7 @@ export default function CongressScreen() {
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
                       <Text style={styles.submitAssignBtnText}>
-                        Assign {selectedMember.fullName} to Congress →
+                        {t('congress.assignMemberAction', `Assign ${selectedMember.fullName} to Congress →`, { name: selectedMember.fullName })}
                       </Text>
                     )}
                   </TouchableOpacity>

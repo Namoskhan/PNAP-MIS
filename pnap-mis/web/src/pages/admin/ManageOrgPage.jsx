@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
@@ -134,6 +135,7 @@ function pickTier(roles) {
 }
 
 export default function ManageOrgPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast();
   const isSuper = (user?.roles || []).includes('SUPER_ADMIN');
@@ -238,33 +240,27 @@ export default function ManageOrgPage() {
         <div>
           <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 0.4, textTransform: 'uppercase' }}>
             {isSuper
-              ? (parent ? `Inside ${parent.name}` : 'System-wide')
-              : (tier.parentLabel ? `Within your ${tier.parentLabel.toLowerCase()}` : 'System-wide')}
+              ? (parent ? `Inside ${parent.name}` : t('admin.systemWide'))
+              : (tier.parentLabel ? `Within your ${tier.parentLabel.toLowerCase()}` : t('admin.systemWide'))}
           </div>
-          {/* One page title for Super Admin regardless of depth. The
-              tier being viewed is already stated by the breadcrumb and
-              by the Type column, so retitling the page on every drill
-              just made the header flicker between four names. */}
-          <h2 style={{ margin: '1px 0 0' }}>{isSuper ? 'Manage Units' : tier.title}</h2>
+          <h2 style={{ margin: '1px 0 0' }}>{isSuper ? t('admin.manageUnits') : t(`admin.${tier.title.toLowerCase().replace(/ /g, '_')}`, tier.title)}</h2>
           {tier.subtitle && !parent && (
             <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{tier.subtitle}</div>
           )}
-          {/* Drill trail. Only Super Admin can move between tiers here,
-              so this renders for nobody else. */}
           {isSuper && trail.length > 0 && (
             <div className="dash-crumbs" style={{ marginTop: 6 }}>
               <button type="button" className="dash-crumb" onClick={() => setTrail([])}>
                 Pakistan
               </button>
-              {trail.map((t, i) => (
-                <span key={t.id}>
+              {trail.map((tItem, i) => (
+                <span key={tItem.id}>
                   <span className="dash-crumb-sep">/</span>
                   <button
                     type="button"
                     className="dash-crumb"
                     onClick={() => setTrail(trail.slice(0, i + 1))}
                   >
-                    {t.name}
+                    {tItem.name}
                   </button>
                 </span>
               ))}
@@ -272,7 +268,7 @@ export default function ManageOrgPage() {
           )}
         </div>
         <button className="btn" type="button" onClick={() => setOpen(true)}>
-          + Create {tier.childLabel}
+          + {t('admin.create')} {t(`admin.${tier.childLabel.toLowerCase().replace(' ', '_')}`, tier.childLabel)}
         </button>
       </div>
 
@@ -291,11 +287,11 @@ export default function ManageOrgPage() {
       <table className="smart">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Code</th>
-            <th>Status</th>
-            {canDelete && <th style={{ textAlign: 'right' }}>Actions</th>}
+            <th>{t('admin.name')}</th>
+            <th>{t('admin.type')}</th>
+            <th>{t('admin.code')}</th>
+            <th>{t('admin.status')}</th>
+            {canDelete && <th style={{ textAlign: 'right' }}>{t('common.actions')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -305,8 +301,8 @@ export default function ManageOrgPage() {
               <td colSpan={cols} style={{ padding: 0 }}>
                 <div className="empty-smart" style={{ border: 'none', padding: 36 }}>
                   <div className="empty-icon">📂</div>
-                  <h3>No {tier.childPlural.toLowerCase()} yet</h3>
-                  <p>Click <strong>+ Create {tier.childLabel}</strong> to add the first one.</p>
+                  <h3>{t('admin.noUnitsYet')}</h3>
+                  <p>{t('admin.createUnitHint')}</p>
                 </div>
               </td>
             </tr>
@@ -315,9 +311,6 @@ export default function ManageOrgPage() {
             <tr key={it._id}>
               <td className="cell-strong">
                 {canDrill ? (
-                  // The whole name is the control, with a chevron as the
-                  // affordance — a row you can open should look openable
-                  // before it is hovered.
                   <button
                     type="button"
                     className="unit-drill"
@@ -330,10 +323,10 @@ export default function ManageOrgPage() {
                 ) : it.name}
               </td>
               <td>
-                <span className={`unit-type ${tier.level || ''}`}>{tier.childLabel}</span>
+                <span className={`unit-type ${tier.level || ''}`}>{t(`admin.${tier.childLabel.toLowerCase().replace(' ', '_')}`, tier.childLabel)}</span>
               </td>
               <td>{it.code || <span className="cell-muted">—</span>}</td>
-              <td><span className="badge ACTIVE">{it.isActive === false ? 'Inactive' : 'Active'}</span></td>
+              <td><span className="badge ACTIVE">{it.isActive === false ? t('common.inactive') : t('common.active')}</span></td>
               {canDelete && (
                 <td style={{ textAlign: 'right' }}>
                   <button
@@ -342,7 +335,7 @@ export default function ManageOrgPage() {
                     onClick={() => remove(it)}
                     disabled={deletingId === it._id}
                   >
-                    {deletingId === it._id ? 'Deleting…' : 'Delete'}
+                    {deletingId === it._id ? t('admin.deleting') : t('common.delete')}
                   </button>
                 </td>
               )}
@@ -355,6 +348,7 @@ export default function ManageOrgPage() {
 }
 
 function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [form, setForm] = useState({ name: '', code: '' });
   const [admin, setAdmin] = useState({ fullName: '', username: '', email: '', password: '', passwordConfirm: '' });
@@ -376,28 +370,19 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
     if (!form.name.trim()) { setErr(`${tier.childLabel} name is required`); return; }
     if (tier.showCreateAdmin) {
       if (!admin.fullName.trim()) { setErr('Admin full name is required'); return; }
-      // Email is mandatory: it is the address the account's verification
-      // and password-reset mail is sent to, so an admin created without
-      // one can never recover its own credentials.
       if (!admin.email.trim()) { setErr('Admin email is required'); return; }
       if (!admin.password || admin.password.length < 6) { setErr('Admin password must be at least 6 characters'); return; }
       if (admin.password !== admin.passwordConfirm) { setErr('Password and confirmation do not match.'); return; }
     }
     setBusy(true);
     try {
-      // 1. Create the child unit
       const body = { name: form.name.trim() };
       if (form.code.trim()) body.code = form.code.trim();
-      // Inject the parent scope so backend RBAC passes. A drilling
-      // Super Admin supplies it explicitly (parentId) because its own
-      // user.scope is empty by design; scoped admins read it from
-      // their own scope as before.
       const parentKey = tier.parentScopeKey || tier.parentParam;
       if (parentKey) body[parentKey] = parentId || user.scope?.[parentKey];
       const childRes = await api.post(tier.createEndpoint, body);
       const child = childRes.data.data;
 
-      // 2. Create the admin user (if applicable)
       if (tier.showCreateAdmin && tier.childAdminRole) {
         const scope = {};
         if (tier.childAdminRole === 'PROVINCE_ADMIN') scope.provinceId = child._id;
@@ -409,13 +394,11 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
           role: tier.childAdminRole,
           scope,
         };
-        // passwordConfirm is a form-only field — it is never sent.
         adminBody.email = admin.email.trim();
         if (admin.username.trim()) adminBody.username = admin.username.trim();
         try {
           await api.post('/admin/users', adminBody);
         } catch (adminErr) {
-          // Child unit was created but admin failed — surface clearly
           toast.error(`${tier.childLabel} created, but admin failed: ${errorMessage(adminErr)}`, { duration: 7000 });
           onCreated?.(child);
           onClose?.();
@@ -425,8 +408,6 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
       onCreated?.(child);
       onClose?.();
     } catch (e) {
-      // Toast only — `err` above is reserved for the field-level
-      // validation messages, which must persist while the form is fixed.
       toast.error(errorMessage(e), { title: `Could not create ${tier.childLabel.toLowerCase()}`, duration: 9000 });
     } finally {
       setBusy(false);
@@ -437,7 +418,7 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose?.(); }}>
       <div className="modal" style={{ maxWidth: 560 }} role="dialog" aria-modal="true" aria-label={`Create ${tier.childLabel}`}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h2 style={{ margin: 0 }}>Create {tier.childLabel}</h2>
+          <h2 style={{ margin: 0 }}>{t('admin.create')} {t(`admin.${tier.childLabel.toLowerCase().replace(' ', '_')}`, tier.childLabel)}</h2>
           <button type="button" className="btn secondary" onClick={() => !busy && onClose?.()}
             style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }} aria-label="Close"><XIcon size={16} /></button>
         </div>
@@ -445,35 +426,35 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
         {err && <div className="alert error">{err}</div>}
 
         <form onSubmit={onSubmit}>
-          <h3 className="section-title" style={{ marginTop: 4 }}>{tier.childLabel} details</h3>
+          <h3 className="section-title" style={{ marginTop: 4 }}>{t(`admin.${tier.childLabel.toLowerCase().replace(' ', '_')}`, tier.childLabel)} {t('admin.details')}</h3>
           <div className="form-grid">
             <div className="field">
-              <label>{tier.childLabel} name *</label>
+              <label>{t(`admin.${tier.childLabel.toLowerCase().replace(' ', '_')}`, tier.childLabel)} {t('admin.name')} *</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div className="field">
-              <label>Code (optional)</label>
+              <label>{t('admin.code')} ({t('common.optional')})</label>
               <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="e.g. PB-04" />
             </div>
           </div>
 
           {tier.showCreateAdmin && (
             <>
-              <h3 className="section-title">{tier.childLabel} admin account</h3>
+              <h3 className="section-title">{t(`admin.${tier.childLabel.toLowerCase().replace(' ', '_')}`, tier.childLabel)} {t('admin.adminAccount')}</h3>
               <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
                 This {tier.childAdminRole.replace('_', ' ').toLowerCase()} will manage all units below.
               </p>
               <div className="form-grid">
                 <div className="field">
-                  <label>Admin full name *</label>
+                  <label>{t('admin.fullName')} *</label>
                   <input value={admin.fullName} onChange={(e) => setAdmin({ ...admin, fullName: e.target.value })} required />
                 </div>
                 <div className="field">
-                  <label>Username</label>
+                  <label>{t('admin.username')}</label>
                   <input value={admin.username} onChange={(e) => setAdmin({ ...admin, username: e.target.value })} placeholder="e.g. punjab-admin" />
                 </div>
                 <div className="field">
-                  <label>Email *</label>
+                  <label>{t('admin.email')} *</label>
                   <input
                     type="email"
                     value={admin.email}
@@ -483,7 +464,7 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="org-admin-pw">Password * (min 6 chars)</label>
+                  <label htmlFor="org-admin-pw">{t('admin.password')} *</label>
                   <PasswordInput
                     id="org-admin-pw"
                     value={admin.password}
@@ -493,7 +474,7 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor="org-admin-pw2">Confirm Password *</label>
+                  <label htmlFor="org-admin-pw2">{t('admin.confirmPassword')} *</label>
                   <PasswordInput
                     id="org-admin-pw2"
                     value={admin.passwordConfirm}
@@ -502,27 +483,20 @@ function CreateModal({ open, onClose, tier, user, parentId, onCreated }) {
                     minLength={6}
                     placeholder="Re-enter password"
                   />
-                  {/* Mismatch is caught on submit as well; this is the
-                      immediate feedback so it is not a surprise later. */}
                   {admin.passwordConfirm && admin.password !== admin.passwordConfirm && (
                     <div className="error" style={{ fontSize: 12, marginTop: 4 }}>
-                      Password and confirmation do not match.
+                      {t('admin.passwordsDoNotMatch')}
                     </div>
                   )}
                 </div>
-              </div>
-              <div className="alert info" style={{ background: 'var(--info-bg)', border: '1px solid var(--info)', color: 'var(--info)', fontSize: 13, padding: 10, borderRadius: 6, marginTop: 8 }}>
-                Email is the login identifier and receives verification and
-                password-reset mail. A username may be added as an optional
-                second way to sign in.
               </div>
             </>
           )}
 
           <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button className="btn secondary" type="button" onClick={() => !busy && onClose?.()} disabled={busy}>Cancel</button>
+            <button className="btn secondary" type="button" onClick={() => !busy && onClose?.()} disabled={busy}>{t('common.cancel')}</button>
             <button className="btn" type="submit" disabled={busy}>
-              {busy ? 'Creating…' : `Create ${tier.childLabel}${tier.showCreateAdmin ? ' + Admin' : ''}`}
+              {busy ? t('admin.creating') : `${t('admin.create')} ${t(`admin.${tier.childLabel.toLowerCase().replace(' ', '_')}`, tier.childLabel)}`}
             </button>
           </div>
         </form>

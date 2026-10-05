@@ -73,8 +73,10 @@ export function canManageFinance(user) {
 export function canApproveExpense(user) {
   if (user?.permissions) return hasPermission(user, 'APPROVE_EXPENSE');
   return isHigherAdmin(user)
-    || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN', 'SR_VICE_PRESIDENT', 'FIRST_SECRETARY');
+    || isAreaAdmin(user)
+    || hasRole(user, 'SECRETARY', 'PRESIDENT', 'CHAIRMAN', 'CO_CHAIRMAN', 'GENERAL_SECRETARY');
 }
+export const canApproveFinance = canApproveExpense;
 export function canPostAnnouncement(user) {
   if (user?.permissions) return hasPermission(user, 'POST_ANNOUNCEMENT');
   return isHigherAdmin(user) || hasRole(user, 'SENIOR_MAWIN', 'GENERAL_SECRETARY', 'SECRETARY');

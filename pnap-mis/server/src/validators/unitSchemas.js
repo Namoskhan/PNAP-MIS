@@ -194,6 +194,8 @@ const expenseDecideSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+const donationDecideSchema = expenseDecideSchema;
+
 module.exports = {
   proposeRoleSchema,
   decideRoleSchema,
@@ -203,6 +205,7 @@ module.exports = {
   meetingUpdateSchema,
   activityCreateSchema,
   donationCreateSchema,
+  donationDecideSchema,
   expenseCreateSchema,
   expenseDecideSchema,
   responsibilityCreateSchema,

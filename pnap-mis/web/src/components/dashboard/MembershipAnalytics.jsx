@@ -1,38 +1,10 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import SmartKpi from '../SmartKpi';
 import { SkeletonKpiGrid } from '../Skeleton';
 import { HBar, AreaChart, StackedHBar, BRAND } from '../charts';
 import { UsersIcon, ZapIcon, CheckIcon, MinusCircleIcon } from '../icons';
 import useAnalytics from './useAnalytics';
-
-// Section 3 — total and NEW membership, broken down at EVERY tier
-// beneath the current scope: province-wise, district-wise, area-wise
-// and basic-unit-wise.
-//
-// Four tiers x four measures is sixteen charts if rendered flat, so
-// the tier is a switcher (the same `chip` control the inactive-units
-// table already uses) and the four measures render for the selected
-// tier. Drilling the dashboard into a province simply drops the
-// province tab, since it would be a single bar.
-
-const LEVEL_NOUN = {
-  PROVINCE: 'Province', DISTRICT: 'District',
-  AREA: 'Area', BASIC_UNIT: 'Basic Unit',
-};
-
-// Membership workflow state is a STATUS scale, not a categorical one:
-// the values are ordered and carry meaning (in good standing → awaiting
-// action → declined → off the roster). Status hues are reserved for
-// exactly this and are never reused as "series 4" elsewhere.
-const STATUS_META = [
-  { key: 'ACTIVE', label: 'Active', color: 'var(--success)' },
-  { key: 'PENDING_APPROVAL', label: 'Pending approval', color: 'var(--warning)' },
-  { key: 'REJECTED', label: 'Rejected', color: 'var(--danger)' },
-  { key: 'INACTIVE', label: 'Inactive', color: 'var(--muted)' },
-  { key: 'SUSPENDED', label: 'Suspended', color: 'var(--tier-area)' },
-  { key: 'EXPELLED', label: 'Expelled', color: 'var(--danger-strong)' },
-  { key: 'DECEASED', label: 'Deceased', color: 'var(--muted-soft)' },
-];
 
 function ChartCard({ title, sub, meta, children }) {
   return (
@@ -50,28 +22,42 @@ function ChartCard({ title, sub, meta, children }) {
 }
 
 export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
+  const { t } = useTranslation();
   const { data, loading, error } = useAnalytics('/dashboard/membership', params);
   const [tier, setTier] = useState(null);
+
+  const levelNounMap = {
+    PROVINCE: t('units.province', 'Province'),
+    DISTRICT: t('units.district', 'District'),
+    AREA: t('units.area', 'Area'),
+    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
+  };
+
+  const statusMeta = [
+    { key: 'ACTIVE', label: t('common.active', 'Active'), color: 'var(--success)' },
+    { key: 'PENDING_APPROVAL', label: t('dashboard.pendingApprovals', 'Pending approval'), color: 'var(--warning)' },
+    { key: 'REJECTED', label: t('common.rejected', 'Rejected'), color: 'var(--danger)' },
+    { key: 'INACTIVE', label: t('dashboard.inactive', 'Inactive'), color: 'var(--muted)' },
+    { key: 'SUSPENDED', label: t('dashboard.statuses.SUSPENDED', 'Suspended'), color: 'var(--tier-area)' },
+    { key: 'EXPELLED', label: t('dashboard.statuses.EXPELLED', 'Expelled'), color: 'var(--danger-strong)' },
+    { key: 'DECEASED', label: t('dashboard.statuses.DECEASED', 'Deceased'), color: 'var(--muted-soft)' },
+  ];
 
   if (loading && !data) return <SkeletonKpiGrid count={4} />;
   if (error) return <div className="alert error">{error}</div>;
   if (!data) return null;
 
-  const t = data.totals;
+  const totals = data.totals;
   const levels = data.levels || [];
-  // Default to the broadest tier available; fall back if the scope
-  // changed under a selection that no longer exists.
   const activeTier = levels.includes(tier) ? tier : levels[0] || null;
   const rows = activeTier ? (data.byLevel[activeTier] || []) : [];
-  const noun = activeTier ? LEVEL_NOUN[activeTier] : null;
+  const noun = activeTier ? levelNounMap[activeTier] : null;
   const top = rows.slice(0, 10);
 
-  // Zero-count states are dropped rather than drawn as empty rows —
-  // an org with no expulsions shouldn't carry an "Expelled 0" bar.
-  const statusRows = STATUS_META
+  const statusRows = statusMeta
     .map((m) => ({ label: m.label, value: byStatus?.[m.key] || 0, color: m.color }))
     .filter((r) => r.value > 0);
-  const statusTotal = statusRows.reduce((s, r) => s + r.value, 0);
+  const statusTotal = statusRows.reduce((sum, r) => sum + r.value, 0);
 
   return (
     <>
@@ -81,22 +67,22 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
         gap: 10, marginBottom: 12,
       }}>
         <SmartKpi
-          label="Total members" value={t.total}
+          label={t('dashboard.totalMembers', 'Total members')} value={totals.total}
           icon={<UsersIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="New members" value={t.newMembers}
+          label={t('dashboard.newMembers', 'New members')} value={totals.newMembers}
           icon={<ZapIcon size={14} />}
           iconBg="var(--primary-tint)" iconColor="var(--primary)"
         />
         <SmartKpi
-          label="Active members" value={t.active}
+          label={t('dashboard.activeMembers', 'Active members')} value={totals.active}
           icon={<CheckIcon size={14} />}
           iconBg="var(--success-bg)" iconColor="var(--success)"
         />
         <SmartKpi
-          label="Inactive members" value={t.inactive}
+          label={t('dashboard.inactiveMembers', 'Inactive members')} value={totals.inactive}
           icon={<MinusCircleIcon size={14} />}
           iconBg="var(--surface-alt)" iconColor="var(--muted)"
         />
@@ -107,7 +93,7 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
           display: 'flex', gap: 6, flexWrap: 'wrap',
           alignItems: 'center', marginBottom: 10,
         }}>
-          <span className="muted" style={{ fontSize: 12, marginRight: 2 }}>Show by</span>
+          <span className="muted" style={{ fontSize: 12, marginRight: 2 }}>{t('dashboard.showBy', 'Show by')}</span>
           {levels.map((lvl) => (
             <button
               key={lvl}
@@ -115,7 +101,7 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
               className={`chip${activeTier === lvl ? ' on' : ''}`}
               onClick={() => setTier(lvl)}
             >
-              {LEVEL_NOUN[lvl]}
+              {levelNounMap[lvl] || lvl}
             </button>
           ))}
         </div>
@@ -126,24 +112,20 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: 10,
       }}>
-        {/* Workflow state — a different question from "active", which
-            on this dashboard means recent organizational work. A member
-            can be status ACTIVE and still dormant, and this is where
-            that distinction becomes visible. */}
         {statusRows.length > 0 && (
           <ChartCard
-            title="Members by status"
-            sub="Shows each member's registration status. Activity is shown separately."
-            meta={`${statusTotal.toLocaleString()} total`}
+            title={t('dashboard.membersByStatus', 'Members by status')}
+            sub={t('dashboard.membersByStatusSub', "Shows each member's registration status. Activity is shown separately.")}
+            meta={`${statusTotal.toLocaleString()} ${t('common.total', 'total')}`}
           >
-            <HBar rows={statusRows} emptyLabel="No members registered yet." />
+            <HBar rows={statusRows} emptyLabel={t('common.noData', 'No members registered yet.')} />
           </ChartCard>
         )}
 
         <ChartCard
-          title="New members each month"
-          sub="New members per month, last 12 months"
-          meta={`${t.newMembers.toLocaleString()} in ${windowLabel}`}
+          title={t('dashboard.newMembersEachMonth', 'New members each month')}
+          sub={t('dashboard.newMembersPerMonth12', 'New members per month, last 12 months')}
+          meta={`${totals.newMembers.toLocaleString()} in ${windowLabel}`}
         >
           {data.trend && data.trend.length > 1 ? (
             <AreaChart
@@ -154,38 +136,38 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
               fill={BRAND.tint}
             />
           ) : (
-            <p className="muted" style={{ margin: 0, fontSize: 13 }}>Not enough data to show this chart yet.</p>
+            <p className="muted" style={{ margin: 0, fontSize: 13 }}>{t('dashboard.notEnoughDataChart', 'Not enough data to show this chart yet.')}</p>
           )}
         </ChartCard>
 
         {noun && (
           <>
-            <ChartCard title={`Members by ${noun.toLowerCase()}`} sub="Total members">
+            <ChartCard title={`${t('common.members', 'Members')} by ${noun.toLowerCase()}`} sub={t('dashboard.totalMembers', 'Total members')}>
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.total }))}
                 accent={BRAND.dark}
-                emptyLabel="No units found for this selection."
+                emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units found for this selection.')}
               />
             </ChartCard>
-            <ChartCard title={`New members by ${noun.toLowerCase()}`} sub={`Registered in the ${windowLabel}`}>
+            <ChartCard title={`${t('dashboard.newMembers', 'New members')} by ${noun.toLowerCase()}`} sub={`${t('auth.register', 'Registered')} in the ${windowLabel}`}>
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.newMembers }))}
                 accent={BRAND.bright}
-                emptyLabel="No units found for this selection."
+                emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units found for this selection.')}
               />
             </ChartCard>
-            <ChartCard title={`Active members by ${noun.toLowerCase()}`} sub="Took part during the selected dates">
+            <ChartCard title={`${t('dashboard.activeMembers', 'Active members')} by ${noun.toLowerCase()}`} sub={t('dashboard.takingPart', 'Took part during the selected dates')}>
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.active }))}
                 accent="var(--success)"
-                emptyLabel="No units found for this selection."
+                emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units found for this selection.')}
               />
             </ChartCard>
-            <ChartCard title={`Inactive members by ${noun.toLowerCase()}`} sub="No activity during the selected dates">
+            <ChartCard title={`${t('dashboard.inactiveMembers', 'Inactive members')} by ${noun.toLowerCase()}`} sub={t('dashboard.notTakingPart', 'No activity during the selected dates')}>
               <HBar
                 rows={top.map((r) => ({ label: r.name, value: r.inactive }))}
                 accent="var(--muted-soft)"
-                emptyLabel="No units found for this selection."
+                emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units found for this selection.')}
               />
             </ChartCard>
           </>
@@ -194,9 +176,9 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
 
       {noun && rows.length > 0 && (
         <ChartCard
-          title={`Compare members by ${noun.toLowerCase()}`}
-          sub="Each bar shows total members. Colours show active and inactive members."
-          meta={`${rows.length} ${noun.toLowerCase()}${rows.length === 1 ? '' : 's'}`}
+          title={`${t('dashboard.comparison', 'Compare')} ${t('common.members', 'members')} by ${noun.toLowerCase()}`}
+          sub={t('dashboard.composition30d', 'Each bar shows total members. Colours show active and inactive members.')}
+          meta={`${rows.length} ${noun.toLowerCase()}`}
         >
           <StackedHBar
             rows={rows.map((r) => ({
@@ -205,18 +187,17 @@ export default function MembershipAnalytics({ params, windowLabel, byStatus }) {
               note: r.newMembers,
             }))}
             series={[
-              { key: 'active', label: 'Taking part', color: 'var(--success)' },
-              { key: 'inactive', label: 'Not taking part', color: 'var(--muted-soft)' },
+              { key: 'active', label: t('dashboard.takingPart', 'Taking part'), color: 'var(--success)' },
+              { key: 'inactive', label: t('dashboard.notTakingPart', 'Not taking part'), color: 'var(--muted-soft)' },
             ]}
-            noteLabel="Joined recently"
-            emptyLabel="No units found for this selection."
+            noteLabel={t('dashboard.joinedRecently', 'Joined recently')}
+            emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units found for this selection.')}
           />
           <p className="muted" style={{ fontSize: 11.5, marginTop: 12, marginBottom: 0 }}>
-            The green figure after each bar is how many people joined recently.
+            {t('dashboard.joinedRecentlyNote', 'The green figure after each bar is how many people joined recently.')}
           </p>
         </ChartCard>
       )}
-
     </>
   );
 }

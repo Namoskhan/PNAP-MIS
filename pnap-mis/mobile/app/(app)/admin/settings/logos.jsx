@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { api, errorMessage, SERVER_BASE } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
@@ -11,16 +12,17 @@ import { confirmAction } from '../../../../src/utils/dialog';
 import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/colors';
 
 const SLOTS = [
-  { slot: 'sidebar', label: 'Sidebar logo', description: 'Shown at the top of the sidebar in light mode.', recommended: '256×64 PNG, ≤100 KB' },
-  { slot: 'sidebarDark', label: 'Sidebar logo (dark mode)', description: 'Variant used when the dark theme is active.', recommended: '256×64 PNG, ≤100 KB' },
-  { slot: 'login', label: 'Login page logo', description: 'Logo above the login form.', recommended: '512×512 PNG, ≤200 KB' },
-  { slot: 'favicon', label: 'Browser tab favicon', description: 'Browser tab icon.', recommended: '32×32 to 64×64 PNG, ≤50 KB' },
-  { slot: 'print', label: 'Print / export logo', description: 'High-DPI version embedded in PDF / XLSX exports.', recommended: '1024×256 PNG, ≤500 KB' },
+  { slot: 'sidebar', labelKey: 'admin.settings.sidebarLogo', label: 'Sidebar logo', descKey: 'admin.settings.sidebarLogoDesc', description: 'Shown at the top of the sidebar in light mode.', recommended: '256×64 PNG, ≤100 KB' },
+  { slot: 'sidebarDark', labelKey: 'admin.settings.sidebarDarkLogo', label: 'Sidebar logo (dark mode)', descKey: 'admin.settings.sidebarDarkLogoDesc', description: 'Variant used when the dark theme is active.', recommended: '256×64 PNG, ≤100 KB' },
+  { slot: 'login', labelKey: 'admin.settings.loginLogo', label: 'Login page logo', descKey: 'admin.settings.loginLogoDesc', description: 'Logo above the login form.', recommended: '512×512 PNG, ≤200 KB' },
+  { slot: 'favicon', labelKey: 'admin.settings.faviconLogo', label: 'Browser tab favicon', descKey: 'admin.settings.faviconLogoDesc', description: 'Browser tab icon.', recommended: '32×32 to 64×64 PNG, ≤50 KB' },
+  { slot: 'print', labelKey: 'admin.settings.printLogo', label: 'Print / export logo', descKey: 'admin.settings.printLogoDesc', description: 'High-DPI version embedded in PDF / XLSX exports.', recommended: '1024×256 PNG, ≤500 KB' },
 ];
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export default function LogoManagerScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -49,26 +51,26 @@ export default function LogoManagerScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
-        <View style={styles.heroHeader}>
-          <View style={styles.heroIconBg}>
+      <View style={[styles.hero, isRTL && { flexDirection: 'row-reverse' }]}>
+        <View style={[styles.heroHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.heroIconBg, isRTL ? { marginLeft: Spacing.md, marginRight: 0 } : { marginRight: Spacing.md }]}>
             <Ionicons name="images" size={24} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>Logo Manager</Text>
-            <Text style={styles.heroSub}>
-              Upload, replace, or reset the five branding logo slots.
+            <Text style={[styles.heroTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.logoManager', 'Logo Manager')}</Text>
+            <Text style={[styles.heroSub, isRTL && { textAlign: 'right' }]}>
+              {t('admin.settings.logoManagerSub', 'Upload, replace, or reset the five branding logo slots.')}
             </Text>
           </View>
         </View>
-        <View style={styles.heroActions}>
-          <TouchableOpacity style={styles.btnOutline} onPress={() => router.back()} disabled={busy}>
-            <Ionicons name="arrow-back" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-            <Text style={styles.btnOutlineText}>Back</Text>
+        <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
+          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={busy}>
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={styles.btnOutlineText}>{t('admin.settings.backToSettings', 'Back')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnOutline} onPress={load} disabled={busy}>
-            <Ionicons name="refresh" size={16} color={Colors.text} style={{ marginRight: 6 }} />
-            <Text style={styles.btnOutlineText}>Refresh</Text>
+          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={load} disabled={busy}>
+            <Ionicons name="refresh" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+            <Text style={styles.btnOutlineText}>{t('common.refresh', 'Refresh')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -78,16 +80,16 @@ export default function LogoManagerScreen() {
       {!busy && logos && (
         <>
           <View style={styles.infoAlert}>
-            <Text style={styles.infoAlertText}>
-              <Text style={{ fontWeight: '700' }}>Format:</Text> JPEG, PNG, or WebP up to 5 MB.
+            <Text style={[styles.infoAlertText, isRTL && { textAlign: 'right' }]}>
+              {t('admin.settings.logoFormatNotice', 'Format: JPEG, PNG, or WebP up to 5 MB. SVG is not supported.')}
             </Text>
           </View>
           {SLOTS.map((s) => (
             <LogoUploader
               key={s.slot}
               slot={s.slot}
-              label={s.label}
-              description={s.description}
+              label={t(s.labelKey, s.label)}
+              description={t(s.descKey, s.description)}
               recommended={s.recommended}
               currentUrl={logos[s.slot]?.url || ''}
               onChanged={onChanged}
@@ -102,6 +104,7 @@ export default function LogoManagerScreen() {
 }
 
 function LogoUploader({ slot, label, description, currentUrl, recommended, onChanged, disabled }) {
+  const { t, isRTL } = useLanguage();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [previewUri, setPreviewUri] = useState(null);
@@ -119,7 +122,7 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
       const asset = result.assets[0];
       
       if (asset.fileSize && asset.fileSize > MAX_BYTES) {
-        toast.error(`File is over the 5 MB limit.`);
+        toast.error(t('admin.settings.fileOverLimit', 'File is over the 5 MB limit.'));
         return;
       }
 
@@ -149,7 +152,7 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
         });
       }
       
-      toast.success(`${label} uploaded.`);
+      toast.success(t('admin.settings.logoUploaded', '{{label}} uploaded.', { label }));
       onChanged();
     } catch (e) {
       toast.error(errorMessage(e));
@@ -161,13 +164,13 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
 
   function resetImage() {
     confirmAction(
-      'Confirm Reset',
-      `Reset ${label}? The current image will be removed.`,
+      t('common.confirm', 'Confirm Reset'),
+      t('admin.settings.resetLogoConfirm', 'Reset {{label}}? The current image will be removed.', { label }),
       async () => {
         setBusy(true);
         try {
           await api.post(`/settings/logos/${slot}/reset`);
-          toast.success(`${label} reset to default.`);
+          toast.success(t('admin.settings.logoReset', '{{label}} reset to default.', { label }));
           onChanged();
         } catch (e) {
           toast.error(errorMessage(e));
@@ -175,7 +178,7 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
           setBusy(false);
         }
       },
-      { destructive: true, confirmText: 'Reset' }
+      { destructive: true, confirmText: t('admin.settings.reset', 'Reset') }
     );
   }
 
@@ -183,40 +186,40 @@ function LogoUploader({ slot, label, description, currentUrl, recommended, onCha
 
   return (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
+      <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
         <Ionicons name="image-outline" size={18} color={Colors.textLight} />
-        <Text style={styles.cardTitle}>{label}</Text>
+        <Text style={[styles.cardTitle, isRTL && { textAlign: 'right', marginRight: Spacing.sm, marginLeft: 0 }]}>{label}</Text>
         {currentUrl ? (
-          <View style={styles.badge}><Text style={styles.badgeText}>configured</Text></View>
+          <View style={styles.badge}><Text style={styles.badgeText}>{t('admin.settings.logoConfigured', 'configured')}</Text></View>
         ) : null}
       </View>
       <View style={styles.cardBody}>
-        <View style={styles.uploaderLayout}>
+        <View style={[styles.uploaderLayout, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={styles.thumbnailContainer}>
             {displayUrl ? (
               <Image source={{ uri: displayUrl }} style={styles.thumbnail} resizeMode="contain" />
             ) : (
-              <Text style={styles.thumbnailPlaceholder}>No image — using default</Text>
+              <Text style={styles.thumbnailPlaceholder}>{t('admin.settings.noImageDefault', 'No image — using default')}</Text>
             )}
           </View>
 
           <View style={styles.uploaderInfo}>
-            <Text style={styles.descriptionText}>{description}</Text>
+            <Text style={[styles.descriptionText, isRTL && { textAlign: 'right' }]}>{description}</Text>
             {Boolean(recommended) && (
-              <Text style={styles.recommendedText}>
-                <Text style={{ fontWeight: '600' }}>Recommended:</Text> {recommended}
+              <Text style={[styles.recommendedText, isRTL && { textAlign: 'right' }]}>
+                <Text style={{ fontWeight: '600' }}>{t('admin.settings.recommended', 'Recommended')}:</Text> {recommended}
               </Text>
             )}
             
-            <View style={styles.uploaderActions}>
-              <TouchableOpacity style={[styles.actionBtn, (disabled || busy) && styles.btnDisabled]} onPress={pickImage} disabled={disabled || busy}>
-                <Ionicons name="cloud-upload" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.actionBtnText}>{busy ? 'Uploading...' : (currentUrl ? 'Replace' : 'Upload')}</Text>
+            <View style={[styles.uploaderActions, isRTL && { flexDirection: 'row-reverse' }]}>
+              <TouchableOpacity style={[styles.actionBtn, (disabled || busy) && styles.btnDisabled, isRTL && { flexDirection: 'row-reverse' }]} onPress={pickImage} disabled={disabled || busy}>
+                <Ionicons name="cloud-upload" size={14} color={Colors.primary} style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+                <Text style={styles.actionBtnText}>{busy ? t('common.uploading', 'Uploading...') : (currentUrl ? t('admin.settings.replace', 'Replace') : t('common.upload', 'Upload'))}</Text>
               </TouchableOpacity>
               {Boolean(currentUrl) && !disabled && (
-                <TouchableOpacity style={[styles.actionBtn, busy && styles.btnDisabled]} onPress={resetImage} disabled={busy}>
-                  <Ionicons name="refresh" size={14} color={Colors.error} style={{ marginRight: 4 }} />
-                  <Text style={[styles.actionBtnText, { color: Colors.error }]}>Reset</Text>
+                <TouchableOpacity style={[styles.actionBtn, busy && styles.btnDisabled, isRTL && { flexDirection: 'row-reverse' }]} onPress={resetImage} disabled={busy}>
+                  <Ionicons name="refresh" size={14} color={Colors.error} style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+                  <Text style={[styles.actionBtnText, { color: Colors.error }]}>{t('admin.settings.reset', 'Reset')}</Text>
                 </TouchableOpacity>
               )}
             </View>

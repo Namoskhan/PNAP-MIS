@@ -1,5 +1,7 @@
 import { EventTypeList } from '../../../../src/components/admin/EventTypesShared';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 
 export default function MeetingTypesScreen() {
-  return <EventTypeList entity="MEETING" title="Meeting Types" icon="📅" />;
+  const { t } = useLanguage();
+  return <EventTypeList entity="MEETING" title={t('admin.meetingTypes', 'Meeting Types')} icon="📅" />;
 }

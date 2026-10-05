@@ -22,6 +22,7 @@ import Badge from '../../../src/components/Badge';
 import Card from '../../../src/components/Card';
 import EmptyState from '../../../src/components/EmptyState';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
+import { useLanguage } from '../../../src/context/LanguageContext';
 
 const TIER_CONFIG = {
   SUPER_ADMIN: {
@@ -161,7 +162,30 @@ function pickTier(roles = []) {
 export default function OrgScreen() {
   const { user } = useAuth();
   const toast = useToast();
+  const { t, isRTL } = useLanguage();
   const isSuper = (user?.roles || []).includes('SUPER_ADMIN');
+
+  const getChildLabel = (level) => {
+    if (level === 'PROVINCE') return t('admin.province') || 'Province';
+    if (level === 'DISTRICT') return t('admin.district') || 'District';
+    if (level === 'AREA') return t('admin.area') || 'Area';
+    if (level === 'BASIC_UNIT') return t('admin.basicUnit') || 'Basic Unit';
+    return 'Unit';
+  };
+  const getChildPlural = (level) => {
+    if (level === 'PROVINCE') return t('admin.provinces') || 'Provinces';
+    if (level === 'DISTRICT') return t('admin.districts') || 'Districts';
+    if (level === 'AREA') return t('admin.areas') || 'Areas';
+    if (level === 'BASIC_UNIT') return t('admin.basicUnits') || 'Basic Units';
+    return 'Units';
+  };
+  const getTierTitle = (level) => {
+    if (level === 'PROVINCE') return t('admin.manageProvinces') || 'Manage Provinces';
+    if (level === 'DISTRICT') return t('admin.manageDistricts') || 'Manage Districts';
+    if (level === 'AREA') return t('admin.manageAreas') || 'Manage Areas';
+    if (level === 'BASIC_UNIT') return t('admin.manageBasicUnits') || 'Manage Basic Units';
+    return t('admin.units.title') || 'Manage Units';
+  };
 
   const [trail, setTrail] = useState([]); // [{ id, name, level }, ...]
   const tier = isSuper
@@ -170,7 +194,7 @@ export default function OrgScreen() {
 
   const parent = trail[trail.length - 1] || null;
   const canDrill = isSuper && trail.length < SUPER_LEVELS.length - 1;
-  const childNoun = canDrill ? SUPER_LEVELS[trail.length + 1].childLabel : '';
+  const childNoun = canDrill ? getChildLabel(SUPER_LEVELS[trail.length + 1].level) : '';
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -356,8 +380,8 @@ export default function OrgScreen() {
   }
 
   const headerScopeText = isSuper
-    ? (parent ? `Inside ${parent.name}` : 'System-wide')
-    : (tier.parentLabel ? `Within your ${tier.parentLabel.toLowerCase()}` : 'System-wide');
+    ? (parent ? `${t('admin.inside') || 'Inside'} ${parent.name}` : (t('admin.systemWide') || 'System-wide'))
+    : (tier.parentLabel ? `${t('admin.withinYour') || 'Within your'} ${tier.parentLabel.toLowerCase()}` : (t('admin.systemWide') || 'System-wide'));
 
   function renderItem({ item }) {
     const isDeleting = deletingId === item._id;
@@ -365,7 +389,7 @@ export default function OrgScreen() {
     return (
       <Card style={styles.itemCard}>
         <TouchableOpacity
-          style={styles.itemRow}
+          style={[styles.itemRow, isRTL && { flexDirection: 'row-reverse' }]}
           onPress={() => {
             if (canDrill) {
               setTrail([...trail, { id: item._id, name: item.name, level: tier.level }]);
@@ -375,9 +399,9 @@ export default function OrgScreen() {
           activeOpacity={canDrill ? 0.7 : 1}
         >
           <View style={{ flex: 1 }}>
-            <View style={styles.titleRow}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Badge label={tier.childLabel} status="ACTIVE" style={styles.typeBadge} />
+            <View style={[styles.titleRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.itemName, isRTL && { textAlign: 'right' }]}>{item.name}</Text>
+              <Badge label={getChildLabel(tier.level)} status="ACTIVE" style={styles.typeBadge} />
               {item.code ? (
                 <View style={styles.codeBadge}>
                   <Text style={styles.codeBadgeText}>{item.code}</Text>
@@ -385,15 +409,17 @@ export default function OrgScreen() {
               ) : null}
             </View>
 
-            <View style={styles.metaRow}>
+            <View style={[styles.metaRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Badge
-                label={item.isActive === false ? 'Inactive' : 'Active'}
+                label={item.isActive === false ? (t('admin.inactiveStatus') || 'Inactive') : (t('admin.activeStatus') || 'Active')}
                 status={item.isActive === false ? 'INACTIVE' : 'ACTIVE'}
               />
               {canDrill && (
-                <View style={styles.drillBox}>
-                  <Text style={styles.drillText}>Show {childNoun.toLowerCase()}s</Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+                <View style={[styles.drillBox, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={styles.drillText}>
+                    {t('admin.showSubUnits') || 'Show'} {getChildPlural(tier.level).toLowerCase()}
+                  </Text>
+                  <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={14} color={Colors.primary} />
                 </View>
               )}
             </View>
@@ -402,7 +428,7 @@ export default function OrgScreen() {
           {isSuper && (
             <TouchableOpacity
               onPress={() => handleDelete(item)}
-              style={styles.deleteBtn}
+              style={[styles.deleteBtn, isRTL && { marginRight: Spacing.sm, marginLeft: 0 }]}
               disabled={isDeleting}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
@@ -421,41 +447,51 @@ export default function OrgScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.scopeHeader}>{headerScopeText}</Text>
-          <Text style={styles.headerTitle}>{isSuper ? 'Manage Units' : tier.title}</Text>
+          <Text style={[styles.scopeHeader, isRTL && { textAlign: 'right' }]}>{headerScopeText}</Text>
+          <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>
+            {isSuper ? (t('admin.units.title') || 'Manage Units') : getTierTitle(tier.level)}
+          </Text>
           {tier.subtitle && !parent && (
-            <Text style={styles.headerSub}>{tier.subtitle}</Text>
+            <Text style={[styles.headerSub, isRTL && { textAlign: 'right' }]}>{tier.subtitle}</Text>
           )}
         </View>
 
-        <TouchableOpacity style={styles.createBtn} onPress={handleOpenCreate}>
-          <Ionicons name="add" size={18} color="#fff" style={{ marginRight: 4 }} />
-          <Text style={styles.createBtnText}>Create {tier.childLabel}</Text>
+        <TouchableOpacity
+          style={[styles.createBtn, isRTL && { flexDirection: 'row-reverse' }]}
+          onPress={handleOpenCreate}
+        >
+          <Ionicons name="add" size={18} color="#fff" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+          <Text style={styles.createBtnText}>
+            {t('admin.create') || 'Create'} {getChildLabel(tier.level)}
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Super Admin Breadcrumb Trail */}
       {isSuper && trail.length > 0 && (
-        <View style={styles.trailBar}>
-          <TouchableOpacity onPress={() => setTrail(trail.slice(0, -1))} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={16} color={Colors.text} />
-            <Text style={styles.backBtnText}>Back</Text>
+        <View style={[styles.trailBar, isRTL && { flexDirection: 'row-reverse' }]}>
+          <TouchableOpacity
+            onPress={() => setTrail(trail.slice(0, -1))}
+            style={[styles.backBtn, isRTL && { flexDirection: 'row-reverse', marginLeft: Spacing.md, marginRight: 0 }]}
+          >
+            <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={16} color={Colors.text} />
+            <Text style={styles.backBtnText}>{t('common.back') || 'Back'}</Text>
           </TouchableOpacity>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trailScroll}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.trailScroll, isRTL && { flexDirection: 'row-reverse' }]}>
             <TouchableOpacity onPress={() => setTrail([])}>
-              <Text style={styles.crumbRoot}>Pakistan</Text>
+              <Text style={styles.crumbRoot}>{t('admin.country') || 'Pakistan'}</Text>
             </TouchableOpacity>
-            {trail.map((t, i) => (
-              <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {trail.map((tItem, i) => (
+              <View key={tItem.id} style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }}>
                 <Text style={styles.crumbSep}>/</Text>
                 <TouchableOpacity
                   onPress={() => setTrail(trail.slice(0, i + 1))}
                   disabled={i === trail.length - 1}
                 >
                   <Text style={[styles.crumbText, i === trail.length - 1 && styles.crumbTextActive]}>
-                    {t.name}
+                    {tItem.name}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -476,8 +512,8 @@ export default function OrgScreen() {
           !loading && (
             <EmptyState
               icon="📂"
-              title={`No ${tier.childPlural.toLowerCase()} yet`}
-              message={`Tap "+ Create ${tier.childLabel}" to add the first one.`}
+              title={`${t('admin.noUnitsYet') || 'No units yet'}`}
+              message={`${t('admin.tapToCreateFirstUnit') || 'Tap to create the first one.'}`}
             />
           )
         }
@@ -495,8 +531,10 @@ export default function OrgScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create {tier.childLabel}</Text>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.modalTitle}>
+                {t('admin.create') || 'Create'} {getChildLabel(tier.level)}
+              </Text>
               <TouchableOpacity
                 onPress={() => { if (!busy) setOpen(false); }}
                 disabled={busy}
@@ -508,18 +546,22 @@ export default function OrgScreen() {
 
             <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
               {formErr ? (
-                <View style={styles.errorAlert}>
-                  <Ionicons name="alert-circle" size={16} color={Colors.error} style={{ marginRight: 6 }} />
-                  <Text style={styles.errorAlertText}>{formErr}</Text>
+                <View style={[styles.errorAlert, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Ionicons name="alert-circle" size={16} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={[styles.errorAlertText, isRTL && { textAlign: 'right' }]}>{formErr}</Text>
                 </View>
               ) : null}
 
               {/* Section 1: Unit details */}
-              <Text style={styles.sectionHeader}>{tier.childLabel} details</Text>
+              <Text style={[styles.sectionHeader, isRTL && { textAlign: 'right' }]}>
+                {getChildLabel(tier.level)} {t('admin.unitDetails') || 'details'}
+              </Text>
               <View style={styles.fieldBox}>
-                <Text style={styles.fieldLabel}>{tier.childLabel} name *</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+                  {getChildLabel(tier.level)} {t('admin.unitName') || 'name'} *
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.name}
                   onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
                   placeholder={`e.g. ${tier.level === 'PROVINCE' ? 'Punjab' : (tier.level === 'DISTRICT' ? 'Lahore' : 'Gulberg')}`}
@@ -528,9 +570,11 @@ export default function OrgScreen() {
               </View>
 
               <View style={styles.fieldBox}>
-                <Text style={styles.fieldLabel}>Code (optional)</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+                  {t('admin.unitCode') || 'Code'} ({t('admin.optional') || 'optional'})
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.code}
                   onChangeText={(v) => setForm((f) => ({ ...f, code: v.toUpperCase() }))}
                   placeholder="e.g. PB-04, LHR"
@@ -543,15 +587,19 @@ export default function OrgScreen() {
               {tier.showCreateAdmin && (
                 <>
                   <View style={styles.divider} />
-                  <Text style={styles.sectionHeader}>{tier.childLabel} admin account</Text>
-                  <Text style={styles.sectionSub}>
+                  <Text style={[styles.sectionHeader, isRTL && { textAlign: 'right' }]}>
+                    {getChildLabel(tier.level)} {t('admin.adminAccount') || 'admin account'}
+                  </Text>
+                  <Text style={[styles.sectionSub, isRTL && { textAlign: 'right' }]}>
                     This {tier.childAdminRole.replace('_', ' ').toLowerCase()} will manage all units below.
                   </Text>
 
                   <View style={styles.fieldBox}>
-                    <Text style={styles.fieldLabel}>Admin full name *</Text>
+                    <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+                      {t('admin.fullName') || 'Admin full name'} *
+                    </Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, isRTL && { textAlign: 'right' }]}
                       value={admin.fullName}
                       onChangeText={(v) => setAdmin((a) => ({ ...a, fullName: v }))}
                       placeholder="e.g. Ahmad Khan"
@@ -560,9 +608,11 @@ export default function OrgScreen() {
                   </View>
 
                   <View style={styles.fieldBox}>
-                    <Text style={styles.fieldLabel}>Username (optional)</Text>
+                    <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+                      {t('admin.username') || 'Username'} ({t('admin.optional') || 'optional'})
+                    </Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, isRTL && { textAlign: 'right' }]}
                       value={admin.username}
                       onChangeText={(v) => setAdmin((a) => ({ ...a, username: v }))}
                       placeholder="e.g. punjab-admin"
@@ -572,9 +622,11 @@ export default function OrgScreen() {
                   </View>
 
                   <View style={styles.fieldBox}>
-                    <Text style={styles.fieldLabel}>Email *</Text>
+                    <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+                      {t('admin.email') || 'Email'} *
+                    </Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, isRTL && { textAlign: 'right' }]}
                       value={admin.email}
                       onChangeText={(v) => setAdmin((a) => ({ ...a, email: v }))}
                       placeholder="admin@pknap.org"
@@ -585,65 +637,97 @@ export default function OrgScreen() {
                   </View>
 
                   <View style={styles.fieldBox}>
-                    <Text style={styles.fieldLabel}>Password * (min 6 chars)</Text>
-                    <View style={styles.passwordWrap}>
-                      <TextInput
-                        style={styles.passwordInput}
-                        value={admin.password}
-                        onChangeText={(v) => setAdmin((a) => ({ ...a, password: v }))}
-                        placeholder="••••••••"
-                        placeholderTextColor={Colors.textLight}
-                        secureTextEntry={!showPassword}
-                        autoCapitalize="none"
-                      />
-                      <TouchableOpacity
-                        style={styles.eyeBtn}
-                        onPress={() => setShowPassword(!showPassword)}
-                      >
-                        <Ionicons
-                          name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                          size={18}
-                          color={Colors.textMuted}
-                        />
-                      </TouchableOpacity>
+                    <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+                      {t('admin.passwordMin6') || 'Password * (min 6 chars)'}
+                    </Text>
+                    <View style={[styles.passwordWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+                      {isRTL ? (
+                        <>
+                          <TouchableOpacity
+                            style={styles.eyeBtn}
+                            onPress={() => setShowPassword(!showPassword)}
+                          >
+                            <Ionicons
+                              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                              size={18}
+                              color={Colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                          <TextInput
+                            style={[styles.passwordInput, { textAlign: 'right' }]}
+                            value={admin.password}
+                            onChangeText={(v) => setAdmin((a) => ({ ...a, password: v }))}
+                            placeholder="••••••••"
+                            placeholderTextColor={Colors.textLight}
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <TextInput
+                            style={styles.passwordInput}
+                            value={admin.password}
+                            onChangeText={(v) => setAdmin((a) => ({ ...a, password: v }))}
+                            placeholder="••••••••"
+                            placeholderTextColor={Colors.textLight}
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                          />
+                          <TouchableOpacity
+                            style={styles.eyeBtn}
+                            onPress={() => setShowPassword(!showPassword)}
+                          >
+                            <Ionicons
+                              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                              size={18}
+                              color={Colors.textMuted}
+                            />
+                          </TouchableOpacity>
+                        </>
+                      )}
                     </View>
                   </View>
 
                   <View style={styles.fieldBox}>
-                    <Text style={styles.fieldLabel}>Confirm Password *</Text>
-                    <View style={styles.passwordWrap}>
+                    <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>
+                      {t('admin.confirmPassword') || 'Confirm Password *'}
+                    </Text>
+                    <View style={[styles.passwordWrap, isRTL && { flexDirection: 'row-reverse' }]}>
                       <TextInput
-                        style={styles.passwordInput}
+                        style={[styles.passwordInput, isRTL && { textAlign: 'right' }]}
                         value={admin.passwordConfirm}
                         onChangeText={(v) => setAdmin((a) => ({ ...a, passwordConfirm: v }))}
-                        placeholder="Re-enter password"
+                        placeholder={t('admin.reenterPassword') || 'Re-enter password'}
                         placeholderTextColor={Colors.textLight}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
                       />
                     </View>
                     {admin.passwordConfirm && admin.password !== admin.passwordConfirm ? (
-                      <Text style={styles.errorText}>Password and confirmation do not match.</Text>
+                      <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>
+                        {t('admin.passwordsDontMatch') || 'Password and confirmation do not match.'}
+                      </Text>
                     ) : null}
                   </View>
 
-                  <View style={styles.infoBox}>
-                    <Ionicons name="information-circle-outline" size={18} color="#0284c7" style={{ marginRight: 6 }} />
-                    <Text style={styles.infoText}>
-                      Email is the login identifier and receives verification and password-reset mail.
+                  <View style={[styles.infoBox, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Ionicons name="information-circle-outline" size={18} color="#0284c7" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                    <Text style={[styles.infoText, isRTL && { textAlign: 'right' }]}>
+                      {t('admin.emailLoginHint') || 'Email is the login identifier and receives verification and password-reset mail.'}
                     </Text>
                   </View>
                 </>
               )}
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => { if (!busy) setOpen(false); }}
                 disabled={busy}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>{t('common.cancel') || 'Cancel'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveBtn, busy && { opacity: 0.7 }]}
@@ -654,7 +738,7 @@ export default function OrgScreen() {
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.saveText}>
-                    Create {tier.childLabel}{tier.showCreateAdmin ? ' + Admin' : ''}
+                    {t('admin.create') || 'Create'} {getChildLabel(tier.level)}{tier.showCreateAdmin ? ' + Admin' : ''}
                   </Text>
                 )}
               </TouchableOpacity>

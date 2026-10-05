@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
 import { useToast } from '../../../components/Toast';
 import { PuzzleIcon, GearIcon, TrashIcon, XIcon } from '../../../components/icons';
-
 import dialog from '../../../components/dialog';
+
 // Field Library — CRUD for FieldDefinition. Each field has a machine
 // `key` that's locked after creation; everything else (label,
 // validation, visibility, reporting flags) is editable.
@@ -32,6 +33,7 @@ const TYPE_HINT = {
 };
 
 export default function FieldLibraryPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = hasPermission(user, 'MANAGE_EVENT_CONFIG');
@@ -54,10 +56,15 @@ export default function FieldLibraryPage() {
 
   async function deleteField(f) {
     if (!canWrite || f.isSystem) return;
-    if (!await dialog.confirm(`Delete field "${f.label}" (${f.key})? Only safe if no event type currently uses it.`)) return;
+    const confirmMsg = t('admin.deleteFieldConfirm', {
+      label: f.label,
+      key: f.key,
+      defaultValue: `Delete field "${f.label}" (${f.key})? Only safe if no event type currently uses it.`,
+    });
+    if (!await dialog.confirm(confirmMsg)) return;
     try {
       await api.delete(`/admin/events/fields/${f._id}`);
-      toast.success?.('Field deleted.');
+      toast.success?.(t('admin.fieldDeleted', 'Field deleted.'));
       load();
     } catch (e) { toast.error?.(errorMessage(e)); }
   }
@@ -77,14 +84,14 @@ export default function FieldLibraryPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><PuzzleIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Field Library</h2>
-            <div className="rm-hero-sub">Reusable fields you can attach to meeting / activity types.</div>
+            <h2 className="rm-hero-title">{t('admin.fieldLibrary', 'Field Library')}</h2>
+            <div className="rm-hero-sub">{t('admin.fieldLibrarySubtitle', 'Reusable fields you can attach to meeting / activity types.')}</div>
           </div>
           {canWrite && (
             <div className="rm-hero-actions">
-              <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+              <button className="rm-hero-btn outline" onClick={load}>⟳ {t('common.refresh', 'Refresh')}</button>
               <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>
-                <span aria-hidden="true">＋</span> New Field
+                <span aria-hidden="true">＋</span> {t('admin.newField', 'New Field')}
               </button>
             </div>
           )}
@@ -96,23 +103,23 @@ export default function FieldLibraryPage() {
       <div className="rm-card">
         <div className="rm-card-head">
           <span className="rm-card-head-icon" aria-hidden="true"><PuzzleIcon size={15} /></span>
-          <span className="rm-card-head-label">Field</span>
+          <span className="rm-card-head-label">{t('admin.fieldName', 'Field')}</span>
           <span className="rm-card-head-actions">
             <span className="rm-card-head-icon" aria-hidden="true"><GearIcon size={15} /></span>
-            <span>Actions</span>
+            <span>{t('admin.actions', 'Actions')}</span>
           </span>
         </div>
 
         {busy && (
           <div className="rm-loading">
             <span className="scope-spinner" aria-hidden="true" />
-            <span className="muted">Loading fields…</span>
+            <span className="muted">{t('admin.loadingFields', 'Loading fields…')}</span>
           </div>
         )}
 
         {!busy && sorted.length === 0 && (
           <div className="rm-empty">
-            No fields defined yet. Click <strong>New Field</strong> to add the first one.
+            {t('admin.noFieldsDefined', 'No fields defined yet.')}
           </div>
         )}
 
@@ -120,23 +127,23 @@ export default function FieldLibraryPage() {
           <div key={f._id} className={`rm-row ${f.isSystem ? 'locked' : ''}`}>
             <div className="rm-row-avatar">
               <span aria-hidden="true">{(f.label || '?').charAt(0).toUpperCase()}</span>
-              {f.isSystem && <span className="rm-row-avatar-badge" title="Built-in">🔒</span>}
+              {f.isSystem && <span className="rm-row-avatar-badge" title={t('admin.builtInLocked', 'Built-in (System locked)')}>🔒</span>}
             </div>
             <div className="rm-row-meta">
               <div className="rm-row-name">
                 {f.label}
                 <span className="rm-row-tag custom">{f.type}</span>
-                {f.required && <span className="rm-row-tag custom">required</span>}
-                {!f.isActive && <span className="rm-row-tag inactive">Inactive</span>}
+                {f.required && <span className="rm-row-tag custom">{t('common.required', 'required')}</span>}
+                {!f.isActive && <span className="rm-row-tag inactive">{t('admin.inactive', 'Inactive')}</span>}
               </div>
               <div className="rm-row-sub">
                 <code>{f.key}</code>
                 <span className="muted">·</span>
-                <span>{TYPE_HINT[f.type] || f.type}</span>
+                <span>{t(`admin.fieldType_${f.type}`, TYPE_HINT[f.type] || f.type)}</span>
                 {f.reporting?.includeInExport && (
                   <>
                     <span className="muted">·</span>
-                    <span>📄 in exports</span>
+                    <span>📄 {t('common.export', 'export')}</span>
                   </>
                 )}
                 {f.helpText && <span className="rm-row-desc"> · {f.helpText}</span>}
@@ -147,14 +154,14 @@ export default function FieldLibraryPage() {
                 className="rm-action edit"
                 onClick={() => setEditing(f)}
                 disabled={!canWrite}
-                title={canWrite ? 'Edit this field' : 'Read-only'}
-              >✎ Edit</button>
+                title={canWrite ? t('common.edit', 'Edit') : 'Read-only'}
+              >✎ {t('common.edit', 'Edit')}</button>
               {!f.isSystem && canWrite && (
                 <button
                   className="rm-action delete"
                   onClick={() => deleteField(f)}
-                  title="Delete this field (only when not in use)"
-                ><TrashIcon size={13} /> Delete</button>
+                  title={t('common.delete', 'Delete')}
+                ><TrashIcon size={13} /> {t('common.delete', 'Delete')}</button>
               )}
             </div>
           </div>
@@ -165,7 +172,7 @@ export default function FieldLibraryPage() {
         <FieldDialog
           mode="create"
           onClose={() => setCreateOpen(false)}
-          onSaved={() => { setCreateOpen(false); load(); toast.success?.('Field created.'); }}
+          onSaved={() => { setCreateOpen(false); load(); toast.success?.(t('admin.fieldCreated', 'Field created.')); }}
         />
       )}
       {editing && (
@@ -173,7 +180,7 @@ export default function FieldLibraryPage() {
           mode="edit"
           field={editing}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); toast.success?.('Field updated.'); }}
+          onSaved={() => { setEditing(null); load(); toast.success?.(t('admin.fieldUpdated', 'Field updated.')); }}
         />
       )}
     </div>
@@ -181,6 +188,7 @@ export default function FieldLibraryPage() {
 }
 
 function FieldDialog({ mode, field, onClose, onSaved }) {
+  const { t } = useTranslation();
   const isEdit = mode === 'edit';
   const [key, setKey] = useState(field?.key || '');
   const [label, setLabel] = useState(field?.label || '');
@@ -286,22 +294,22 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ maxWidth: 720 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>{isEdit ? 'Edit field' : 'New field'}</h3>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
+          <h3 style={{ margin: 0 }}>{isEdit ? t('admin.editField', 'Edit field') : t('admin.createField', 'New field')}</h3>
+          <button type="button" className="btn secondary" onClick={onClose} aria-label={t('common.close', 'Close')} style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
         </div>
         {isEdit && (
           <p className="muted" style={{ fontSize: 12, margin: '0 0 8px' }}>
-            <code>{field.key}</code> — the key is locked after creation. Type changes are accepted but bump every parent type's <code>configVersion</code>.
+            <code>{field.key}</code> — {t('admin.machineKeyHint', 'the key is locked after creation.')}
           </p>
         )}
         {err && <div className="alert error">{err}</div>}
         <div className="form-grid">
           <div className="field">
-            <label>Display label</label>
+            <label>{t('admin.displayLabel', 'Display label')}</label>
             <input value={label} onChange={(e) => onLabelChange(e.target.value)} maxLength={120} autoFocus />
           </div>
           <div className="field">
-            <label>Key (machine name)</label>
+            <label>{t('admin.machineKey', 'Key (machine name)')}</label>
             <input
               value={key}
               onChange={(e) => { setKeyTouched(true); setKey(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 50)); }}
@@ -309,32 +317,36 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
               disabled={isEdit}
               placeholder="attendeeCount"
             />
-            <div className="hint">{isEdit ? 'Locked after creation.' : 'lowercase camelCase, ≤50 chars'}</div>
+            <div className="hint">{isEdit ? t('admin.machineKeyHint', 'Locked after creation.') : 'lowercase camelCase, ≤50 chars'}</div>
           </div>
           <div className="field full">
-            <label>Help text</label>
+            <label>{t('admin.helpText', 'Help text')}</label>
             <input value={helpText} onChange={(e) => setHelpText(e.target.value)} maxLength={500} placeholder="Short explanation shown under the input." />
           </div>
           <div className="field">
-            <label>Type</label>
+            <label>{t('admin.type', 'Type')}</label>
             <select value={type} onChange={(e) => setType(e.target.value)}>
-              {FIELD_TYPES.map((t) => <option key={t} value={t}>{t} — {TYPE_HINT[t]}</option>)}
+              {FIELD_TYPES.map((ft) => (
+                <option key={ft} value={ft}>
+                  {ft} — {t(`admin.fieldType_${ft}`, TYPE_HINT[ft])}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">
-            <label>Sort order</label>
+            <label>{t('admin.sortOrder', 'Sort order')}</label>
             <input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
           </div>
           <div className="field">
             <label className="toggle-row">
               <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
-              Required
+              {t('common.required', 'Required')}
             </label>
           </div>
           <div className="field">
             <label className="toggle-row">
               <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} disabled={field?.isSystem} />
-              Active
+              {t('common.active', 'Active')}
             </label>
           </div>
         </div>
@@ -343,21 +355,21 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
         {(isString || isNumber || needsOptions) && (
           <div className="rm-card" style={{ marginTop: 12 }}>
             <div className="rm-card-bar">
-              <span className="rm-card-bar-label">Validation</span>
+              <span className="rm-card-bar-label">{t('admin.validation', 'Validation Rules')}</span>
             </div>
             <div className="rm-card-body">
               {isString && (
                 <div className="form-grid">
                   <div className="field">
-                    <label>Min length</label>
+                    <label>{t('admin.min', 'Min length')}</label>
                     <input type="number" value={validation.minLength} onChange={(e) => setValidation((v) => ({ ...v, minLength: e.target.value }))} />
                   </div>
                   <div className="field">
-                    <label>Max length</label>
+                    <label>{t('admin.max', 'Max length')}</label>
                     <input type="number" value={validation.maxLength} onChange={(e) => setValidation((v) => ({ ...v, maxLength: e.target.value }))} />
                   </div>
                   <div className="field full">
-                    <label>Regex (optional)</label>
+                    <label>{t('admin.regexPattern', 'Regex (optional)')}</label>
                     <input value={validation.regex} onChange={(e) => setValidation((v) => ({ ...v, regex: e.target.value }))} placeholder="^[A-Z]{3}-\d+$" />
                   </div>
                 </div>
@@ -365,11 +377,11 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
               {isNumber && (
                 <div className="form-grid">
                   <div className="field">
-                    <label>Min</label>
+                    <label>{t('admin.min', 'Min')}</label>
                     <input type="number" value={validation.min} onChange={(e) => setValidation((v) => ({ ...v, min: e.target.value }))} />
                   </div>
                   <div className="field">
-                    <label>Max</label>
+                    <label>{t('admin.max', 'Max')}</label>
                     <input type="number" value={validation.max} onChange={(e) => setValidation((v) => ({ ...v, max: e.target.value }))} />
                   </div>
                 </div>
@@ -384,17 +396,17 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
                       <input
                         value={o.value}
                         onChange={(e) => updateOption(i, { value: e.target.value })}
-                        placeholder="value"
+                        placeholder={t('admin.optionValue', 'value')}
                       />
                       <input
                         value={o.label}
                         onChange={(e) => updateOption(i, { label: e.target.value })}
-                        placeholder="Display label"
+                        placeholder={t('admin.optionLabel', 'Display label')}
                       />
-                      <button type="button" className="rm-action delete" onClick={() => removeOption(i)} title="Remove"><TrashIcon size={14} /></button>
+                      <button type="button" className="rm-action delete" onClick={() => removeOption(i)} title={t('common.delete', 'Delete')}><TrashIcon size={14} /></button>
                     </div>
                   ))}
-                  <button type="button" className="btn secondary" onClick={addOption}>＋ Add option</button>
+                  <button type="button" className="btn secondary" onClick={addOption}>{t('admin.addOption', '＋ Add option')}</button>
                 </div>
               )}
             </div>
@@ -433,7 +445,7 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
         {/* Reporting */}
         <div className="rm-card" style={{ marginTop: 12 }}>
           <div className="rm-card-bar">
-            <span className="rm-card-bar-label">Reporting</span>
+            <span className="rm-card-bar-label">{t('nav.reports', 'Reporting')}</span>
           </div>
           <div className="rm-card-body">
             <div className="form-grid">
@@ -456,8 +468,10 @@ function FieldDialog({ mode, field, onClose, onSaved }) {
         </div>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-          <button className="btn secondary" onClick={onClose}>Cancel</button>
-          <button className="btn" disabled={busy || !label || !key} onClick={save}>{busy ? 'Saving…' : (isEdit ? 'Save' : 'Create')}</button>
+          <button className="btn secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn" disabled={busy || !label || !key} onClick={save}>
+            {busy ? t('admin.saving', 'Saving…') : (isEdit ? t('common.save', 'Save') : t('common.create', 'Create'))}
+          </button>
         </div>
       </div>
     </div>

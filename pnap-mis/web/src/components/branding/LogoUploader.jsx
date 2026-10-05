@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { uploadLogo, resetLogo } from '../../api/branding';
 import { errorMessage } from '../../api/client';
 import { useToast } from '../Toast';
-
 import dialog from '../../components/dialog';
+
 // LogoUploader — single-slot file picker with preview, upload state,
 // and a Reset button. Shows the current logo as a thumbnail.
 //
@@ -26,6 +27,7 @@ const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp'];
 export default function LogoUploader({
   slot, label, description, currentUrl, recommended, onChanged, disabled,
 }) {
+  const { t } = useTranslation();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -34,11 +36,11 @@ export default function LogoUploader({
   async function pick(file) {
     if (!file) return;
     if (!ACCEPTED.includes(file.type)) {
-      toast.error?.(`Only JPEG / PNG / WebP allowed (got ${file.type || 'unknown'})`);
+      toast.error?.(t('admin.settings.onlyImagesAllowed', 'Only JPEG / PNG / WebP allowed (got {{type}})', { type: file.type || 'unknown' }));
       return;
     }
     if (file.size > MAX_BYTES) {
-      toast.error?.(`File is ${(file.size / 1024 / 1024).toFixed(1)} MB — over the 5 MB limit`);
+      toast.error?.(t('admin.settings.fileOverLimit', 'File is {{size}} MB — over the 5 MB limit', { size: (file.size / 1024 / 1024).toFixed(1) }));
       return;
     }
     // Local preview while the upload is in flight.
@@ -46,7 +48,7 @@ export default function LogoUploader({
     setBusy(true);
     try {
       const result = await uploadLogo(slot, file);
-      toast.success?.(`${label} uploaded.`);
+      toast.success?.(t('admin.settings.logoUploaded', '{{label}} uploaded.', { label }));
       onChanged?.(result?.logo || null);
     } catch (e) {
       toast.error?.(errorMessage(e));
@@ -59,11 +61,11 @@ export default function LogoUploader({
   }
 
   async function reset() {
-    if (!await dialog.confirm(`Reset ${label}? The current image will be removed.`)) return;
+    if (!await dialog.confirm(t('admin.settings.resetLogoConfirm', 'Reset {{label}}? The current image will be removed.', { label }))) return;
     setBusy(true);
     try {
       await resetLogo(slot);
-      toast.success?.(`${label} reset to default.`);
+      toast.success?.(t('admin.settings.logoReset', '{{label}} reset to default.', { label }));
       onChanged?.(null);
     } catch (e) {
       toast.error?.(errorMessage(e));
@@ -80,7 +82,7 @@ export default function LogoUploader({
       <div className="rm-card-bar">
         <span className="rm-card-bar-icon" aria-hidden="true">🖼️</span>
         <span className="rm-card-bar-label">{label}</span>
-        {currentUrl && <span className="rm-card-bar-count">configured</span>}
+        {currentUrl && <span className="rm-card-bar-count">{t('admin.settings.logoConfigured', 'configured')}</span>}
       </div>
       <div className="rm-card-body">
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
@@ -102,7 +104,7 @@ export default function LogoUploader({
               />
             ) : (
               <span className="muted" style={{ fontSize: 12, padding: 8, textAlign: 'center' }}>
-                No image — using default
+                {t('admin.settings.noImageDefault', 'No image — using default')}
               </span>
             )}
           </div>
@@ -112,7 +114,7 @@ export default function LogoUploader({
             <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>{description}</p>
             {recommended && (
               <p className="muted" style={{ fontSize: 12 }}>
-                <strong>Recommended:</strong> {recommended}
+                <strong>{t('admin.settings.recommended', 'Recommended')}:</strong> {recommended}
               </p>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
@@ -130,7 +132,7 @@ export default function LogoUploader({
                 onClick={() => inputRef.current?.click()}
                 disabled={disabled || busy}
               >
-                {busy ? 'Uploading…' : (currentUrl ? '⟳ Replace' : '⤴ Upload')}
+                {busy ? t('common.uploading', 'Uploading…') : (currentUrl ? `⟳ ${t('admin.settings.replace', 'Replace')}` : `⤴ ${t('common.upload', 'Upload')}`)}
               </button>
               {currentUrl && !disabled && (
                 <button
@@ -139,7 +141,7 @@ export default function LogoUploader({
                   onClick={reset}
                   disabled={busy}
                 >
-                  ↺ Reset
+                  ↺ {t('admin.settings.reset', 'Reset')}
                 </button>
               )}
             </div>

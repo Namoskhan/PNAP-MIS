@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import HeroBanner from '../components/HeroBanner';
@@ -8,6 +9,7 @@ import { isPureMember as isPureMemberFn } from '../utils/permissions';
 import CommandCenter from '../components/dashboard/cc/CommandCenter';
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [me, setMe] = useState(null);
   const [meetings, setMeetings] = useState([]);
@@ -82,52 +84,52 @@ export default function DashboardPage() {
   }
 
   if (isPureMember) {
-    const firstName = user?.fullName?.split(' ')[0] || 'Member';
+    const firstName = user?.fullName?.split(' ')[0] || t('roles.MEMBER', 'Member');
     return (
       <div>
         <HeroBanner
           name={firstName}
-          eyebrow="MEMBER PORTAL"
-          subtitle={me?.basicUnitId?.name ? `Your unit · ${me.basicUnitId.name}` : 'Your activity at a glance.'}
+          eyebrow={t('memberPortal.title', 'MEMBER PORTAL').toUpperCase()}
+          subtitle={me?.basicUnitId?.name ? `${t('memberPortal.yourUnit', { unit: me.basicUnitId.name })}` : t('memberPortal.activityGlance', 'Your activity at a glance.')}
           chips={[
-            { label: 'Status', value: me?.status?.replace('_', ' ').toLowerCase() || '—', icon: '●' },
-            { label: 'Member ID', value: me?.memberId || '—', icon: '🪪' },
-            { label: 'Meetings (recent)', value: meetings.length, icon: '📋' },
-            { label: 'Activities', value: activities.length, icon: '🎯' },
+            { label: t('common.status', 'Status'), value: me?.status?.replace('_', ' ').toLowerCase() || '—', icon: '●' },
+            { label: t('members.memberId', 'Member ID'), value: me?.memberId || '—', icon: '🪪' },
+            { label: t('meetings.title', 'Meetings'), value: meetings.length, icon: '📋' },
+            { label: t('activities.title', 'Activities'), value: activities.length, icon: '🎯' },
           ]}
         />
 
         <div className="card" style={{ marginBottom: 16 }}>
-          <h3 style={{ marginTop: 0 }}>My Profile</h3>
+          <h3 style={{ marginTop: 0 }}>{t('auth.myProfile', 'My Profile')}</h3>
           {loadingMember && !me ? (
             <SkeletonCard lines={3} />
           ) : me ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, fontSize: 14 }}>
-              <div><span className="muted">Name</span><div><strong>{me.fullName}</strong></div></div>
-              <div><span className="muted">Member ID</span><div>{me.memberId || '—'}</div></div>
-              <div><span className="muted">CNIC</span><div>{me.cnic}</div></div>
-              <div><span className="muted">Phone</span><div>{me.phone || '—'}</div></div>
-              <div><span className="muted">Status</span><div><span className={`badge ${me.status}`}>{me.status}</span></div></div>
-              <div><span className="muted">Basic Unit</span><div>{me.basicUnitId?.name || '—'}</div></div>
+              <div><span className="muted">{t('members.fullName', 'Name')}</span><div><strong>{me.fullName}</strong></div></div>
+              <div><span className="muted">{t('members.memberId', 'Member ID')}</span><div>{me.memberId || '—'}</div></div>
+              <div><span className="muted">{t('members.cnic', 'CNIC')}</span><div>{me.cnic}</div></div>
+              <div><span className="muted">{t('members.phone', 'Phone')}</span><div>{me.phone || '—'}</div></div>
+              <div><span className="muted">{t('common.status', 'Status')}</span><div><span className={`badge ${me.status}`}>{me.status}</span></div></div>
+              <div><span className="muted">{t('units.basicUnit', 'Basic Unit')}</span><div>{me.basicUnitId?.name || '—'}</div></div>
             </div>
           ) : (
-            <p className="muted" style={{ margin: 0 }}>Could not load your profile.</p>
+            <p className="muted" style={{ margin: 0 }}>{t('memberPortal.couldNotLoad', 'Could not load your profile.')}</p>
           )}
           {user?.memberId && (
             <div style={{ marginTop: 14 }}>
-              <Link to={`/members/${user.memberId}`} className="btn secondary">View &amp; Update Profile</Link>
+              <Link to={`/members/${user.memberId}`} className="btn secondary">{t('memberPortal.viewUpdateProfile', 'View & Update Profile')}</Link>
             </div>
           )}
         </div>
 
         <div className="card" style={{ marginBottom: 16 }}>
-          <h3 style={{ marginTop: 0 }}>Recent Meetings</h3>
+          <h3 style={{ marginTop: 0 }}>{t('memberPortal.recentMeetings', 'Recent Meetings')}</h3>
           {loadingMember ? (
             <SkeletonCard lines={3} />
           ) : meetings.length === 0 ? (
             <div className="empty-smart" style={{ padding: 24 }}>
               <div className="empty-icon">📋</div>
-              <p>No meetings have been logged yet.</p>
+              <p>{t('memberPortal.noMeetings', 'No meetings have been logged yet.')}</p>
             </div>
           ) : (
             <ul style={{ paddingLeft: 18, margin: 0 }}>
@@ -141,18 +143,18 @@ export default function DashboardPage() {
             </ul>
           )}
           <div style={{ marginTop: 12 }}>
-            <Link to="/unit/meetings" className="btn ghost">See all meetings →</Link>
+            <Link to="/unit/meetings" className="btn ghost">{t('memberPortal.seeAllMeetings', 'See all meetings →')}</Link>
           </div>
         </div>
 
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Recent Activities</h3>
+          <h3 style={{ marginTop: 0 }}>{t('memberPortal.recentActivities', 'Recent Activities')}</h3>
           {loadingMember ? (
             <SkeletonCard lines={3} />
           ) : activities.length === 0 ? (
             <div className="empty-smart" style={{ padding: 24 }}>
               <div className="empty-icon">🎯</div>
-              <p>No activities recorded for your unit yet.</p>
+              <p>{t('memberPortal.noActivities', 'No activities recorded for your unit yet.')}</p>
             </div>
           ) : (
             <ul style={{ paddingLeft: 18, margin: 0 }}>
@@ -165,7 +167,7 @@ export default function DashboardPage() {
             </ul>
           )}
           <div style={{ marginTop: 12 }}>
-            <Link to="/unit/activities" className="btn ghost">See all activities →</Link>
+            <Link to="/unit/activities" className="btn ghost">{t('memberPortal.seeAllActivities', 'See all activities →')}</Link>
           </div>
         </div>
       </div>

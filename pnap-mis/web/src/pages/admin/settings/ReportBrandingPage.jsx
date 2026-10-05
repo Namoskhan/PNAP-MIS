@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchSettings, patchSettings } from '../../../api/branding';
@@ -17,6 +18,7 @@ import { FileTextIcon, ImageIcon } from '../../../components/icons';
 //     empty means "use the theme's primary color".
 
 export default function ReportBrandingPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = hasPermission(user, 'MANAGE_SYSTEM_BRANDING');
@@ -58,7 +60,7 @@ export default function ReportBrandingPage() {
         },
         changeNote: 'Updated report branding',
       });
-      toast.success?.('Report branding saved. Applies to the next export.');
+      toast.success?.(t('admin.settings.brandingSaved', 'Report branding saved. Applies to the next export.'));
       load();
     } catch (e) { setErr(errorMessage(e)); toast.error?.(errorMessage(e)); }
     finally { setSaving(false); }
@@ -72,15 +74,14 @@ export default function ReportBrandingPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><FileTextIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Report Branding</h2>
+            <h2 className="rm-hero-title">{t('admin.settings.reportBranding', 'Report Branding')}</h2>
             <div className="rm-hero-sub">
-              Header logo, footer text, and accent color for PDF / XLSX exports.
-              Changes apply to the next export — nothing is regenerated retroactively.
+              {t('admin.settings.reportBrandingSub', 'Header logo, footer text, and accent color for PDF / XLSX exports. Changes apply to the next export — nothing is regenerated retroactively.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>← Back</Link>
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('admin.settings.backToSettings', '← Back')}</Link>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('common.refresh', 'Refresh')}</button>
           </div>
         </div>
       </div>
@@ -89,7 +90,7 @@ export default function ReportBrandingPage() {
       {busy && (
         <div className="rm-loading">
           <span className="scope-spinner" aria-hidden="true" />
-          <span className="muted">Loading…</span>
+          <span className="muted">{t('common.loading', 'Loading…')}</span>
         </div>
       )}
 
@@ -98,7 +99,7 @@ export default function ReportBrandingPage() {
           <div className="rm-card">
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><ImageIcon size={15} /></span>
-              <span className="rm-card-bar-label">Export logo</span>
+              <span className="rm-card-bar-label">{t('admin.settings.exportLogo', 'Export logo')}</span>
             </div>
             <div className="rm-card-body">
               <div className="form-grid">
@@ -110,7 +111,7 @@ export default function ReportBrandingPage() {
                       onChange={(e) => setForm((p) => ({ ...p, showLogoOnPdf: e.target.checked }))}
                       disabled={!canWrite}
                     />
-                    Show logo on PDF exports
+                    {t('admin.settings.showLogoOnPdf', 'Show logo on PDF exports')}
                   </label>
                 </div>
                 <div className="field">
@@ -121,7 +122,7 @@ export default function ReportBrandingPage() {
                       onChange={(e) => setForm((p) => ({ ...p, showLogoOnXlsx: e.target.checked }))}
                       disabled={!canWrite}
                     />
-                    Show logo on Excel exports
+                    {t('admin.settings.showLogoOnXlsx', 'Show logo on Excel exports')}
                   </label>
                 </div>
                 <div className="field full">
@@ -129,13 +130,12 @@ export default function ReportBrandingPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <img src={printLogo} alt="Print logo" style={{ height: 48, borderRadius: 6, border: '1px solid var(--border)' }} />
                       <span className="hint">
-                        Current print logo. Replace it in the <Link to="/admin/settings/logos">Logo Manager</Link> ("Print" slot).
+                        {t('admin.settings.currentPrintLogo', 'Current print logo. Replace it in the Logo Manager ("Print" slot).')}
                       </span>
                     </div>
                   ) : (
                     <div className="hint">
-                      No print logo uploaded yet — exports render text-only headers.
-                      Upload one in the <Link to="/admin/settings/logos">Logo Manager</Link> ("Print" slot).
+                      {t('admin.settings.noPrintLogoUploaded', 'No print logo uploaded yet — exports render text-only headers. Upload one in the Logo Manager ("Print" slot).')}
                     </div>
                   )}
                 </div>
@@ -146,12 +146,12 @@ export default function ReportBrandingPage() {
           <div className="rm-card">
             <div className="rm-card-bar">
               <span className="rm-card-bar-icon" aria-hidden="true"><FileTextIcon size={15} /></span>
-              <span className="rm-card-bar-label">PDF header & footer</span>
+              <span className="rm-card-bar-label">{t('admin.settings.pdfHeaderFooter', 'PDF header & footer')}</span>
             </div>
             <div className="rm-card-body">
               <div className="form-grid">
                 <div className="field">
-                  <label>Header accent color</label>
+                  <label>{t('admin.settings.headerAccentColor', 'Header accent color')}</label>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input
                       type="color"
@@ -170,14 +170,14 @@ export default function ReportBrandingPage() {
                     />
                     {form.pdfHeaderColor && canWrite && (
                       <button type="button" className="btn secondary sm" onClick={() => setForm((p) => ({ ...p, pdfHeaderColor: '' }))}>
-                        Use theme color
+                        {t('admin.settings.useThemeColor', 'Use theme color')}
                       </button>
                     )}
                   </div>
-                  <div className="hint">The separator bar under PDF headers. Leave empty to follow the theme's primary color.</div>
+                  <div className="hint">{t('admin.settings.headerAccentColorHelp', "The separator bar under PDF headers. Leave empty to follow the theme's primary color.")}</div>
                 </div>
                 <div className="field">
-                  <label>PDF footer text</label>
+                  <label>{t('admin.settings.pdfFooterText', 'PDF footer text')}</label>
                   <input
                     value={form.pdfFooterText}
                     maxLength={300}
@@ -185,7 +185,7 @@ export default function ReportBrandingPage() {
                     onChange={(e) => setForm((p) => ({ ...p, pdfFooterText: e.target.value }))}
                     disabled={!canWrite}
                   />
-                  <div className="hint">Shown at the bottom of every PDF page. Empty falls back to the copyright text from System Identity.</div>
+                  <div className="hint">{t('admin.settings.pdfFooterTextHelp', 'Shown at the bottom of every PDF page. Empty falls back to the copyright text from System Identity.')}</div>
                 </div>
               </div>
 
@@ -210,9 +210,9 @@ export default function ReportBrandingPage() {
 
           {canWrite && (
             <div className="rm-footer">
-              <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>× Cancel</Link>
+              <Link to="/admin/settings" className="rm-hero-btn outline" style={{ textDecoration: 'none' }}>{t('common.cancel', '× Cancel')}</Link>
               <button className="rm-hero-btn solid" disabled={saving} onClick={save}>
-                {saving ? 'Saving…' : '✓ Save changes'}
+                {saving ? t('common.saving', 'Saving…') : `✓ ${t('admin.settings.saveBranding', 'Save Branding')}`}
               </button>
             </div>
           )}

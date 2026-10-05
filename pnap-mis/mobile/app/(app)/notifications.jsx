@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { api } from '../../src/api/client';
 import Card from '../../src/components/Card';
 import EmptyState from '../../src/components/EmptyState';
@@ -15,6 +16,7 @@ import { Colors, FontSize, Spacing } from '../../src/constants/colors';
 import { relativeTime } from '../../src/utils/formatters';
 
 export default function NotificationsScreen() {
+  const { t, isRTL } = useLanguage();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,12 +48,14 @@ export default function NotificationsScreen() {
     return (
       <TouchableOpacity onPress={() => !n.read && markRead(n._id)}>
         <Card style={[styles.card, !n.read && styles.cardUnread]}>
-          <View style={styles.row}>
+          <View style={[styles.row, isRTL && { flexDirection: 'row-reverse' }]}>
             {!n.read && <View style={styles.dot} />}
             <View style={styles.info}>
-              <Text style={[styles.nTitle, !n.read && styles.bold]}>{n.title || 'Notification'}</Text>
-              {n.body ? <Text style={styles.nBody} numberOfLines={2}>{n.body}</Text> : null}
-              <Text style={styles.nTime}>{relativeTime(n.createdAt)}</Text>
+              <Text style={[styles.nTitle, !n.read && styles.bold, isRTL && { textAlign: 'right' }]}>
+                {n.title || t('notifications.notification', 'Notification')}
+              </Text>
+              {n.body ? <Text style={[styles.nBody, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{n.body}</Text> : null}
+              <Text style={[styles.nTime, isRTL && { textAlign: 'right' }]}>{relativeTime(n.createdAt)}</Text>
             </View>
           </View>
         </Card>
@@ -64,10 +68,10 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {unreadCount > 0 && (
-        <View style={styles.markAllBar}>
-          <Text style={styles.unreadCount}>{unreadCount} unread</Text>
+        <View style={[styles.markAllBar, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Text style={styles.unreadCount}>{t('notifications.unreadCount', { count: unreadCount })}</Text>
           <TouchableOpacity onPress={markAllRead}>
-            <Text style={styles.markAll}>Mark all read</Text>
+            <Text style={styles.markAll}>{t('notifications.markAllRead', 'Mark all read')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -78,7 +82,7 @@ export default function NotificationsScreen() {
         contentContainerStyle={styles.list}
         onRefresh={() => { setRefreshing(true); load(true); }}
         refreshing={refreshing}
-        ListEmptyComponent={!loading && <EmptyState icon="🔔" title="No notifications" />}
+        ListEmptyComponent={!loading && <EmptyState icon="🔔" title={t('notifications.noNotifications', 'No notifications')} />}
         ListFooterComponent={loading && !refreshing ? <ActivityIndicator style={{ padding: 16 }} color={Colors.primary} /> : null}
       />
     </SafeAreaView>

@@ -111,8 +111,10 @@ export function canManageFinance(user) {
 export function canApproveExpense(user) {
   if (user?.permissions) return hasPermission(user, 'APPROVE_EXPENSE');
   return isHigherAdmin(user)
-    || hasRole(user, 'SECRETARY', 'SENIOR_MAWIN', 'SR_VICE_PRESIDENT', 'FIRST_SECRETARY');
+    || isAreaAdmin(user)
+    || hasRole(user, 'SECRETARY', 'PRESIDENT', 'CHAIRMAN', 'CO_CHAIRMAN', 'GENERAL_SECRETARY');
 }
+export const canApproveFinance = canApproveExpense;
 // Capability gates added with the dynamic permission system. No
 // legacy role-list — these only resolve via the catalogue.
 export function canPostAnnouncement(user) {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { hasPermission } from '../../../utils/permissions';
@@ -13,6 +14,7 @@ import dialog from '../../../components/dialog';
 
 const DOMAIN_LABELS = {
   EXPENSE_APPROVAL: 'Expense approval',
+  DONATION_APPROVAL: 'Donation approval',
   MEMBER_APPROVAL: 'Member approval',
   ROLE_APPROVAL: 'Role approval',
   TRANSFER_APPROVAL: 'Transfer approval',
@@ -22,6 +24,7 @@ const DOMAINS = Object.keys(DOMAIN_LABELS);
 const TIER_CODES = ['BASIC_UNIT', 'AREA', 'DISTRICT', 'PROVINCE', 'CENTRAL'];
 
 export default function WorkflowsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const toast = useToast?.() || { success: () => {}, error: () => {} };
   const canWrite = hasPermission(user, 'MANAGE_UNIT_CONFIG');
@@ -58,16 +61,15 @@ export default function WorkflowsPage() {
         <div className="rm-hero-content">
           <div className="rm-hero-icon" aria-hidden="true"><RepeatIcon size={22} /></div>
           <div style={{ flex: 1 }}>
-            <h2 className="rm-hero-title">Workflow Manager</h2>
+            <h2 className="rm-hero-title">{t('admin.units.workflows', 'Workflow Manager')}</h2>
             <div className="rm-hero-sub">
-              Approval chains per domain. Default GLOBAL chains have one stage matching the legacy gate.
-              Add stages or thresholds to chain in second approvers.
+              {t('admin.units.workflowsSub', 'Approval chains per domain. Default GLOBAL chains have one stage matching the legacy gate. Add stages or thresholds to chain in second approvers.')}
             </div>
           </div>
           <div className="rm-hero-actions">
-            <button className="rm-hero-btn outline" onClick={load}>⟳ Refresh</button>
+            <button className="rm-hero-btn outline" onClick={load}>⟳ {t('admin.refresh', 'Refresh')}</button>
             {canWrite && (
-              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>＋ TIER Override</button>
+              <button className="rm-hero-btn solid" onClick={() => setCreateOpen(true)}>{t('admin.units.newWorkflow', '＋ TIER Override')}</button>
             )}
           </div>
         </div>
@@ -114,9 +116,9 @@ export default function WorkflowsPage() {
             {w.note && <p className="muted" style={{ marginTop: 10, fontSize: 12 }}>{w.note}</p>}
             {canWrite && (
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
-                <button className="rm-action edit" onClick={() => setEditing(w)}>Edit stages</button>
+                <button className="rm-action edit" onClick={() => setEditing(w)}>{t('admin.edit', 'Edit stages')}</button>
                 {!w.isSystem && (
-                  <button className="rm-action delete" onClick={() => deleteOne(w)}><TrashIcon size={13} /> Delete</button>
+                  <button className="rm-action delete" onClick={() => deleteOne(w)}><TrashIcon size={13} /> {t('admin.delete', 'Delete')}</button>
                 )}
               </div>
             )}

@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { api, errorMessage } from '../../../src/api/client';
 import { useToast } from '../../../src/components/Toast';
 import { canManageFinance, hasPermission } from '../../../src/utils/permissions';
@@ -54,6 +55,7 @@ export default function CommitteeScreen() {
   const params = useLocalSearchParams();
   const { ctx, provinces } = useUnit();
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const toast = useToast();
   const { width } = useWindowDimensions();
@@ -192,7 +194,7 @@ export default function CommitteeScreen() {
   async function handleNominate() {
     setNominateErr('');
     if (!memberId) {
-      setNominateErr('Please select a member to nominate.');
+      setNominateErr(t('committee.selectMemberToNominate', 'Please select a member to nominate.'));
       return;
     }
     setNominating(true);
@@ -209,7 +211,9 @@ export default function CommitteeScreen() {
       setNominateOpen(false);
       reload(true);
       toast.success(
-        nominee ? `${nominee.fullName} nominated as selective member.` : 'Selective member nominated.'
+        nominee
+          ? t('committee.nominatedNamedToast', '{{name}} nominated as selective member.', { name: nominee.fullName })
+          : t('committee.nominatedToast', 'Selective member nominated.')
       );
     } catch (e) {
       setNominateErr(errorMessage(e));
@@ -225,23 +229,23 @@ export default function CommitteeScreen() {
       try {
         await api.post(`/committee/permanent/${p._id}/remove`);
         reload(true);
-        toast.success(`${memberName} removed from committee.`);
+        toast.success(t('committee.removedToast', '{{name}} removed from committee.', { name: memberName }));
       } catch (e) {
         toast.error(errorMessage(e));
       }
     };
 
     if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(`Remove ${memberName} from selective membership?`)) {
+      if (typeof window !== 'undefined' && window.confirm(t('committee.removeSelectiveConfirmWeb', 'Remove {{name}} from selective membership?', { name: memberName }))) {
         action();
       }
     } else {
       Alert.alert(
-        'Remove Selective Member',
-        `Remove "${memberName}" from the committee? This will revoke their consultative voting seat.`,
+        t('committee.removeSelectiveTitle', 'Remove Selective Member'),
+        t('committee.removeSelectiveConfirm', 'Remove "{{name}}" from the committee? This will revoke their consultative voting seat.', { name: memberName }),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Remove', style: 'destructive', onPress: action },
+          { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+          { text: t('common.remove', 'Remove'), style: 'destructive', onPress: action },
         ]
       );
     }
@@ -296,7 +300,30 @@ export default function CommitteeScreen() {
     : 0;
 
   const canManage = Boolean(data?.canManage);
-  const committeeTitle = resolved ? (COMMITTEE_LABEL[resolved.unitLevel] || 'Committee') : 'Committee';
+  const committeeTitle = resolved ? (
+    resolved.unitLevel === 'AREA' ? t('committee.label_area', 'Elaqayi Committee') :
+    resolved.unitLevel === 'DISTRICT' ? t('committee.label_district', 'Zilla Committee') :
+    resolved.unitLevel === 'PROVINCE' ? t('committee.label_province', 'Sobayi Committee') :
+    resolved.unitLevel === 'CENTRAL' ? t('committee.label_central', 'Central Committee') :
+    (COMMITTEE_LABEL[resolved.unitLevel] || t('committee.title', 'Committee'))
+  ) : t('committee.title', 'Committee');
+
+  const ownHeadingText = resolved ? (
+    resolved.unitLevel === 'AREA' ? t('committee.heading_area', 'Elaqayi Executive Cabinet') :
+    resolved.unitLevel === 'DISTRICT' ? t('committee.heading_district', 'Zilla Cabinet (District Executive)') :
+    resolved.unitLevel === 'PROVINCE' ? t('committee.heading_province', 'Sobayi Cabinet (Province Executive)') :
+    resolved.unitLevel === 'CENTRAL' ? t('committee.heading_central', 'Central Executive Cabinet') :
+    (OWN_HEADING[resolved.unitLevel] || '')
+  ) : '';
+
+  const subHeadingText = resolved ? (
+    resolved.unitLevel === 'AREA' ? t('committee.subheading_area', 'Basic Unit Secretaries & Senior Mawin Secretaries') :
+    resolved.unitLevel === 'DISTRICT' ? t('committee.subheading_district', 'Area Secretaries & Senior Mawin Secretaries') :
+    resolved.unitLevel === 'PROVINCE' ? t('committee.subheading_province', 'District Secretaries & Senior Mawin Secretaries') :
+    resolved.unitLevel === 'CENTRAL' ? t('committee.subheading_central', 'Provincial Presidents & General/First Secretaries') :
+    (SUB_HEADING[resolved.unitLevel] || '')
+  ) : '';
+
   const canFinance = canManageFinance(user);
 
   if (isBasicUnit) {
@@ -304,9 +331,9 @@ export default function CommitteeScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.emptyContainer}>
           <Ionicons name="information-circle-outline" size={48} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Committee at Basic Unit</Text>
-          <Text style={styles.emptySubtitle}>
-            Basic Units have only an Executive Cabinet. Consultative committees are organized at Area (Elaqayi), District (Zilla), Province (Sobayi), and Central tiers.
+          <Text style={[styles.emptyTitle, isRTL && { textAlign: 'right' }]}>{t('committee.noCommitteeAtBasicUnit', 'No Committee at Basic Unit')}</Text>
+          <Text style={[styles.emptySubtitle, isRTL && { textAlign: 'right' }]}>
+            {t('committee.basicUnitNotice', 'Basic Units have only an Executive Cabinet. Consultative committees are organized at Area (Elaqayi), District (Zilla), Province (Sobayi), and Central tiers.')}
           </Text>
         </View>
       </SafeAreaView>
@@ -318,9 +345,9 @@ export default function CommitteeScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.emptyContainer}>
           <Ionicons name="business-outline" size={48} color={Colors.textMuted} />
-          <Text style={styles.emptyTitle}>Select a Unit Context</Text>
-          <Text style={styles.emptySubtitle}>
-            Please select an Area, District, Province, or Central unit to view its consultative committee composition.
+          <Text style={[styles.emptyTitle, isRTL && { textAlign: 'right' }]}>{t('common.selectUnitContext', 'Select a Unit Context')}</Text>
+          <Text style={[styles.emptySubtitle, isRTL && { textAlign: 'right' }]}>
+            {t('committee.selectUnitPrompt', 'Please select an Area, District, Province, or Central unit to view its consultative committee composition.')}
           </Text>
         </View>
       </SafeAreaView>
@@ -337,22 +364,22 @@ export default function CommitteeScreen() {
         <View style={[styles.mainWrapper, isTablet && styles.mainWrapperTablet]}>
 
           {/* Top Header Card */}
-          <View style={[styles.header, isSmall && styles.headerSmall]}>
-            <View style={styles.headerTitleWrap}>
-              <View style={styles.badgeRow}>
+          <View style={[styles.header, isSmall && styles.headerSmall, isRTL && { alignItems: 'flex-end' }]}>
+            <View style={[styles.headerTitleWrap, isRTL && { alignItems: 'flex-end' }]}>
+              <View style={[styles.badgeRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.unitLevelBadge}>
-                  <Text style={styles.unitLevelBadgeText}>{resolved?.unitLevel?.replace('_', ' ') || 'UNIT'}</Text>
+                  <Text style={styles.unitLevelBadgeText}>{t('units.' + (resolved?.unitLevel?.toLowerCase() || ''), resolved?.unitLevel?.replace('_', ' ') || 'UNIT')}</Text>
                 </View>
-                <View style={styles.committeeBadge}>
-                  <Ionicons name="people" size={12} color="#0369a1" style={{ marginRight: 4 }} />
-                  <Text style={styles.committeeBadgeText}>Consultative Assembly</Text>
+                <View style={[styles.committeeBadge, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Ionicons name="people" size={12} color="#0369a1" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+                  <Text style={styles.committeeBadgeText}>{t('committee.consultativeAssembly', 'Consultative Assembly')}</Text>
                 </View>
               </View>
-              <Text style={styles.pageTitle}>
+              <Text style={[styles.pageTitle, isRTL && { textAlign: 'right' }]}>
                 {committeeTitle} · {resolved?.unitName}
               </Text>
-              <Text style={styles.pageSubtitle}>
-                {OWN_HEADING[resolved?.unitLevel]} + Subordinate Key Roles + Selective Members
+              <Text style={[styles.pageSubtitle, isRTL && { textAlign: 'right' }]}>
+                {ownHeadingText} + {t('committee.subordinateHolders', 'Subordinate Key Roles')} + {t('committee.selectiveMembers', 'Selective Members')}
               </Text>
             </View>
           </View>
@@ -360,27 +387,27 @@ export default function CommitteeScreen() {
           {/* Overview Breakdown KPI Card */}
           {data && (
             <Card style={styles.statsCard}>
-              <View style={styles.statsRow}>
+              <View style={[styles.statsRow, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={styles.statBox}>
                   <Text style={styles.statVal}>{totalMembers}</Text>
-                  <Text style={styles.statLabel}>Total Members</Text>
+                  <Text style={styles.statLabel}>{t('common.totalMembers', 'Total Members')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statBox}>
                   <Text style={[styles.statVal, { color: '#0369a1' }]}>{data.ownCabinet?.length || 0}</Text>
-                  <Text style={styles.statLabel}>Exec Cabinet</Text>
+                  <Text style={styles.statLabel}>{t('committee.execCabinet', 'Exec Cabinet')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statBox}>
                   <Text style={[styles.statVal, { color: '#15803d' }]}>
                     {(data.subordinates || []).reduce((a, s) => a + (s.roles?.length || 0), 0)}
                   </Text>
-                  <Text style={styles.statLabel}>Subordinates</Text>
+                  <Text style={styles.statLabel}>{t('committee.subordinates', 'Subordinates')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statBox}>
                   <Text style={[styles.statVal, { color: '#7c3aed' }]}>{data.permanentMembers?.length || 0}</Text>
-                  <Text style={styles.statLabel}>Selective</Text>
+                  <Text style={styles.statLabel}>{t('committee.selective', 'Selective')}</Text>
                 </View>
               </View>
             </Card>
@@ -388,8 +415,8 @@ export default function CommitteeScreen() {
 
           {/* Committee Hub Quick Actions Navigation */}
           <Card style={styles.quickNavCard}>
-            <Text style={styles.quickNavTitle}>Committee Services & Modules</Text>
-            <View style={styles.quickNavGrid}>
+            <Text style={[styles.quickNavTitle, isRTL && { textAlign: 'right' }]}>{t('committee.servicesModules', 'Committee Services & Modules')}</Text>
+            <View style={[styles.quickNavGrid, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.quickNavBtn}
                 onPress={() => router.push({
@@ -400,7 +427,7 @@ export default function CommitteeScreen() {
                 <View style={[styles.quickNavIconBox, { backgroundColor: '#eff6ff' }]}>
                   <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
                 </View>
-                <Text style={styles.quickNavBtnText}>Meetings</Text>
+                <Text style={styles.quickNavBtnText}>{t('meetings.title', 'Meetings')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -413,7 +440,7 @@ export default function CommitteeScreen() {
                 <View style={[styles.quickNavIconBox, { backgroundColor: '#f0fdf4' }]}>
                   <Ionicons name="flag-outline" size={20} color="#15803d" />
                 </View>
-                <Text style={styles.quickNavBtnText}>Activities</Text>
+                <Text style={styles.quickNavBtnText}>{t('activities.title', 'Activities')}</Text>
               </TouchableOpacity>
 
               {canFinance && (
@@ -428,7 +455,7 @@ export default function CommitteeScreen() {
                     <View style={[styles.quickNavIconBox, { backgroundColor: '#fef3c7' }]}>
                       <Ionicons name="cash-outline" size={20} color="#b45309" />
                     </View>
-                    <Text style={styles.quickNavBtnText}>Finance</Text>
+                    <Text style={styles.quickNavBtnText}>{t('finance.title', 'Finance')}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -441,7 +468,7 @@ export default function CommitteeScreen() {
                     <View style={[styles.quickNavIconBox, { backgroundColor: '#f3e8ff' }]}>
                       <Ionicons name="swap-horizontal-outline" size={20} color="#7c3aed" />
                     </View>
-                    <Text style={styles.quickNavBtnText}>Transfers</Text>
+                    <Text style={styles.quickNavBtnText}>{t('finance.transfers', 'Transfers')}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -456,17 +483,17 @@ export default function CommitteeScreen() {
                 <View style={[styles.quickNavIconBox, { backgroundColor: '#f1f5f9' }]}>
                   <Ionicons name="document-text-outline" size={20} color="#475569" />
                 </View>
-                <Text style={styles.quickNavBtnText}>Reports</Text>
+                <Text style={styles.quickNavBtnText}>{t('reports.title', 'Reports')}</Text>
               </TouchableOpacity>
             </View>
           </Card>
 
           {/* Search bar */}
-          <View style={styles.searchBarWrap}>
-            <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={{ marginRight: 8 }} />
+          <View style={[styles.searchBarWrap, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={isRTL ? { marginLeft: 8 } : { marginRight: 8 }} />
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search roster by name, role, phone, or member ID…"
+              style={[styles.searchInput, isRTL && { textAlign: 'right' }]}
+              placeholder={t('committee.searchPlaceholder', 'Search roster by name, role, phone, or member ID…')}
               placeholderTextColor={Colors.textMuted}
               value={search}
               onChangeText={setSearch}
@@ -485,34 +512,34 @@ export default function CommitteeScreen() {
             <>
               {/* SECTION 1: Own Executive Cabinet */}
               <Card style={styles.rosterSectionCard}>
-                <View style={styles.sectionHeader}>
+                <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.sectionTitle}>{OWN_HEADING[resolved?.unitLevel]}</Text>
-                    <Text style={styles.sectionSub}>Primary office-holders with executive decision mandates</Text>
+                    <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{ownHeadingText}</Text>
+                    <Text style={[styles.sectionSub, isRTL && { textAlign: 'right' }]}>{t('committee.execCabinetSub', 'Primary office-holders with executive decision mandates')}</Text>
                   </View>
-                  <Badge label={`${filteredCabinet.length} office-holders`} color="#0369a1" bg="#e0f2fe" />
+                  <Badge label={t('committee.officeHoldersCount', '{{count}} office-holders', { count: filteredCabinet.length })} color="#0369a1" bg="#e0f2fe" />
                 </View>
 
                 {filteredCabinet.length === 0 ? (
-                  <Text style={styles.emptyText}>
-                    {search ? 'No executive cabinet members matching your search.' : 'Executive cabinet not formed yet.'}
+                  <Text style={[styles.emptyText, isRTL && { textAlign: 'right' }]}>
+                    {search ? t('committee.noExecMatching', 'No executive cabinet members matching your search.') : t('committee.cabinetNotFormed', 'Executive cabinet not formed yet.')}
                   </Text>
                 ) : (
                   <View style={styles.memberList}>
                     {filteredCabinet.map((c) => (
-                      <View key={c._id} style={styles.memberRow}>
+                      <View key={c._id} style={[styles.memberRow, isRTL && { flexDirection: 'row-reverse' }]}>
                         <Avatar name={c.memberId?.fullName || c.roleCode} size={42} color={Colors.primary} />
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            <Text style={styles.memberName}>{c.memberId?.fullName || 'Vacant'}</Text>
-                            <Badge label={c.roleCode?.replace(/_/g, ' ')} color="#0369a1" bg="#e0f2fe" />
+                        <View style={[{ flex: 1 }, isRTL ? { marginRight: 12 } : { marginLeft: 12 }]}>
+                          <View style={[{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                            <Text style={styles.memberName}>{c.memberId?.fullName || t('cabinet.vacant', 'Vacant')}</Text>
+                            <Badge label={t('roles.' + c.roleCode, c.roleCode?.replace(/_/g, ' '))} color="#0369a1" bg="#e0f2fe" />
                           </View>
                           {c.customRoleName && (
-                            <Text style={styles.memberRoleCustom}>{c.customRoleName}</Text>
+                            <Text style={[styles.memberRoleCustom, isRTL && { textAlign: 'right' }]}>{c.customRoleName}</Text>
                           )}
-                          <View style={styles.memberMetaRow}>
+                          <View style={[styles.memberMetaRow, isRTL && { flexDirection: 'row-reverse' }]}>
                             {c.memberId?.memberId && (
-                              <Text style={styles.memberMetaText}>ID: {c.memberId.memberId}</Text>
+                              <Text style={styles.memberMetaText}>{t('members.memberId', 'Member ID')}: {c.memberId.memberId}</Text>
                             )}
                             {c.memberId?.phone && (
                               <Text style={styles.memberMetaText}>📞 {c.memberId.phone}</Text>
@@ -527,42 +554,42 @@ export default function CommitteeScreen() {
 
               {/* SECTION 2: Subordinate Key Office-Holders */}
               <Card style={styles.rosterSectionCard}>
-                <View style={styles.sectionHeader}>
+                <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.sectionTitle}>{SUB_HEADING[resolved?.unitLevel]}</Text>
-                    <Text style={styles.sectionSub}>Ex-officio members representing subordinate units</Text>
+                    <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{subHeadingText}</Text>
+                    <Text style={[styles.sectionSub, isRTL && { textAlign: 'right' }]}>{t('committee.subordinatesSub', 'Ex-officio members representing subordinate units')}</Text>
                   </View>
                 </View>
 
                 {filteredSubordinates.length === 0 ? (
-                  <Text style={styles.emptyText}>
-                    {search ? 'No subordinate members matching your search.' : 'No subordinate units configured yet.'}
+                  <Text style={[styles.emptyText, isRTL && { textAlign: 'right' }]}>
+                    {search ? t('committee.noSubMatching', 'No subordinate members matching your search.') : t('committee.noSubordinates', 'No subordinate units configured yet.')}
                   </Text>
                 ) : (
                   filteredSubordinates.map((s) => (
                     <View key={s.unit._id} style={styles.subordinateUnitBox}>
-                      <View style={styles.subordinateUnitHeader}>
-                        <Ionicons name="business-outline" size={16} color={Colors.primary} style={{ marginRight: 6 }} />
+                      <View style={[styles.subordinateUnitHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+                        <Ionicons name="business-outline" size={16} color={Colors.primary} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
                         <Text style={styles.subordinateUnitName}>
                           {s.unit.name}
                         </Text>
-                        <Badge label={s.unit.level?.replace('_', ' ')} color="#475569" bg="#f1f5f9" />
+                        <Badge label={t('units.' + (s.unit.level?.toLowerCase() || ''), s.unit.level?.replace('_', ' '))} color="#475569" bg="#f1f5f9" />
                       </View>
 
                       {s.roles.length === 0 ? (
-                        <Text style={[styles.emptyText, { paddingVertical: 8 }]}>No key office-holders assigned in this unit.</Text>
+                        <Text style={[styles.emptyText, { paddingVertical: 8 }, isRTL && { textAlign: 'right' }]}>{t('committee.noOfficeHoldersAssigned', 'No key office-holders assigned in this unit.')}</Text>
                       ) : (
                         <View style={styles.subordinateMemberList}>
                           {s.roles.map((r) => (
-                            <View key={r._id} style={styles.subordinateMemberRow}>
+                            <View key={r._id} style={[styles.subordinateMemberRow, isRTL && { flexDirection: 'row-reverse' }]}>
                               <Avatar name={r.memberId?.fullName || r.roleCode} size={36} color="#15803d" />
-                              <View style={{ flex: 1, marginLeft: 10 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                                  <Text style={styles.memberName}>{r.memberId?.fullName || 'Assigned'}</Text>
-                                  <Badge label={r.roleCode?.replace(/_/g, ' ')} color="#15803d" bg="#dcfce7" />
+                              <View style={[{ flex: 1 }, isRTL ? { marginRight: 10 } : { marginLeft: 10 }]}>
+                                <View style={[{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                                  <Text style={styles.memberName}>{r.memberId?.fullName || t('committee.assigned', 'Assigned')}</Text>
+                                  <Badge label={t('roles.' + r.roleCode, r.roleCode?.replace(/_/g, ' '))} color="#15803d" bg="#dcfce7" />
                                 </View>
                                 {r.memberId?.phone && (
-                                  <Text style={styles.memberMetaText}>📞 {r.memberId.phone}</Text>
+                                  <Text style={[styles.memberMetaText, isRTL && { textAlign: 'right' }]}>📞 {r.memberId.phone}</Text>
                                 )}
                               </View>
                             </View>
@@ -576,48 +603,48 @@ export default function CommitteeScreen() {
 
               {/* SECTION 3: Selective Members */}
               <Card style={styles.rosterSectionCard}>
-                <View style={styles.sectionHeader}>
+                <View style={[styles.sectionHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.sectionTitle}>Selective Members</Text>
-                    <Text style={styles.sectionSub}>Permanent nominated members appointed for advisory council</Text>
+                    <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>{t('committee.selectiveMembers', 'Selective Members')}</Text>
+                    <Text style={[styles.sectionSub, isRTL && { textAlign: 'right' }]}>{t('committee.selectiveSub', 'Permanent nominated members appointed for advisory council')}</Text>
                   </View>
                   {canManage && (
-                    <TouchableOpacity style={styles.btnNominate} onPress={() => setNominateOpen(true)}>
-                      <Ionicons name="add" size={16} color="#fff" style={{ marginRight: 2 }} />
-                      <Text style={styles.btnNominateText}>Nominate</Text>
+                    <TouchableOpacity style={[styles.btnNominate, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => setNominateOpen(true)}>
+                      <Ionicons name="add" size={16} color="#fff" style={isRTL ? { marginLeft: 2 } : { marginRight: 2 }} />
+                      <Text style={styles.btnNominateText}>{t('committee.nominateAction', 'Nominate')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>
 
                 {filteredPermanents.length === 0 ? (
-                  <Text style={styles.emptyText}>
-                    {search ? 'No selective members matching your search.' : 'No selective members nominated yet.'}
+                  <Text style={[styles.emptyText, isRTL && { textAlign: 'right' }]}>
+                    {search ? t('committee.noSelectiveMatching', 'No selective members matching your search.') : t('committee.noneNominated', 'No selective members nominated yet.')}
                   </Text>
                 ) : (
                   <View style={styles.memberList}>
                     {filteredPermanents.map((p) => (
-                      <View key={p._id} style={styles.memberRow}>
+                      <View key={p._id} style={[styles.memberRow, isRTL && { flexDirection: 'row-reverse' }]}>
                         <Avatar name={p.memberId?.fullName || 'Selective'} size={42} color="#7c3aed" />
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text style={styles.memberName}>{p.memberId?.fullName || 'Nominee'}</Text>
+                        <View style={[{ flex: 1 }, isRTL ? { marginRight: 12 } : { marginLeft: 12 }]}>
+                          <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, isRTL && { flexDirection: 'row-reverse' }]}>
+                            <Text style={styles.memberName}>{p.memberId?.fullName || t('committee.nominee', 'Nominee')}</Text>
                             {canManage && (
                               <TouchableOpacity
-                                style={styles.btnRemovePerm}
+                                style={[styles.btnRemovePerm, isRTL && { flexDirection: 'row-reverse' }]}
                                 onPress={() => handleRemovePermanent(p)}
                               >
                                 <Ionicons name="trash-outline" size={14} color={Colors.error} />
-                                <Text style={styles.btnRemovePermText}>Remove</Text>
+                                <Text style={styles.btnRemovePermText}>{t('common.remove', 'Remove')}</Text>
                               </TouchableOpacity>
                             )}
                           </View>
-                          <View style={styles.memberMetaRow}>
+                          <View style={[styles.memberMetaRow, isRTL && { flexDirection: 'row-reverse' }]}>
                             {p.memberId?.phone && (
                               <Text style={styles.memberMetaText}>📞 {p.memberId.phone}</Text>
                             )}
                             {p.nominationNote ? (
                               <Text style={[styles.memberMetaText, { fontStyle: 'italic', color: '#64748b' }]}>
-                                Note: {p.nominationNote}
+                                {t('common.notes', 'Note')}: {p.nominationNote}
                               </Text>
                             ) : null}
                           </View>
@@ -643,11 +670,11 @@ export default function CommitteeScreen() {
         >
           <View style={styles.modalBackdrop}>
             <View style={[styles.modalCard, isTablet && styles.modalCardTablet]}>
-              <View style={styles.modalHeader}>
+              <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.modalTitle}>Nominate Selective Member</Text>
-                  <Text style={styles.modalSub}>
-                    Appoint an active member to {committeeTitle}.
+                  <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('committee.nominateSelectiveModal', 'Nominate Selective Member')}</Text>
+                  <Text style={[styles.modalSub, isRTL && { textAlign: 'right' }]}>
+                    {t('committee.nominateSub', 'Appoint an active member to {{title}}.', { title: committeeTitle })}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => !nominating && setNominateOpen(false)}>
@@ -657,14 +684,14 @@ export default function CommitteeScreen() {
 
               <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
                 {nominateErr ? (
-                  <View style={styles.alertError}>
-                    <Ionicons name="alert-circle" size={18} color={Colors.error} style={{ marginRight: 6 }} />
-                    <Text style={styles.alertErrorText}>{nominateErr}</Text>
+                  <View style={[styles.alertError, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Ionicons name="alert-circle" size={18} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                    <Text style={[styles.alertErrorText, isRTL && { textAlign: 'right' }]}>{nominateErr}</Text>
                   </View>
                 ) : null}
 
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Select Member <Text style={{ color: Colors.error }}>*</Text></Text>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('committee.selectMember', 'Select Member')} <Text style={{ color: Colors.error }}>*</Text></Text>
                   {membersLoading ? (
                     <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 10 }} />
                   ) : (
@@ -676,7 +703,7 @@ export default function CommitteeScreen() {
                           if (nominateErr) setNominateErr('');
                         }}
                       >
-                        <Picker.Item label="— Choose from registered active members —" value="" />
+                        <Picker.Item label={t('committee.chooseFromActiveMembers', '— Choose from registered active members —')} value="" />
                         {eligibleMembers.map((m) => (
                           <Picker.Item
                             key={m._id}
@@ -687,16 +714,16 @@ export default function CommitteeScreen() {
                       </Picker>
                     </View>
                   )}
-                  <Text style={styles.fieldHint}>
-                    Only active members not already seated in this committee appear in the list.
+                  <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>
+                    {t('committee.nominateHint', 'Only active members not already seated in this committee appear in the list.')}
                   </Text>
                 </View>
 
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Nomination Note (Optional)</Text>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('committee.nominationNoteOptional', 'Nomination Note (Optional)')}</Text>
                   <TextInput
-                    style={[styles.fieldInput, { height: 70, textAlignVertical: 'top' }]}
-                    placeholder="e.g. Appointed as senior elder advisor for youth engagement"
+                    style={[styles.fieldInput, { height: 70, textAlignVertical: 'top' }, isRTL && { textAlign: 'right' }]}
+                    placeholder={t('committee.nominationNotePlaceholder', 'e.g. Appointed as senior elder advisor for youth engagement')}
                     placeholderTextColor={Colors.textMuted}
                     multiline
                     value={note}
@@ -705,21 +732,21 @@ export default function CommitteeScreen() {
                 </View>
               </ScrollView>
 
-              <View style={styles.modalFooter}>
+              <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
                 <TouchableOpacity
                   style={styles.btnSecondary}
                   disabled={nominating}
                   onPress={() => setNominateOpen(false)}
                 >
-                  <Text style={styles.btnSecondaryText}>Cancel</Text>
+                  <Text style={styles.btnSecondaryText}>{t('common.cancel', 'Cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.btnPrimary, { opacity: !memberId || nominating ? 0.6 : 1 }]}
+                  style={[styles.btnPrimary, { opacity: !memberId || nominating ? 0.6 : 1 }, isRTL && { flexDirection: 'row-reverse' }]}
                   disabled={!memberId || nominating}
                   onPress={handleNominate}
                 >
-                  {nominating && <ActivityIndicator size="small" color="#fff" style={{ marginRight: 6 }} />}
-                  <Text style={styles.btnPrimaryText}>{nominating ? 'Nominating…' : 'Nominate Member'}</Text>
+                  {nominating && <ActivityIndicator size="small" color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />}
+                  <Text style={styles.btnPrimaryText}>{nominating ? t('common.loading', 'Nominating…') : t('committee.nominateMemberBtn', 'Nominate Member')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

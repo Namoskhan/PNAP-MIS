@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { api, errorMessage } from '../../api/client';
 
@@ -6,6 +7,7 @@ import dialog from '../../components/dialog';
 const PKR = new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
 export default function PerformancePage() {
+  const { t } = useTranslation();
   const { ctx } = useUnit();
   const [members, setMembers] = useState([]);
   const [memberId, setMemberId] = useState('');
@@ -51,7 +53,7 @@ export default function PerformancePage() {
     fetch(`/api/exports/member/${memberId}/pdf?${params.toString()}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(async (res) => {
-      if (!res.ok) { dialog.alert('Export failed.'); return; }
+      if (!res.ok) { dialog.alert(t('common.exportFailed', 'Export failed.')); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -71,7 +73,7 @@ export default function PerformancePage() {
     fetch(`/api/exports/member/${memberId}/xlsx?${params.toString()}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(async (res) => {
-      if (!res.ok) { dialog.alert('Export failed.'); return; }
+      if (!res.ok) { dialog.alert(t('common.exportFailed', 'Export failed.')); return; }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -81,31 +83,31 @@ export default function PerformancePage() {
     });
   }
 
-  if (!ctx) return <p>Select a unit context first.</p>;
+  if (!ctx) return <p>{t('performance.selectUnitContextFirst', 'Select a unit context first.')}</p>;
 
   return (
     <div>
-      <div className="page-header"><h2>Member Performance · {ctx.unitName}</h2></div>
+      <div className="page-header"><h2>{t('performance.memberPerformance', 'Member Performance')} · {ctx.unitName}</h2></div>
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="form-grid">
           <div className="field">
-            <label>Member</label>
+            <label>{t('performance.member', 'Member')}</label>
             <select value={memberId} onChange={(e) => setMemberId(e.target.value)}>
-              <option value="">— pick a member —</option>
+              <option value="">{t('performance.pickMember', '— pick a member —')}</option>
               {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
             </select>
           </div>
           <div className="field">
-            <label>From</label>
+            <label>{t('common.from', 'From')}</label>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
           </div>
           <div className="field">
-            <label>To</label>
+            <label>{t('common.to', 'To')}</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
           <div className="field" style={{ alignSelf: 'end' }}>
-            <button className="btn" disabled={!memberId || busy} onClick={load}>{busy ? 'Loading…' : 'Generate'}</button>
+            <button className="btn" disabled={!memberId || busy} onClick={load}>{busy ? t('common.loading', 'Loading…') : t('performance.generate', t('common.generate', 'Generate Report'))}</button>
           </div>
         </div>
       </div>
@@ -121,28 +123,28 @@ export default function PerformancePage() {
                 <div className="muted">{report.member.memberId} · CNIC {report.member.cnic} · {report.member.phone}</div>
                 {report.roles?.length > 0 && (
                   <div style={{ marginTop: 4, fontSize: 13 }}>
-                    Roles: {report.roles.map((r) => r.customRoleName || r.roleCode).join(', ')}
+                    {t('roles.rolesList', 'Roles:')} {report.roles.map((r) => r.customRoleName || t(`roles.${r.roleCode}`, r.roleCode)).join(', ')}
                   </div>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button className="btn secondary" onClick={downloadPdf}>Download PDF</button>
-                <button className="btn secondary" onClick={downloadXlsx}>Download Excel</button>
+                <button className="btn secondary" onClick={downloadPdf}>{t('common.exportPdf', 'Download PDF')}</button>
+                <button className="btn secondary" onClick={downloadXlsx}>{t('common.exportCsv', 'Download Excel')}</button>
               </div>
             </div>
           </div>
 
           <div className="kpi-grid">
-            <Kpi label="Meetings on roster" value={report.meetings.totalRoster} />
-            <Kpi label="Present" value={report.meetings.present} accent="good" />
-            <Kpi label="Absent" value={report.meetings.absent} accent={report.meetings.absent > 0 ? 'danger' : undefined} />
-            <Kpi label="Activities Participated" value={report.activities.participated} />
-            <Kpi label="Activities Led" value={report.activities.led} />
-            <Kpi label="Donations" value={PKR.format(report.donations.total)} sub={`${report.donations.count} donations`} />
-            <Kpi label="Responsibilities Pending" value={report.responsibilities.pending} />
-            <Kpi label="Responsibilities Completed" value={report.responsibilities.completed} accent="good" />
+            <Kpi label={t('performance.meetingsOnRoster', 'Meetings on roster')} value={report.meetings.totalRoster} />
+            <Kpi label={t('status.present', 'Present')} value={report.meetings.present} accent="good" />
+            <Kpi label={t('status.absent', 'Absent')} value={report.meetings.absent} accent={report.meetings.absent > 0 ? 'danger' : undefined} />
+            <Kpi label={t('performance.activitiesParticipated', 'Activities Participated')} value={report.activities.participated} />
+            <Kpi label={t('performance.activitiesLed', 'Activities Led')} value={report.activities.led} />
+            <Kpi label={t('performance.donations', 'Donations')} value={PKR.format(report.donations.total)} sub={t('performance.donationsCount', '{{count}} donations', { count: report.donations.count })} />
+            <Kpi label={t('performance.responsibilitiesPending', 'Responsibilities Pending')} value={report.responsibilities.pending} />
+            <Kpi label={t('performance.responsibilitiesCompleted', 'Responsibilities Completed')} value={report.responsibilities.completed} accent="good" />
             {report.responsibilities.completionRate !== null && (
-              <Kpi label="Completion Rate" value={`${report.responsibilities.completionRate}%`} accent={report.responsibilities.completionRate >= 70 ? 'good' : 'danger'} />
+              <Kpi label={t('performance.completionRate', 'Completion Rate')} value={`${report.responsibilities.completionRate}%`} accent={report.responsibilities.completionRate >= 70 ? 'good' : 'danger'} />
             )}
           </div>
         </>

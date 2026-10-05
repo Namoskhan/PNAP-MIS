@@ -1,33 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
 import { SkeletonRows } from '../Skeleton';
 
-// Detailed dormancy reports — one table for organizational units,
-// one for members. Both paginate server-side and reuse the existing
-// `table.list` styling and `.badge` state colors, so they match the
-// Audit Log / Finance Overview tables already in the product.
-
-const UNIT_LEVELS = [
-  { key: 'BASIC_UNIT', label: 'Basic Units' },
-  { key: 'AREA', label: 'Areas' },
-  { key: 'DISTRICT', label: 'Districts' },
-  { key: 'PROVINCE', label: 'Provinces' },
-];
-
-function fmtDate(d) {
-  return d ? new Date(d).toLocaleDateString() : 'Never';
+function fmtDate(d, t) {
+  return d ? new Date(d).toLocaleDateString() : (t ? t('dashboard.never', 'Never') : 'Never');
 }
 
-// A dormancy figure only means something next to the window that
-// produced it, so "never acted" stays explicit rather than becoming a
-// misleadingly precise day count.
-function fmtDays(n) {
-  if (n == null) return <span className="muted">No activity recorded</span>;
+function fmtDays(n, t) {
+  if (n == null) return <span className="muted">{t ? t('dashboard.noActivityRecorded', 'No activity recorded') : 'No activity recorded'}</span>;
   return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{n.toLocaleString()}</span>;
 }
 
 function Pager({ page, pages, total, onPage, busy }) {
+  const { t } = useTranslation();
   if (total === 0) return null;
   return (
     <div style={{
@@ -35,20 +22,20 @@ function Pager({ page, pages, total, onPage, busy }) {
       gap: 10, marginTop: 10, flexWrap: 'wrap',
     }}>
       <span className="muted" style={{ fontSize: 12 }}>
-        Page {page} of {pages} · {total.toLocaleString()} rows
+        {t('dashboard.pageOfRows', 'Page {{page}} of {{pages}} · {{total}} rows', { page, pages, total: total.toLocaleString() })}
       </span>
       <div style={{ display: 'flex', gap: 6 }}>
         <button
           type="button" className="btn secondary sm"
           disabled={busy || page <= 1} onClick={() => onPage(page - 1)}
         >
-          ← Previous
+          ← {t('common.previous', 'Previous')}
         </button>
         <button
           type="button" className="btn secondary sm"
           disabled={busy || page >= pages} onClick={() => onPage(page + 1)}
         >
-          Next →
+          {t('common.next', 'Next')} →
         </button>
       </div>
     </div>
@@ -56,13 +43,19 @@ function Pager({ page, pages, total, onPage, busy }) {
 }
 
 export function InactiveUnitsTable({ params }) {
+  const { t } = useTranslation();
   const [level, setLevel] = useState('BASIC_UNIT');
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(true);
 
-  // Any filter change invalidates the current page number — showing
-  // page 4 of a freshly narrowed result set would look like an error.
+  const unitLevels = [
+    { key: 'BASIC_UNIT', label: t('units.basicUnits', 'Basic Units') },
+    { key: 'AREA', label: t('units.areas', 'Areas') },
+    { key: 'DISTRICT', label: t('units.districts', 'Districts') },
+    { key: 'PROVINCE', label: t('units.provinces', 'Provinces') },
+  ];
+
   useEffect(() => { setPage(1); }, [params, level]);
 
   useEffect(() => {
@@ -83,16 +76,16 @@ export function InactiveUnitsTable({ params }) {
       <div className="chart-card-head">
         <div>
           <div className="chart-card-title">
-            {showingActive ? 'Active units' : 'Inactive units'} — detail
+            {showingActive ? t('dashboard.activeUnitsDetail', 'Active units — detail') : t('dashboard.inactiveUnitsDetail', 'Inactive units — detail')}
           </div>
           <div className="chart-card-sub">
             {showingActive
-              ? 'Units where key officers took part during the selected dates'
-              : 'No key officer took part during the selected dates. Units inactive the longest appear first.'}
+              ? t('dashboard.activeUnitsSub', 'Units where key officers took part during the selected dates')
+              : t('dashboard.inactiveUnitsSub', 'No key officer took part during the selected dates. Units inactive the longest appear first.')}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {UNIT_LEVELS.map((l) => (
+          {unitLevels.map((l) => (
             <button
               key={l.key}
               type="button"
@@ -109,15 +102,15 @@ export function InactiveUnitsTable({ params }) {
         <table className="list">
           <thead>
             <tr>
-              <th>Province</th>
-              <th>District</th>
-              <th>Area</th>
-              <th>Basic Unit</th>
-              <th>Officer in charge</th>
-              <th>Last Activity</th>
-              <th style={{ textAlign: 'right' }}>Days without activity</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('units.province', 'Province')}</th>
+              <th>{t('units.district', 'District')}</th>
+              <th>{t('units.area', 'Area')}</th>
+              <th>{t('units.basicUnit', 'Basic Unit')}</th>
+              <th>{t('dashboard.officerInCharge', 'Officer in charge')}</th>
+              <th>{t('dashboard.lastActive', 'Last Activity')}</th>
+              <th style={{ textAlign: 'right' }}>{t('dashboard.daysInactive', 'Days without activity')}</th>
+              <th>{t('common.status', 'Status')}</th>
+              <th>{t('common.actions', 'Actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -126,8 +119,8 @@ export function InactiveUnitsTable({ params }) {
               <tr>
                 <td colSpan="9" className="muted">
                   {showingActive
-                    ? 'No active units match these filters.'
-                    : 'No inactive units found for this selection.'}
+                    ? t('dashboard.noActiveUnitsMatch', 'No active units match these filters.')
+                    : t('dashboard.noUnitsFoundSelection', 'No inactive units found for this selection.')}
                 </td>
               </tr>
             )}
@@ -146,16 +139,18 @@ export function InactiveUnitsTable({ params }) {
                       </div>
                     </>
                   ) : (
-                    // Worth calling out in its own right: a unit with
-                    // no cabinet cannot become active by any action.
-                    <span className="muted">No cabinet appointed</span>
+                    <span className="muted">{t('dashboard.noCabinetAppointed', 'No cabinet appointed')}</span>
                   )}
                 </td>
-                <td style={{ fontSize: 13 }}>{fmtDate(u.lastActivityAt)}</td>
-                <td style={{ textAlign: 'right' }}>{fmtDays(u.daysInactive)}</td>
-                <td><span className={`badge ${u.status}`}>{u.status === 'DORMANT' ? 'Inactive' : u.status?.replace(/_/g, ' ').toLowerCase()}</span></td>
+                <td style={{ fontSize: 13 }}>{fmtDate(u.lastActivityAt, t)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtDays(u.daysInactive, t)}</td>
                 <td>
-                  <Link className="btn ghost sm" to="/admin/manage-org">Manage</Link>
+                  <span className={`badge ${u.status}`}>
+                    {u.status === 'DORMANT' ? t('common.inactive', 'Inactive') : u.status?.replace(/_/g, ' ').toLowerCase()}
+                  </span>
+                </td>
+                <td>
+                  <Link className="btn ghost sm" to="/admin/manage-org">{t('common.manage', 'Manage')}</Link>
                 </td>
               </tr>
             ))}
@@ -175,6 +170,7 @@ export function InactiveUnitsTable({ params }) {
 }
 
 export function InactiveMembersTable({ params }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(true);
@@ -197,27 +193,27 @@ export function InactiveMembersTable({ params }) {
     <div className="chart-card">
       <div className="chart-card-head">
         <div>
-          <div className="chart-card-title">Inactive members — details</div>
+          <div className="chart-card-title">{t('dashboard.inactiveMembersDetail', 'Inactive members — details')}</div>
           <div className="chart-card-sub">
-            No party activity recorded during the selected dates
+            {t('dashboard.inactiveMembersSub', 'No party activity recorded during the selected dates')}
           </div>
         </div>
-        <div className="chart-card-meta">{(data?.total || 0).toLocaleString()} members</div>
+        <div className="chart-card-meta">{(data?.total || 0).toLocaleString()} {t('dashboard.totalMembers', 'members')}</div>
       </div>
 
       <div className="table-responsive">
         <table className="list">
           <thead>
             <tr>
-              <th>Member</th>
-              <th>Province</th>
-              <th>District</th>
-              <th>Area</th>
-              <th>Basic Unit</th>
-              <th>Last Activity</th>
-              <th style={{ textAlign: 'right' }}>Days without activity</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('dashboard.member', 'Member')}</th>
+              <th>{t('units.province', 'Province')}</th>
+              <th>{t('units.district', 'District')}</th>
+              <th>{t('units.area', 'Area')}</th>
+              <th>{t('units.basicUnit', 'Basic Unit')}</th>
+              <th>{t('dashboard.lastActive', 'Last Activity')}</th>
+              <th style={{ textAlign: 'right' }}>{t('dashboard.daysInactive', 'Days without activity')}</th>
+              <th>{t('common.status', 'Status')}</th>
+              <th>{t('common.actions', 'Actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -225,7 +221,7 @@ export function InactiveMembersTable({ params }) {
             {!busy && items.length === 0 && (
               <tr>
                 <td colSpan="9" className="muted">
-                  No inactive members found for this selection.
+                  {t('dashboard.noInactiveMembersFound', 'No inactive members found for this selection.')}
                 </td>
               </tr>
             )}
@@ -239,10 +235,14 @@ export function InactiveMembersTable({ params }) {
                 <td>{m.district || <span className="muted">—</span>}</td>
                 <td>{m.area || <span className="muted">—</span>}</td>
                 <td>{m.basicUnit || <span className="muted">—</span>}</td>
-                <td style={{ fontSize: 13 }}>{fmtDate(m.lastActivityAt)}</td>
-                <td style={{ textAlign: 'right' }}>{fmtDays(m.daysInactive)}</td>
-                <td><span className={`badge ${m.status}`}>{m.status === 'DORMANT' ? 'Inactive' : m.status?.replace(/_/g, ' ').toLowerCase()}</span></td>
-                <td><Link className="btn ghost sm" to={`/members/${m._id}`}>View</Link></td>
+                <td style={{ fontSize: 13 }}>{fmtDate(m.lastActivityAt, t)}</td>
+                <td style={{ textAlign: 'right' }}>{fmtDays(m.daysInactive, t)}</td>
+                <td>
+                  <span className={`badge ${m.status}`}>
+                    {m.status === 'DORMANT' ? t('common.inactive', 'Inactive') : m.status?.replace(/_/g, ' ').toLowerCase()}
+                  </span>
+                </td>
+                <td><Link className="btn ghost sm" to={`/members/${m._id}`}>{t('common.view', 'View')}</Link></td>
               </tr>
             ))}
           </tbody>

@@ -17,6 +17,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useAuth } from '../../../src/context/AuthContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight } from '../../../src/utils/permissions';
 import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { useNetwork } from '../../../src/context/NetworkContext';
@@ -55,6 +56,7 @@ const FILTERS = [
 export default function ResponsibilitiesScreen() {
   const { ctx } = useUnit();
   const { user } = useAuth();
+  const { t, isRTL } = useLanguage();
   const toast = useToast();
   const params = useLocalSearchParams();
 
@@ -85,6 +87,15 @@ export default function ResponsibilitiesScreen() {
   const [filterState, setFilterState] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Filters with localization
+  const filters = useMemo(() => [
+    { label: t('responsibilities.allStates', 'All states'), value: '' },
+    { label: t('common.pending', 'Pending'), value: 'PENDING' },
+    { label: t('responsibilities.inProgress', 'In Progress'), value: 'IN_PROGRESS' },
+    { label: t('common.completed', 'Completed'), value: 'COMPLETED' },
+    { label: t('common.cancelled', 'Cancelled'), value: 'CANCELLED' },
+  ], [t]);
 
   // Create form modal state
   const [showCreate, setShowCreate] = useState(false);
@@ -193,7 +204,7 @@ export default function ResponsibilitiesScreen() {
 
   async function handleCreate() {
     if (!form.title.trim() || !form.assignedToMemberId) {
-      setFormErr('Pick a member and enter a title.');
+      setFormErr(t('responsibilities.pickMemberAndTitle', 'Pick a member and enter a title.'));
       return;
     }
     setFormErr('');
@@ -213,7 +224,9 @@ export default function ResponsibilitiesScreen() {
       setMemberSearch('');
       reload(true);
       toast.success(
-        assignee ? `"${payload.title}" assigned to ${assignee.fullName}.` : `"${payload.title}" assigned.`
+        assignee
+          ? t('responsibilities.assignedNamedToast', '"{{title}}" assigned to {{name}}.', { title: payload.title, name: assignee.fullName })
+          : t('responsibilities.assignedToast', '"{{title}}" assigned.', { title: payload.title })
       );
     } catch (e) {
       if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
@@ -241,7 +254,7 @@ export default function ResponsibilitiesScreen() {
         setShowCreate(false);
         setForm({ title: '', description: '', dueDate: '', assignedToMemberId: '' });
         setMemberSearch('');
-        toast.success(`Offline: "${payload.title}" saved locally. Will sync when online.`);
+        toast.success(t('responsibilities.offlineSavedToast', 'Offline: "{{title}}" saved locally. Will sync when online.', { title: payload.title }));
       } else {
         setFormErr(errorMessage(e));
       }
@@ -258,7 +271,7 @@ export default function ResponsibilitiesScreen() {
       await api.patch(`/responsibilities/${id}`, patch);
       reload(true);
       const stateLabel = patch.state ? (STATE_CONFIG[patch.state]?.label || patch.state) : 'Updated';
-      toast.success(patch.state ? `Marked ${stateLabel.toLowerCase()}.` : 'Responsibility updated.');
+      toast.success(patch.state ? t('responsibilities.markedStateToast', 'Marked {{state}}.', { state: stateLabel.toLowerCase() }) : t('responsibilities.updatedToast', 'Responsibility updated.'));
     } catch (e) {
       if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
         await enqueueOfflineAction({
@@ -273,7 +286,7 @@ export default function ResponsibilitiesScreen() {
           prev.map((item) => (item._id === id ? { ...item, ...patch } : item))
         );
         const stateLabel = patch.state ? (STATE_CONFIG[patch.state]?.label || patch.state) : 'Updated';
-        toast.success(`Offline: Marked ${stateLabel.toLowerCase()}. Will sync when online.`);
+        toast.success(t('responsibilities.offlineMarkedToast', 'Offline: Marked {{state}}. Will sync when online.', { state: stateLabel.toLowerCase() }));
       } else {
         toast.error(errorMessage(e));
       }
@@ -292,7 +305,7 @@ export default function ResponsibilitiesScreen() {
         throw new Error('OFFLINE_MODE');
       }
       await api.patch(`/responsibilities/${completeItem._id}`, patch);
-      toast.success('Marked completed.');
+      toast.success(t('responsibilities.markedDoneToast', 'Marked completed.'));
       setCompleteItem(null);
       setCompletionNote('');
       reload(true);
@@ -309,7 +322,7 @@ export default function ResponsibilitiesScreen() {
         setItems((prev) =>
           prev.map((item) => (item._id === completeItem._id ? { ...item, ...patch } : item))
         );
-        toast.success('Offline: Marked completed. Will sync when online.');
+        toast.success(t('responsibilities.offlineMarkedDoneToast', 'Offline: Marked completed. Will sync when online.'));
         setCompleteItem(null);
         setCompletionNote('');
       } else {
@@ -322,15 +335,15 @@ export default function ResponsibilitiesScreen() {
 
   async function handleDelete(item) {
     confirmAction(
-      'Delete Responsibility',
-      `Delete "${item.title}"? This cannot be undone.`,
+      t('responsibilities.deleteConfirmTitle', 'Delete Responsibility'),
+      t('responsibilities.deleteConfirmMessage', 'Delete "{{title}}"? This cannot be undone.', { title: item.title }),
       async () => {
         try {
           if (!isOnline || String(item._id).startsWith('offline_')) {
             throw new Error('OFFLINE_MODE');
           }
           await api.delete(`/responsibilities/${item._id}`);
-          toast.success('Responsibility deleted.');
+          toast.success(t('responsibilities.deletedToast', 'Responsibility deleted.'));
           reload(true);
         } catch (e) {
           if (e.message === 'OFFLINE_MODE' || isNetworkError(e)) {
@@ -342,13 +355,13 @@ export default function ResponsibilitiesScreen() {
               displayTitle: `Delete Responsibility: "${item.title}"`,
             });
             setItems((prev) => prev.filter((i) => i._id !== item._id));
-            toast.success('Offline: Deleted locally. Will sync when online.');
+            toast.success(t('responsibilities.deletedOfflineToast', 'Offline: Deleted locally. Will sync when online.'));
           } else {
             toast.error(errorMessage(e));
           }
         }
       },
-      { confirmText: 'Delete', destructive: true }
+      { confirmText: t('common.delete', 'Delete'), destructive: true }
     );
   }
 
@@ -366,70 +379,75 @@ export default function ResponsibilitiesScreen() {
   function renderItem({ item: r }) {
     const stateInfo = STATE_CONFIG[r.state] || STATE_CONFIG.PENDING;
     const assignee = r.assignedToMemberId;
+    const stateLabel = r.state === 'PENDING' ? t('common.pending', 'Pending')
+      : r.state === 'IN_PROGRESS' ? t('responsibilities.inProgress', 'In Progress')
+      : r.state === 'COMPLETED' ? t('common.completed', 'Completed')
+      : r.state === 'CANCELLED' ? t('common.cancelled', 'Cancelled')
+      : stateInfo.label;
 
     return (
       <Card style={styles.card}>
-        <View style={styles.cardHeader}>
+        <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[styles.cardTitle, { flex: 1 }]}>{r.title}</Text>
+            <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.cardTitle, { flex: 1 }, isRTL && { textAlign: 'right' }]}>{r.title}</Text>
               {r._isOffline && (
-                <Badge label="OFFLINE" color={Colors.warning} bg="rgba(217, 119, 6, 0.15)" />
+                <Badge label={t('common.offline', 'OFFLINE')} color={Colors.warning} bg="rgba(217, 119, 6, 0.15)" />
               )}
             </View>
             {r.description ? (
-              <Text style={styles.cardDesc} numberOfLines={3}>{r.description}</Text>
+              <Text style={[styles.cardDesc, isRTL && { textAlign: 'right' }]} numberOfLines={3}>{r.description}</Text>
             ) : null}
           </View>
-          <Badge label={stateInfo.label} color={stateInfo.color} bg={stateInfo.bg} />
+          <Badge label={stateLabel} color={stateInfo.color} bg={stateInfo.bg} />
         </View>
 
         <View style={styles.cardDivider} />
 
-        <View style={styles.cardMetaRow}>
-          <View style={styles.assigneeBox}>
+        <View style={[styles.cardMetaRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={[styles.assigneeBox, isRTL && { flexDirection: 'row-reverse' }]}>
             <Avatar name={assignee?.fullName || '?'} size={36} />
-            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-              <Text style={styles.assigneeName}>{assignee?.fullName || '—'}</Text>
+            <View style={[{ flex: 1 }, isRTL ? { marginRight: Spacing.sm } : { marginLeft: Spacing.sm }]}>
+              <Text style={[styles.assigneeName, isRTL && { textAlign: 'right' }]}>{assignee?.fullName || '—'}</Text>
               {assignee?.roleText ? (
-                <Text style={styles.assigneeRole}>{assignee.roleText}</Text>
+                <Text style={[styles.assigneeRole, isRTL && { textAlign: 'right' }]}>{assignee.roleText}</Text>
               ) : null}
               {assignee?.unitText ? (
-                <Text style={styles.assigneeUnit} numberOfLines={1}>{assignee.unitText}</Text>
+                <Text style={[styles.assigneeUnit, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{assignee.unitText}</Text>
               ) : null}
             </View>
           </View>
 
-          <View style={styles.dueBox}>
-            <Ionicons name="calendar-outline" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
+          <View style={[styles.dueBox, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Ionicons name="calendar-outline" size={14} color={Colors.textMuted} style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
             <Text style={styles.dueText}>
-              {r.dueDate ? shortDate(r.dueDate) : 'No due date'}
+              {r.dueDate ? shortDate(r.dueDate) : t('responsibilities.noDueDate', 'No due date')}
             </Text>
           </View>
         </View>
 
         {canManage && (
-          <View style={styles.actionsRow}>
+          <View style={[styles.actionsRow, isRTL && { flexDirection: 'row-reverse' }]}>
             {r.state === 'PENDING' && (
               <TouchableOpacity
-                style={styles.btnSecondary}
+                style={[styles.btnSecondary, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => handleUpdateState(r._id, { state: 'IN_PROGRESS' })}
               >
-                <Ionicons name="play" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.btnSecondaryText}>Start</Text>
+                <Ionicons name="play" size={12} color={Colors.primary} style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+                <Text style={styles.btnSecondaryText}>{t('responsibilities.start', 'Start')}</Text>
               </TouchableOpacity>
             )}
 
             {r.state !== 'COMPLETED' && r.state !== 'CANCELLED' && (
               <TouchableOpacity
-                style={styles.btnPrimarySmall}
+                style={[styles.btnPrimarySmall, isRTL && { flexDirection: 'row-reverse' }]}
                 onPress={() => {
                   setCompleteItem(r);
                   setCompletionNote('');
                 }}
               >
-                <Ionicons name="checkmark-done" size={13} color="#fff" style={{ marginRight: 4 }} />
-                <Text style={styles.btnPrimarySmallText}>Mark Done</Text>
+                <Ionicons name="checkmark-done" size={13} color="#fff" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+                <Text style={styles.btnPrimarySmallText}>{t('responsibilities.markDone', 'Mark Done')}</Text>
               </TouchableOpacity>
             )}
 
@@ -438,11 +456,11 @@ export default function ResponsibilitiesScreen() {
                 style={styles.btnDanger}
                 onPress={() => handleUpdateState(r._id, { state: 'CANCELLED' })}
               >
-                <Text style={styles.btnDangerText}>Cancel</Text>
+                <Text style={styles.btnDangerText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.btnGhost} onPress={() => handleDelete(r)}>
+            <TouchableOpacity style={[styles.btnGhost, isRTL ? { marginRight: 'auto', marginLeft: 0 } : { marginLeft: 'auto' }]} onPress={() => handleDelete(r)}>
               <Ionicons name="trash-outline" size={15} color={Colors.error} />
             </TouchableOpacity>
           </View>
@@ -455,32 +473,32 @@ export default function ResponsibilitiesScreen() {
     <SafeAreaView style={styles.safe}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerTop}>
+        <View style={[styles.headerTop, isRTL && { flexDirection: 'row-reverse' }]}>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <Text style={styles.headerScope}>
-                {activeLevel ? `${activeLevel.replace('_', ' ')} RESPONSIBILITIES` : 'RESPONSIBILITIES'}
+            <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.headerScope, isRTL && { textAlign: 'right' }]}>
+                {activeLevel ? `${activeLevel.replace('_', ' ')} ${t('responsibilities.responsibilitiesUpper', 'RESPONSIBILITIES')}` : t('responsibilities.responsibilitiesUpper', 'RESPONSIBILITIES')}
               </Text>
               {!isOnline && (
                 <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#DC2626' }}>{t('common.offlineCached', 'Offline (Cached)')}</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.pageTitle}>Responsibilities · {resolvedUnitName}</Text>
+            <Text style={[styles.pageTitle, isRTL && { textAlign: 'right' }]}>{t('responsibilities.responsibilities', 'Responsibilities')} · {resolvedUnitName}</Text>
           </View>
 
           {!!canManage && (
-            <TouchableOpacity style={styles.btnPrimary} onPress={() => setShowCreate(true)}>
-              <Ionicons name="add" size={16} color="#fff" style={{ marginRight: 4 }} />
-              <Text style={styles.btnPrimaryText}>Assign</Text>
+            <TouchableOpacity style={[styles.btnPrimary, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => setShowCreate(true)}>
+              <Ionicons name="add" size={16} color="#fff" style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+              <Text style={styles.btnPrimaryText}>{t('responsibilities.assignResponsibility', '+ Assign Responsibility')}</Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* State Filter Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {FILTERS.map((f) => {
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterScroll, isRTL && { flexDirection: 'row-reverse' }]}>
+          {filters.map((f) => {
             const active = filterState === f.value;
             return (
               <TouchableOpacity
@@ -509,11 +527,11 @@ export default function ResponsibilitiesScreen() {
           !loading && (
             <EmptyState
               icon="📋"
-              title="No responsibilities yet"
+              title={t('responsibilities.noResponsibilities', 'No responsibilities yet')}
               message={
                 filterState
-                  ? 'No tasks found for this filter state.'
-                  : 'Tap "+ Assign" to allocate a task or responsibility to a member.'
+                  ? t('responsibilities.noTasksForFilter', 'No tasks found for this filter state.')
+                  : t('responsibilities.assignHint', 'Tap "+ Assign" to allocate a task or responsibility to a member.')
               }
             />
           )
@@ -537,10 +555,10 @@ export default function ResponsibilitiesScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <View>
-                <Text style={styles.modalTitle}>Assign a responsibility</Text>
-                <Text style={styles.modalSub}>{resolvedUnitName}</Text>
+                <Text style={[styles.modalTitle, isRTL && { textAlign: 'right' }]}>{t('responsibilities.assignModalTitle', 'Assign a responsibility')}</Text>
+                <Text style={[styles.modalSub, isRTL && { textAlign: 'right' }]}>{resolvedUnitName}</Text>
               </View>
               <TouchableOpacity
                 onPress={() => { if (!saving) setShowCreate(false); }}
@@ -553,30 +571,30 @@ export default function ResponsibilitiesScreen() {
 
             <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
               {formErr ? (
-                <View style={styles.errorBanner}>
-                  <Ionicons name="alert-circle" size={16} color={Colors.error} style={{ marginRight: 6 }} />
-                  <Text style={styles.errorText}>{formErr}</Text>
+                <View style={[styles.errorBanner, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Ionicons name="alert-circle" size={16} color={Colors.error} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+                  <Text style={[styles.errorText, isRTL && { textAlign: 'right' }]}>{formErr}</Text>
                 </View>
               ) : null}
 
               <View style={styles.field}>
-                <Text style={styles.label}>Title *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('common.title', 'Title')} *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: 'right' }]}
                   value={form.title}
                   onChangeText={(v) => setForm((f) => ({ ...f, title: v }))}
-                  placeholder="e.g. Mobilize voters in Block 4"
+                  placeholder={t('responsibilities.titlePlaceholder', 'e.g. Mobilize voters in Block 4')}
                   placeholderTextColor={Colors.textLight}
                 />
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.label}>Assign to Member *</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('responsibilities.assignToMember', 'Assign to Member')} *</Text>
                 <TextInput
-                  style={[styles.input, { marginBottom: Spacing.xs }]}
+                  style={[styles.input, { marginBottom: Spacing.xs }, isRTL && { textAlign: 'right' }]}
                   value={memberSearch}
                   onChangeText={setMemberSearch}
-                  placeholder="Filter member by name, ID, or phone..."
+                  placeholder={t('responsibilities.filterMemberPlaceholder', 'Filter member by name, ID, or phone...')}
                   placeholderTextColor={Colors.textLight}
                   autoCapitalize="none"
                 />
@@ -584,7 +602,7 @@ export default function ResponsibilitiesScreen() {
                   {filteredMembers.length === 0 ? (
                     <View style={{ padding: 16, alignItems: 'center' }}>
                       <Text style={{ color: Colors.textMuted, fontSize: FontSize.xs }}>
-                        No eligible members found
+                        {t('responsibilities.noEligibleMembers', 'No eligible members found')}
                       </Text>
                     </View>
                   ) : (
@@ -598,16 +616,17 @@ export default function ResponsibilitiesScreen() {
                           key={m._id}
                           style={[
                             styles.memberOption,
+                            isRTL && { flexDirection: 'row-reverse' },
                             isSelected && styles.memberOptionActive,
                           ]}
                           onPress={() => setForm((f) => ({ ...f, assignedToMemberId: m._id }))}
                         >
                           <Avatar name={m.fullName || '?'} size={32} />
                           <View style={{ flex: 1 }}>
-                            <Text style={[styles.memberNameText, isSelected && { color: Colors.primary }]}>
+                            <Text style={[styles.memberNameText, isSelected && { color: Colors.primary }, isRTL && { textAlign: 'right' }]}>
                               {m.fullName} {m.memberId ? `(${m.memberId})` : ''}
                             </Text>
-                            {meta ? <Text style={styles.memberMetaText}>{meta}</Text> : null}
+                            {meta ? <Text style={[styles.memberMetaText, isRTL && { textAlign: 'right' }]}>{meta}</Text> : null}
                           </View>
                           {isSelected && (
                             <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
@@ -620,19 +639,19 @@ export default function ResponsibilitiesScreen() {
               </View>
 
               <DatePicker
-                label="Due Date"
+                label={t('responsibilities.dueDate', 'Due Date')}
                 value={form.dueDate}
                 onChange={(d) => setForm((f) => ({ ...f, dueDate: d }))}
-                placeholder="Select due date"
+                placeholder={t('responsibilities.selectDueDate', 'Select due date')}
               />
 
               <View style={styles.field}>
-                <Text style={styles.label}>Description</Text>
+                <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>{t('common.description', 'Description')}</Text>
                 <TextInput
-                  style={[styles.input, styles.multiline]}
+                  style={[styles.input, styles.multiline, isRTL && { textAlign: 'right' }]}
                   value={form.description}
                   onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
-                  placeholder="Details and instructions..."
+                  placeholder={t('responsibilities.descPlaceholder', 'Details and instructions...')}
                   placeholderTextColor={Colors.textLight}
                   multiline
                   numberOfLines={3}
@@ -640,13 +659,13 @@ export default function ResponsibilitiesScreen() {
               </View>
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => { if (!saving) setShowCreate(false); }}
                 disabled={saving}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveBtn, saving && { opacity: 0.7 }]}
@@ -656,7 +675,7 @@ export default function ResponsibilitiesScreen() {
                 {saving ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.saveText}>Assign Responsibility</Text>
+                  <Text style={styles.saveText}>{t('responsibilities.assignBtn', 'Assign Responsibility')}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -676,27 +695,27 @@ export default function ResponsibilitiesScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.promptCard}
           >
-            <Text style={styles.promptTitle}>Mark Completed</Text>
-            <Text style={styles.promptSubtitle}>"{completeItem?.title}"</Text>
+            <Text style={[styles.promptTitle, isRTL && { textAlign: 'right' }]}>{t('responsibilities.markCompleted', 'Mark Completed')}</Text>
+            <Text style={[styles.promptSubtitle, isRTL && { textAlign: 'right' }]}>"{completeItem?.title}"</Text>
 
-            <Text style={[styles.label, { marginTop: Spacing.md }]}>Completion note (optional):</Text>
+            <Text style={[styles.label, { marginTop: Spacing.md }, isRTL && { textAlign: 'right' }]}>{t('responsibilities.completionNoteOptional', 'Completion note (optional):')}</Text>
             <TextInput
-              style={[styles.input, styles.multiline, { height: 80 }]}
+              style={[styles.input, styles.multiline, { height: 80 }, isRTL && { textAlign: 'right' }]}
               value={completionNote}
               onChangeText={setCompletionNote}
-              placeholder="e.g. All attendees confirmed and venue booked."
+              placeholder={t('responsibilities.completionNotePlaceholder', 'e.g. All attendees confirmed and venue booked.')}
               placeholderTextColor={Colors.textLight}
               multiline
               numberOfLines={3}
             />
 
-            <View style={styles.promptActions}>
+            <View style={[styles.promptActions, isRTL && { flexDirection: 'row-reverse', justifyContent: 'flex-start' }]}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => setCompleteItem(null)}
                 disabled={completing}
               >
-                <Text style={styles.cancelText}>Cancel</Text>
+                <Text style={styles.cancelText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.saveBtn}
@@ -706,7 +725,7 @@ export default function ResponsibilitiesScreen() {
                 {completing ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.saveText}>Mark Done</Text>
+                  <Text style={styles.saveText}>{t('responsibilities.markDone', 'Mark Done')}</Text>
                 )}
               </TouchableOpacity>
             </View>

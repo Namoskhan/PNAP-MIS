@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { canManageMeetings, isCentralAdminOversight, isSuperAdminOversight, isSuperAdmin, roleLabel } from '../../utils/permissions';
@@ -72,6 +73,7 @@ export default function MeetingsPage() {
   const { ctx, setCtx } = useUnit();
   const { user, setActiveRole, allRoles } = useAuth();
   const location = useLocation();
+  const { t } = useTranslation();
   const toast = useToast();
 
   function handleSwitchToCentral() {
@@ -615,17 +617,17 @@ export default function MeetingsPage() {
       <div className="page-header">
         <h2>
           {isCongressView
-            ? 'National Congress Meetings · PKNAP Central'
+            ? `${t('meetings.nationalCongress', 'National Congress Meetings')} · ${ctx.unitName || 'PKNAP Central'}`
             : (isJirgaView
-              ? (ctx.unitLevel === 'CENTRAL' ? 'Qomi Jirga Meetings' : `Sobayi Jirga Meetings · ${ctx.unitName}`)
-              : (isCommitteeView ? `Committee Meetings · ${ctx.unitName}` : `Meetings · ${ctx.unitName}`))}
+              ? (ctx.unitLevel === 'CENTRAL' ? t('meetings.qomiJirga', 'Qomi Jirga Meetings') : `${t('meetings.sobayiJirga', 'Sobayi Jirga Meetings')} · ${ctx.unitName}`)
+              : (isCommitteeView ? `${t('meetings.committeeMeetings', 'Committee Meetings')} · ${ctx.unitName}` : `${t('meetings.title', 'Meetings')} · ${ctx.unitName}`))}
         </h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn secondary" onClick={exportPdf}>Export PDF</button>
-          <button className="btn secondary" onClick={exportXlsx}>Export Excel</button>
+          <button className="btn secondary" onClick={exportPdf}>{t('common.exportPdf', 'Export PDF')}</button>
+          <button className="btn secondary" onClick={exportXlsx}>{t('common.export', 'Export Excel')}</button>
           {canManage && (
             <button className="btn" onClick={openCreate}>
-              {isCongressView ? '+ Schedule Congress Meeting' : (isJirgaView ? '+ Schedule Jirga Meeting' : (isCommitteeView ? '+ Schedule Committee Meeting' : '+ Schedule Meeting'))}
+              {isCongressView ? `+ ${t('meetings.scheduleMeeting', 'Schedule Congress Meeting')}` : (isJirgaView ? `+ ${t('meetings.scheduleMeeting', 'Schedule Jirga Meeting')}` : (isCommitteeView ? `+ ${t('meetings.scheduleMeeting', 'Schedule Committee Meeting')}` : `+ ${t('meetings.scheduleMeeting', 'Schedule Meeting')}`))}
             </button>
           )}
         </div>
@@ -636,7 +638,7 @@ export default function MeetingsPage() {
         <div className="modal" style={{ maxWidth: 720 }} role="dialog" aria-modal="true" aria-label="Schedule Meeting">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>
-              {isCongressView ? 'Schedule a Congress Meeting' : (isJirgaView ? 'Schedule a Jirga Meeting' : (isCommitteeView ? 'Schedule a Committee Meeting' : 'Schedule a Meeting'))}
+              {isCongressView ? t('meetings.scheduleMeeting', 'Schedule a Congress Meeting') : (isJirgaView ? t('meetings.scheduleMeeting', 'Schedule a Jirga Meeting') : (isCommitteeView ? t('meetings.scheduleMeeting', 'Schedule a Committee Meeting') : t('meetings.scheduleMeeting', 'Schedule a Meeting')))}
             </h3>
             <button type="button" className="btn secondary" onClick={() => setShowCreate(false)} aria-label="Close" style={{ padding: '4px 10px', fontSize: 18, lineHeight: 1 }}><XIcon size={16} /></button>
           </div>
@@ -646,33 +648,33 @@ export default function MeetingsPage() {
           </p>
           <div className="form-grid">
             <div className="field">
-              <label>Type *</label>
+              <label>{t('meetings.meetingType', 'Type')} *</label>
               <select
                 value={form.typeCode}
                 onChange={(e) => setForm({ ...form, typeCode: e.target.value, dynamicData: {} })}
               >
                 {availableTypes.length === 0 && <option value="">— Loading types —</option>}
-                {availableTypes.map((t) => <option key={t.code || t._id} value={t.code}>{t.label}</option>)}
+                {availableTypes.map((tItem) => <option key={tItem.code || tItem._id} value={tItem.code}>{tItem.label}</option>)}
               </select>
             </div>
             <div className="field">
-              <label>Title</label>
+              <label>{t('meetings.meetingTitle', 'Title')}</label>
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             </div>
             <div className="field">
-              <label>Date &amp; Time (Start) *</label>
+              <label>{t('meetings.startAt', 'Date & Time (Start)')} *</label>
               <input type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
             </div>
             <div className="field">
-              <label>End *</label>
+              <label>{t('meetings.endAt', 'End')} *</label>
               <input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} />
             </div>
             <div className="field full">
-              <label>Venue *</label>
+              <label>{t('meetings.venue', 'Venue')} *</label>
               <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
             </div>
             <div className="field">
-              <label>Chairperson</label>
+              <label>{t('meetings.chairperson', 'Chairperson')}</label>
               <select value={form.chairpersonId} onChange={(e) => setForm({ ...form, chairpersonId: e.target.value })}>
                 <option value="">— pick a chairperson —</option>
                 {loadingChairpersons && <option disabled>Loading eligible attendees…</option>}
@@ -684,7 +686,7 @@ export default function MeetingsPage() {
               </select>
             </div>
             <div className="field">
-              <label>Venue GPS (Latitude &amp; Longitude) *</label>
+              <label>{t('meetings.gpsCoordinates', 'Venue GPS (Latitude & Longitude)')} *</label>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                   style={{ flex: '1 1 120px' }}
@@ -700,7 +702,7 @@ export default function MeetingsPage() {
                   onChange={(e) => setForm({ ...form, gpsLng: e.target.value })}
                   required
                 />
-                <button type="button" className="btn secondary" onClick={captureGps}>Capture</button>
+                <button type="button" className="btn secondary" onClick={captureGps}>{t('meetings.getLocation', 'Capture')}</button>
               </div>
               {gpsHint ? (
                 <div className="hint" style={{ marginTop: 4, fontSize: 12, color: 'var(--muted)' }}>{gpsHint}</div>
@@ -709,7 +711,7 @@ export default function MeetingsPage() {
               )}
             </div>
             <div className="field full">
-              <label>Description</label>
+              <label>{t('meetings.description', 'Description')}</label>
               <textarea
                 rows={3}
                 placeholder="What this meeting is about"
@@ -718,7 +720,7 @@ export default function MeetingsPage() {
               />
             </div>
             <div className="field full">
-              <label>Agenda</label>
+              <label>{t('meetings.agenda', 'Agenda')}</label>
               <textarea rows={3} value={form.agenda} onChange={(e) => setForm({ ...form, agenda: e.target.value })} />
             </div>
             {previousMeeting && (
@@ -746,8 +748,8 @@ export default function MeetingsPage() {
             </div>
           )}
           <div style={{ marginTop: 18, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button className="btn secondary" type="button" onClick={() => setShowCreate(false)}>Cancel</button>
-            <button className="btn" onClick={create} disabled={creating}>{creating ? 'Scheduling…' : 'Schedule'}</button>
+            <button className="btn secondary" type="button" onClick={() => setShowCreate(false)}>{t('common.cancel', 'Cancel')}</button>
+            <button className="btn" onClick={create} disabled={creating}>{creating ? t('common.loading', 'Scheduling…') : t('meetings.schedule', 'Schedule')}</button>
           </div>
         </div>
         </div>
@@ -755,14 +757,14 @@ export default function MeetingsPage() {
 
       {!isCommitteeView && !isJirgaView && !isCongressView && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className="muted" style={{ fontSize: 13, marginRight: 4, fontWeight: 500 }}>Category:</span>
+          <span className="muted" style={{ fontSize: 13, marginRight: 4, fontWeight: 500 }}>{t('finance.category', 'Category')}:</span>
           <button
             type="button"
             className={`btn ${meetingTab === 'ALL' ? '' : 'ghost'}`}
             style={{ padding: '6px 14px', fontSize: 13, borderRadius: 20 }}
             onClick={() => setMeetingTab('ALL')}
           >
-            All Meetings <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({nonCommitteeItems.length})</span>
+            {t('meetings.all', 'All Meetings')} <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({nonCommitteeItems.length})</span>
           </button>
           <button
             type="button"
@@ -770,7 +772,7 @@ export default function MeetingsPage() {
             style={{ padding: '6px 14px', fontSize: 13, borderRadius: 20 }}
             onClick={() => setMeetingTab('EXECUTIVE')}
           >
-            🏛️ Executive Meetings <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({execItems.length})</span>
+            🏛️ {t('meetings.executive', 'Executive Meetings')} <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({execItems.length})</span>
           </button>
           <button
             type="button"
@@ -778,7 +780,7 @@ export default function MeetingsPage() {
             style={{ padding: '6px 14px', fontSize: 13, borderRadius: 20 }}
             onClick={() => setMeetingTab('GENERAL_BODY')}
           >
-            👥 General Body Meetings <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({gbmItems.length})</span>
+            👥 {t('meetings.generalBody', 'General Body Meetings')} <span style={{ opacity: 0.75, marginLeft: 4, fontSize: 11 }}>({gbmItems.length})</span>
           </button>
         </div>
       )}
@@ -787,8 +789,8 @@ export default function MeetingsPage() {
       <table className="list">
         <thead>
           <tr>
-            <th>When</th><th>Type</th><th>Venue</th><th>Chairperson</th>
-            <th>Attendance</th><th>State</th><th>Photos</th><th>Docs</th><th></th>
+            <th>{t('common.date', 'When')}</th><th>{t('meetings.meetingType', 'Type')}</th><th>{t('meetings.venue', 'Venue')}</th><th>{t('meetings.chairperson', 'Chairperson')}</th>
+            <th>{t('meetings.attendees', 'Attendance')}</th><th>{t('common.status', 'State')}</th><th>{t('meetings.photos', 'Photos')}</th><th>{t('meetings.documents', 'Docs')}</th><th>{t('common.actions', 'Actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -820,15 +822,15 @@ export default function MeetingsPage() {
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {isCng ? (
-                      <span className="badge" style={{ backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', fontWeight: 600, fontSize: 11 }}>Congress</span>
+                      <span className="badge" style={{ backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', fontWeight: 600, fontSize: 11 }}>{t('meetings.nationalCongress', 'Congress')}</span>
                     ) : isJrg ? (
-                      <span className="badge" style={{ backgroundColor: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe', fontWeight: 600, fontSize: 11 }}>Jirga</span>
+                      <span className="badge" style={{ backgroundColor: '#f3e8ff', color: '#6b21a8', border: '1px solid #d8b4fe', fontWeight: 600, fontSize: 11 }}>{t('common.jirga', 'Jirga')}</span>
                     ) : isCm ? (
-                      <span className="badge" style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600, fontSize: 11 }}>Committee</span>
+                      <span className="badge" style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600, fontSize: 11 }}>{t('common.committee', 'Committee')}</span>
                     ) : isGbm ? (
-                      <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontWeight: 600, fontSize: 11 }}>General Body</span>
+                      <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontWeight: 600, fontSize: 11 }}>{t('meetings.generalBody', 'General Body')}</span>
                     ) : (
-                      <span className="badge" style={{ backgroundColor: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe', fontWeight: 600, fontSize: 11 }}>Executive</span>
+                      <span className="badge" style={{ backgroundColor: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe', fontWeight: 600, fontSize: 11 }}>{t('meetings.executive', 'Executive')}</span>
                     )}
                     <span>{m.title ? `${m.type} · ${m.title}` : m.type}</span>
                   </div>
@@ -854,7 +856,7 @@ export default function MeetingsPage() {
                       style={{ padding: '2px 6px' }}
                       title="View photos with capture details"
                     >
-                      📷 {(m.photos || []).length} · View
+                      📷 {(m.photos || []).length} · {t('common.view', 'View')}
                     </button>
                   )}
                 </td>
@@ -867,10 +869,10 @@ export default function MeetingsPage() {
                   >📄 PDF</button>{' '}
                   {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
                     <>
-                      <button className="btn ghost" onClick={() => setEditing(m)}>Edit</button>{' '}
-                      <button className="btn ghost" onClick={() => setDocFor(m)}>Docs</button>{' '}
+                      <button className="btn ghost" onClick={() => setEditing(m)}>{t('common.edit', 'Edit')}</button>{' '}
+                      <button className="btn ghost" onClick={() => setDocFor(m)}>{t('meetings.documents', 'Docs')}</button>{' '}
                       <label className="btn secondary" style={{ cursor: 'pointer' }}>
-                        Photos
+                        {t('meetings.photos', 'Photos')}
                         <input
                           type="file"
                           accept="image/*"
@@ -883,8 +885,8 @@ export default function MeetingsPage() {
                           }}
                         />
                       </label>{' '}
-                      <button className="btn" onClick={() => setFinalizing(m)}>Finalize</button>{' '}
-                      <button className="btn danger" onClick={() => cancelMeeting(m)}>Cancel</button>
+                      <button className="btn" onClick={() => setFinalizing(m)}>{t('meetings.finalize', 'Finalize')}</button>{' '}
+                      <button className="btn danger" onClick={() => cancelMeeting(m)}>{t('common.cancel', 'Cancel')}</button>
                     </>
                   )}
                 </td>

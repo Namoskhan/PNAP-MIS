@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, errorMessage } from '../../api/client';
 import { useToast } from '../Toast';
 import { TrashIcon } from '../icons';
@@ -19,6 +20,7 @@ function toDateInput(iso) {
 }
 
 export default function CongressManager({ onChanged }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function CongressManager({ onChanged }) {
       if (done) toast.success(done);
       return true;
     } catch (e) {
-      toast.error(errorMessage(e), { title: failed || 'Action failed', duration: 7000 });
+      toast.error(errorMessage(e), { title: failed || t('common.actionFailed', 'Action failed'), duration: 7000 });
       return false;
     } finally {
       setBusy(false);
@@ -69,8 +71,8 @@ export default function CongressManager({ onChanged }) {
     const label = draft.label.trim();
     const okDone = await mutate(
       () => api.post('/central/congresses', draft),
-      `Congress "${label}" added.`,
-      'Could not add congress',
+      t('congress.congressAdded', 'Congress "{{label}}" added.', { label }),
+      t('congress.couldNotAddCongress', 'Could not add congress'),
     );
     if (okDone) setDraft({ label: '', heldOn: '' });
   }
@@ -81,8 +83,8 @@ export default function CongressManager({ onChanged }) {
         label: editing.label,
         heldOn: editing.heldOn,
       }),
-      `Congress "${editing.label}" updated.`,
-      'Could not update congress',
+      t('congress.congressUpdated', 'Congress "{{label}}" updated.', { label: editing.label }),
+      t('congress.couldNotUpdateCongress', 'Could not update congress'),
     );
     if (okDone) setEditing(null);
   }
@@ -92,28 +94,27 @@ export default function CongressManager({ onChanged }) {
       marginTop: 10, padding: 12,
       border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius)',
     }}>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Congress calendar</div>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>{t('congress.calendar', 'Congress calendar')}</div>
       <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
-        Meetings are grouped from one Congress date to the next.
-        The latest group runs from the most recent Congress to today.
+        {t('congress.calendarDesc', 'Meetings are grouped from one Congress date to the next. The latest group runs from the most recent Congress to today.')}
       </div>
 
       {err && <div className="alert error" style={{ marginBottom: 10 }}>{err}</div>}
 
       {loading ? (
-        <p className="muted" style={{ margin: 0, fontSize: 13 }}>Loading…</p>
+        <p className="muted" style={{ margin: 0, fontSize: 13 }}>{t('common.loading', 'Loading…')}</p>
       ) : items.length === 0 ? (
         <p className="muted" style={{ margin: '0 0 10px', fontSize: 13 }}>
-          No Congress dates added yet. Add two dates to see meetings between them.
+          {t('congress.noDatesAdded', 'No Congress dates added yet. Add two dates to see meetings between them.')}
         </p>
       ) : (
         <div style={{ overflowX: 'auto', marginBottom: 10 }}>
           <table className="list">
             <thead>
               <tr>
-                <th>Congress</th>
-                <th>Held on</th>
-                <th style={{ width: 150 }}>Actions</th>
+                <th>{t('congress.congress', 'Congress')}</th>
+                <th>{t('congress.heldOn', 'Held on')}</th>
+                <th style={{ width: 150 }}>{t('common.actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -140,8 +141,8 @@ export default function CongressManager({ onChanged }) {
                   <td>
                     {editing?._id === c._id ? (
                       <>
-                        <button type="button" className="btn sm" disabled={busy} onClick={saveEdit}>Save</button>
-                        <button type="button" className="btn ghost sm" onClick={() => setEditing(null)}>Cancel</button>
+                        <button type="button" className="btn sm" disabled={busy} onClick={saveEdit}>{t('common.save', 'Save')}</button>
+                        <button type="button" className="btn ghost sm" onClick={() => setEditing(null)}>{t('common.cancel', 'Cancel')}</button>
                       </>
                     ) : (
                       <>
@@ -149,15 +150,15 @@ export default function CongressManager({ onChanged }) {
                           type="button" className="btn secondary sm" disabled={busy}
                           onClick={() => setEditing({ _id: c._id, label: c.label, heldOn: toDateInput(c.heldOn) })}
                         >
-                          Edit
+                          {t('common.edit', 'Edit')}
                         </button>
                         <button
                           type="button" className="btn ghost sm" disabled={busy}
-                          title="Remove from the calendar"
+                          title={t('congress.removeTooltip', 'Remove from the calendar')}
                           onClick={() => mutate(
                             () => api.delete(`/central/congresses/${c._id}`),
-                            `Congress "${c.label}" removed.`,
-                            'Could not remove congress',
+                            t('congress.congressRemoved', 'Congress "{{label}}" removed.', { label: c.label }),
+                            t('congress.couldNotRemoveCongress', 'Could not remove congress'),
                           )}
                         >
                           <TrashIcon size={13} />
@@ -174,7 +175,7 @@ export default function CongressManager({ onChanged }) {
 
       <form onSubmit={add} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
-          placeholder="e.g. 14th National Congress"
+          placeholder={t('congress.labelPlaceholder', 'e.g. 14th National Congress')}
           value={draft.label}
           onChange={(e) => setDraft({ ...draft, label: e.target.value })}
           style={{ minWidth: 220 }}
@@ -186,7 +187,7 @@ export default function CongressManager({ onChanged }) {
           onChange={(e) => setDraft({ ...draft, heldOn: e.target.value })}
         />
         <button type="submit" className="btn sm" disabled={busy || !draft.label.trim() || !draft.heldOn}>
-          Add Congress
+          {t('congress.addCongress', 'Add Congress')}
         </button>
       </form>
     </div>

@@ -22,6 +22,7 @@ import * as Sharing from 'expo-sharing';
 
 import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
+import { useLanguage } from '../../../src/context/LanguageContext';
 import { api, errorMessage, isNetworkError } from '../../../src/api/client';
 import { canManageMeetings, isPureMember, isHigherAdmin, isSuperAdmin, isSuperAdminOversight, isCentralAdminOversight } from '../../../src/utils/permissions';
 import { useToast } from '../../../src/components/Toast';
@@ -65,6 +66,7 @@ export default function MeetingsScreen() {
   const { user } = useAuth();
   const { ctx, provinces, setCtx } = useUnit();
   const { isOnline } = useNetwork();
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const toast = useToast();
   const params = useLocalSearchParams();
@@ -279,11 +281,11 @@ export default function MeetingsScreen() {
   const tabs = useMemo(() => {
     if (isCongressView || isJirgaView || isCommitteeView) return [];
     return [
-      { label: `All (${nonCommitteeItems.length})`, value: 'ALL' },
-      { label: `Executive (${execItems.length})`, value: 'EXECUTIVE' },
-      { label: `General Body (${gbmItems.length})`, value: 'GENERAL_BODY' },
+      { label: `${t('meetings.all', 'All')} (${nonCommitteeItems.length})`, value: 'ALL' },
+      { label: `${t('meetings.executive', 'Executive')} (${execItems.length})`, value: 'EXECUTIVE' },
+      { label: `${t('meetings.generalBody', 'General Body')} (${gbmItems.length})`, value: 'GENERAL_BODY' },
     ];
-  }, [nonCommitteeItems.length, execItems.length, gbmItems.length, isCongressView, isJirgaView, isCommitteeView]);
+  }, [nonCommitteeItems.length, execItems.length, gbmItems.length, isCongressView, isJirgaView, isCommitteeView, t]);
 
   async function handleGetLocation() {
     try {
@@ -519,7 +521,7 @@ export default function MeetingsScreen() {
           localRecord: offlineRecord,
         });
 
-        toast.success('Offline mode: Meeting saved locally. Will sync when online.');
+        toast.success(t('meetings.offlineSaved', 'Offline mode: Meeting saved locally. Will sync when online.'));
         setShowForm(false);
         setForm(EMPTY_FORM);
         setFormError('');
@@ -540,23 +542,25 @@ export default function MeetingsScreen() {
     const isCancelled = item.state === 'CANCELLED';
     const statusColor = item._isOffline ? '#D97706' : (isCancelled ? Colors.error : (isFinalized ? Colors.success : Colors.warning));
     const statusBg = item._isOffline ? '#FEF3C7' : (isCancelled ? Colors.errorBg : (isFinalized ? Colors.successBg : Colors.warningBg));
-    const statusLabel = item._isOffline ? 'OFFLINE (PENDING SYNC)' : item.state;
+    const statusLabel = item._isOffline
+      ? t('meetings.offlinePendingSync', 'OFFLINE (PENDING SYNC)')
+      : (item.state === 'FINALIZED' ? t('meetings.finalized', 'FINALIZED') : (item.state === 'CANCELLED' ? t('meetings.cancelled', 'CANCELLED') : (item.state === 'SCHEDULED' ? t('meetings.scheduled', 'SCHEDULED') : item.state)));
 
     const isCng = item.body === 'CONGRESS' || item.typeCode === 'CNG' || item.typeCode === 'CONGRESS';
     const isJrg = !isCng && (item.body === 'JIRGA' || item.typeCode === 'JRG' || item.typeCode === 'JIRGA');
     const isCm = !isCng && !isJrg && (item.body === 'COMMITTEE' || item.typeCode === 'CMP');
     const isGbm = !isCng && !isJrg && (item.body === 'GENERAL_BODY' || item.typeCode === 'GBM');
 
-    const streamLabel = isCng ? 'National Congress'
-      : (isJirgaView ? 'Jirga'
-      : (isCommitteeView ? 'Committee'
-      : (isGbm ? 'General Body' : 'Executive')));
+    const streamLabel = isCng ? t('meetings.nationalCongress', 'National Congress')
+      : (isJirgaView ? t('common.jirga', 'Jirga')
+      : (isCommitteeView ? t('common.committee', 'Committee')
+      : (isGbm ? t('meetings.generalBody', 'General Body') : t('meetings.executive', 'Executive'))));
 
     return (
       <TouchableOpacity
         onPress={() => {
           if (item._isOffline) {
-            toast.info('This meeting is stored locally and will sync once connected to internet.');
+            toast.info(t('meetings.offlineNotice', 'This meeting is stored locally and will sync once connected to internet.'));
             return;
           }
           router.push(`/meetings/${item._id}`);
@@ -564,10 +568,10 @@ export default function MeetingsScreen() {
         activeOpacity={0.7}
       >
         <Card style={styles.card}>
-          <View style={styles.cardTop}>
+          <View style={[styles.cardTop, isRTL && { flexDirection: 'row-reverse' }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.title || MEETING_TYPE_LABEL[item.typeCode] || item.typeCode}</Text>
-              <Text style={styles.cardSubtitle}>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{item.title || MEETING_TYPE_LABEL[item.typeCode] || item.typeCode}</Text>
+              <Text style={[styles.cardSubtitle, isRTL && { textAlign: 'right' }]}>
                 {streamLabel} · {shortDate(item.startAt)} {item.venue ? `· ${item.venue}` : ''}
               </Text>
             </View>
@@ -575,21 +579,21 @@ export default function MeetingsScreen() {
           </View>
 
           {item.description ? (
-            <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+            <Text style={[styles.cardDesc, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{item.description}</Text>
           ) : null}
 
-          <View style={styles.cardFooter}>
-            <View style={styles.metaRow}>
+          <View style={[styles.cardFooter, isRTL && { flexDirection: 'row-reverse' }]}>
+            <View style={[styles.metaRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="people-outline" size={14} color={Colors.textMuted} />
-              <Text style={styles.metaText}>{item.attendance?.length || 0} attendees</Text>
+              <Text style={styles.metaText}>{item.attendance?.length || 0} {t('meetings.attendees', 'attendees')}</Text>
             </View>
-            <View style={styles.metaRow}>
+            <View style={[styles.metaRow, isRTL && { flexDirection: 'row-reverse' }]}>
               <Ionicons name="images-outline" size={14} color={Colors.textMuted} />
-              <Text style={styles.metaText}>{item.photos?.length || 0} photos</Text>
+              <Text style={styles.metaText}>{item.photos?.length || 0} {t('meetings.photos', 'photos')}</Text>
             </View>
             {item.state === 'SCHEDULED' && isPresent && (
               <View style={styles.myStatusBadge}>
-                <Text style={styles.myStatusText}>Marked Present</Text>
+                <Text style={styles.myStatusText}>{t('meetings.markedPresent', 'Marked Present')}</Text>
               </View>
             )}
           </View>
@@ -691,11 +695,11 @@ export default function MeetingsScreen() {
     );
   }
 
-  const pageTitle = isCongressView ? 'National Congress Meetings'
+  const pageTitle = isCongressView ? t('meetings.nationalCongress', 'National Congress Meetings')
     : (isJirgaView
-      ? (activeLevel === 'CENTRAL' ? 'Qomi Jirga Meetings' : 'Sobayi Jirga Meetings')
-      : (isCommitteeView ? 'Committee Meetings'
-      : 'Meetings'));
+      ? (activeLevel === 'CENTRAL' ? t('meetings.qomiJirga', 'Qomi Jirga Meetings') : t('meetings.sobayiJirga', 'Sobayi Jirga Meetings'))
+      : (isCommitteeView ? t('meetings.committeeMeetings', 'Committee Meetings')
+      : t('meetings.title', 'Meetings')));
 
   const pageSubtitle = isCongressView
     ? 'PKNAP Central · National Congress Assembly'
@@ -706,19 +710,19 @@ export default function MeetingsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && { flexDirection: 'row-reverse' }]}>
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text style={styles.headerTitle}>{pageTitle}</Text>
+          <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }, isRTL && { flexDirection: 'row-reverse' }]}>
+            <Text style={[styles.headerTitle, isRTL && { textAlign: 'right' }]}>{pageTitle}</Text>
             {!isOnline && (
               <View style={{ backgroundColor: '#FEE2E2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>Offline (Cached)</Text>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#DC2626' }}>{t('meetings.offlineCached', 'Offline (Cached)')}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.headerSubtitle}>{pageSubtitle}</Text>
+          <Text style={[styles.headerSubtitle, isRTL && { textAlign: 'right' }]}>{pageSubtitle}</Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={[styles.headerActions, isRTL && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity
             style={[styles.iconBtn, (!isOnline || !!exporting) && { opacity: 0.45 }]}
             onPress={() => handleExport('pdf')}
@@ -743,7 +747,7 @@ export default function MeetingsScreen() {
           </TouchableOpacity>
           {canManage && (
             <TouchableOpacity
-              style={styles.primaryBtn}
+              style={[styles.primaryBtn, isRTL && { flexDirection: 'row-reverse' }]}
               onPress={() => {
                 setForm({
                   ...EMPTY_FORM,
@@ -754,7 +758,7 @@ export default function MeetingsScreen() {
               }}
             >
               <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.primaryBtnText}>Schedule</Text>
+              <Text style={styles.primaryBtnText}>{t('meetings.schedule', 'Schedule')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -762,15 +766,15 @@ export default function MeetingsScreen() {
 
       {/* Body tabs if multiple streams */}
       {tabs.length > 0 && (
-        <View style={styles.tabBar}>
-          {tabs.map((t) => (
+        <View style={[styles.tabBar, isRTL && { flexDirection: 'row-reverse' }]}>
+          {tabs.map((tItem) => (
             <TouchableOpacity
-              key={t.value}
-              style={[styles.tabBtn, bodyTab === t.value && styles.tabBtnActive]}
-              onPress={() => setBodyTab(t.value)}
+              key={tItem.value}
+              style={[styles.tabBtn, bodyTab === tItem.value && styles.tabBtnActive]}
+              onPress={() => setBodyTab(tItem.value)}
             >
-              <Text style={[styles.tabBtnText, bodyTab === t.value && styles.tabBtnTextActive]}>
-                {t.label}
+              <Text style={[styles.tabBtnText, bodyTab === tItem.value && styles.tabBtnTextActive]}>
+                {tItem.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -791,8 +795,8 @@ export default function MeetingsScreen() {
           ) : (
             <EmptyState
               icon="calendar-outline"
-              title="No meetings found"
-              subtitle={canManage ? 'Tap "Schedule" above to organize a new meeting.' : 'No meetings recorded for this unit.'}
+              title={t('meetings.noMeetings', 'No meetings found')}
+              subtitle={canManage ? t('meetings.tapToSchedule', 'Tap "Schedule" above to organize a new meeting.') : t('meetings.noMeetingsSub', 'No meetings recorded for this unit.')}
             />
           )
         }
@@ -802,13 +806,13 @@ export default function MeetingsScreen() {
       <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity onPress={() => setShowForm(false)}>
-                <Text style={styles.modalCancel}>Cancel</Text>
+                <Text style={styles.modalCancel}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Schedule Meeting</Text>
+              <Text style={styles.modalTitle}>{t('meetings.scheduleMeeting', 'Schedule Meeting')}</Text>
               <TouchableOpacity onPress={handleCreate} disabled={saving}>
-                {saving ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>Save</Text>}
+                {saving ? <ActivityIndicator color={Colors.primary} /> : <Text style={styles.modalSave}>{t('common.save', 'Save')}</Text>}
               </TouchableOpacity>
             </View>
 
@@ -821,24 +825,24 @@ export default function MeetingsScreen() {
               ) : null}
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Meeting Type</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.meetingType', 'Meeting Type')}</Text>
                 <View style={styles.pickerWrap}>
                   <Picker
                     selectedValue={form.typeCode}
                     onValueChange={(val) => setForm({ ...form, typeCode: val })}
                     style={styles.picker}
                   >
-                    {availableTypes.map((t) => (
-                      <Picker.Item key={t.code} label={t.label} value={t.code} />
+                    {availableTypes.map((tItem) => (
+                      <Picker.Item key={tItem.code} label={tItem.label} value={tItem.code} />
                     ))}
                   </Picker>
                 </View>
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Title *</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.meetingTitle', 'Title')} *</Text>
                 <TextInput
-                  style={styles.fieldInput}
+                  style={[styles.fieldInput, isRTL && { textAlign: 'right' }]}
                   placeholder="e.g. Monthly Executive Session"
                   placeholderTextColor={Colors.textLight}
                   value={form.title}
@@ -847,7 +851,7 @@ export default function MeetingsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Start Time *</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.startAt', 'Start Time')} *</Text>
                 <DateTimePicker
                   value={form.startAt}
                   onChange={(v) => setForm({ ...form, startAt: v })}
@@ -857,7 +861,7 @@ export default function MeetingsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>End Time (optional)</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.endAt', 'End Time')}</Text>
                 <DateTimePicker
                   value={form.endAt}
                   onChange={(v) => setForm({ ...form, endAt: v })}
@@ -867,9 +871,9 @@ export default function MeetingsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Venue *</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.venue', 'Venue')} *</Text>
                 <TextInput
-                  style={styles.fieldInput}
+                  style={[styles.fieldInput, isRTL && { textAlign: 'right' }]}
                   placeholder="e.g. Central Secretariat / Conference Room"
                   placeholderTextColor={Colors.textLight}
                   value={form.venue}
@@ -878,7 +882,7 @@ export default function MeetingsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Chairperson</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.chairperson', 'Chairperson')}</Text>
                 <View style={styles.pickerWrap}>
                   <Picker
                     selectedValue={form.chairpersonId}
@@ -900,15 +904,15 @@ export default function MeetingsScreen() {
 
               {/* Venue GPS */}
               <View style={styles.field}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <Text style={styles.fieldLabel}>Venue GPS (Latitude & Longitude) *</Text>
-                  <TouchableOpacity onPress={handleGetLocation} style={styles.captureGpsBtn}>
-                    <Text style={styles.captureGpsText}>📍 Capture GPS</Text>
+                <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.gpsCoordinates', 'Venue GPS (Latitude & Longitude)')} *</Text>
+                  <TouchableOpacity onPress={handleGetLocation} style={[styles.captureGpsBtn, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.captureGpsText}>📍 {t('meetings.getLocation', 'Capture GPS')}</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={[{ flexDirection: 'row', gap: 8 }, isRTL && { flexDirection: 'row-reverse' }]}>
                   <TextInput
-                    style={[styles.fieldInput, { flex: 1 }]}
+                    style={[styles.fieldInput, { flex: 1 }, isRTL && { textAlign: 'right' }]}
                     placeholder="Latitude (e.g. 34.0151)"
                     placeholderTextColor={Colors.textLight}
                     value={form.gpsLat ? String(form.gpsLat) : ''}
@@ -916,7 +920,7 @@ export default function MeetingsScreen() {
                     keyboardType="numeric"
                   />
                   <TextInput
-                    style={[styles.fieldInput, { flex: 1 }]}
+                    style={[styles.fieldInput, { flex: 1 }, isRTL && { textAlign: 'right' }]}
                     placeholder="Longitude (e.g. 71.5249)"
                     placeholderTextColor={Colors.textLight}
                     value={form.gpsLng ? String(form.gpsLng) : ''}
@@ -927,9 +931,9 @@ export default function MeetingsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Agenda (optional)</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.agenda', 'Agenda')}</Text>
                 <TextInput
-                  style={[styles.fieldInput, styles.fieldMultiline]}
+                  style={[styles.fieldInput, styles.fieldMultiline, isRTL && { textAlign: 'right' }]}
                   placeholder="Key topics to discuss..."
                   placeholderTextColor={Colors.textLight}
                   value={form.agenda}
@@ -939,9 +943,9 @@ export default function MeetingsScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Description (optional)</Text>
+                <Text style={[styles.fieldLabel, isRTL && { textAlign: 'right' }]}>{t('meetings.description', 'Description')}</Text>
                 <TextInput
-                  style={[styles.fieldInput, styles.fieldMultiline]}
+                  style={[styles.fieldInput, styles.fieldMultiline, isRTL && { textAlign: 'right' }]}
                   placeholder="Additional context or notes..."
                   placeholderTextColor={Colors.textLight}
                   value={form.description}

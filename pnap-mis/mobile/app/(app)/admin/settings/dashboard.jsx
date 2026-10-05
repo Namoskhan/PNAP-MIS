@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch } from 're
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api, errorMessage } from '../../../../src/api/client';
+import { useLanguage } from '../../../../src/context/LanguageContext';
 import { useAuth } from '../../../../src/context/AuthContext';
 import { hasPermission } from '../../../../src/utils/permissions';
 import { useToast } from '../../../../src/components/Toast';
@@ -10,28 +11,39 @@ import { Colors, FontSize, Radius, Spacing } from '../../../../src/constants/col
 
 const TOGGLES = [
   { key: 'enableAnimations',
+    labelKey: 'admin.settings.animToggle',
     label: 'Animations',
+    descKey: 'admin.settings.animToggleDesc',
     description: 'Page transitions, modal slide-ins, hover effects, count-up tweens.' },
   { key: 'enableCountUpKpis',
+    labelKey: 'admin.settings.kpiCountUp',
     label: 'KPI count-up',
+    descKey: 'admin.settings.kpiCountUpDesc',
     description: 'Animated number counters on dashboards. Disable for instant rendering.' },
   { key: 'compactMode',
+    labelKey: 'admin.settings.compactMode',
     label: 'Compact mode',
+    descKey: 'admin.settings.compactModeDesc',
     description: 'Tighter padding + smaller row heights across tables and cards.' },
   { key: 'glassmorphism',
+    labelKey: 'admin.settings.glassmorphism',
     label: 'Glassmorphism',
+    descKey: 'admin.settings.glassmorphismDesc',
     description: 'Translucent cards with backdrop blur. Looks modern but heavier on low-end devices.' },
   { key: 'sidebarDefaultCollapsed',
+    labelKey: 'admin.settings.sidebarDefaultCollapsed',
     label: 'Sidebar collapsed by default',
+    descKey: 'admin.settings.sidebarDefaultCollapsedDesc',
     description: 'New sessions start with the sidebar collapsed. Per-user preference still wins.' },
 ];
 
 const CHART_STYLES = [
-  { value: 'MODERN',  label: 'Modern',  description: 'Soft gradients, rounded bars, generous spacing.' },
-  { value: 'CLASSIC', label: 'Classic', description: 'Flat fills, sharper bars, denser layout.' },
+  { value: 'MODERN',  labelKey: 'admin.settings.chartStyleModern',  label: 'Modern',  description: 'Soft gradients, rounded bars, generous spacing.' },
+  { value: 'CLASSIC', labelKey: 'admin.settings.chartStyleClassic', label: 'Classic', description: 'Flat fills, sharper bars, denser layout.' },
 ];
 
 export default function DashboardConfigScreen() {
+  const { t, isRTL } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const toast = useToast();
@@ -68,7 +80,7 @@ export default function DashboardConfigScreen() {
     setSaving(true); setErr('');
     try {
       await api.patch('/settings', { dashboard: form, changeNote: 'Dashboard appearance updated' });
-      toast.success('Dashboard preferences saved.');
+      toast.success(t('admin.settings.appearanceSaved', 'Dashboard preferences saved.'));
     } catch (e) {
       setErr(errorMessage(e));
       toast.error(errorMessage(e));
@@ -80,7 +92,7 @@ export default function DashboardConfigScreen() {
   if (busy) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading preferences...</Text>
+        <Text style={styles.loadingText}>{t('common.loading', 'Loading preferences...')}</Text>
       </View>
     );
   }
@@ -88,11 +100,13 @@ export default function DashboardConfigScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Ionicons name="options" size={24} color={Colors.primary} style={{ marginRight: Spacing.sm }} />
-          <Text style={styles.title}>UI Preferences</Text>
+        <View style={[styles.headerTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Ionicons name="options" size={24} color={Colors.primary} style={isRTL ? { marginLeft: Spacing.sm } : { marginRight: Spacing.sm }} />
+          <Text style={[styles.title, isRTL && { textAlign: 'right' }]}>{t('admin.settings.dashboardAppearance', 'UI Preferences')}</Text>
         </View>
-        <Text style={styles.subtitle}>Dashboard-level toggles for animations, density, chart style, and glassmorphism. Settings persist + audit; component cutover lands incrementally.</Text>
+        <Text style={[styles.subtitle, isRTL && { textAlign: 'right' }]}>
+          {t('admin.settings.dashboardAppearanceSub', 'Dashboard-level toggles for animations, density, chart style, and glassmorphism. Settings persist + audit; component cutover lands incrementally.')}
+        </Text>
       </View>
 
       {err ? <Text style={styles.errorText}>{err}</Text> : null}
@@ -100,19 +114,19 @@ export default function DashboardConfigScreen() {
       {form && (
         <>
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Toggles</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.toggles', 'Toggles')}</Text>
             </View>
             <View style={styles.cardBody}>
-              {TOGGLES.map((t, idx) => (
-                <View key={t.key} style={[styles.toggleRow, idx === TOGGLES.length - 1 && { borderBottomWidth: 0 }]}>
-                  <View style={styles.toggleInfo}>
-                    <Text style={styles.toggleLabel}>{t.label}</Text>
-                    <Text style={styles.toggleDesc}>{t.description}</Text>
+              {TOGGLES.map((item, idx) => (
+                <View key={item.key} style={[styles.toggleRow, isRTL && { flexDirection: 'row-reverse' }, idx === TOGGLES.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={[styles.toggleInfo, isRTL ? { paddingLeft: Spacing.md, paddingRight: 0 } : { paddingRight: Spacing.md }]}>
+                    <Text style={[styles.toggleLabel, isRTL && { textAlign: 'right' }]}>{t(item.labelKey, item.label)}</Text>
+                    <Text style={[styles.toggleDesc, isRTL && { textAlign: 'right' }]}>{t(item.descKey, item.description)}</Text>
                   </View>
                   <Switch
-                    value={form[t.key]}
-                    onValueChange={(val) => setForm(p => ({ ...p, [t.key]: val }))}
+                    value={form[item.key]}
+                    onValueChange={(val) => setForm(p => ({ ...p, [item.key]: val }))}
                     disabled={!canWrite}
                     trackColor={{ false: Colors.border, true: Colors.primary }}
                   />
@@ -122,8 +136,8 @@ export default function DashboardConfigScreen() {
           </View>
 
           <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>Chart style</Text>
+            <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{t('admin.settings.chartStyle', 'Chart style')}</Text>
             </View>
             <View style={styles.cardBody}>
               {CHART_STYLES.map((s, idx) => {
@@ -133,6 +147,7 @@ export default function DashboardConfigScreen() {
                     key={s.value}
                     style={[
                       styles.radioCard,
+                      isRTL && { flexDirection: 'row-reverse' },
                       on && styles.radioCardActive,
                       !canWrite && { opacity: 0.5 },
                       idx > 0 && { marginTop: Spacing.sm }
@@ -140,10 +155,10 @@ export default function DashboardConfigScreen() {
                     onPress={() => setForm(p => ({ ...p, chartStyle: s.value }))}
                     disabled={!canWrite}
                   >
-                    <View style={[styles.radioDot, on && styles.radioDotActive]} />
+                    <View style={[styles.radioDot, on && styles.radioDotActive, isRTL ? { marginLeft: Spacing.md, marginRight: 0 } : { marginRight: Spacing.md }]} />
                     <View style={styles.radioInfo}>
-                      <Text style={[styles.radioLabel, on && styles.radioLabelActive]}>{s.label}</Text>
-                      <Text style={styles.toggleDesc}>{s.description}</Text>
+                      <Text style={[styles.radioLabel, on && styles.radioLabelActive, isRTL && { textAlign: 'right' }]}>{s.label}</Text>
+                      <Text style={[styles.toggleDesc, isRTL && { textAlign: 'right' }]}>{t(s.labelKey, `${s.label} — ${s.description}`)}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -152,12 +167,12 @@ export default function DashboardConfigScreen() {
           </View>
 
           {canWrite && (
-            <View style={styles.footer}>
+            <View style={[styles.footer, isRTL && { flexDirection: 'row-reverse' }]}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push('/admin/settings')} disabled={saving}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.saveBtn, saving && styles.saveBtnDisabled]} onPress={save} disabled={saving}>
-                <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save preferences'}</Text>
+                <Text style={styles.saveBtnText}>{saving ? t('common.saving', 'Saving...') : t('admin.settings.savePreferences', 'Save preferences')}</Text>
               </TouchableOpacity>
             </View>
           )}

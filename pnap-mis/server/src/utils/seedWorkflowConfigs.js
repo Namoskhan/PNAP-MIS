@@ -35,7 +35,17 @@ const DEFAULTS = [
       sortOrder: 10,
       requirePermission: 'APPROVE_EXPENSE',
     }],
-    note: 'Default single-stage approval mirroring the legacy gate. Add stages or thresholds to chain in second approvers.',
+    note: 'Default approval by Secretary, President, Chairman or Admin. Add stages or thresholds to chain in second approvers.',
+  },
+  {
+    domain: 'DONATION_APPROVAL',
+    stages: [{
+      code: 'FINANCE_APPROVAL',
+      name: 'Finance approval',
+      sortOrder: 10,
+      requirePermission: 'APPROVE_EXPENSE',
+    }],
+    note: 'Default approval by Secretary, President, Chairman or Admin.',
   },
   {
     domain: 'MEMBER_APPROVAL',
