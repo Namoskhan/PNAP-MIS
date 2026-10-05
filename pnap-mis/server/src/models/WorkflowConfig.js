@@ -28,6 +28,7 @@ const mongoose = require('mongoose');
 
 const DOMAINS = [
   'EXPENSE_APPROVAL',
+  'DONATION_APPROVAL',
   'MEMBER_APPROVAL',
   'ROLE_APPROVAL',
   'TRANSFER_APPROVAL',
