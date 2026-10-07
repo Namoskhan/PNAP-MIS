@@ -23,4 +23,25 @@ router.get('/member/:id/pdf', ctrl.memberPerformancePdf);
 router.get('/member/:id/xlsx', ctrl.memberPerformanceXlsx);
 router.get('/meeting/:id/pdf', ctrl.meetingPdf);
 
+// Proforma reports (Forms 1 - 5)
+router.get('/proforma/form1/pdf', ctrl.proformaForm1Pdf);
+router.get('/proforma/form1/xlsx', ctrl.proformaForm1Xlsx);
+router.get('/proforma/form1/html', ctrl.proformaForm1Html);
+
+router.get('/proforma/form2/pdf', ctrl.proformaForm2Pdf);
+router.get('/proforma/form2/xlsx', ctrl.proformaForm2Xlsx);
+router.get('/proforma/form2/html', ctrl.proformaForm2Html);
+
+router.get('/proforma/form3/pdf', ctrl.proformaForm3Pdf);
+router.get('/proforma/form3/xlsx', ctrl.proformaForm3Xlsx);
+router.get('/proforma/form3/html', ctrl.proformaForm3Html);
+
+router.get('/proforma/form4/pdf', ctrl.proformaForm4Pdf);
+router.get('/proforma/form4/xlsx', ctrl.proformaForm4Xlsx);
+router.get('/proforma/form4/html', ctrl.proformaForm4Html);
+
+router.get('/proforma/form5/pdf', ctrl.proformaForm5Pdf);
+router.get('/proforma/form5/xlsx', ctrl.proformaForm5Xlsx);
+router.get('/proforma/form5/html', ctrl.proformaForm5Html);
+
 module.exports = router;

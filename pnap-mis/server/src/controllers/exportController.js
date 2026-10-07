@@ -2544,6 +2544,266 @@ exports.meetingPdf = asyncHandler(async (req, res) => {
   doc.end();
 });
 
+// ─── Proforma Reports (5 Forms) ─────────────────────────────────────────────
+async function _serveProformaPdf(res, html, filename) {
+  const proformaService = require('../services/proformaReportService');
+  const rand = Math.random().toString(36).substring(7);
+  const tmpHtml = path.resolve(process.cwd(), `scratch_proforma_${Date.now()}_${rand}.html`);
+  const tmpPdf = path.resolve(process.cwd(), `scratch_proforma_${Date.now()}_${rand}.pdf`);
+
+  try {
+    fs.writeFileSync(tmpHtml, html, 'utf8');
+    proformaService.renderHtmlToPdf(tmpHtml, tmpPdf);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    const stream = fs.createReadStream(tmpPdf);
+    stream.pipe(res);
+    stream.on('end', () => {
+      try { fs.unlinkSync(tmpHtml); fs.unlinkSync(tmpPdf); } catch (_) {}
+    });
+  } catch (err) {
+    try { fs.unlinkSync(tmpHtml); fs.unlinkSync(tmpPdf); } catch (_) {}
+    throw new ApiError(500, 'EXPORT_FAILED', `PDF generation failed: ${err.message}`);
+  }
+}
+
+// Form 1: Area Unit Work & Activity Monthly Report
+exports.proformaForm1Html = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm1Data({ areaId, month, year });
+  const html = proformaService.generateForm1Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm1Pdf = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm1Data({ areaId, month, year });
+  const html = proformaService.generateForm1Html(data);
+  await _serveProformaPdf(res, html, `proforma-area-monthly-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm1Xlsx = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm1Data({ areaId, month, year });
+  const wb = await proformaService.generateForm1Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-area-monthly-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 2: Basic Units Monthly Work & Activity Report
+exports.proformaForm2Html = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm2Data({ areaId, month, year });
+  const html = proformaService.generateForm2Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm2Pdf = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm2Data({ areaId, month, year });
+  const html = proformaService.generateForm2Html(data);
+  await _serveProformaPdf(res, html, `proforma-basic-units-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm2Xlsx = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm2Data({ areaId, month, year });
+  const wb = await proformaService.generateForm2Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-basic-units-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 3: Area Detailed Activity Report (Multi-section)
+exports.proformaForm3Html = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm3Data({ areaId, month, year });
+  const html = proformaService.generateForm3Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm3Pdf = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm3Data({ areaId, month, year });
+  const html = proformaService.generateForm3Html(data);
+  await _serveProformaPdf(res, html, `proforma-area-detailed-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm3Xlsx = asyncHandler(async (req, res) => {
+  const { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  _checkAreaScope(req, areaId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm3Data({ areaId, month, year });
+  const wb = await proformaService.generateForm3Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-area-detailed-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 4: Basic Unit Work & Activity Monthly Report
+exports.proformaForm4Html = asyncHandler(async (req, res) => {
+  const { unitId, month, year } = req.query;
+  if (!unitId) throw new ApiError(400, 'BAD_REQUEST', 'unitId is required');
+  await _checkUnitScope(req, unitId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm4Data({ unitId, month, year });
+  const html = proformaService.generateForm4Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm4Pdf = asyncHandler(async (req, res) => {
+  const { unitId, month, year } = req.query;
+  if (!unitId) throw new ApiError(400, 'BAD_REQUEST', 'unitId is required');
+  await _checkUnitScope(req, unitId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm4Data({ unitId, month, year });
+  const html = proformaService.generateForm4Html(data);
+  await _serveProformaPdf(res, html, `proforma-unit-monthly-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm4Xlsx = asyncHandler(async (req, res) => {
+  const { unitId, month, year } = req.query;
+  if (!unitId) throw new ApiError(400, 'BAD_REQUEST', 'unitId is required');
+  await _checkUnitScope(req, unitId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm4Data({ unitId, month, year });
+  const wb = await proformaService.generateForm4Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-unit-monthly-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+function _checkForm5Scope(req, provinceId) {
+  const roles = req.user?.roles || [];
+  const isSuper = roles.includes('SUPER_ADMIN') || req.user?.isBootstrap;
+  const isCentral = isSuper || roles.includes('CENTRAL_ADMIN');
+  if (isCentral) return;
+  const isProvince = roles.includes('PROVINCE_ADMIN') || req.user?.scope?.provinceId?.toString() === provinceId?.toString();
+  if (!isProvince) {
+    throw new ApiError(403, 'FORBIDDEN', 'Access to Provincial Executive reports is restricted to Province and Central leadership');
+  }
+  if (req.user?.scope?.provinceId && req.user.scope.provinceId.toString() !== provinceId.toString()) {
+    throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned province');
+  }
+}
+
+function _checkAreaScope(req, areaId) {
+  const roles = req.user?.roles || [];
+  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'].includes(r)) || req.user?.isBootstrap;
+  if (isHigher) return;
+  if (req.user?.scope?.provinceId && !req.user?.scope?.areaId) return;
+  if (req.user?.scope?.districtId && !req.user?.scope?.areaId) return;
+  if (req.user?.scope?.areaId && req.user.scope.areaId.toString() !== areaId.toString()) {
+    throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned area');
+  }
+}
+
+async function _checkUnitScope(req, unitId) {
+  const roles = req.user?.roles || [];
+  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r)) || req.user?.isBootstrap;
+  if (isHigher) return;
+
+  // If user has province scope, allow access to basic units within their province
+  if (req.user?.scope?.provinceId) {
+    const BasicUnit = require('../models/BasicUnit');
+    const targetUnit = await BasicUnit.findById(unitId).lean();
+    if (targetUnit && targetUnit.provinceId?.toString() === req.user.scope.provinceId.toString()) {
+      return;
+    }
+  }
+
+  // If user has areaId scope (e.g. Area officer like Senior Mawin or Secretary), allow access to any basic unit within their area
+  if (req.user?.scope?.areaId) {
+    const BasicUnit = require('../models/BasicUnit');
+    const targetUnit = await BasicUnit.findById(unitId).lean();
+    if (targetUnit && targetUnit.areaId?.toString() === req.user.scope.areaId.toString()) {
+      return;
+    }
+  }
+
+  // If user has districtId scope, allow access to basic units within their district
+  if (req.user?.scope?.districtId) {
+    const BasicUnit = require('../models/BasicUnit');
+    const targetUnit = await BasicUnit.findById(unitId).lean();
+    if (targetUnit && targetUnit.districtId?.toString() === req.user.scope.districtId.toString()) {
+      return;
+    }
+  }
+
+  if (req.user?.scope?.basicUnitId && req.user.scope.basicUnitId.toString() !== unitId.toString()) {
+    throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned basic unit');
+  }
+}
+
+// Form 5: Provincial Executive Individual Activity Report
+exports.proformaForm5Html = asyncHandler(async (req, res) => {
+  const { provinceId, fromDate, toDate, year, month } = req.query;
+  if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
+  _checkForm5Scope(req, provinceId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm5Data({ provinceId, fromDate, toDate, year, month });
+  const html = proformaService.generateForm5Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm5Pdf = asyncHandler(async (req, res) => {
+  const { provinceId, fromDate, toDate, year, month } = req.query;
+  if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
+  _checkForm5Scope(req, provinceId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm5Data({ provinceId, fromDate, toDate, year, month });
+  const html = proformaService.generateForm5Html(data);
+  await _serveProformaPdf(res, html, `proforma-province-executive-${year || '2026'}.pdf`);
+});
+
+exports.proformaForm5Xlsx = asyncHandler(async (req, res) => {
+  const { provinceId, fromDate, toDate, year, month } = req.query;
+  if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
+  _checkForm5Scope(req, provinceId);
+  const proformaService = require('../services/proformaReportService');
+  const data = await proformaService.fetchForm5Data({ provinceId, fromDate, toDate, year, month });
+  const wb = await proformaService.generateForm5Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-province-executive-${year || '2026'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
 // PR U7 — exposed so reportTemplateService can reuse the data
 // gathering layer without duplication. The existing controller
 // actions above keep using the local function reference; the new

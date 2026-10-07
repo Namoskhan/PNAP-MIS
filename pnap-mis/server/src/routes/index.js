@@ -25,6 +25,7 @@ router.use('/central', require('./centralRoutes'));
 router.use('/responsibilities', require('./responsibilityRoutes'));
 router.use('/performance', require('./performanceRoutes'));
 router.use('/exports', require('./exportRoutes'));
+router.use('/export', require('./exportRoutes'));
 router.use('/events', require('./eventsPublicRoutes'));
 router.use('/reports', require('./reportTemplateRoutes'));
 // More-specific /admin/* mounts must come BEFORE the generic /admin
