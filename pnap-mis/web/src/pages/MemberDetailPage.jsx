@@ -39,6 +39,9 @@ export default function MemberDetailPage() {
   ].includes(r));
   const canEdit = isOwner || isAdmin;
 
+  const [donations, setDonations] = useState([]);
+  const [donationsLoading, setDonationsLoading] = useState(false);
+
   async function load() {
     setErr('');
     try {
@@ -47,7 +50,22 @@ export default function MemberDetailPage() {
     } catch (e) { setErr(errorMessage(e)); }
   }
 
-  useEffect(() => { load(); }, [id]);
+  async function loadDonations() {
+    setDonationsLoading(true);
+    try {
+      const r = await api.get(`/members/${id}/donations`);
+      setDonations(r.data.data || []);
+    } catch {
+      // Access denied or none found
+    } finally {
+      setDonationsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    loadDonations();
+  }, [id]);
 
   async function approve() {
     setBusy(true);
@@ -209,6 +227,67 @@ export default function MemberDetailPage() {
               <button className="btn danger" disabled={busy} onClick={reject}>{t('members.confirmReject', 'Confirm Reject')}</button>
               <button className="btn secondary" onClick={() => { setShowReject(false); setRejectErr(''); }}>{t('common.cancel', 'Cancel')}</button>
             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <h3 style={{ margin: 0 }}>{t('finance.contributionsAndReceipts', 'Financial Contributions & Receipts')}</h3>
+            <p className="muted" style={{ margin: '3px 0 0 0', fontSize: 13 }}>
+              {t('finance.memberDonationHistoryDesc', 'Official party donation receipts and contribution history.')}
+            </p>
+          </div>
+          {donations.length > 0 && (
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#15803d' }}>
+              {t('finance.totalContributed', 'Total: ')}
+              {new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }).format(
+                donations.filter((d) => d.state === 'APPROVED' || !d.state).reduce((sum, d) => sum + (d.amount || 0), 0)
+              )}
+            </div>
+          )}
+        </div>
+
+        {donationsLoading ? (
+          <p className="muted">{t('common.loading', 'Loading records…')}</p>
+        ) : donations.length === 0 ? (
+          <p className="muted" style={{ fontSize: 13 }}>{t('finance.noMemberDonationsYet', 'No financial contributions recorded yet.')}</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="list">
+              <thead>
+                <tr>
+                  <th>{t('finance.receipt', 'Receipt')}</th>
+                  <th>{t('common.date', 'Date')}</th>
+                  <th>{t('finance.mode', 'Mode')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('finance.amount', 'Amount')}</th>
+                  <th>{t('finance.status', 'Status')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {donations.map((d) => (
+                  <tr key={d._id}>
+                    <td style={{ fontWeight: 600 }}>{d.receiptNo}</td>
+                    <td>{new Date(d.receivedAt || d.createdAt).toLocaleDateString()}</td>
+                    <td>{d.paymentMode}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <span style={{ fontWeight: 700, color: '#15803d' }}>
+                        {new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 }).format(d.amount || 0)}
+                      </span>
+                      {d.amount >= 5000 && (
+                        <span style={{ marginLeft: 6, fontSize: 10, color: '#15803d', fontWeight: 700 }}>
+                          ★ {t('finance.majorContribution', '5,000+ Major')}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <span className={`badge ${d.state || 'APPROVED'}`}>{d.state || 'APPROVED'}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
