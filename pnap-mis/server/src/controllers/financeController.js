@@ -99,7 +99,7 @@ exports.listDonations = asyncHandler(async (req, res) => {
   const bc = bodyClause(body);
   if (bc) Object.assign(filter, bc);
   const items = await Donation.find(filter)
-    .populate('donorMemberId', 'fullName memberId cnic')
+    .populate('donorMemberId', 'fullName memberId cnic phone')
     .populate('recordedBy', 'fullName username email roles')
     .populate('approvedBy', 'fullName username email')
     .populate('basicUnitId', 'name')
@@ -225,13 +225,25 @@ exports.decideDonation = asyncHandler(async (req, res) => {
 
   if (finalState === 'APPROVED' || finalState === 'REJECTED') {
     const { notify } = require('../utils/notify');
+    const recUser = await User.findById(d.recordedBy).select('roles permissions memberId').lean();
+    const canSeeFinance = recUser && (
+      (recUser.roles || []).some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', 'FINANCE_SECRETARY', 'SECRETARY', 'PRESIDENT', 'CHAIRMAN'].includes(r)) ||
+      (recUser.permissions && recUser.permissions.includes('MANAGE_FINANCE'))
+    );
+    const recLink = canSeeFinance ? '/unit/finance' : (d.donorMemberId ? `/members/${d.donorMemberId}` : undefined);
+
     notify(d.recordedBy, {
       type: 'DONATION_DECIDED',
       severity: finalState === 'APPROVED' ? 'SUCCESS' : 'WARNING',
       title: finalState === 'APPROVED' ? 'Donation approved' : 'Donation rejected',
       body: `Receipt #${d.receiptNo} · PKR ${(d.amount || 0).toLocaleString()} — ${d.donorName || d.donorType}`.trim(),
-      link: '/unit/finance',
+      link: recLink,
     }).catch(() => {});
+
+    if (finalState === 'APPROVED') {
+      const { handleDonationApprovalNotification } = require('../services/donationReminderService');
+      handleDonationApprovalNotification(d).catch(() => {});
+    }
   }
 
   activityService.record({
@@ -631,4 +643,31 @@ exports.globalOverview = asyncHandler(async (req, res) => {
     },
     perProvince: provinceRows,
   });
+});
+
+// ---------- Monthly Contribution Reminders (PKR 100) ----------
+const reminderService = require('../services/donationReminderService');
+
+exports.getMonthlyRemindersStatus = asyncHandler(async (req, res) => {
+  const { unitLevel, unitId, month, year } = req.query;
+  if (!unitLevel || !unitId) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId required');
+  const data = await reminderService.getMonthlyDonationStatus({ unitLevel, unitId, month, year });
+  ok(res, data);
+});
+
+exports.sendMonthlyReminders = asyncHandler(async (req, res) => {
+  if (!canManageFinance(req.user) && !canApprove(req.user)) {
+    throw new ApiError(403, 'FORBIDDEN', 'Only Finance Secretary / Admin may send contribution reminders');
+  }
+  const { unitLevel, unitId, month, year, memberIds } = req.body;
+  if (!unitLevel || !unitId) throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId required');
+  const result = await reminderService.sendMonthlyReminders({
+    unitLevel,
+    unitId,
+    month,
+    year,
+    memberIds,
+    req,
+  });
+  ok(res, result);
 });
