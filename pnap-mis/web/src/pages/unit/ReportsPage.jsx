@@ -60,6 +60,190 @@ export default function ReportsPage() {
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
 
+  // User scope and role tier checks
+  const rolesList = allRoles || user?.allRoles || user?.roles || [];
+  const isSuper = rolesList.includes('SUPER_ADMIN') || user?.isBootstrap;
+  const isCentral = isSuper || rolesList.includes('CENTRAL_ADMIN') || ctx?.unitLevel === 'CENTRAL';
+  const isProvince = isCentral || rolesList.includes('PROVINCE_ADMIN') || ctx?.unitLevel === 'PROVINCE';
+  const isDistrict = isProvince || rolesList.includes('DISTRICT_ADMIN') || ctx?.unitLevel === 'DISTRICT';
+  const isArea = isDistrict || rolesList.includes('AREA_ADMIN') || ctx?.unitLevel === 'AREA';
+  const isBasicUnit = ctx?.unitLevel === 'BASIC_UNIT';
+
+  const availableForms = useMemo(() => {
+    const list = [];
+    if (!isBasicUnit) {
+      list.push({ id: 'form2', label: 'Form 2: ابتدائي يونټانو کار او فعاليت مياشتنئي رپورټ (Basic Units Monthly Report)' });
+      list.push({ id: 'form1', label: 'Form 1: علاقائي يونټ کار او فعاليت مياشتنۍ رپورټ (Area Unit Monthly & Exec Report)' });
+      list.push({ id: 'form3', label: 'Form 3: علاقائي يونټ تفصيلي راپور (Detailed Area Report)' });
+    }
+    list.push({ id: 'form4', label: 'Form 4: ابتدائي يونټ کار او فعاليت مياشتنئي رپورټ (Basic Unit Monthly & Exec Report)' });
+    if (isProvince || isCentral) {
+      list.push({ id: 'form5', label: 'Form 5: صوبائي ايګزيکټيو ځانګړي کار او فعاليت رپورټ (Provincial Executive Report)' });
+    }
+    return list;
+  }, [isBasicUnit, isProvince, isCentral]);
+
+  // Proforma Reports state
+  const [proformaForm, setProformaForm] = useState('form2');
+  const [proformaMonth, setProformaMonth] = useState(String(new Date().getMonth() + 1));
+  const [proformaYear, setProformaYear] = useState(String(new Date().getFullYear()));
+  const [proformaBusy, setProformaBusy] = useState(false);
+
+  // Cascading Unit State for Proforma Reports
+  const [targetProvinceId, setTargetProvinceId] = useState('');
+  const [districtsList, setDistrictsList] = useState([]);
+  const [targetDistrictId, setTargetDistrictId] = useState('');
+  const [areasList, setAreasList] = useState([]);
+  const [targetAreaId, setTargetAreaId] = useState('');
+  const [unitsList, setUnitsList] = useState([]);
+  const [targetBasicUnitId, setTargetBasicUnitId] = useState('');
+
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingAreas, setLoadingAreas] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(false);
+
+  useEffect(() => {
+    if (availableForms.length > 0 && !availableForms.some((f) => f.id === proformaForm)) {
+      setProformaForm(availableForms[0].id);
+    }
+  }, [availableForms, proformaForm]);
+
+  // 1. Initialize targetProvinceId
+  useEffect(() => {
+    const defaultP = (ctx?.unitLevel === 'PROVINCE' ? ctx.unitId : (user?.scope?.provinceId || provinces?.[0]?._id || ''));
+    if (defaultP && !targetProvinceId) {
+      setTargetProvinceId(defaultP);
+    }
+  }, [ctx?.unitLevel, ctx?.unitId, user?.scope?.provinceId, provinces, targetProvinceId]);
+
+  // 2. Cascade: Province -> Districts
+  useEffect(() => {
+    const pId = ctx?.unitLevel === 'PROVINCE' ? ctx.unitId : (targetProvinceId || user?.scope?.provinceId || provinces?.[0]?._id);
+    if (pId) {
+      setLoadingDistricts(true);
+      api.get('/org/districts', { params: { provinceId: pId } })
+        .then((r) => {
+          const list = r.data.data || [];
+          setDistrictsList(list);
+          if (list.length > 0) {
+            setTargetDistrictId((prev) => {
+              if (ctx?.unitLevel === 'DISTRICT') return ctx.unitId;
+              if (user?.scope?.districtId && list.some((d) => d._id === user.scope.districtId)) return user.scope.districtId;
+              if (prev && list.some((d) => d._id === prev)) return prev;
+              return list[0]._id;
+            });
+          } else {
+            setTargetDistrictId('');
+          }
+        })
+        .catch(() => setDistrictsList([]))
+        .finally(() => setLoadingDistricts(false));
+    } else if (districts?.length > 0) {
+      setDistrictsList(districts);
+      setTargetDistrictId((prev) => prev || districts[0]._id);
+    }
+  }, [targetProvinceId, ctx?.unitLevel, ctx?.unitId, user?.scope?.provinceId, user?.scope?.districtId, provinces, districts]);
+
+  // 3. Cascade: District -> Areas
+  useEffect(() => {
+    const dId = ctx?.unitLevel === 'DISTRICT' ? ctx.unitId : (targetDistrictId || user?.scope?.districtId || districtsList?.[0]?._id);
+    if (dId) {
+      setLoadingAreas(true);
+      api.get('/org/areas', { params: { districtId: dId } })
+        .then((r) => {
+          const list = r.data.data || [];
+          setAreasList(list);
+          if (list.length > 0) {
+            setTargetAreaId((prev) => {
+              if (ctx?.unitLevel === 'AREA') return ctx.unitId;
+              if (user?.scope?.areaId && list.some((a) => a._id === user.scope.areaId)) return user.scope.areaId;
+              if (prev && list.some((a) => a._id === prev)) return prev;
+              return list[0]._id;
+            });
+          } else {
+            setTargetAreaId('');
+          }
+        })
+        .catch(() => setAreasList([]))
+        .finally(() => setLoadingAreas(false));
+    } else if (ctx?.unitLevel === 'AREA') {
+      setTargetAreaId(ctx.unitId);
+    } else if (areas?.length > 0) {
+      setAreasList(areas);
+      setTargetAreaId((prev) => prev || areas[0]._id);
+    }
+  }, [targetDistrictId, ctx?.unitLevel, ctx?.unitId, user?.scope?.districtId, user?.scope?.areaId, districtsList, areas]);
+
+  // 4. Cascade: Area -> Basic Units
+  useEffect(() => {
+    const aId = ctx?.unitLevel === 'AREA' ? ctx.unitId : (targetAreaId || user?.scope?.areaId || areasList?.[0]?._id);
+    if (aId) {
+      setLoadingUnits(true);
+      api.get('/org/basic-units', { params: { areaId: aId } })
+        .then((r) => {
+          const list = r.data.data || [];
+          setUnitsList(list);
+          if (list.length > 0) {
+            setTargetBasicUnitId((prev) => {
+              if (ctx?.unitLevel === 'BASIC_UNIT') return ctx.unitId;
+              if (user?.scope?.basicUnitId && list.some((u) => u._id === user.scope.basicUnitId)) return user.scope.basicUnitId;
+              if (prev && list.some((u) => u._id === prev)) return prev;
+              return list[0]._id;
+            });
+          } else {
+            setTargetBasicUnitId('');
+          }
+        })
+        .catch(() => setUnitsList([]))
+        .finally(() => setLoadingUnits(false));
+    } else if (isBasicUnit) {
+      setTargetBasicUnitId(ctx?.unitId);
+    } else if (units?.length > 0) {
+      setUnitsList(units);
+      setTargetBasicUnitId((prev) => prev || units[0]._id);
+    }
+  }, [targetAreaId, ctx?.unitLevel, ctx?.unitId, user?.scope?.areaId, user?.scope?.basicUnitId, areasList, isBasicUnit, units]);
+
+  async function handleProformaAction(format) {
+    setProformaBusy(true);
+    setErr('');
+    try {
+      const token = localStorage.getItem('pnap_token') || '';
+      let url = `/api/exports/proforma/${proformaForm}/${format}?year=${encodeURIComponent(proformaYear)}&month=${encodeURIComponent(proformaMonth)}`;
+      if (token) {
+        url += `&token=${encodeURIComponent(token)}`;
+      }
+      if (['form1', 'form2', 'form3'].includes(proformaForm)) {
+        const aId = (ctx?.unitLevel === 'AREA' ? ctx.unitId : (targetAreaId || areasList?.[0]?._id));
+        if (!aId) throw new Error(t('reports.pickAreaPrompt', 'Please select an area'));
+        url += `&areaId=${encodeURIComponent(aId)}`;
+      } else if (proformaForm === 'form4') {
+        const uId = isBasicUnit ? ctx.unitId : (targetBasicUnitId || unitsList?.[0]?._id || units?.[0]?._id);
+        if (!uId) throw new Error(t('reports.pickUnitPrompt', 'Please select a basic unit to export.'));
+        url += `&unitId=${encodeURIComponent(uId)}`;
+      } else if (proformaForm === 'form5') {
+        if (!isProvince && !isCentral) {
+          throw new Error('Access restricted: Provincial Executive report is only for Province and Central leadership.');
+        }
+        const pId = isCentral
+          ? (targetProvinceId || provinces?.[0]?._id)
+          : (ctx?.unitLevel === 'PROVINCE' ? ctx.unitId : (user?.scope?.provinceId || targetProvinceId || provinces?.[0]?._id));
+        if (!pId) throw new Error(t('reports.pickProvincePrompt', 'Please select a province'));
+        url += `&provinceId=${encodeURIComponent(pId)}`;
+      }
+
+      if (format === 'html') {
+        window.open(url, '_blank');
+      } else {
+        await downloadAuthed(url, `proforma-${proformaForm}-${proformaYear}-${proformaMonth}.${format}`);
+      }
+    } catch (e) {
+      setErr(e.message || 'Export failed');
+    } finally {
+      setProformaBusy(false);
+    }
+  }
+
   // Quick date presets
   function applyDatePreset(preset) {
     const now = new Date();
@@ -412,6 +596,140 @@ export default function ReportsPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" disabled={busy} onClick={() => downloadUnit('finance', 'pdf')}>{t('common.exportPdf', 'Download PDF')}</button>
           <button className="btn secondary" disabled={busy} onClick={() => downloadUnit('finance', 'xlsx')}>{t('common.exportCsv', 'Download Excel')}</button>
+        </div>
+      </div>
+
+      {/* Official Party Proforma Reports Card */}
+      <div className="card" style={{ marginBottom: 16, border: '1.5px solid var(--primary-light, #3b82f6)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>📋</span> {t('reports.proformaReportsTitle', 'Official Party Proforma Reports (کار او فعاليت فارمونه)')}
+            </h3>
+            <p className="muted" style={{ marginTop: -4, marginBottom: 14 }}>
+              {t('reports.proformaReportsDesc', 'Official party monthly activity proformas matching the party standard forms in A4 Landscape, embedded Pashto font (Noto Naskh Arabic), and right-to-left layout.')}
+            </p>
+          </div>
+        </div>
+
+        <div className="form-grid" style={{ marginBottom: 14 }}>
+          <div className="field">
+            <label>{t('reports.selectForm', 'Proforma Form')}</label>
+            <select value={proformaForm} onChange={(e) => setProformaForm(e.target.value)}>
+              {availableForms.map((f) => (
+                <option key={f.id} value={f.id}>{f.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="field">
+            <label>{t('reports.month', 'Month (مياشت)')}</label>
+            <select value={proformaMonth} onChange={(e) => setProformaMonth(e.target.value)}>
+              <option value="1">1 - جنوري (January)</option>
+              <option value="2">2 - فبروري (February)</option>
+              <option value="3">3 - مارچ (March)</option>
+              <option value="4">4 - اپريل (April)</option>
+              <option value="5">5 - مۍ (May)</option>
+              <option value="6">6 - جون (June)</option>
+              <option value="7">7 - جولای (July)</option>
+              <option value="8">8 - اګست (August)</option>
+              <option value="9">9 - سپتمبر (September)</option>
+              <option value="10">10 - اکتوبر (October)</option>
+              <option value="11">11 - نومبر (November)</option>
+              <option value="12">12 - دسمبر (December)</option>
+            </select>
+          </div>
+
+          <div className="field">
+            <label>{t('reports.year', 'Year (کال)')}</label>
+            <input type="number" value={proformaYear} onChange={(e) => setProformaYear(e.target.value)} />
+          </div>
+
+          {/* Province selector for Central role when viewing any form or for Form 5 */}
+          {(proformaForm === 'form5' || isCentral) && (
+            <div className="field">
+              <label>{t('reports.province', 'Province (صوبه)')}</label>
+              {isCentral && provinces?.length > 0 ? (
+                <select value={targetProvinceId || provinces[0]?._id} onChange={(e) => setTargetProvinceId(e.target.value)}>
+                  {provinces.map((p) => (
+                    <option key={p._id} value={p._id}>{p.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input type="text" readOnly value={ctx?.unitName || user?.scope?.provinceName || 'Assigned Province'} style={{ opacity: 0.85 }} />
+              )}
+            </div>
+          )}
+
+          {/* District selector for Central and Province users when viewing Form 1, 2, 3, or 4 */}
+          {['form1', 'form2', 'form3', 'form4'].includes(proformaForm) && (isProvince || isCentral) && ctx?.unitLevel !== 'DISTRICT' && ctx?.unitLevel !== 'AREA' && !isBasicUnit && (
+            <div className="field">
+              <label>{t('reports.district', 'District (ضلع)')}</label>
+              {loadingDistricts ? (
+                <div className="muted" style={{ padding: '8px 0' }}>Loading districts...</div>
+              ) : districtsList?.length > 0 ? (
+                <select value={targetDistrictId || districtsList[0]?._id} onChange={(e) => setTargetDistrictId(e.target.value)}>
+                  {districtsList.map((d) => (
+                    <option key={d._id} value={d._id}>{d.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="muted" style={{ padding: '8px 0' }}>No districts found in this province</div>
+              )}
+            </div>
+          )}
+
+          {/* Area selector for Form 1, 2, 3, or 4 */}
+          {['form1', 'form2', 'form3', 'form4'].includes(proformaForm) && !isBasicUnit && (
+            <div className="field">
+              <label>{t('reports.area', 'Area Unit (علاقه)')}</label>
+              {ctx?.unitLevel === 'AREA' ? (
+                <input type="text" readOnly value={ctx.unitName || 'Current Area'} style={{ opacity: 0.85 }} />
+              ) : loadingAreas ? (
+                <div className="muted" style={{ padding: '8px 0' }}>Loading areas...</div>
+              ) : areasList?.length > 0 ? (
+                <select value={targetAreaId || areasList[0]?._id} onChange={(e) => setTargetAreaId(e.target.value)}>
+                  {areasList.map((a) => (
+                    <option key={a._id} value={a._id}>{a.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="muted" style={{ padding: '8px 0' }}>{t('reports.noAreas', 'No areas available')}</div>
+              )}
+            </div>
+          )}
+
+          {/* Basic Unit selector for Form 4 */}
+          {proformaForm === 'form4' && (
+            <div className="field">
+              <label>{t('reports.basicUnit', 'Basic Unit (ابتدائي يونټ)')}</label>
+              {isBasicUnit ? (
+                <input type="text" readOnly value={ctx?.unitName || 'Current Basic Unit'} style={{ opacity: 0.85 }} />
+              ) : loadingUnits ? (
+                <div className="muted" style={{ padding: '8px 0' }}>Loading basic units...</div>
+              ) : unitsList?.length > 0 ? (
+                <select value={targetBasicUnitId || unitsList[0]?._id} onChange={(e) => setTargetBasicUnitId(e.target.value)}>
+                  {unitsList.map((u) => (
+                    <option key={u._id} value={u._id}>{u.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <div className="muted" style={{ padding: '8px 0' }}>No basic units found in this area</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+          <button className="btn" disabled={proformaBusy} onClick={() => handleProformaAction('html')} style={{ background: '#0284c7', borderColor: '#0284c7' }}>
+            🖨️ {t('reports.previewAndPrint', 'Print / Preview (چاپ / مخکتنه)')}
+          </button>
+          <button className="btn" disabled={proformaBusy} onClick={() => handleProformaAction('pdf')}>
+            📄 {t('common.exportPdf', 'Download PDF')}
+          </button>
+          <button className="btn secondary" disabled={proformaBusy} onClick={() => handleProformaAction('xlsx')}>
+            📊 {t('common.exportCsv', 'Download Excel')}
+          </button>
         </div>
       </div>
 
