@@ -4,6 +4,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   SafeAreaView,
@@ -1284,9 +1285,16 @@ export default function FinanceScreen() {
                           )}
                         </View>
 
-                        <Text style={[styles.td, { width: isTablet ? '13%' : 110, textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#15803d' }]}>
-                          {PKR(d.amount)}
-                        </Text>
+                        <View style={[styles.td, { width: isTablet ? '13%' : 110, alignItems: isRTL ? 'flex-start' : 'flex-end', justifyContent: 'center' }]}>
+                          <Text style={{ textAlign: isRTL ? 'left' : 'right', fontWeight: '800', color: '#15803d' }}>
+                            {PKR(d.amount)}
+                          </Text>
+                          {d.amount >= 5000 && (
+                            <Text style={{ fontSize: 9, color: '#16a34a', fontWeight: '700', marginTop: 1 }}>
+                              ★ 5,000+
+                            </Text>
+                          )}
+                        </View>
 
                         <View style={[styles.td, { width: isTablet ? '8%' : 80 }]}>
                           <Badge
@@ -1296,8 +1304,8 @@ export default function FinanceScreen() {
                           />
                         </View>
 
-                        <View style={[styles.td, { width: isTablet ? '10%' : 140, flexDirection: 'row', gap: 6, justifyContent: 'center' }]}>
-                          {d.state === 'PENDING' && canApprove ? (
+                        <View style={[styles.td, { width: isTablet ? '12%' : 160, flexDirection: 'row', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }]}>
+                          {d.state === 'PENDING' && canApprove && (
                             <>
                               <TouchableOpacity style={styles.btnApprove} onPress={() => decideDonation(d._id, 'APPROVED')}>
                                 <Ionicons name="checkmark" size={13} color="#15803d" />
@@ -1308,8 +1316,25 @@ export default function FinanceScreen() {
                                 <Text style={styles.btnDangerText}>{t('finance.reject', 'Reject')}</Text>
                               </TouchableOpacity>
                             </>
-                          ) : (
-                            <Text style={{ color: Colors.textMuted, fontSize: 11 }}>—</Text>
+                          )}
+                          {(d.donorMemberId?.phone || d.amount >= 5000) && (
+                            <TouchableOpacity
+                              style={[styles.btnApprove, { backgroundColor: '#f0fdf4', borderColor: '#86efac' }]}
+                              onPress={() => {
+                                const phone = d.donorMemberId?.phone;
+                                if (!phone) {
+                                  Alert.alert('Phone Missing', 'Donor phone number not available.');
+                                  return;
+                                }
+                                let clean = phone.replace(/[^0-9]/g, '');
+                                if (clean.startsWith('0')) clean = '92' + clean.slice(1);
+                                const msg = `Assalam-o-Alaikum ${effectiveName}, on behalf of PKNAP, we express our heartfelt gratitude for your generous donation of ${PKR(d.amount)} (Receipt #${d.receiptNo}). Your support strengthens our organizational mission. JazakAllah Khair!`;
+                                Linking.openURL(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`);
+                              }}
+                            >
+                              <Ionicons name="logo-whatsapp" size={12} color="#15803d" />
+                              <Text style={[styles.btnApproveText, { fontSize: 10 }]}>{t('finance.thankYou', 'Thank You')}</Text>
+                            </TouchableOpacity>
                           )}
                         </View>
                       </View>
