@@ -225,6 +225,7 @@ module.exports = {
   loadRolePermissionCache,
   invalidateRolePermissionCache,
   userHasPermission,
+  hasPermission: userHasPermission,
   userPermissions,
   rolesWithPermission,
 };

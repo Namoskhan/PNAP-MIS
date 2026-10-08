@@ -166,6 +166,7 @@ const donationCreateSchema = z.object({
   // applied only in the controller for the high-value non-member case
   // (SRS §9.1 / FIN-004), where CNIC is genuinely required.
   donorCnic: z.string().max(20).optional(),
+  donorPhone: z.string().max(40).optional(),
   donorAddress: z.string().max(300).optional(),
   paymentMode: z.enum(['CASH', 'BANK_TRANSFER', 'MOBILE_WALLET', 'CHEQUE']),
   receivedAt: z.coerce.date(),

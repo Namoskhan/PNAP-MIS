@@ -43,6 +43,7 @@ const donationSchema = new mongoose.Schema(
     donorMemberId: { type: mongoose.Schema.Types.ObjectId, ref: 'Member' },
     donorName: { type: String, trim: true },
     donorCnic: { type: String, trim: true },
+    donorPhone: { type: String, trim: true },
     donorAddress: { type: String, trim: true },
 
     paymentMode: { type: String, enum: PAYMENT_MODES, required: true },
