@@ -5,6 +5,7 @@ const Donation = require('../models/Donation');
 const Expense = require('../models/Expense');
 const FundTransfer = require('../models/FundTransfer');
 const Counter = require('../models/Counter');
+const User = require('../models/User');
 const { ok, created, ApiError } = require('../utils/response');
 const { canManageFinance, canApprove, resolveUnitChain } = require('../utils/unitScope');
 const policyEngine = require('../services/policyEngine');
@@ -22,7 +23,7 @@ function toOid(id) {
 }
 
 const ANONYMOUS_CAP = 5000;
-const NON_MEMBER_CNIC_THRESHOLD = 50000;
+const NON_MEMBER_CNIC_THRESHOLD = 5000;
 // PR U3: legacy fallback only. The active threshold is sourced
 // from UnitPolicy.finance.expenseRequireSecondApproverAbove via
 // policyEngine.expenseRequiresSecondApprover. This constant remains
@@ -121,8 +122,15 @@ exports.recordDonation = asyncHandler(async (req, res) => {
   if (d.donorType === 'ANONYMOUS' && d.amount > ANONYMOUS_CAP) {
     throw new ApiError(400, 'ANONYMOUS_CAP', `Anonymous donations cannot exceed PKR ${ANONYMOUS_CAP}`);
   }
-  if (d.donorType === 'NON_MEMBER' && d.amount > NON_MEMBER_CNIC_THRESHOLD && !d.donorCnic) {
-    throw new ApiError(400, 'CNIC_REQUIRED', `Donor CNIC is required for non-member donations above PKR ${NON_MEMBER_CNIC_THRESHOLD}`);
+  if (d.donorType === 'NON_MEMBER' && d.amount >= NON_MEMBER_CNIC_THRESHOLD && !d.donorCnic) {
+    throw new ApiError(400, 'CNIC_REQUIRED', `Donor CNIC is required for non-member donations of PKR ${NON_MEMBER_CNIC_THRESHOLD.toLocaleString()} and above`);
+  }
+  if (d.donorCnic) {
+    const cleanCnic = String(d.donorCnic).trim();
+    if (!/^\d{5}-\d{7}-\d$/.test(cleanCnic)) {
+      throw new ApiError(400, 'INVALID_CNIC', 'CNIC must be 13 digits in standard format (e.g. 42101-1234567-1)');
+    }
+    d.donorCnic = cleanCnic;
   }
 
   if (d.donorType === 'MEMBER' && d.donorMemberId) {
@@ -130,6 +138,19 @@ exports.recordDonation = asyncHandler(async (req, res) => {
     if (mem) {
       if (!d.donorName) d.donorName = mem.fullName;
       if (!d.donorCnic && mem.cnic) d.donorCnic = mem.cnic;
+      if (!d.donorPhone && mem.phone) d.donorPhone = mem.phone;
+    }
+  } else if (d.donorType === 'NON_MEMBER' || d.donorType === 'CORPORATE') {
+    const rawPhone = String(d.donorPhone || '').trim();
+    if (d.amount >= 5000 && !rawPhone) {
+      throw new ApiError(400, 'PHONE_REQUIRED', 'Phone number is required for non-member and corporate donors for donations of PKR 5,000 and above');
+    }
+    if (rawPhone) {
+      const PHONE_RX = /^(\+92|0)?3\d{2}[- ]?\d{7}$/;
+      if (!PHONE_RX.test(rawPhone)) {
+        throw new ApiError(400, 'INVALID_PHONE', 'Enter a valid Pakistan mobile number (e.g. 0300-1234567 or +92 3XX XXXXXXX)');
+      }
+      d.donorPhone = rawPhone;
     }
   }
 
@@ -225,20 +246,23 @@ exports.decideDonation = asyncHandler(async (req, res) => {
 
   if (finalState === 'APPROVED' || finalState === 'REJECTED') {
     const { notify } = require('../utils/notify');
-    const recUser = await User.findById(d.recordedBy).select('roles permissions memberId').lean();
+    const recUserId = d.recordedBy?._id || d.recordedBy;
+    const recUser = recUserId ? await User.findById(recUserId).select('roles permissions memberId').lean() : null;
     const canSeeFinance = recUser && (
       (recUser.roles || []).some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', 'FINANCE_SECRETARY', 'SECRETARY', 'PRESIDENT', 'CHAIRMAN'].includes(r)) ||
       (recUser.permissions && recUser.permissions.includes('MANAGE_FINANCE'))
     );
     const recLink = canSeeFinance ? '/unit/finance' : (d.donorMemberId ? `/members/${d.donorMemberId}` : undefined);
 
-    notify(d.recordedBy, {
-      type: 'DONATION_DECIDED',
-      severity: finalState === 'APPROVED' ? 'SUCCESS' : 'WARNING',
-      title: finalState === 'APPROVED' ? 'Donation approved' : 'Donation rejected',
-      body: `Receipt #${d.receiptNo} · PKR ${(d.amount || 0).toLocaleString()} — ${d.donorName || d.donorType}`.trim(),
-      link: recLink,
-    }).catch(() => {});
+    if (recUserId) {
+      notify(recUserId, {
+        type: 'DONATION_DECIDED',
+        severity: finalState === 'APPROVED' ? 'SUCCESS' : 'WARNING',
+        title: finalState === 'APPROVED' ? 'Donation approved' : 'Donation rejected',
+        body: `Receipt #${d.receiptNo} · PKR ${(d.amount || 0).toLocaleString()} — ${d.donorName || d.donorType}`.trim(),
+        link: recLink,
+      }).catch(() => {});
+    }
 
     if (finalState === 'APPROVED') {
       const { handleDonationApprovalNotification } = require('../services/donationReminderService');

@@ -200,30 +200,60 @@ async function sendMonthlyReminders({ unitLevel, unitId, month, year, memberIds:
 }
 
 /**
- * Triggered on donation approval: sends special thank-you if donation >= 5000
+ * Triggered on donation approval: sends special thank-you if donation >= 5000,
+ * creates in-app notification for member, and sends SMS + WhatsApp messages.
  */
 async function handleDonationApprovalNotification(donation) {
-  if (!donation || !donation.donorMemberId) return;
-  const donorUserId = await userIdForMember(donation.donorMemberId);
-  if (!donorUserId) return;
-
+  if (!donation) return;
   const amt = donation.amount || 0;
-  const memberLink = donation.donorMemberId ? `/members/${donation.donorMemberId}` : undefined;
-  if (amt >= MAJOR_DONATION_THRESHOLD) {
-    await notify(donorUserId, {
-      type: 'DONATION_THANK_YOU',
-      severity: 'SUCCESS',
-      title: `Special Appreciation · PKR ${amt.toLocaleString()}`,
-      body: `JazakAllah Khair, ${donation.donorName || 'Respected Member'}! We gratefully acknowledge your generous contribution of PKR ${amt.toLocaleString()} (Receipt #${donation.receiptNo}). Your exceptional support empowers our party's mission and organizational activities.`,
-      link: memberLink,
-    });
-  } else {
-    await notify(donorUserId, {
-      type: 'DONATION_DECIDED',
-      severity: 'SUCCESS',
-      title: 'Donation Received & Confirmed',
-      body: `Receipt #${donation.receiptNo} · PKR ${amt.toLocaleString()} has been approved and added to unit funds. Thank you for your contribution!`,
-      link: memberLink,
+  const donorName = donation.donorName || 'Respected Supporter';
+  const isMajor = amt >= MAJOR_DONATION_THRESHOLD;
+
+  // 1. In-app notification for members (preserves current on-account bell / notification)
+  if (donation.donorMemberId) {
+    const donorUserId = await userIdForMember(donation.donorMemberId);
+    if (donorUserId) {
+      const memberLink = donation.donorMemberId ? `/members/${donation.donorMemberId}` : undefined;
+      if (isMajor) {
+        await notify(donorUserId, {
+          type: 'DONATION_THANK_YOU',
+          severity: 'SUCCESS',
+          title: `Special Appreciation · PKR ${amt.toLocaleString()}`,
+          body: `JazakAllah Khair, ${donorName}! We gratefully acknowledge your generous contribution of PKR ${amt.toLocaleString()} (Receipt #${donation.receiptNo}). Your exceptional support empowers our party's mission and organizational activities.`,
+          link: memberLink,
+        });
+      } else {
+        await notify(donorUserId, {
+          type: 'DONATION_DECIDED',
+          severity: 'SUCCESS',
+          title: 'Donation Received & Confirmed',
+          body: `Receipt #${donation.receiptNo} · PKR ${amt.toLocaleString()} has been approved and added to unit funds. Thank you for your contribution!`,
+          link: memberLink,
+        });
+      }
+    }
+  }
+
+  // 2. Resolve donor phone for SMS and WhatsApp thank-you delivery
+  let phone = donation.donorPhone;
+  if (!phone && donation.donorMemberId) {
+    const mem = await Member.findById(donation.donorMemberId).select('phone fullName').lean();
+    if (mem && mem.phone) phone = mem.phone;
+  }
+
+  // 3. Dispatch automatic SMS (SIM message) & WhatsApp thank-you (for donations >= 5000)
+  if (phone && isMajor) {
+    const thankYouText = `Assalam-o-Alaikum ${donorName}! On behalf of PKNAP, we express our heartfelt gratitude for your generous contribution of PKR ${amt.toLocaleString()} (Receipt #${donation.receiptNo}). Your exceptional support empowers our party's mission and organizational activities. JazakAllah Khair!`;
+
+    const { sendDonationThankYouMessages } = require('./messagingService');
+    await sendDonationThankYouMessages({
+      phone,
+      donorName,
+      amount: amt,
+      receiptNo: donation.receiptNo,
+      message: thankYouText,
+    }).catch((err) => {
+      console.error('[donationReminderService] Failed to send outbound SMS/WhatsApp:', err.message);
     });
   }
 }
