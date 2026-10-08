@@ -39,6 +39,28 @@ const env = {
     ? process.env.SMTP_SECURE === 'true'
     : parseInt(process.env.SMTP_PORT || '587', 10) === 465,
 
+  // SMS configuration (SIM mobile message)
+  SMS_ENABLED: process.env.SMS_ENABLED !== 'false',
+  SMS_PROVIDER: process.env.SMS_PROVIDER || (process.env.TWILIO_ACCOUNT_SID ? 'twilio' : (process.env.SMS_GATEWAY_URL ? 'generic_http' : 'console')),
+  SMS_GATEWAY_URL: process.env.SMS_GATEWAY_URL || '',
+  SMS_API_KEY: process.env.SMS_API_KEY || '',
+  SMS_SENDER_ID: process.env.SMS_SENDER_ID || 'PKNAP',
+  SMS_USERNAME: process.env.SMS_USERNAME || '',
+  SMS_PASSWORD: process.env.SMS_PASSWORD || '',
+
+  // WhatsApp configuration
+  WHATSAPP_ENABLED: process.env.WHATSAPP_ENABLED !== 'false',
+  WHATSAPP_PROVIDER: process.env.WHATSAPP_PROVIDER || (process.env.WHATSAPP_GATEWAY_URL ? 'generic_http' : (process.env.WHATSAPP_API_TOKEN ? 'meta' : (process.env.TWILIO_WHATSAPP_FROM ? 'twilio' : 'console'))),
+  WHATSAPP_GATEWAY_URL: process.env.WHATSAPP_GATEWAY_URL || '',
+  WHATSAPP_API_TOKEN: process.env.WHATSAPP_API_TOKEN || '',
+  WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+
+  // Twilio common configuration (for SMS or WhatsApp)
+  TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || '',
+  TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',
+  TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || '',
+  TWILIO_WHATSAPP_FROM: process.env.TWILIO_WHATSAPP_FROM || '',
+
   // Rate limits (requests per window per IP)
   AUTH_RATE_LIMIT: parseInt(process.env.AUTH_RATE_LIMIT || '0', 10),
   REGISTER_RATE_LIMIT: parseInt(
