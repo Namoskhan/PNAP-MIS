@@ -14,3 +14,22 @@ export function formatCnic(raw) {
 export function isCompleteCnic(v) {
   return /^\d{5}-\d{7}-\d$/.test(String(v || ''));
 }
+
+// Phone — user types digits; formatted as 03XX-XXXXXXX:
+// 03001234567 -> 0300-1234567. Non-digits are stripped, capped at 11 digits.
+// If input starts with 92 (+92), it is converted to 0 for standard entry.
+export function formatPhone(raw) {
+  let digits = String(raw || '').replace(/\D/g, '');
+  if (digits.startsWith('92')) {
+    digits = '0' + digits.slice(2);
+  } else if (digits.length >= 2 && digits.startsWith('3')) {
+    digits = '0' + digits;
+  }
+  const d = digits.slice(0, 11);
+  if (d.length <= 4) return d;
+  return `${d.slice(0, 4)}-${d.slice(4)}`;
+}
+
+export function isCompletePhone(v) {
+  return /^03\d{2}-\d{7}$/.test(String(v || ''));
+}
