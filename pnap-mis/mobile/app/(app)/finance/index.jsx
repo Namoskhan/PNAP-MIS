@@ -45,7 +45,7 @@ import {
 import Badge from '../../../src/components/Badge';
 import DatePicker from '../../../src/components/DatePicker';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
-import { shortDate, PKR, formatCnic, isCompleteCnic } from '../../../src/utils/formatters';
+import { shortDate, PKR, formatCnic, isCompleteCnic, formatPhone } from '../../../src/utils/formatters';
 import { downloadAndShare } from '../../../src/utils/export';
 import { formatUnitArrangedBy } from '../../../src/utils/unitFormat';
 
@@ -83,7 +83,7 @@ const PAYMENT_MODES = [
 ];
 
 const ANONYMOUS_CAP = 5000;
-const NON_MEMBER_CNIC_THRESHOLD = 50000;
+const NON_MEMBER_CNIC_THRESHOLD = 5000;
 
 export default function FinanceScreen() {
   const { user } = useAuth();
@@ -167,6 +167,7 @@ export default function FinanceScreen() {
     donorMemberId: '',
     donorName: '',
     donorCnic: '',
+    donorPhone: '',
     paymentMode: 'CASH',
     receivedAt: '',
   });
@@ -332,6 +333,7 @@ export default function FinanceScreen() {
       donorMemberId: '',
       donorName: '',
       donorCnic: '',
+      donorPhone: '',
       paymentMode: 'CASH',
       receivedAt: today,
     });
@@ -356,7 +358,8 @@ export default function FinanceScreen() {
   }
 
   const donAmount = parseFloat(donationForm.amount) || 0;
-  const donCnicRequired = donationForm.donorType === 'NON_MEMBER' && donAmount > NON_MEMBER_CNIC_THRESHOLD;
+  const donCnicRequired = donationForm.donorType === 'NON_MEMBER' && donAmount >= NON_MEMBER_CNIC_THRESHOLD;
+  const donPhoneRequired = (donationForm.donorType === 'NON_MEMBER' || donationForm.donorType === 'CORPORATE') && donAmount >= 5000;
 
   async function pickDonReceipt() {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -427,8 +430,22 @@ export default function FinanceScreen() {
       setErr(`Anonymous donations are capped at ${PKR(ANONYMOUS_CAP)}.`);
       return;
     }
+    if (donationForm.donorType === 'NON_MEMBER' || donationForm.donorType === 'CORPORATE') {
+      const p = (donationForm.donorPhone || '').trim();
+      if (donPhoneRequired && !p) {
+        setErr('Phone number is required for donations of PKR 5,000+ to send thank-you messages.');
+        return;
+      }
+      if (p) {
+        const PHONE_RX = /^(\+92|0)?3\d{2}[- ]?\d{7}$/;
+        if (!PHONE_RX.test(p)) {
+          setErr('Enter a valid mobile number (03XX-XXXXXXX or +92 3XX XXXXXXX).');
+          return;
+        }
+      }
+    }
     if (donCnicRequired && !donationForm.donorCnic) {
-      setErr(`CNIC is required for non-member donations above ${PKR(NON_MEMBER_CNIC_THRESHOLD)}.`);
+      setErr(`CNIC is required for non-member donations of ${PKR(NON_MEMBER_CNIC_THRESHOLD)} and above.`);
       return;
     }
     if (donationForm.donorCnic && !isCompleteCnic(donationForm.donorCnic)) {
@@ -442,11 +459,13 @@ export default function FinanceScreen() {
 
     let donorName = donationForm.donorName;
     let donorCnic = donationForm.donorCnic;
+    let donorPhone = donationForm.donorPhone;
     if (donationForm.donorType === 'MEMBER' && donationForm.donorMemberId) {
       const found = members.find((m) => String(m._id) === String(donationForm.donorMemberId));
       if (found) {
         if (!donorName) donorName = found.fullName;
         if (!donorCnic && found.cnic) donorCnic = found.cnic;
+        if (!donorPhone && found.phone) donorPhone = found.phone;
       }
     }
 
@@ -458,6 +477,7 @@ export default function FinanceScreen() {
         ...donationForm,
         donorName,
         donorCnic,
+        donorPhone,
         unitLevel: activeLevel,
         unitId: resolvedUnitId,
         body: targetBody,
@@ -1256,7 +1276,14 @@ export default function FinanceScreen() {
                         </View>
 
                         <Text style={[styles.td, { width: isTablet ? '10%' : 90 }, isRTL && { textAlign: 'right' }]}>{shortDate(d.receivedAt || d.createdAt)}</Text>
-                        <Text style={[styles.td, { width: isTablet ? '14%' : 130 }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{effectiveDonorName}</Text>
+                        <View style={[styles.td, { width: isTablet ? '14%' : 130 }]}>
+                          <Text style={[{ fontSize: 12, fontWeight: '600', color: Colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{effectiveDonorName}</Text>
+                          {(d.donorPhone || d.donorMemberId?.phone) && (
+                            <Text style={[{ fontSize: 10, color: Colors.textMuted }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                              📞 {d.donorPhone || d.donorMemberId?.phone}
+                            </Text>
+                          )}
+                        </View>
                         
                         <View style={[styles.td, { width: isTablet ? '14%' : 130 }]}>
                           <Text style={[{ fontSize: 12, fontWeight: '600', color: Colors.text }, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
@@ -1305,7 +1332,7 @@ export default function FinanceScreen() {
                         </View>
 
                         <View style={[styles.td, { width: isTablet ? '12%' : 160, flexDirection: 'row', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }]}>
-                          {d.state === 'PENDING' && canApprove && (
+                          {d.state === 'PENDING' && canApprove ? (
                             <>
                               <TouchableOpacity style={styles.btnApprove} onPress={() => decideDonation(d._id, 'APPROVED')}>
                                 <Ionicons name="checkmark" size={13} color="#15803d" />
@@ -1316,25 +1343,8 @@ export default function FinanceScreen() {
                                 <Text style={styles.btnDangerText}>{t('finance.reject', 'Reject')}</Text>
                               </TouchableOpacity>
                             </>
-                          )}
-                          {(d.donorMemberId?.phone || d.amount >= 5000) && (
-                            <TouchableOpacity
-                              style={[styles.btnApprove, { backgroundColor: '#f0fdf4', borderColor: '#86efac' }]}
-                              onPress={() => {
-                                const phone = d.donorMemberId?.phone;
-                                if (!phone) {
-                                  Alert.alert('Phone Missing', 'Donor phone number not available.');
-                                  return;
-                                }
-                                let clean = phone.replace(/[^0-9]/g, '');
-                                if (clean.startsWith('0')) clean = '92' + clean.slice(1);
-                                const msg = `Assalam-o-Alaikum ${effectiveName}, on behalf of PKNAP, we express our heartfelt gratitude for your generous donation of ${PKR(d.amount)} (Receipt #${d.receiptNo}). Your support strengthens our organizational mission. JazakAllah Khair!`;
-                                Linking.openURL(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`);
-                              }}
-                            >
-                              <Ionicons name="logo-whatsapp" size={12} color="#15803d" />
-                              <Text style={[styles.btnApproveText, { fontSize: 10 }]}>{t('finance.thankYou', 'Thank You')}</Text>
-                            </TouchableOpacity>
+                          ) : (
+                            <Text style={{ color: Colors.textMuted, fontSize: 12 }}>—</Text>
                           )}
                         </View>
                       </View>
@@ -1620,16 +1630,29 @@ export default function FinanceScreen() {
                             donorMemberId: val,
                             donorName: sel ? sel.fullName : '',
                             donorCnic: sel?.cnic || '',
+                            donorPhone: sel?.phone || '',
                           }));
                         }}
                       >
                         <Picker.Item label={`— ${t('finance.pickMember', 'Choose from registered members')} —`} value="" />
                         {members.map((m) => (
-                          <Picker.Item key={m._id} label={`${m.fullName} · ${m.memberId || m.cnic || ''}`} value={m._id} />
+                          <Picker.Item key={m._id} label={`${m.fullName} · ${m.memberId || m.cnic || ''}${m.phone ? ` (${m.phone})` : ''}`} value={m._id} />
                         ))}
                       </Picker>
                     </View>
-                    <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>Linking records this donation on the member's annual performance report.</Text>
+                    {(() => {
+                      const sel = members.find((m) => String(m._id) === String(donationForm.donorMemberId));
+                      if (sel?.phone) {
+                        return (
+                          <Text style={[styles.fieldHint, { color: '#15803d', fontWeight: '600', marginTop: 4 }, isRTL && { textAlign: 'right' }]}>
+                            📱 Stored contact: {sel.phone} (automatic thank-you SMS & WhatsApp will be sent to this number)
+                          </Text>
+                        );
+                      }
+                      return (
+                        <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>Linking uses the member's stored phone for thank-you SMS & WhatsApp and records it on their performance report.</Text>
+                      );
+                    })()}
                   </View>
                 )}
 
@@ -1649,6 +1672,24 @@ export default function FinanceScreen() {
 
                     <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
                       <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>
+                        {t('finance.donorPhone', 'Donor Phone')} {donPhoneRequired ? <Text style={{ color: Colors.error }}>*</Text> : '(Optional)'}
+                      </Text>
+                      <TextInput
+                        style={[styles.modernTextInput, isRTL && { textAlign: 'right' }]}
+                        value={donationForm.donorPhone}
+                        onChangeText={(v) => setDonationForm((f) => ({ ...f, donorPhone: formatPhone(v) }))}
+                        placeholder="0300-1234567"
+                        placeholderTextColor="#94a3b8"
+                        keyboardType="phone-pad"
+                        maxLength={12}
+                      />
+                      <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>
+                        {t('finance.phoneRequiredHint', 'Automatic thank-you SMS & WhatsApp will be sent to this number for donations of PKR 5,000+.')}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.inputGroup, isTablet && { flex: 1 }]}>
+                      <Text style={[styles.inputGroupLabel, isRTL && { textAlign: 'right' }]}>
                         {t('finance.donorCnic', 'Donor CNIC')} {donCnicRequired ? <Text style={{ color: Colors.error }}>*</Text> : '(Optional)'}
                       </Text>
                       <TextInput
@@ -1658,12 +1699,8 @@ export default function FinanceScreen() {
                         placeholder="42101-1234567-1"
                         placeholderTextColor="#94a3b8"
                         keyboardType="numeric"
+                        maxLength={15}
                       />
-                      <Text style={[styles.fieldHint, isRTL && { textAlign: 'right' }]}>
-                        {donationForm.donorType === 'NON_MEMBER'
-                          ? `Required for donations > ${PKR(NON_MEMBER_CNIC_THRESHOLD)}.`
-                          : 'Optional for audit documentation.'}
-                      </Text>
                     </View>
                   </View>
                 )}
