@@ -28,6 +28,7 @@ import UnitSwitcherModal from '../../../src/components/UnitSwitcherModal';
 import { PKR } from '../../../src/utils/formatters';
 import { downloadAndShare } from '../../../src/utils/export';
 import { Ionicons } from '@expo/vector-icons';
+import MobileProformaEditorModal from '../../../src/components/MobileProformaEditorModal';
 
 const COMMITTEE_TIER_LABELS = {
   PROVINCE: 'Sobayi',
@@ -83,6 +84,66 @@ export default function ReportsScreen() {
   const [error, setError] = useState('');
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+
+  // Proforma Reports state
+  const [proformaForm, setProformaForm] = useState(activeLevel === 'PROVINCE' ? 'form5' : (activeLevel === 'AREA' ? 'form2' : 'form4'));
+  const [proformaMonth, setProformaMonth] = useState(String(new Date().getMonth() + 1));
+  const [proformaYear, setProformaYear] = useState(String(new Date().getFullYear()));
+  const [proformaEditorVisible, setProformaEditorVisible] = useState(false);
+  const [proformaStatus, setProformaStatus] = useState(null);
+  const [checkingProforma, setCheckingProforma] = useState(false);
+
+  async function checkProformaStatus() {
+    if (!resolvedUnitId) return;
+    setCheckingProforma(true);
+    try {
+      const res = await api.get('/proforma/entry', {
+        params: {
+          formType: proformaForm,
+          year: proformaYear,
+          month: proformaMonth,
+          unitId: resolvedUnitId,
+          areaId: activeLevel === 'AREA' ? resolvedUnitId : undefined,
+          provinceId: activeLevel === 'PROVINCE' ? resolvedUnitId : undefined,
+        },
+      });
+      setProformaStatus(res.data);
+    } catch {
+      setProformaStatus(null);
+    } finally {
+      setCheckingProforma(false);
+    }
+  }
+
+  useEffect(() => {
+    checkProformaStatus();
+  }, [proformaForm, proformaYear, proformaMonth, resolvedUnitId, activeLevel]);
+
+  async function handleDownloadProforma(format) {
+    setBusyKey(`proforma-${format}`);
+    try {
+      const params = {
+        year: proformaYear,
+        month: proformaMonth,
+      };
+      if (['form1', 'form2', 'form3'].includes(proformaForm)) {
+        params.areaId = resolvedUnitId;
+      } else if (proformaForm === 'form4') {
+        params.unitId = resolvedUnitId;
+      } else if (proformaForm === 'form5') {
+        params.provinceId = resolvedUnitId;
+      }
+      await downloadAndShare(
+        `/exports/proforma/${proformaForm}/${format}`,
+        `proforma-${proformaForm}-${proformaYear}-${proformaMonth}.${format}`,
+        params
+      );
+    } catch (e) {
+      Alert.alert('Export failed', e.message);
+    } finally {
+      setBusyKey(null);
+    }
+  }
 
   // Quick date presets
   function applyDatePreset(preset) {
@@ -632,6 +693,177 @@ export default function ReportsScreen() {
           </Card>
         )}
 
+        {/* Official Party Proforma Reports Card */}
+        <Card style={[styles.card, { borderColor: '#0284c7', borderWidth: 1.5 }]}>
+          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>
+            📋 {t('reports.proformaReportsTitle', 'Official Party Proforma Reports (د کار او فعاليت فارمونه)')}
+          </Text>
+          <Text style={[styles.cardDesc, isRTL && { textAlign: 'right' }]}>
+            {t('reports.proformaReportsDesc', 'Official party monthly activity proformas matching the party standard forms in Pashto layout.')}
+          </Text>
+
+          {/* Form Selector Buttons */}
+          <View style={{ marginBottom: Spacing.sm }}>
+            <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>د فارم انتخاب (Select Form):</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
+              {activeLevel === 'BASIC_UNIT' && (
+                <TouchableOpacity
+                  style={[styles.presetBtn, proformaForm === 'form4' && { backgroundColor: '#0284c7' }]}
+                  onPress={() => setProformaForm('form4')}
+                >
+                  <Text style={[styles.presetBtnText, proformaForm === 'form4' && { color: '#fff', fontWeight: '700' }]}>Form 4 (ابتدائي يونټ)</Text>
+                </TouchableOpacity>
+              )}
+              {activeLevel === 'AREA' && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form2' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form2')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form2' && { color: '#fff', fontWeight: '700' }]}>Form 2 (يونټونو راپور)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form1' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form1')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form1' && { color: '#fff', fontWeight: '700' }]}>Form 1 (علاقائي راپور)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form3' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form3')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form3' && { color: '#fff', fontWeight: '700' }]}>Form 3 (تفصيلي راپور)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form4' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form4')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form4' && { color: '#fff', fontWeight: '700' }]}>Form 4 (ابتدائي يونټ)</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              {activeLevel === 'PROVINCE' && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form5' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form5')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form5' && { color: '#fff', fontWeight: '700' }]}>Form 5 (صوبائي ايګزيکټيو)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form2' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form2')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form2' && { color: '#fff', fontWeight: '700' }]}>Form 2 (يونټونو راپور)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form4' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form4')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form4' && { color: '#fff', fontWeight: '700' }]}>Form 4 (ابتدائي يونټ)</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              {activeLevel === 'CENTRAL' && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form5' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form5')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form5' && { color: '#fff', fontWeight: '700' }]}>Form 5 (صوبائي)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form2' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form2')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form2' && { color: '#fff', fontWeight: '700' }]}>Form 2</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.presetBtn, proformaForm === 'form4' && { backgroundColor: '#0284c7' }]}
+                    onPress={() => setProformaForm('form4')}
+                  >
+                    <Text style={[styles.presetBtnText, proformaForm === 'form4' && { color: '#fff', fontWeight: '700' }]}>Form 4</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </ScrollView>
+          </View>
+
+          {/* Month selector */}
+          <View style={{ marginBottom: Spacing.sm }}>
+            <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>مياشت (Month): {proformaMonth} / کال: {proformaYear}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  style={[styles.presetBtn, proformaMonth === String(m) && { backgroundColor: '#0284c7' }]}
+                  onPress={() => setProformaMonth(String(m))}
+                >
+                  <Text style={[styles.presetBtnText, proformaMonth === String(m) && { color: '#fff', fontWeight: '700' }]}>
+                    {m} مياشت
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Status badge */}
+          {proformaStatus && (
+            <View style={{
+              padding: 10,
+              borderRadius: Radius.sm,
+              backgroundColor: proformaStatus.exists ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
+              marginVertical: Spacing.xs,
+              borderWidth: 1,
+              borderColor: proformaStatus.exists ? '#22c55e' : '#eab308'
+            }}>
+              <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: proformaStatus.exists ? '#22c55e' : '#eab308' }}>
+                {proformaStatus.exists ? '✅ په ډيټابيس کې خوندي شوی (Stored in DB)' : '📝 مسوده / نه دی ثبت شوی (Draft / Not Stored)'}
+              </Text>
+              {proformaStatus.metadata?.submittedByName ? (
+                <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                  ثبت کوونکی: {proformaStatus.metadata.submittedByName} ({proformaStatus.metadata.submittedByRole})
+                </Text>
+              ) : null}
+            </View>
+          )}
+
+          {/* Action buttons */}
+          <View style={{ gap: 8, marginTop: Spacing.sm }}>
+            <TouchableOpacity
+              style={[styles.btnPrimary, { backgroundColor: '#16a34a' }]}
+              onPress={() => setProformaEditorVisible(true)}
+            >
+              <Text style={styles.btnPrimaryText}>✏️ د رپورټ ډاټا ليکل او ثبتول (Enter / Edit Data)</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.btnRow, isRTL && { flexDirection: 'row-reverse' }]}>
+              <TouchableOpacity
+                style={[styles.btnPrimary, { flex: 1 }]}
+                onPress={() => handleDownloadProforma('pdf')}
+                disabled={!!busyKey}
+              >
+                {busyKey === 'proforma-pdf' ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.btnPrimaryText}>📄 Download PDF</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btnSecondary, { flex: 1 }]}
+                onPress={() => handleDownloadProforma('xlsx')}
+                disabled={!!busyKey}
+              >
+                {busyKey === 'proforma-xlsx' ? (
+                  <ActivityIndicator size="small" color={Colors.text} />
+                ) : (
+                  <Text style={styles.btnSecondaryText}>📊 Download Excel</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Card>
+
         {/* Member Performance Report Card */}
         <Card style={styles.card}>
           <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{memberReportTitle}</Text>
@@ -820,6 +1052,23 @@ export default function ReportsScreen() {
       <UnitSwitcherModal
         visible={unitSwitcherVisible}
         onClose={() => setUnitSwitcherVisible(false)}
+      />
+
+      {/* Proforma Data Entry & Storage Modal */}
+      <MobileProformaEditorModal
+        visible={proformaEditorVisible}
+        onClose={() => setProformaEditorVisible(false)}
+        formType={proformaForm}
+        year={proformaYear}
+        month={proformaMonth}
+        unitId={resolvedUnitId}
+        areaId={activeLevel === 'AREA' ? resolvedUnitId : undefined}
+        provinceId={activeLevel === 'PROVINCE' ? resolvedUnitId : undefined}
+        unitLevel={activeLevel}
+        unitName={activeUnitName}
+        onSaved={() => {
+          checkProformaStatus();
+        }}
       />
     </SafeAreaView>
   );
