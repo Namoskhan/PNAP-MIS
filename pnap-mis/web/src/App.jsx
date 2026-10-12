@@ -41,6 +41,7 @@ const ResponsibilitiesPage = lazy(() => import('./pages/unit/ResponsibilitiesPag
 const PerformancePage = lazy(() => import('./pages/unit/PerformancePage'));
 const PendingRoleApprovalsPage = lazy(() => import('./pages/unit/PendingRoleApprovalsPage'));
 const ReportsPage = lazy(() => import('./pages/unit/ReportsPage'));
+const ProformaReportsPage = lazy(() => import('./pages/unit/ProformaReportsPage'));
 
 // Admin pages - code split
 const ManageProvincesPage = lazy(() => import('./pages/admin/ManageProvincesPage'));
@@ -173,6 +174,7 @@ export default function App() {
                 <Route path="/unit/performance" element={<Suspense fallback={<PageFallback />}><PerformancePage /></Suspense>} />
                 <Route path="/unit/role-approvals" element={<Suspense fallback={<PageFallback />}><PendingRoleApprovalsPage /></Suspense>} />
                 <Route path="/unit/reports" element={<Suspense fallback={<PageFallback />}><ReportsPage /></Suspense>} />
+                <Route path="/unit/proforma" element={<Suspense fallback={<PageFallback />}><ProformaReportsPage /></Suspense>} />
                 <Route path="/admin/provinces" element={<Suspense fallback={<PageFallback />}><ManageProvincesPage /></Suspense>} />
                 <Route path="/admin/manage-org" element={<Suspense fallback={<PageFallback />}><ManageOrgPage /></Suspense>} />
                 <Route path="/admin/pending-approvals" element={<Suspense fallback={<PageFallback />}><GlobalPendingApprovalsPage /></Suspense>} />
