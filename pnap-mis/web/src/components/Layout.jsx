@@ -382,6 +382,7 @@ export default function Layout() {
               <UnitNavLink to="/unit/finance">{t('nav.centralFinance', 'Central Finance')}</UnitNavLink>
               <UnitNavLink to="/unit/transfers">{t('nav.centralTransfers', 'Central Fund Transfers')}</UnitNavLink>
               <UnitNavLink to="/unit/reports">{t('nav.centralReports', 'Central Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </NavGroup>
           </>
         )}
@@ -404,6 +405,7 @@ export default function Layout() {
               <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
               <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'Basic Unit Breakdown')}</NavLink>
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
           </>
         )}
@@ -419,6 +421,7 @@ export default function Layout() {
               <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
               <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'Province Breakdown')}</NavLink>
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
           </>
         )}
@@ -434,6 +437,7 @@ export default function Layout() {
               <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
               <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'Area Breakdown')}</NavLink>
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
           </>
         )}
@@ -449,6 +453,7 @@ export default function Layout() {
               <NavLink to="/unit/responsibilities">{t('nav.responsibilities', 'Responsibilities')}</NavLink>
               <NavLink to="/unit/breakdown">{t('nav.unitBreakdown', 'District Breakdown')}</NavLink>
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
           </>
         )}
@@ -468,6 +473,7 @@ export default function Layout() {
               {canFinance && <UnitNavLink to="/unit/transfers">{t('nav.fundTransfers', 'Fund Transfers')}</UnitNavLink>}
               <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
             <CongressNav ctx={ctx} canFinance={canFinance} defaultOpen={false} />
@@ -490,6 +496,7 @@ export default function Layout() {
               <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">{t('nav.financeSummary', 'Finance Summary')}</UnitNavLink>}
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
             {/* Secretary saw the committee at AREA, DISTRICT, PROVINCE, CENTRAL. */}
             {ctx && ctx.unitLevel !== 'BASIC_UNIT' && (
@@ -520,6 +527,7 @@ export default function Layout() {
                 <NavLink to="/unit/breakdown">{t('nav.subordinateBreakdown', 'Subordinate Breakdown')}</NavLink>
               )}
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
             {/* The Finance Secretary keeps the unit's books for Executive, Committee, Jirga, and Congress bodies */}
             <CommitteeNav ctx={ctx} canFinance={canFinance} showEvents={false} />
@@ -564,6 +572,7 @@ export default function Layout() {
               {canFinance && <UnitNavLink to="/unit/transfers">{t('nav.fundTransfers', 'Fund Transfers')}</UnitNavLink>}
               <NavLink to="/unit/performance">{t('nav.memberPerformance', 'Member Performance')}</NavLink>
               <UnitNavLink to="/unit/reports">{t('nav.reports', 'Reports')}</UnitNavLink>
+              <UnitNavLink to="/unit/proforma">{t('nav.proformaReports', 'Proforma Reports')}</UnitNavLink>
             </nav>
             <CommitteeNav ctx={ctx} canFinance={canFinance} />
             <CongressNav ctx={ctx} canFinance={canFinance} />
