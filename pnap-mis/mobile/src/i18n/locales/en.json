@@ -761,6 +761,8 @@
     "congressMeetingsReport": "National Congress Meetings & Activities Report",
     "meetingsAndActivitiesReport": "Meetings & Activities Report",
     "congressFinanceReport": "National Congress Finance Report",
+    "proformaReportsTitle": "Official Party Proforma Reports (کار او فعاليت فارمونه)",
+    "proformaReportsDesc": "Official monthly activity proformas matching party standard forms.",
     "activitiesReportTitle": "Activities & Field Operations Report",
     "activitiesReportDesc": "Detailed record of public events, protests, membership drives, door-to-door campaigns, and field initiatives with GPS verification.",
     "congressMemberPerfTitle": "Congress Member Performance Report",

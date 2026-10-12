@@ -714,6 +714,8 @@
     "congressMeetingsReport": "د قومي کانګرس د غونډو او فعالیتونو راپور",
     "meetingsAndActivitiesReport": "د غونډو او فعالیتونو راپور",
     "congressFinanceReport": "د قومي کانګرس مالي راپور",
+    "proformaReportsTitle": "رسمي پارټي کار او فعاليت فارمونه",
+    "proformaReportsDesc": "د پارټي د معيار مطابق د کار او فعاليت مياشتني فارمونه.",
     "activitiesReportTitle": "د فعالیتونو او کمپاینونو راپور",
     "activitiesReportDesc": "د غونډو، لاریونونو او د کور په کور کمپاینونو ریکارډ.",
     "congressMemberPerfTitle": "د کانګرس د غړو د فعالیت راپور",
