@@ -265,18 +265,20 @@ async function fetchForm4Data({ unitId, month, year }) {
       orgDonations: orgDonations > 0 ? String(orgDonations) : '',
       emergencyDonations: emergencyDonations > 0 ? String(emergencyDonations) : '',
       expenses: totalExpense > 0 ? String(totalExpense) : '',
-      disciplinary: '—',
+      disciplinary: '',
       bloodPosts: '',
       bloodCash: '',
       bloodTotalCash: '',
-      zakat: '—',
+      zakat: '',
       totalHouseholds: unit?.customData?.households || '',
     },
     execRows,
   };
 }
 
-function generateForm4Html({ unitName = '', month = '', year = '', upper = {}, execRows = [] } = {}) {
+function generateForm4Html(data = {}) {
+  const { unitName = '', month = '', year = '', upper = {} } = data;
+  const execRows = (data.execRows && data.execRows.length > 0) ? data.execRows : (data.rows || []);
   const dispExec = [...execRows];
   while (dispExec.length < 12) {
     dispExec.push({
@@ -302,16 +304,25 @@ function generateForm4Html({ unitName = '', month = '', year = '', upper = {}, e
     });
   }
 
+  const cleanVal = (val) => {
+    if (val === undefined || val === null) return '';
+    const s = String(val).trim();
+    if (s === '—' || s === '-' || s === '__' || s === '---') return '';
+    return s.replace(/^—+\s*/, '').replace(/__+/g, '').trim();
+  };
+
   const formatPct = (v) => {
     if (!v) return '';
-    return String(v).includes('%') ? v : `${v}%`;
+    const clean = cleanVal(v);
+    if (!clean) return '';
+    return clean.includes('%') ? clean : `${clean}%`;
   };
 
   return `<!DOCTYPE html>
 <html lang="ps" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>پښتونخوا ملي عوامي پارټي ابتدائي يونټ کار او فعاليت مياشتنئي رپورټ</title>
+  <title>پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنۍ رپورټ</title>
   <style>
     ${getBaseCss()}
     @page {
@@ -324,14 +335,14 @@ function generateForm4Html({ unitName = '', month = '', year = '', upper = {}, e
   <div class="page-container">
     <div class="report-header">
       <div class="header-field">
-        ابتدائي يونټ نوم: <span class="line">${unitName}</span>
+        د بنسټيز يونټ نوم: <span class="line">${cleanVal(unitName)}</span>
       </div>
       <div class="report-title">
-        پښتونخوا ملي عوامي پارټي ابتدائي يونټ کار او فعاليت مياشتنئي رپورټ
+        پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنۍ رپورټ
       </div>
       <div class="header-field">
-        مياشت: <span class="line" style="min-width: 90px;">${month}</span>
-        کال: <span class="line" style="min-width: 70px;">${year}</span>
+        مياشت: <span class="line" style="min-width: 90px;">${cleanVal(month)}</span>
+        کال: <span class="line" style="min-width: 70px;">${cleanVal(year)}</span>
       </div>
     </div>
 
@@ -390,48 +401,48 @@ function generateForm4Html({ unitName = '', month = '', year = '', upper = {}, e
       </thead>
       <tbody>
         <tr>
-          <td>${upper.execDate || ''}</td>
-          <td>${upper.execSlots || ''}</td>
-          <td>${upper.execPresent || ''}</td>
-          <td>${upper.execAbsent || ''}</td>
-          <td>${upper.execLeave || ''}</td>
+          <td>${cleanVal(upper.execDate)}</td>
+          <td>${cleanVal(upper.execSlots)}</td>
+          <td>${cleanVal(upper.execPresent)}</td>
+          <td>${cleanVal(upper.execAbsent)}</td>
+          <td>${cleanVal(upper.execLeave)}</td>
           <td>${formatPct(upper.execPct)}</td>
 
-          <td>${upper.gbDate || ''}</td>
-          <td>${upper.gbMembers || ''}</td>
-          <td>${upper.gbPresent || ''}</td>
-          <td>${upper.gbAbsent || ''}</td>
-          <td>${upper.gbLeave || ''}</td>
+          <td>${cleanVal(upper.gbDate)}</td>
+          <td>${cleanVal(upper.gbMembers)}</td>
+          <td>${cleanVal(upper.gbPresent)}</td>
+          <td>${cleanVal(upper.gbAbsent)}</td>
+          <td>${cleanVal(upper.gbLeave)}</td>
           <td>${formatPct(upper.gbPct)}</td>
 
-          <td>${upper.psoMembers || ''}</td>
-          <td>${upper.psoPresent || ''}</td>
+          <td>${cleanVal(upper.psoMembers)}</td>
+          <td>${cleanVal(upper.psoPresent)}</td>
           <td>${formatPct(upper.psoPct)}</td>
 
-          <td>${upper.reading || ''}</td>
-          <td>${upper.seminar || ''}</td>
-          <td>${upper.studyCircle || ''}</td>
-          <td>${upper.newMembers || ''}</td>
-          <td>${upper.publicEvents || ''}</td>
-          <td>${upper.inactiveContact || ''}</td>
-          <td>${upper.publicOutreach || ''}</td>
+          <td>${cleanVal(upper.reading)}</td>
+          <td>${cleanVal(upper.seminar)}</td>
+          <td>${cleanVal(upper.studyCircle)}</td>
+          <td>${cleanVal(upper.newMembers)}</td>
+          <td>${cleanVal(upper.publicEvents)}</td>
+          <td>${cleanVal(upper.inactiveContact)}</td>
+          <td>${cleanVal(upper.publicOutreach)}</td>
 
-          <td>${upper.orgDonations || ''}</td>
-          <td>${upper.emergencyDonations || ''}</td>
-          <td>${upper.expenses || ''}</td>
-          <td>${upper.disciplinary || ''}</td>
-          <td>${upper.bloodPosts || ''}</td>
-          <td>${upper.bloodCash || ''}</td>
-          <td>${upper.bloodTotalCash || ''}</td>
-          <td>${upper.zakat || ''}</td>
-          <td>${upper.totalHouseholds || ''}</td>
+          <td>${cleanVal(upper.orgDonations)}</td>
+          <td>${cleanVal(upper.emergencyDonations)}</td>
+          <td>${cleanVal(upper.expenses)}</td>
+          <td>${cleanVal(upper.disciplinary)}</td>
+          <td>${cleanVal(upper.bloodPosts)}</td>
+          <td>${cleanVal(upper.bloodCash)}</td>
+          <td>${cleanVal(upper.bloodTotalCash)}</td>
+          <td>${cleanVal(upper.zakat)}</td>
+          <td>${cleanVal(upper.totalHouseholds)}</td>
         </tr>
       </tbody>
     </table>
 
     <!-- LOWER TABLE -->
     <div class="table-section-title">
-      ابتدائي يونټ ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت مياشتنئي رپورټ
+      د بنسټيز يونټ ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت مياشتنۍ رپورټ
     </div>
     <table class="proforma-table">
       <thead>
@@ -460,25 +471,25 @@ function generateForm4Html({ unitName = '', month = '', year = '', upper = {}, e
       <tbody>
         ${dispExec.map((r, i) => `
           <tr>
-            <td>${r.srNo || (i + 1)}</td>
-            <td style="font-weight: 600;">${r.name || ''}</td>
-            <td>${r.unitExecMeeting || ''}</td>
-            <td>${r.unitGbMeeting || ''}</td>
-            <td>${r.psoMeeting || ''}</td>
-            <td>${r.seminar || ''}</td>
-            <td>${r.studyCircle || ''}</td>
-            <td>${r.induction || ''}</td>
-            <td>${r.ralliesAndJirgas || ''}</td>
-            <td>${r.alliedMeetings || ''}</td>
-            <td>${r.partyConference || ''}</td>
-            <td>${r.totalMeetings || ''}</td>
-            <td>${r.inactiveContact || ''}</td>
-            <td>${r.publicOutreach || ''}</td>
-            <td>${r.monthlyDues || ''}</td>
-            <td>${r.reading || ''}</td>
-            <td>${r.districtOrAreaAttendance || ''}</td>
-            <td>${r.activeStatus || ''}</td>
-            <td>${r.bloodPostsAndZakat || ''}</td>
+            <td>${cleanVal(r.srNo || (i + 1))}</td>
+            <td style="font-weight: 600;">${cleanVal(r.name)}</td>
+            <td>${cleanVal(r.unitExecMeeting)}</td>
+            <td>${cleanVal(r.unitGbMeeting)}</td>
+            <td>${cleanVal(r.psoMeeting)}</td>
+            <td>${cleanVal(r.seminar)}</td>
+            <td>${cleanVal(r.studyCircle)}</td>
+            <td>${cleanVal(r.induction)}</td>
+            <td>${cleanVal(r.ralliesAndJirgas)}</td>
+            <td>${cleanVal(r.alliedMeetings)}</td>
+            <td>${cleanVal(r.partyConference)}</td>
+            <td>${cleanVal(r.totalMeetings)}</td>
+            <td>${cleanVal(r.inactiveContact)}</td>
+            <td>${cleanVal(r.publicOutreach)}</td>
+            <td>${cleanVal(r.monthlyDues)}</td>
+            <td>${cleanVal(r.reading)}</td>
+            <td>${cleanVal(r.districtOrAreaAttendance)}</td>
+            <td>${cleanVal(r.activeStatus)}</td>
+            <td>${cleanVal(r.bloodPostsAndZakat)}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -488,9 +499,18 @@ function generateForm4Html({ unitName = '', month = '', year = '', upper = {}, e
 </html>`;
 }
 
-async function generateForm4Excel({ unitName = '', month = '', year = '', upper = {}, execRows = [] } = {}) {
+async function generateForm4Excel(data = {}) {
+  const { unitName = '', month = '', year = '', upper = {} } = data;
+  const execRows = (data.execRows && data.execRows.length > 0) ? data.execRows : (data.rows || []);
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('ابتدائي يونټ رپورټ', {
+  const cleanVal = (val) => {
+    if (val === undefined || val === null) return '';
+    const s = String(val).trim();
+    if (s === '—' || s === '-' || s === '__' || s === '---') return '';
+    return s.replace(/^—+\s*/, '').replace(/__+/g, '').trim();
+  };
+
+  const ws = wb.addWorksheet('بنسټيز يونټ رپورټ', {
     views: [{ rightToLeft: true }],
     pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1 },
   });
@@ -500,23 +520,23 @@ async function generateForm4Excel({ unitName = '', month = '', year = '', upper 
   const FONT_DATA = { name: 'Noto Naskh Arabic', size: 8 };
 
   ws.mergeCells('A1:C1');
-  ws.getCell('A1').value = `ابتدائي يونټ نوم: ${unitName}`;
+  ws.getCell('A1').value = `د بنسټيز يونټ نوم: ${cleanVal(unitName)}`;
   ws.getCell('A1').font = { name: 'Noto Naskh Arabic', size: 10, bold: true };
 
   ws.mergeCells('I1:S1');
-  ws.getCell('I1').value = 'پښتونخوا ملي عوامي پارټي ابتدائي يونټ کار او فعاليت مياشتنئي رپورټ';
+  ws.getCell('I1').value = 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنۍ رپورټ';
   ws.getCell('I1').font = FONT_TITLE;
   ws.getCell('I1').alignment = { horizontal: 'center' };
 
   ws.mergeCells('AA1:AC1');
-  ws.getCell('AA1').value = `مياشت: ${month}  کال: ${year}`;
+  ws.getCell('AA1').value = `مياشت: ${cleanVal(month)}  کال: ${cleanVal(year)}`;
   ws.getCell('AA1').font = { name: 'Noto Naskh Arabic', size: 10, bold: true };
 
   const upperHeaders1 = [
     'يونټ ايګزيکټيو غونډي نيټه', 'ايګزيکټيو شمير', 'حاضر', 'غيرحاضر', 'رخصت', 'حاضري فيصدي',
     'يونټ جنرل باډي غونډي نيټه', 'يونټ ممبرشپ', 'حاضر', 'غيرحاضر', 'رخصت', 'حاضري فيصدي',
     'پي ايس او غړو شمير', 'حاضر شمير', 'حاضري فيصدي',
-    'لوستنه', 'سيمينار', 'سټډي سرکل', 'نوي شموليت', 'اولسي غونډي', 'غير فعاله رابطه', 'اولس سره رابطه',
+    'لوستنه (مطالعه)', 'سيمينار', 'سټډي سرکل', 'نوي شموليت', 'اولسي غونډي', 'غير فعاله رابطه', 'اولس سره رابطه',
     'تنظيمي چنده', 'هنګامي چنده', 'خرڅ', 'تاديبي کاروائي',
     'بلډ پوستونه', 'نغدي', 'ټولي نغدي', 'زکات', 'ټولو کورو شمير'
   ];
@@ -525,23 +545,23 @@ async function generateForm4Excel({ unitName = '', month = '', year = '', upper 
   ws.getRow(3).font = FONT_HEADER;
 
   ws.getRow(4).values = [
-    upper.execDate || '', upper.execSlots || '', upper.execPresent || '', upper.execAbsent || '', upper.execLeave || '', upper.execPct || '',
-    upper.gbDate || '', upper.gbMembers || '', upper.gbPresent || '', upper.gbAbsent || '', upper.gbLeave || '', upper.gbPct || '',
-    upper.psoMembers || '', upper.psoPresent || '', upper.psoPct || '',
-    upper.reading || '', upper.seminar || '', upper.studyCircle || '', upper.newMembers || '', upper.publicEvents || '', upper.inactiveContact || '', upper.publicOutreach || '',
-    upper.orgDonations || '', upper.emergencyDonations || '', upper.expenses || '', upper.disciplinary || '',
-    upper.bloodPosts || '', upper.bloodCash || '', upper.bloodTotalCash || '', upper.zakat || '', upper.totalHouseholds || ''
+    cleanVal(upper.execDate), cleanVal(upper.execSlots), cleanVal(upper.execPresent), cleanVal(upper.execAbsent), cleanVal(upper.execLeave), cleanVal(upper.execPct),
+    cleanVal(upper.gbDate), cleanVal(upper.gbMembers), cleanVal(upper.gbPresent), cleanVal(upper.gbAbsent), cleanVal(upper.gbLeave), cleanVal(upper.gbPct),
+    cleanVal(upper.psoMembers), cleanVal(upper.psoPresent), cleanVal(upper.psoPct),
+    cleanVal(upper.reading), cleanVal(upper.seminar), cleanVal(upper.studyCircle), cleanVal(upper.newMembers), cleanVal(upper.publicEvents), cleanVal(upper.inactiveContact), cleanVal(upper.publicOutreach),
+    cleanVal(upper.orgDonations), cleanVal(upper.emergencyDonations), cleanVal(upper.expenses), cleanVal(upper.disciplinary),
+    cleanVal(upper.bloodPosts), cleanVal(upper.bloodCash), cleanVal(upper.bloodTotalCash), cleanVal(upper.zakat), cleanVal(upper.totalHouseholds)
   ];
   ws.getRow(4).font = FONT_DATA;
 
   // Lower Table
-  ws.getCell('A6').value = 'ابتدائي يونټ ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت مياشتنئي رپورټ';
+  ws.getCell('A6').value = 'د بنسټيز يونټ ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت مياشتنۍ رپورټ';
   ws.getCell('A6').font = { name: 'Noto Naskh Arabic', size: 11, bold: true };
 
   const lowerHeaders = [
     'شمير', 'ايګزيکټيو نوم', 'يونټ ايګزيکټيو غونډي', 'يونټ جنرل باډي غونډي', 'پي ايس او سره غونډي',
     'سيمينار', 'سټډي سرکل', 'شموليت پروګرام', 'جلسے مظاهرے', 'اتحاديانو سره غونډي', 'پارټي کانفرنس',
-    'ټولي غونډي', 'غير فعاله رابطه شمير', 'اولس سره رابطه', 'مياشتني چنده', 'لوستنه', 'دفتر ته حاضري',
+    'ټولي غونډي', 'غير فعاله رابطه شمير', 'اولس سره رابطه', 'مياشتني چنده', 'لوستنه (مطالعه)', 'دفتر ته حاضري',
     'فعاله / غير فعاله', 'بلډ بينک / زکات'
   ];
   ws.getRow(7).values = lowerHeaders;
@@ -550,11 +570,11 @@ async function generateForm4Excel({ unitName = '', month = '', year = '', upper 
   execRows.forEach((r, idx) => {
     const rowNum = 8 + idx;
     ws.getRow(rowNum).values = [
-      r.srNo || idx + 1, r.name || '', r.unitExecMeeting || '', r.unitGbMeeting || '', r.psoMeeting || '',
-      r.seminar || '', r.studyCircle || '', r.induction || '', r.ralliesAndJirgas || '', r.alliedMeetings || '',
-      r.partyConference || '', r.totalMeetings || '', r.inactiveContact || '', r.publicOutreach || '',
-      r.monthlyDues || '', r.reading || '', r.districtOrAreaAttendance || '', r.activeStatus || '',
-      r.bloodPostsAndZakat || ''
+      cleanVal(r.srNo || idx + 1), cleanVal(r.name), cleanVal(r.unitExecMeeting), cleanVal(r.unitGbMeeting), cleanVal(r.psoMeeting),
+      cleanVal(r.seminar), cleanVal(r.studyCircle), cleanVal(r.induction), cleanVal(r.ralliesAndJirgas), cleanVal(r.alliedMeetings),
+      cleanVal(r.partyConference), cleanVal(r.totalMeetings), cleanVal(r.inactiveContact), cleanVal(r.publicOutreach),
+      cleanVal(r.monthlyDues), cleanVal(r.reading), cleanVal(r.districtOrAreaAttendance), cleanVal(r.activeStatus),
+      cleanVal(r.bloodPostsAndZakat)
     ];
     ws.getRow(rowNum).font = FONT_DATA;
   });
