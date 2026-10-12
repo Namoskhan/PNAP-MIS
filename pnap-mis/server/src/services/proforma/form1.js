@@ -178,7 +178,7 @@ async function fetchForm1Data({ areaId, month, year }) {
   };
 
   const meetingDateFormatted = latestExec?.startAt
-    ? new Date(latestExec.startAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })
+    ? new Date(latestExec.startAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : '';
 
   const execRows = cabinetSlots.map((slot, i) => {
@@ -290,7 +290,7 @@ async function fetchForm1Data({ areaId, month, year }) {
       execAbsent: execAbsent !== '' ? String(execAbsent) : '',
       execLeave: execLeave !== '' ? String(execLeave) : '',
       execPct: execPct || '',
-      commDate: latestComm?.startAt ? new Date(latestComm.startAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }) : '',
+      commDate: latestComm?.startAt ? new Date(latestComm.startAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
       commTotal: commTotal !== '' ? String(commTotal) : '',
       commPresent: commPresent !== '' ? String(commPresent) : '',
       commAbsent: commAbsent !== '' ? String(commAbsent) : '',
@@ -327,7 +327,9 @@ async function fetchForm1Data({ areaId, month, year }) {
   };
 }
 
-function generateForm1Html({ areaName = '', month = '', year = '', upper = {}, execRows = [] } = {}) {
+function generateForm1Html(data = {}) {
+  const { areaName = '', month = '', year = '', upper = {} } = data;
+  const execRows = (data.execRows && data.execRows.length > 0) ? data.execRows : (data.rows || []);
   const displayExecRows = [...execRows];
   while (displayExecRows.length < 12) {
     displayExecRows.push({
@@ -362,7 +364,7 @@ function generateForm1Html({ areaName = '', month = '', year = '', upper = {}, e
     <tr>
       <td style="width: 1.8%;">${r.srNo || (i + 1)}</td>
       <td style="width: 6.5%; font-weight: 600; font-size: 7.5pt; line-height: 1.2;">${(r.name || '').replace(/\n/g, '<br/>')}</td>
-      <td style="width: 3.2%;">${r.meetingDate || ''}</td>
+      <td style="width: 3.2%;">${r.name ? (r.meetingDate || upper.execDate || data.execDate || '') : ''}</td>
       <td style="width: 3.2%;">${r.areaExecMeetings || ''}</td>
       <td style="width: 3.2%;">${r.areaCommMeetings || ''}</td>
       <td style="width: 3.2%;">${r.ownBuMeetings || ''}</td>
@@ -402,6 +404,15 @@ function generateForm1Html({ areaName = '', month = '', year = '', upper = {}, e
 </head>
 <body>
   <div class="page-container">
+    ${data.isSubmitted ? `
+      <div style="background: #ecfdf5; border: 1px solid #10b981; color: #047857; font-size: 8.5pt; font-weight: bold; padding: 4px 10px; border-radius: 4px; margin-bottom: 6px; text-align: center;">
+        ✅ په ډيټابيس کې باضابطه ثبت او محفوظ شوی راپور (Official Stored Report) | ثبت کوونکی: ${data.submittedByName || 'مسؤل'} (${data.submittedByRole || ''})
+      </div>
+    ` : `
+      <div style="background: #fffbeb; border: 1.5px dashed #f59e0b; color: #b45309; font-size: 8.5pt; font-weight: bold; padding: 4px 10px; border-radius: 4px; margin-bottom: 6px; text-align: center;">
+        ⚠️ مسوده - تر اوسه په ډيټابيس کې نه دی ثبت شوی (Draft / Not Submitted Yet to Database)
+      </div>
+    `}
     <div class="report-header">
       <div class="header-field">
         علاقائي يونټ نوم: <span class="line">${areaName}</span>
@@ -517,7 +528,7 @@ function generateForm1Html({ areaName = '', month = '', year = '', upper = {}, e
 
           <td>${upper.studyAreaComm || ''}</td>
           <td>${upper.studyUnitsCount || ''}</td>
-          <td>${upper.studyPct || ''}</td>
+          <td>${upper.studyPct || (Number(upper.studyUnitsCount) > 0 ? `${Math.min(100, Math.round((Number(upper.studyUnitsCount) / Number(upper.buExecCount || 1)) * 100))}%` : (Number(upper.studyAreaComm) > 0 ? '100%' : ''))}</td>
 
           <td>${upper.confUnitsCount || ''}</td>
           <td>${upper.newMembersCount || ''}</td>
@@ -581,7 +592,9 @@ function generateForm1Html({ areaName = '', month = '', year = '', upper = {}, e
 </html>`;
 }
 
-async function generateForm1Excel({ areaName = '', month = '', year = '', upper = {}, execRows = [] } = {}) {
+async function generateForm1Excel(data = {}) {
+  const { areaName = '', month = '', year = '', upper = {} } = data;
+  const execRows = (data.execRows && data.execRows.length > 0) ? data.execRows : (data.rows || []);
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('علاقائي يونټ کار او فعاليت', {
     views: [{ rightToLeft: true }],
@@ -628,7 +641,7 @@ async function generateForm1Excel({ areaName = '', month = '', year = '', upper 
     upper.buExecCount || '', upper.buExecPresent || '', upper.buExecPct || '',
     upper.buGbCount || '', upper.buGbPresent || '', upper.buGbPct || '', upper.buInactiveCount || '0',
     upper.totalMembers || '', upper.activeMembers || '', upper.memberPct || '',
-    upper.studyAreaComm || '', upper.studyUnitsCount || '', upper.studyPct || '',
+    upper.studyAreaComm || '', upper.studyUnitsCount || '', (upper.studyPct || (Number(upper.studyUnitsCount) > 0 ? `${Math.min(100, Math.round((Number(upper.studyUnitsCount) / Number(upper.buExecCount || 1)) * 100))}%` : (Number(upper.studyAreaComm) > 0 ? '100%' : ''))),
     upper.confUnitsCount || '', upper.newMembersCount || '',
     upper.psoUnitsCount || '', upper.psoMeetingsHeld || '',
     upper.publicEventsCount || '', upper.villagesWithoutUnit || '', upper.toursCount || '',
@@ -658,7 +671,7 @@ async function generateForm1Excel({ areaName = '', month = '', year = '', upper 
   execRows.forEach((r, idx) => {
     const rowNum = 8 + idx;
     ws.getRow(rowNum).values = [
-      r.srNo || idx + 1, r.name?.replace(/\n/g, ' ') || '', r.meetingDate || '', r.areaExecMeetings || '',
+      r.srNo || idx + 1, r.name?.replace(/\n/g, ' ') || '', (r.name ? (r.meetingDate || upper.execDate || data.execDate || '') : ''), r.areaExecMeetings || '',
       r.areaCommMeetings || '', r.ownBuMeetings || '', r.buExecMeetings || '', r.buMeetings || '',
       r.psoMeetings || '', r.conferences || '', r.seminars || '', r.studyCircles || '',
       r.inductions || '', r.alliedMeetings || '', r.ralliesAndJirgas || '', r.monthlyDues || '',
