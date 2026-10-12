@@ -145,6 +145,9 @@ export default function ProformaReportsPage() {
   const [activeTab, setActiveTab] = useState('upper');
   // Roster View Mode: 'cards' (interactive cards) or 'table' (dense spreadsheet table)
   const [rosterViewMode, setRosterViewMode] = useState('cards');
+  // Form 2 View Mode: 'cards' or 'table'
+  const [form2ViewMode, setForm2ViewMode] = useState('cards');
+  const [form2Search, setForm2Search] = useState('');
 
   const activeInputRef = useRef(null);
 
@@ -680,6 +683,188 @@ export default function ProformaReportsPage() {
     });
   }
 
+  // Form 2: Update row in Subordinate Basic Units table
+  function updateForm2Row(idx, field, val) {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      if (!rows[idx]) rows[idx] = {};
+      const updated = { ...rows[idx], [field]: val };
+
+      // Auto-calculate Executive attendance percentage & auto-adjust
+      if (field === 'execPresent' || field === 'execTotal' || field === 'execAbsent' || field === 'execLeave') {
+        const total = parseInt(field === 'execTotal' ? val : updated.execTotal, 10) || 0;
+        let pres = parseInt(field === 'execPresent' ? val : updated.execPresent, 10) || 0;
+        let abs = parseInt(field === 'execAbsent' ? val : updated.execAbsent, 10) || 0;
+        let leave = parseInt(field === 'execLeave' ? val : updated.execLeave, 10) || 0;
+
+        if (field === 'execPresent' && total > 0 && pres === total) {
+          abs = 0;
+          leave = 0;
+          updated.execAbsent = 0;
+          updated.execLeave = 0;
+        } else if (field === 'execPresent' && total > 0 && pres + abs + leave > total) {
+          const remaining = Math.max(0, total - pres);
+          if (abs > remaining) {
+            abs = remaining;
+            leave = 0;
+          } else {
+            leave = Math.max(0, remaining - abs);
+          }
+          updated.execAbsent = abs;
+          updated.execLeave = leave;
+        }
+
+        if (total > 0) updated.execPct = `${Math.round((pres / total) * 100)}%`;
+      }
+
+      // Auto-calculate General Body attendance percentage & auto-adjust
+      if (field === 'gbPresent' || field === 'gbTotalMembers' || field === 'gbAbsent' || field === 'gbLeave') {
+        const total = parseInt(field === 'gbTotalMembers' ? val : updated.gbTotalMembers, 10) || 0;
+        let pres = parseInt(field === 'gbPresent' ? val : updated.gbPresent, 10) || 0;
+        let abs = parseInt(field === 'gbAbsent' ? val : updated.gbAbsent, 10) || 0;
+        let leave = parseInt(field === 'gbLeave' ? val : updated.gbLeave, 10) || 0;
+
+        if (field === 'gbPresent' && total > 0 && pres === total) {
+          abs = 0;
+          leave = 0;
+          updated.gbAbsent = 0;
+          updated.gbLeave = 0;
+        } else if (field === 'gbPresent' && total > 0 && pres + abs + leave > total) {
+          const remaining = Math.max(0, total - pres);
+          if (abs > remaining) {
+            abs = remaining;
+            leave = 0;
+          } else {
+            leave = Math.max(0, remaining - abs);
+          }
+          updated.gbAbsent = abs;
+          updated.gbLeave = leave;
+        }
+
+        if (total > 0) updated.gbPct = `${Math.round((pres / total) * 100)}%`;
+      }
+
+      // Auto-calculate PSO attendance percentage
+      if (field === 'psoAttendees' || field === 'psoMembership') {
+        const mem = parseInt(field === 'psoMembership' ? val : updated.psoMembership, 10) || 0;
+        let att = parseInt(field === 'psoAttendees' ? val : updated.psoAttendees, 10) || 0;
+        if (field === 'psoAttendees' && mem > 0 && att > mem) {
+          att = mem;
+          updated.psoAttendees = mem;
+        }
+        if (mem > 0) updated.psoPct = `${Math.round((att / mem) * 100)}%`;
+      }
+
+      rows[idx] = updated;
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 2: Auto-balance attendance for a single unit row
+  function handleAutoBalanceForm2Row(idx, type) {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      if (!rows[idx]) return prev;
+      const r = { ...rows[idx] };
+      if (type === 'exec') {
+        const total = parseInt(r.execTotal, 10) || 0;
+        const pres = parseInt(r.execPresent, 10) || 0;
+        const leave = parseInt(r.execLeave, 10) || 0;
+        r.execAbsent = Math.max(0, total - pres - leave);
+        if (total > 0) r.execPct = `${Math.round((pres / total) * 100)}%`;
+      } else if (type === 'gb') {
+        const total = parseInt(r.gbTotalMembers, 10) || 0;
+        const pres = parseInt(r.gbPresent, 10) || 0;
+        const leave = parseInt(r.gbLeave, 10) || 0;
+        r.gbAbsent = Math.max(0, total - pres - leave);
+        if (total > 0) r.gbPct = `${Math.round((pres / total) * 100)}%`;
+      }
+      rows[idx] = r;
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 2: Auto-balance attendance for all units in one click
+  function handleAutoBalanceAllForm2Rows() {
+    setFormData((prev) => {
+      const rawRows = prev.rows || [];
+      const balanced = rawRows.map((r) => {
+        const updated = { ...r };
+        const eTot = parseInt(updated.execTotal, 10) || 0;
+        const ePres = parseInt(updated.execPresent, 10) || 0;
+        const eLeave = parseInt(updated.execLeave, 10) || 0;
+        if (eTot > 0) {
+          updated.execAbsent = Math.max(0, eTot - ePres - eLeave);
+          updated.execPct = `${Math.round((ePres / eTot) * 100)}%`;
+        }
+
+        const gTot = parseInt(updated.gbTotalMembers, 10) || 0;
+        const gPres = parseInt(updated.gbPresent, 10) || 0;
+        const gLeave = parseInt(updated.gbLeave, 10) || 0;
+        if (gTot > 0) {
+          updated.gbAbsent = Math.max(0, gTot - gPres - gLeave);
+          updated.gbPct = `${Math.round((gPres / gTot) * 100)}%`;
+        }
+        return updated;
+      });
+      return { ...prev, rows: balanced };
+    });
+    setFeedback({ text: 'All basic units attendance auto-balanced successfully!', type: 'success' });
+  }
+
+  // Form 2: Add new basic unit row
+  function addForm2Row() {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      rows.push({
+        srNo: rows.length + 1,
+        unitName: '',
+        execMeetingDate: '',
+        execTotal: 6,
+        execPresent: 6,
+        execAbsent: 0,
+        execLeave: 0,
+        execPct: '100%',
+        gbMeetingDate: '',
+        gbTotalMembers: 20,
+        gbPresent: 20,
+        gbAbsent: 0,
+        gbLeave: 0,
+        gbPct: '100%',
+        studyReading: 1,
+        seminarCount: 0,
+        studyCircleCount: 1,
+        newMembers: 0,
+        psoMembership: 5,
+        psoAttendees: 5,
+        psoPct: '100%',
+        publicEventsCount: 0,
+        inductionPrograms: 0,
+        publicOutreach: 1,
+        inactiveContact: 0,
+        orgOutreach: 1,
+        unitDonations: 1000,
+        emergencyDonations: 0,
+        totalExpenses: 500,
+        disciplinaryAction: '',
+        bloodPosts: '',
+        bloodCash: '',
+        bloodTotalCash: '',
+        zakat: '',
+        unitStatus: 'فعاله',
+      });
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 2: Remove a basic unit row
+  function removeForm2Row(idx) {
+    setFormData((prev) => {
+      const rows = (prev.rows || []).filter((_, i) => i !== idx);
+      return { ...prev, rows };
+    });
+  }
+
   const rows = formData.rows || formData.execRows || [];
   const upper = formData.upper || formData;
 
@@ -807,6 +992,29 @@ export default function ProformaReportsPage() {
   async function saveReportData() {
     if (!targetId) throw new Error(formType === 'form4' ? 'No basic unit selected' : 'No area context available');
 
+    if (formType === 'form2') {
+      const payload = {
+        formType: 'form2',
+        unitLevel: 'AREA',
+        unitId: effectiveAreaId,
+        areaId: effectiveAreaId,
+        unitName: activeUnitDisplayName,
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        data: sanitizeReportData({
+          ...formData,
+          areaName: activeUnitDisplayName,
+          month: String(month),
+          year: String(year),
+          rows: formData.rows || [],
+        }),
+        notes: formData.notes || '',
+      };
+      const res = await api.post('/proforma/save', payload);
+      setStatusDoc(res.data);
+      return res.data;
+    }
+
     let preparedUpper;
     if (formType === 'form4') {
       preparedUpper = {
@@ -854,7 +1062,33 @@ export default function ProformaReportsPage() {
     setSaving(true);
     setFeedback({ text: '', type: '' });
 
-    if (formType === 'form4') {
+    if (formType === 'form2') {
+      const invalidRows = [];
+      (formData.rows || []).forEach((r, i) => {
+        const eTot = parseInt(r.execTotal, 10) || 0;
+        const ePres = parseInt(r.execPresent, 10) || 0;
+        const eAbs = parseInt(r.execAbsent, 10) || 0;
+        const eLeave = parseInt(r.execLeave, 10) || 0;
+        if (eTot > 0 && (ePres + eAbs + eLeave) > eTot) {
+          invalidRows.push(`Unit ${r.unitName || i + 1}: Exec Attendance (${ePres + eAbs + eLeave}/${eTot})`);
+        }
+        const gTot = parseInt(r.gbTotalMembers, 10) || 0;
+        const gPres = parseInt(r.gbPresent, 10) || 0;
+        const gAbs = parseInt(r.gbAbsent, 10) || 0;
+        const gLeave = parseInt(r.gbLeave, 10) || 0;
+        if (gTot > 0 && (gPres + gAbs + gLeave) > gTot) {
+          invalidRows.push(`Unit ${r.unitName || i + 1}: GB Attendance (${gPres + gAbs + gLeave}/${gTot})`);
+        }
+      });
+      if (invalidRows.length > 0) {
+        setFeedback({
+          text: `⚠️ Attendance Mismatch in ${invalidRows.length} unit(s): ${invalidRows.slice(0, 2).join('; ')}. Please adjust numbers or click '⚡ Auto-Balance All Units' before saving.`,
+          type: 'error',
+        });
+        setSaving(false);
+        return;
+      }
+    } else if (formType === 'form4') {
       if (form4ExecInvalid) {
         setFeedback({
           text: `⚠️ Executive Meeting Error: Total Slots (${form4ExecSlots}) ≠ Present (${form4ExecPres}) + Absent (${form4ExecAbs}) + Leave (${form4ExecLeave}) = ${form4ExecSum}. Please click '⚡ Auto-Balance' or adjust numbers.`,
@@ -921,7 +1155,10 @@ export default function ProformaReportsPage() {
         ...(formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId }),
       });
 
-      const endpoint = formType === 'form4' ? '/api/exports/proforma/form4/html' : '/api/exports/proforma/form1/html';
+      const endpoint = formType === 'form4'
+        ? '/api/exports/proforma/form4/html'
+        : (formType === 'form2' ? '/api/exports/proforma/form2/html' : '/api/exports/proforma/form1/html');
+
       const res = await fetch(`${endpoint}?${q.toString()}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('pnap_token')}` },
       });
@@ -947,7 +1184,10 @@ export default function ProformaReportsPage() {
         ...(formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId }),
       });
 
-      const endpoint = formType === 'form4' ? `/api/exports/proforma/form4/${format}` : `/api/exports/proforma/form1/${format}`;
+      const endpoint = formType === 'form4'
+        ? `/api/exports/proforma/form4/${format}`
+        : (formType === 'form2' ? `/api/exports/proforma/form2/${format}` : `/api/exports/proforma/form1/${format}`);
+
       const filename = `proforma-${formType}-${year}-${month}.${format}`;
       await downloadAuthed(`${endpoint}?${q.toString()}`, filename);
       setFeedback({ text: t('proforma.downloadSuccess', 'Download complete!'), type: 'success' });
@@ -978,16 +1218,20 @@ export default function ProformaReportsPage() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>{formType === 'form4' ? '📄' : '📋'}</span>
+            <span>{formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : '📋')}</span>
             <span>
               {formType === 'form4'
                 ? t('proforma.form4Title', 'پښتونخوا ملي عوامي پارټي ابتدائي يونټ کار او فعاليت مياشتنئي رپورټ (Form 4)')
+                : formType === 'form2'
+                ? t('proforma.form2Title', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (Form 2)')
                 : t('proforma.form1Title', 'Area Unit Monthly Work & Activity Report (Form 1)')}
             </span>
           </h2>
           <p className="muted" style={{ margin: '4px 0 0' }}>
             {formType === 'form4'
               ? `${t('proforma.form4Desc', 'Official party monthly work & activity report for Primary / Basic Unit Executive')} · `
+              : formType === 'form2'
+              ? `${t('proforma.form2Desc', 'Official party monthly work and activity report for subordinate basic units under Area Unit')} · `
               : `${t('proforma.form1Desc', 'Official party monthly work and activity report for Area Executive and Subordinate Units')} · `}
             <strong>{activeUnitDisplayName}</strong>
           </p>
@@ -1019,7 +1263,7 @@ export default function ProformaReportsPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 14 }}>
           <button
             type="button"
-            onClick={() => setFormType('form1')}
+            onClick={() => { setFormType('form1'); setActiveTab('upper'); }}
             className={`btn ${formType === 'form1' ? '' : 'secondary'}`}
             style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
           >
@@ -1028,7 +1272,16 @@ export default function ProformaReportsPage() {
           </button>
           <button
             type="button"
-            onClick={() => setFormType('form4')}
+            onClick={() => { setFormType('form2'); setActiveTab('upper'); }}
+            className={`btn ${formType === 'form2' ? '' : 'secondary'}`}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+          >
+            <span>📑</span>
+            <span>{t('proforma.form2Btn', 'Form 2: Subordinate Basic Units (ماتحت بنسټيز يونټونه)')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setFormType('form4'); setActiveTab('upper'); }}
             className={`btn ${formType === 'form4' ? '' : 'secondary'}`}
             style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
           >
@@ -1213,6 +1466,8 @@ export default function ProformaReportsPage() {
           <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>
             {formType === 'form4'
               ? 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنئي رپورټ (Form 4)'
+              : formType === 'form2'
+              ? 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (Form 2)'
               : 'پښتونخوا ملي عوامي پارټي علاقائي يونټ کار او فعاليت مياشتنئي رپورټ (Form 1)'}
           </div>
         </div>
@@ -1237,25 +1492,29 @@ export default function ProformaReportsPage() {
             borderBottom: activeTab === 'upper' ? '2px solid var(--primary, #38bdf8)' : 'none',
           }}
         >
-          📊 {formType === 'form4'
+          📊 {formType === 'form2'
+            ? t('proforma.tabUnitsForm2', '1. د ماتحتو بنسټيزو يونټونو کار او فعاليت (Subordinate Units Activity)')
+            : formType === 'form4'
             ? t('proforma.tabOverviewForm4', '1. د ابتدائي يونټ مياشتنئ لنډيز (Unit Summary)')
             : t('proforma.tabOverview', '1. Area Summary & Metrics')}
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('roster')}
-          className={`btn ${activeTab === 'roster' ? '' : 'secondary'}`}
-          style={{
-            borderRadius: '8px 8px 0 0',
-            padding: '10px 18px',
-            fontWeight: 700,
-            borderBottom: activeTab === 'roster' ? '2px solid var(--primary, #38bdf8)' : 'none',
-          }}
-        >
-          👥 {formType === 'form4'
-            ? t('proforma.tabRosterForm4', '2. ابتدائي يونټ ايګزيکټيو ځانګړي فعاليت')
-            : t('proforma.tabRoster', '2. Executive Members Activity')} ({rows.length})
-        </button>
+        {formType !== 'form2' && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('roster')}
+            className={`btn ${activeTab === 'roster' ? '' : 'secondary'}`}
+            style={{
+              borderRadius: '8px 8px 0 0',
+              padding: '10px 18px',
+              fontWeight: 700,
+              borderBottom: activeTab === 'roster' ? '2px solid var(--primary, #38bdf8)' : 'none',
+            }}
+          >
+            👥 {formType === 'form4'
+              ? t('proforma.tabRosterForm4', '2. ابتدائي يونټ ايګزيکټيو ځانګړي فعاليت')
+              : t('proforma.tabRoster', '2. Executive Members Activity')} ({rows.length})
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setActiveTab('notes')}
@@ -1267,15 +1526,616 @@ export default function ProformaReportsPage() {
             borderBottom: activeTab === 'notes' ? '2px solid var(--primary, #38bdf8)' : 'none',
           }}
         >
-          📝 {t('proforma.tabNotes', '3. Remarks & Observations')}
+          📝 {formType === 'form2' ? t('proforma.tabNotes', '2. Remarks & Observations') : t('proforma.tabNotes', '3. Remarks & Observations')}
         </button>
       </div>
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* TAB 1: UPPER / SUMMARY METRICS */}
+      {/* TAB 1: UPPER / SUMMARY METRICS & FORM 2 WORKSPACE */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'upper' && (
-        formType === 'form4' ? (
+        formType === 'form2' ? (
+          /* FORM 2 SUBORDINATE BASIC UNITS WORKSPACE */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* KPI Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #0284c7' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #0284c7' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.kpiTotalUnits', 'Total Units')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🏢 {rows.length}</span>
+                  <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', fontWeight: 600 }}>
+                    {rows.filter(r => r.unitStatus !== 'غير فعاله').length} {t('proforma.active', 'Active')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #10b981' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #10b981' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.kpiExecMeetings', 'Exec Mtgs Held')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  🤝 {rows.filter(r => r.execMeetingDate || (parseInt(r.execPresent, 10) || 0) > 0).length} / {rows.length}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #8b5cf6' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #8b5cf6' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.kpiGbMeetings', 'GB Mtgs Held')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  👥 {rows.filter(r => r.gbMeetingDate || (parseInt(r.gbPresent, 10) || 0) > 0).length} / {rows.length}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #f59e0b' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #f59e0b' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.kpiTotalDues', 'Total Dues')}</div>
+                <div style={{ fontSize: 20, fontWeight: 'bold', marginTop: 4, color: '#10b981' }}>
+                  PKR {rows.reduce((sum, r) => sum + (parseInt(r.unitDonations, 10) || 0) + (parseInt(r.emergencyDonations, 10) || 0), 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #ef4444' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #ef4444' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.kpiTotalExpenses', 'Total Expenses')}</div>
+                <div style={{ fontSize: 20, fontWeight: 'bold', marginTop: 4, color: '#ef4444' }}>
+                  PKR {rows.reduce((sum, r) => sum + (parseInt(r.totalExpenses, 10) || 0), 0).toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Controls Toolbar: View Mode, Search, Add Row, Auto-Balance All */}
+            <div className="card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setForm2ViewMode('cards')}
+                    style={{
+                      padding: '7px 14px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: 'none',
+                      background: form2ViewMode === 'cards' ? '#0284c7' : 'var(--surface-alt)',
+                      color: form2ViewMode === 'cards' ? '#fff' : 'inherit',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🗂️ {t('proforma.viewCards', 'Cards View')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm2ViewMode('table')}
+                    style={{
+                      padding: '7px 14px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: 'none',
+                      background: form2ViewMode === 'table' ? '#0284c7' : 'var(--surface-alt)',
+                      color: form2ViewMode === 'table' ? '#fff' : 'inherit',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📊 {t('proforma.viewTable', 'Official Table View (35 Columns)')}
+                  </button>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={form2Search}
+                    onChange={(e) => setForm2Search(e.target.value)}
+                    placeholder={t('proforma.searchUnitPlaceholder', 'Search basic unit by name...')}
+                    style={{
+                      padding: '7px 12px',
+                      fontSize: 13,
+                      minWidth: 240,
+                      borderRadius: 6,
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface-alt)',
+                    }}
+                  />
+                  {form2Search && (
+                    <button
+                      type="button"
+                      onClick={() => setForm2Search('')}
+                      style={{
+                        position: 'absolute',
+                        right: isRtl ? 'auto' : 8,
+                        left: isRtl ? 8 : 'auto',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: 'var(--text-soft)',
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleAutoBalanceAllForm2Rows}
+                  className="btn secondary"
+                  style={{ fontSize: 12, padding: '7px 12px', borderColor: '#0284c7', color: '#38bdf8', fontWeight: 600 }}
+                  title="Auto-balances attendance for all units where Present + Leave + Absent doesn't match Total"
+                >
+                  ⚡ {t('proforma.autoBalanceAll', 'Auto-Balance All Units')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={addForm2Row}
+                  className="btn"
+                  style={{ fontSize: 13, padding: '7px 14px', background: '#0284c7', borderColor: '#0284c7', fontWeight: 600 }}
+                >
+                  ➕ {t('proforma.addUnitRow', '+ Add Basic Unit')}
+                </button>
+              </div>
+            </div>
+
+            {/* FORM 2: CARDS VIEW */}
+            {form2ViewMode === 'cards' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
+                {rows.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--text-soft)', gridColumn: '1 / -1' }}>
+                    <p style={{ fontSize: 15, marginBottom: 12 }}>{t('proforma.noUnits', 'No subordinate basic units added yet.')}</p>
+                    <button type="button" className="btn" onClick={addForm2Row} style={{ background: '#0284c7', borderColor: '#0284c7' }}>
+                      ➕ {t('proforma.addUnitRow', '+ Add Basic Unit')}
+                    </button>
+                  </div>
+                ) : (
+                  rows
+                    .map((r, originalIdx) => ({ ...r, _origIdx: originalIdx }))
+                    .filter((r) => !form2Search.trim() || (r.unitName || '').toLowerCase().includes(form2Search.trim().toLowerCase()))
+                    .map((r) => {
+                      const idx = r._origIdx;
+                      const execTotal = parseInt(r.execTotal, 10) || 0;
+                      const execPres = parseInt(r.execPresent, 10) || 0;
+                      const execAbs = parseInt(r.execAbsent, 10) || 0;
+                      const execLeave = parseInt(r.execLeave, 10) || 0;
+                      const execSum = execPres + execAbs + execLeave;
+                      const execBalanced = execTotal === 0 || execSum === execTotal;
+
+                      const gbTotal = parseInt(r.gbTotalMembers, 10) || 0;
+                      const gbPres = parseInt(r.gbPresent, 10) || 0;
+                      const gbAbs = parseInt(r.gbAbsent, 10) || 0;
+                      const gbLeave = parseInt(r.gbLeave, 10) || 0;
+                      const gbSum = gbPres + gbAbs + gbLeave;
+                      const gbBalanced = gbTotal === 0 || gbSum === gbTotal;
+
+                      const netFin = ((parseInt(r.unitDonations, 10) || 0) + (parseInt(r.emergencyDonations, 10) || 0)) - (parseInt(r.totalExpenses, 10) || 0);
+
+                      return (
+                        <div key={idx} className="card" style={{ border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {/* Unit Card Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                              <span style={{ background: '#0284c7', color: '#fff', borderRadius: '50%', width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 'bold' }}>
+                                {r.srNo || idx + 1}
+                              </span>
+                              <input
+                                type="text"
+                                value={r.unitName || ''}
+                                onChange={(e) => updateForm2Row(idx, 'unitName', e.target.value)}
+                                placeholder={t('proforma.unitNamePlaceholder', 'Basic Unit Name / د يونټ نوم')}
+                                style={{ fontWeight: 'bold', fontSize: 15, padding: '4px 8px', flex: 1, maxWidth: 260 }}
+                              />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => updateForm2Row(idx, 'unitStatus', r.unitStatus === 'فعاله' ? 'غير فعاله' : 'فعاله')}
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  border: 'none',
+                                  background: r.unitStatus === 'غير فعاله' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                                  color: r.unitStatus === 'غير فعاله' ? '#eab308' : '#22c55e',
+                                }}
+                              >
+                                {r.unitStatus || 'فعاله'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeForm2Row(idx)}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}
+                                title="Remove Unit"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 1. Unit Executive Meeting */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontWeight: 600, fontSize: 13, color: '#0284c7' }}>
+                                🤝 {t('proforma.execMeeting', 'يونټ ايګزيکټيو غونډي')}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {!execBalanced && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAutoBalanceForm2Row(idx, 'exec')}
+                                    className="btn secondary"
+                                    style={{ padding: '2px 6px', fontSize: 11, borderColor: '#0284c7', color: '#38bdf8' }}
+                                  >
+                                    ⚡ {t('proforma.autoBalance', 'Balance')}
+                                  </button>
+                                )}
+                                <span className="badge ACTIVE" style={{ fontSize: 11, fontWeight: 'bold' }}>
+                                  {r.execPct ? (String(r.execPct).includes('%') ? r.execPct : `${r.execPct}%`) : '0%'}
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', gap: 6 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.date', 'نيټه')}</label>
+                                <input
+                                  type="text"
+                                  value={r.execMeetingDate || ''}
+                                  onChange={(e) => updateForm2Row(idx, 'execMeetingDate', e.target.value)}
+                                  placeholder="12/10"
+                                  style={{ width: '100%', fontSize: 12, padding: '3px 6px', textAlign: 'center' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.total', 'ټول')}</label>
+                                <NumberStepper value={r.execTotal} onChange={(val) => updateForm2Row(idx, 'execTotal', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>{t('proforma.present', 'حاضر')}</label>
+                                <NumberStepper value={r.execPresent} onChange={(val) => updateForm2Row(idx, 'execPresent', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>{t('proforma.absent', 'غير')}</label>
+                                <NumberStepper value={r.execAbsent} onChange={(val) => updateForm2Row(idx, 'execAbsent', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#eab308' }}>{t('proforma.leave', 'رخصت')}</label>
+                                <NumberStepper value={r.execLeave} onChange={(val) => updateForm2Row(idx, 'execLeave', val)} style={{ minWidth: 70 }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. Unit General Body Meeting */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontWeight: 600, fontSize: 13, color: '#10b981' }}>
+                                👥 {t('proforma.gbMeeting', 'يونټ جنرل باډي غونډي')}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {!gbBalanced && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAutoBalanceForm2Row(idx, 'gb')}
+                                    className="btn secondary"
+                                    style={{ padding: '2px 6px', fontSize: 11, borderColor: '#10b981', color: '#10b981' }}
+                                  >
+                                    ⚡ {t('proforma.autoBalance', 'Balance')}
+                                  </button>
+                                )}
+                                <span className="badge ACTIVE" style={{ fontSize: 11, fontWeight: 'bold', background: '#10b981' }}>
+                                  {r.gbPct ? (String(r.gbPct).includes('%') ? r.gbPct : `${r.gbPct}%`) : '0%'}
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', gap: 6 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.date', 'نيټه')}</label>
+                                <input
+                                  type="text"
+                                  value={r.gbMeetingDate || ''}
+                                  onChange={(e) => updateForm2Row(idx, 'gbMeetingDate', e.target.value)}
+                                  placeholder="14/10"
+                                  style={{ width: '100%', fontSize: 12, padding: '3px 6px', textAlign: 'center' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.members', 'ممبرشپ')}</label>
+                                <NumberStepper value={r.gbTotalMembers} onChange={(val) => updateForm2Row(idx, 'gbTotalMembers', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>{t('proforma.present', 'حاضر')}</label>
+                                <NumberStepper value={r.gbPresent} onChange={(val) => updateForm2Row(idx, 'gbPresent', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>{t('proforma.absent', 'غير')}</label>
+                                <NumberStepper value={r.gbAbsent} onChange={(val) => updateForm2Row(idx, 'gbAbsent', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#eab308' }}>{t('proforma.leave', 'رخصت')}</label>
+                                <NumberStepper value={r.gbLeave} onChange={(val) => updateForm2Row(idx, 'gbLeave', val)} style={{ minWidth: 70 }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3. Study, Education & PSO */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#8b5cf6', marginBottom: 8 }}>
+                              📚 {t('proforma.studyPso', 'لوستنه، زده کړه او پي ايس او')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>لوستنه (مطالعه)</label>
+                                <NumberStepper value={r.studyReading} onChange={(val) => updateForm2Row(idx, 'studyReading', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>سيمينار</label>
+                                <NumberStepper value={r.seminarCount} onChange={(val) => updateForm2Row(idx, 'seminarCount', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>سټډي سرکل</label>
+                                <NumberStepper value={r.studyCircleCount} onChange={(val) => updateForm2Row(idx, 'studyCircleCount', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>نوي شموليتونه</label>
+                                <NumberStepper value={r.newMembers} onChange={(val) => updateForm2Row(idx, 'newMembers', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>پي ايس او ممبر</label>
+                                <NumberStepper value={r.psoMembership} onChange={(val) => updateForm2Row(idx, 'psoMembership', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>پي ايس او حاضر</label>
+                                <NumberStepper value={r.psoAttendees} onChange={(val) => updateForm2Row(idx, 'psoAttendees', val)} style={{ minWidth: 70 }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 4. Public Gatherings & Outreach */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#f59e0b', marginBottom: 8 }}>
+                              📢 {t('proforma.eventsOutreach', 'جلسې، شموليت او رابطې')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>جلسے/جرګے</label>
+                                <NumberStepper value={r.publicEventsCount} onChange={(val) => updateForm2Row(idx, 'publicEventsCount', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>شموليت پروګرام</label>
+                                <NumberStepper value={r.inductionPrograms} onChange={(val) => updateForm2Row(idx, 'inductionPrograms', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>اولسي رابطے</label>
+                                <NumberStepper value={r.publicOutreach} onChange={(val) => updateForm2Row(idx, 'publicOutreach', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>غير فعاله ملګرو</label>
+                                <NumberStepper value={r.inactiveContact} onChange={(val) => updateForm2Row(idx, 'inactiveContact', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>تنظيمي رابطے</label>
+                                <NumberStepper value={r.orgOutreach} onChange={(val) => updateForm2Row(idx, 'orgOutreach', val)} style={{ minWidth: 70 }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 5. Finances & Dues */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontWeight: 600, fontSize: 13, color: '#10b981' }}>
+                                💰 {t('proforma.finances', 'چنده او مالي چارې (روپۍ)')}
+                              </span>
+                              <span style={{ fontSize: 12, fontWeight: 'bold', color: netFin >= 0 ? '#10b981' : '#ef4444' }}>
+                                Net: PKR {netFin.toLocaleString()}
+                              </span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>يونټ چنده</label>
+                                <NumberStepper value={r.unitDonations} step={100} onChange={(val) => updateForm2Row(idx, 'unitDonations', val)} style={{ minWidth: 85 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>هنګامي چنده</label>
+                                <NumberStepper value={r.emergencyDonations} step={100} onChange={(val) => updateForm2Row(idx, 'emergencyDonations', val)} style={{ minWidth: 85 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>خرڅ</label>
+                                <NumberStepper value={r.totalExpenses} step={100} onChange={(val) => updateForm2Row(idx, 'totalExpenses', val)} style={{ minWidth: 85 }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 6. Discipline & Blood Bank */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#ec4899', marginBottom: 8 }}>
+                              🩸 {t('proforma.bloodDiscipline', 'تاديبي کاروائي او بلډ بينک')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, 1fr)', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>تاديبي کاروائي</label>
+                                <input
+                                  type="text"
+                                  value={r.disciplinaryAction || ''}
+                                  onChange={(e) => updateForm2Row(idx, 'disciplinaryAction', e.target.value)}
+                                  placeholder="none / اخطار"
+                                  style={{ width: '100%', fontSize: 12, padding: '3px 6px' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>پوستونه</label>
+                                <NumberStepper value={r.bloodPosts} onChange={(val) => updateForm2Row(idx, 'bloodPosts', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>نغدي</label>
+                                <NumberStepper value={r.bloodCash} step={100} onChange={(val) => updateForm2Row(idx, 'bloodCash', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>ټولي نغدي</label>
+                                <NumberStepper value={r.bloodTotalCash} step={100} onChange={(val) => updateForm2Row(idx, 'bloodTotalCash', val)} style={{ minWidth: 70 }} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>زکات</label>
+                                <NumberStepper value={r.zakat} step={100} onChange={(val) => updateForm2Row(idx, 'zakat', val)} style={{ minWidth: 70 }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            )}
+
+            {/* FORM 2: OFFICIAL 35-COLUMN TABLE VIEW */}
+            {form2ViewMode === 'table' && (
+              <div style={{ overflowX: 'auto', maxHeight: '680px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 2600, textAlign: 'center' }}>
+                  <thead style={{ background: 'var(--surface-alt)', position: 'sticky', top: 0, zIndex: 10 }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', fontSize: 11 }}>
+                      <th rowSpan={2} style={{ padding: '8px 4px', width: 40, position: 'sticky', [isRtl ? 'right' : 'left']: 0, background: 'var(--surface-alt)', zIndex: 12 }}>شمير</th>
+                      <th rowSpan={2} style={{ padding: '8px 6px', minWidth: 160, position: 'sticky', [isRtl ? 'right' : 'left']: 40, background: 'var(--surface-alt)', zIndex: 12 }}>يونټ نوم</th>
+                      <th colSpan={6} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(2, 132, 199, 0.08)' }}>يونټ ايګزيکټيو غونډي</th>
+                      <th colSpan={6} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(16, 185, 129, 0.08)' }}>يونټ جنرل باډي غونډي</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65, whiteSpace: 'nowrap' }}>لوستنه<br />(مطالعه)</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 55 }}>سيمينار</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 55 }}>سټډي<br />سرکل</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65 }}>نوي<br />شموليتونه</th>
+                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(139, 92, 246, 0.08)' }}>پي ايس او</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 85 }}>جلسے اولسي<br />غونډي جرګے</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65 }}>شموليت<br />پروګرام</th>
+                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>رابطے</th>
+                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.08)' }}>چنده</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 75 }}>تاديبي<br />کاروائي</th>
+                      <th colSpan={4} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(236, 72, 153, 0.08)' }}>بلډ بينک</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 80 }}>فعاله /<br />غير فعاله</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 36 }}>✕</th>
+                    </tr>
+                    <tr style={{ borderBottom: '2px solid var(--border)', fontSize: 10 }}>
+                      {/* Exec */}
+                      <th style={{ width: 65 }}>نيټه</th>
+                      <th style={{ width: 50 }}>شمير</th>
+                      <th style={{ width: 45 }}>حاضر</th>
+                      <th style={{ width: 45 }}>غير</th>
+                      <th style={{ width: 45 }}>رخصت</th>
+                      <th style={{ width: 55 }}>فيصدي</th>
+                      {/* GB */}
+                      <th style={{ width: 65 }}>نيټه</th>
+                      <th style={{ width: 55 }}>ممبرشپ</th>
+                      <th style={{ width: 45 }}>حاضر</th>
+                      <th style={{ width: 45 }}>غير</th>
+                      <th style={{ width: 45 }}>رخصت</th>
+                      <th style={{ width: 55 }}>فيصدي</th>
+                      {/* PSO */}
+                      <th style={{ width: 55 }}>ممبر شپ</th>
+                      <th style={{ width: 55 }}>حاضر شمير</th>
+                      <th style={{ width: 55 }}>فيصدي</th>
+                      {/* Outreach */}
+                      <th style={{ width: 55 }}>اولسي</th>
+                      <th style={{ width: 85 }}>غير فعاله ملګرو</th>
+                      <th style={{ width: 55 }}>تنظيمي</th>
+                      {/* Dues */}
+                      <th style={{ width: 70 }}>يونټ چنده</th>
+                      <th style={{ width: 65 }}>هنګامي</th>
+                      <th style={{ width: 65 }}>خرڅ</th>
+                      {/* Blood Bank */}
+                      <th style={{ width: 50 }}>پوستونه</th>
+                      <th style={{ width: 65 }}>نغدي</th>
+                      <th style={{ width: 65 }}>ټولي نغدي</th>
+                      <th style={{ width: 60 }}>زکات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={36} style={{ padding: 40, color: 'var(--text-soft)' }}>
+                          {t('proforma.noUnits', 'No subordinate basic units registered yet.')}
+                        </td>
+                      </tr>
+                    ) : (
+                      rows
+                        .map((r, originalIdx) => ({ ...r, _origIdx: originalIdx }))
+                        .filter((r) => !form2Search.trim() || (r.unitName || '').toLowerCase().includes(form2Search.trim().toLowerCase()))
+                        .map((r) => {
+                          const idx = r._origIdx;
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: 4, position: 'sticky', [isRtl ? 'right' : 'left']: 0, background: 'var(--surface)', zIndex: 5, fontWeight: 'bold' }}>
+                                {r.srNo || idx + 1}
+                              </td>
+                              <td style={{ padding: 4, position: 'sticky', [isRtl ? 'right' : 'left']: 40, background: 'var(--surface)', zIndex: 5 }}>
+                                <input
+                                  type="text"
+                                  value={r.unitName || ''}
+                                  onChange={(e) => updateForm2Row(idx, 'unitName', e.target.value)}
+                                  placeholder="Unit Name"
+                                  style={{ width: '100%', padding: '3px 6px', fontWeight: 600, fontSize: 12 }}
+                                />
+                              </td>
+                              {/* Exec */}
+                              <td style={{ padding: 3 }}><input type="text" value={r.execMeetingDate || ''} onChange={(e) => updateForm2Row(idx, 'execMeetingDate', e.target.value)} placeholder="12/10" style={{ width: 55, textAlign: 'center', fontSize: 11 }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execTotal ?? ''} onChange={(e) => updateForm2Row(idx, 'execTotal', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execPresent ?? ''} onChange={(e) => updateForm2Row(idx, 'execPresent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#22c55e', fontWeight: 'bold' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execAbsent ?? ''} onChange={(e) => updateForm2Row(idx, 'execAbsent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#ef4444' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execLeave ?? ''} onChange={(e) => updateForm2Row(idx, 'execLeave', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#eab308' }} /></td>
+                              <td style={{ padding: 3, fontWeight: 'bold', fontSize: 11, color: '#0284c7' }}>{r.execPct ? (String(r.execPct).includes('%') ? r.execPct : `${r.execPct}%`) : ''}</td>
+                              {/* GB */}
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbMeetingDate || ''} onChange={(e) => updateForm2Row(idx, 'gbMeetingDate', e.target.value)} placeholder="14/10" style={{ width: 55, textAlign: 'center', fontSize: 11 }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbTotalMembers ?? ''} onChange={(e) => updateForm2Row(idx, 'gbTotalMembers', e.target.value)} style={{ width: 45, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbPresent ?? ''} onChange={(e) => updateForm2Row(idx, 'gbPresent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#22c55e', fontWeight: 'bold' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbAbsent ?? ''} onChange={(e) => updateForm2Row(idx, 'gbAbsent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#ef4444' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbLeave ?? ''} onChange={(e) => updateForm2Row(idx, 'gbLeave', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#eab308' }} /></td>
+                              <td style={{ padding: 3, fontWeight: 'bold', fontSize: 11, color: '#10b981' }}>{r.gbPct ? (String(r.gbPct).includes('%') ? r.gbPct : `${r.gbPct}%`) : ''}</td>
+                              {/* Education & PSO */}
+                              <td style={{ padding: 3 }}><input type="text" value={r.studyReading ?? ''} onChange={(e) => updateForm2Row(idx, 'studyReading', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.seminarCount ?? ''} onChange={(e) => updateForm2Row(idx, 'seminarCount', e.target.value)} style={{ width: 40, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.studyCircleCount ?? ''} onChange={(e) => updateForm2Row(idx, 'studyCircleCount', e.target.value)} style={{ width: 40, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.newMembers ?? ''} onChange={(e) => updateForm2Row(idx, 'newMembers', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.psoMembership ?? ''} onChange={(e) => updateForm2Row(idx, 'psoMembership', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.psoAttendees ?? ''} onChange={(e) => updateForm2Row(idx, 'psoAttendees', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3, fontWeight: 'bold', fontSize: 11, color: '#8b5cf6' }}>{r.psoPct ? (String(r.psoPct).includes('%') ? r.psoPct : `${r.psoPct}%`) : ''}</td>
+                              {/* Gatherings & Outreach */}
+                              <td style={{ padding: 3 }}><input type="text" value={r.publicEventsCount ?? ''} onChange={(e) => updateForm2Row(idx, 'publicEventsCount', e.target.value)} style={{ width: 50, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.inductionPrograms ?? ''} onChange={(e) => updateForm2Row(idx, 'inductionPrograms', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.publicOutreach ?? ''} onChange={(e) => updateForm2Row(idx, 'publicOutreach', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.inactiveContact ?? ''} onChange={(e) => updateForm2Row(idx, 'inactiveContact', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.orgOutreach ?? ''} onChange={(e) => updateForm2Row(idx, 'orgOutreach', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              {/* Finances */}
+                              <td style={{ padding: 3 }}><input type="text" value={r.unitDonations ?? ''} onChange={(e) => updateForm2Row(idx, 'unitDonations', e.target.value)} style={{ width: 60, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.emergencyDonations ?? ''} onChange={(e) => updateForm2Row(idx, 'emergencyDonations', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.totalExpenses ?? ''} onChange={(e) => updateForm2Row(idx, 'totalExpenses', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
+                              {/* Discipline & Blood Bank */}
+                              <td style={{ padding: 3 }}><input type="text" value={r.disciplinaryAction || ''} onChange={(e) => updateForm2Row(idx, 'disciplinaryAction', e.target.value)} style={{ width: 65, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.bloodPosts ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodPosts', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.bloodCash ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodCash', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.bloodTotalCash ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodTotalCash', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.zakat ?? ''} onChange={(e) => updateForm2Row(idx, 'zakat', e.target.value)} style={{ width: 50, textAlign: 'center' }} /></td>
+                              {/* Status */}
+                              <td style={{ padding: 3 }}>
+                                <select
+                                  value={r.unitStatus || 'فعاله'}
+                                  onChange={(e) => updateForm2Row(idx, 'unitStatus', e.target.value)}
+                                  style={{ padding: '2px 4px', fontSize: 11, fontWeight: 600 }}
+                                >
+                                  <option value="فعاله">فعاله</option>
+                                  <option value="غير فعاله">غير فعاله</option>
+                                </select>
+                              </td>
+                              {/* Delete */}
+                              <td style={{ padding: 3 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => removeForm2Row(idx)}
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14 }}
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : formType === 'form4' ? (
           /* FORM 4 UPPER DASHBOARD CARDS */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Card 1: Executive & General Body Meetings */}
@@ -2743,6 +3603,8 @@ export default function ProformaReportsPage() {
             onChange={(e) => updateField('notes', e.target.value)}
             placeholder={formType === 'form4'
               ? t('proforma.notesPlaceholderForm4', 'e.g., During this month, the basic unit executive meeting was held with full attendance, new members were inducted, and upcoming political rallies were scheduled...')
+              : formType === 'form2'
+              ? t('proforma.notesPlaceholderForm2', 'e.g., During this month, subordinate basic units held regular executive and general body meetings, study circles were conducted, and dues were collected...')
               : t('proforma.notesPlaceholder', 'e.g., During this month, the area executive meeting was held with full attendance, new members were inducted, and upcoming political rallies were scheduled...')}
             style={{ width: '100%', padding: 12, borderRadius: 8, lineHeight: 1.6, fontSize: 14 }}
           />
@@ -2799,6 +3661,8 @@ export default function ProformaReportsPage() {
                 <strong>
                   {formType === 'form4'
                     ? t('proforma.previewModalTitleForm4', 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
+                    : formType === 'form2'
+                    ? t('proforma.previewModalTitleForm2', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (A4 Landscape Preview)')
                     : t('proforma.previewModalTitle', 'Area Unit Monthly Work & Activity Report (A4 Landscape Preview)')}
                 </strong>
               </div>
