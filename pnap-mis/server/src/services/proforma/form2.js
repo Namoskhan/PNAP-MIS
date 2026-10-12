@@ -247,43 +247,57 @@ function generateForm2Html({ areaName = '', month = '', year = '', rows = [] } =
     });
   }
 
+  const cleanVal = (val) => {
+    if (val === undefined || val === null) return '';
+    const s = String(val).trim();
+    if (s === '—' || s === '-' || s === '__' || s === '---') return '';
+    return s.replace(/^—+\s*/, '').replace(/__+/g, '').trim();
+  };
+
+  const formatPct = (v) => {
+    if (!v) return '';
+    const clean = cleanVal(v);
+    if (!clean) return '';
+    return clean.includes('%') ? clean : `${clean}%`;
+  };
+
   const tableRowsHtml = displayRows.map((r, i) => `
     <tr>
-      <td style="width: 1.8%;">${r.srNo || (i + 1)}</td>
-      <td style="width: 5.8%; font-weight: 600;">${r.unitName || ''}</td>
-      <td>${r.execMeetingDate || ''}</td>
-      <td>${r.execTotal || ''}</td>
-      <td>${r.execPresent || ''}</td>
-      <td>${r.execAbsent || ''}</td>
-      <td>${r.execLeave || ''}</td>
-      <td>${r.execPct ? r.execPct + '%' : ''}</td>
-      <td>${r.gbMeetingDate || ''}</td>
-      <td>${r.gbTotalMembers || ''}</td>
-      <td>${r.gbPresent || ''}</td>
-      <td>${r.gbAbsent || ''}</td>
-      <td>${r.gbLeave || ''}</td>
-      <td>${r.gbPct ? r.gbPct + '%' : ''}</td>
-      <td>${r.studyReading || ''}</td>
-      <td>${r.seminarCount || ''}</td>
-      <td>${r.studyCircleCount || ''}</td>
-      <td>${r.newMembers || ''}</td>
-      <td>${r.psoMembership || ''}</td>
-      <td>${r.psoAttendees || ''}</td>
-      <td>${r.psoPct ? r.psoPct + '%' : ''}</td>
-      <td>${r.publicEventsCount || ''}</td>
-      <td>${r.inductionPrograms || ''}</td>
-      <td>${r.publicOutreach || ''}</td>
-      <td>${r.inactiveContact || ''}</td>
-      <td>${r.orgOutreach || ''}</td>
-      <td>${r.unitDonations || ''}</td>
-      <td>${r.emergencyDonations || ''}</td>
-      <td>${r.totalExpenses || ''}</td>
-      <td>${r.disciplinaryAction || ''}</td>
-      <td>${r.bloodPosts || ''}</td>
-      <td>${r.bloodCash || ''}</td>
-      <td>${r.bloodTotalCash || ''}</td>
-      <td>${r.zakat || ''}</td>
-      <td>${r.unitStatus || ''}</td>
+      <td style="width: 1.8%;">${cleanVal(r.srNo || (i + 1))}</td>
+      <td style="width: 5.8%; font-weight: 600;">${cleanVal(r.unitName)}</td>
+      <td>${cleanVal(r.execMeetingDate)}</td>
+      <td>${cleanVal(r.execTotal)}</td>
+      <td>${cleanVal(r.execPresent)}</td>
+      <td>${cleanVal(r.execAbsent)}</td>
+      <td>${cleanVal(r.execLeave)}</td>
+      <td>${formatPct(r.execPct)}</td>
+      <td>${cleanVal(r.gbMeetingDate)}</td>
+      <td>${cleanVal(r.gbTotalMembers)}</td>
+      <td>${cleanVal(r.gbPresent)}</td>
+      <td>${cleanVal(r.gbAbsent)}</td>
+      <td>${cleanVal(r.gbLeave)}</td>
+      <td>${formatPct(r.gbPct)}</td>
+      <td>${cleanVal(r.studyReading)}</td>
+      <td>${cleanVal(r.seminarCount)}</td>
+      <td>${cleanVal(r.studyCircleCount)}</td>
+      <td>${cleanVal(r.newMembers)}</td>
+      <td>${cleanVal(r.psoMembership)}</td>
+      <td>${cleanVal(r.psoAttendees)}</td>
+      <td>${formatPct(r.psoPct)}</td>
+      <td>${cleanVal(r.publicEventsCount)}</td>
+      <td>${cleanVal(r.inductionPrograms)}</td>
+      <td>${cleanVal(r.publicOutreach)}</td>
+      <td>${cleanVal(r.inactiveContact)}</td>
+      <td>${cleanVal(r.orgOutreach)}</td>
+      <td>${cleanVal(r.unitDonations)}</td>
+      <td>${cleanVal(r.emergencyDonations)}</td>
+      <td>${cleanVal(r.totalExpenses)}</td>
+      <td>${cleanVal(r.disciplinaryAction)}</td>
+      <td>${cleanVal(r.bloodPosts)}</td>
+      <td>${cleanVal(r.bloodCash)}</td>
+      <td>${cleanVal(r.bloodTotalCash)}</td>
+      <td>${cleanVal(r.zakat)}</td>
+      <td>${cleanVal(r.unitStatus)}</td>
     </tr>
   `).join('');
 
@@ -291,7 +305,7 @@ function generateForm2Html({ areaName = '', month = '', year = '', rows = [] } =
 <html lang="ps" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>ابتدائي يونټانو کار او فعاليت مياشتنئي رپورټ</title>
+  <title>پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ</title>
   <style>
     ${getBaseCss()}
     @page {
@@ -304,14 +318,14 @@ function generateForm2Html({ areaName = '', month = '', year = '', rows = [] } =
   <div class="page-container">
     <div class="report-header">
       <div class="header-field">
-        علاقائي يونټ نوم: <span class="line">${areaName}</span>
+        د علاقائي يونټ نوم: <span class="line">${cleanVal(areaName)}</span>
       </div>
       <div class="report-title">
-        ابتدائي يونټانو کار او فعاليت مياشتنئي رپورټ
+        پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ
       </div>
       <div class="header-field">
-        مياشت: <span class="line" style="min-width: 90px;">${month}</span>
-        کال: <span class="line" style="min-width: 70px;">${year}</span>
+        مياشت: <span class="line" style="min-width: 90px;">${cleanVal(month)}</span>
+        کال: <span class="line" style="min-width: 70px;">${cleanVal(year)}</span>
       </div>
     </div>
 
@@ -397,23 +411,37 @@ async function generateForm2Excel({ areaName = '', month = '', year = '', rows =
     bottom: { style: 'thin' }, right: { style: 'thin' },
   };
 
+  const cleanVal = (val) => {
+    if (val === undefined || val === null) return '';
+    const s = String(val).trim();
+    if (s === '—' || s === '-' || s === '__' || s === '---') return '';
+    return s.replace(/^—+\s*/, '').replace(/__+/g, '').trim();
+  };
+
+  const formatPct = (v) => {
+    if (!v) return '';
+    const clean = cleanVal(v);
+    if (!clean) return '';
+    return clean.includes('%') ? clean : `${clean}%`;
+  };
+
   ws.mergeCells('A1:C1');
-  ws.getCell('A1').value = `علاقائي يونټ نوم: ${areaName}`;
+  ws.getCell('A1').value = `د علاقائي يونټ نوم: ${cleanVal(areaName)}`;
   ws.getCell('A1').font = { name: 'Noto Naskh Arabic', size: 10, bold: true };
 
   ws.mergeCells('L1:W1');
-  ws.getCell('L1').value = 'ابتدائي يونټانو کار او فعاليت مياشتنئي رپورټ';
+  ws.getCell('L1').value = 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ';
   ws.getCell('L1').font = { name: 'Noto Naskh Arabic', size: 14, bold: true };
   ws.getCell('L1').alignment = { horizontal: 'center' };
 
   ws.mergeCells('AF1:AI1');
-  ws.getCell('AF1').value = `مياشت: ${month}  کال: ${year}`;
+  ws.getCell('AF1').value = `مياشت: ${cleanVal(month)}  کال: ${cleanVal(year)}`;
   ws.getCell('AF1').font = { name: 'Noto Naskh Arabic', size: 10, bold: true };
 
   const headers = [
     'شمير', 'يونټ نوم', 'ايګزيکټيو نيټه', 'ايګزيکټيو شمير', 'حاضر', 'غير حاضر', 'رخصت', 'حاضري فيصدي',
     'جنرل باډي نيټه', 'يونټ ممبرشپ', 'حاضر', 'غير حاضر', 'رخصت', 'حاضري فيصدي',
-    'لوستنه', 'سيمينار', 'سټډي سرکل', 'نوي شموليتونه',
+    'لوستنه (مطالعه)', 'سيمينار', 'سټډي سرکل', 'نوي شموليتونه',
     'پي ايس او ممبر', 'حاضر شمير', 'حاضري فيصدي',
     'جلسے اولسي', 'شموليت پروګرام', 'اولسي رابطے', 'غير فعاله ملګري', 'تنظيمي رابطے',
     'يونټ چنده', 'هنګامي چنده', 'خرڅ', 'تاديبي کاروائي',
@@ -426,13 +454,13 @@ async function generateForm2Excel({ areaName = '', month = '', year = '', rows =
   rows.forEach((r, idx) => {
     const rowNum = 4 + idx;
     ws.getRow(rowNum).values = [
-      r.srNo || idx + 1, r.unitName || '', r.execMeetingDate || '', r.execTotal || '', r.execPresent || '', r.execAbsent || '', r.execLeave || '', r.execPct ? `${r.execPct}%` : '',
-      r.gbMeetingDate || '', r.gbTotalMembers || '', r.gbPresent || '', r.gbAbsent || '', r.gbLeave || '', r.gbPct ? `${r.gbPct}%` : '',
-      r.studyReading || '', r.seminarCount || '', r.studyCircleCount || '', r.newMembers || '',
-      r.psoMembership || '', r.psoAttendees || '', r.psoPct ? `${r.psoPct}%` : '',
-      r.publicEventsCount || '', r.inductionPrograms || '', r.publicOutreach || '', r.inactiveContact || '', r.orgOutreach || '',
-      r.unitDonations || '', r.emergencyDonations || '', r.totalExpenses || '', r.disciplinaryAction || '',
-      r.bloodPosts || '', r.bloodCash || '', r.bloodTotalCash || '', r.zakat || '', r.unitStatus || ''
+      cleanVal(r.srNo || idx + 1), cleanVal(r.unitName), cleanVal(r.execMeetingDate), cleanVal(r.execTotal), cleanVal(r.execPresent), cleanVal(r.execAbsent), cleanVal(r.execLeave), formatPct(r.execPct),
+      cleanVal(r.gbMeetingDate), cleanVal(r.gbTotalMembers), cleanVal(r.gbPresent), cleanVal(r.gbAbsent), cleanVal(r.gbLeave), formatPct(r.gbPct),
+      cleanVal(r.studyReading), cleanVal(r.seminarCount), cleanVal(r.studyCircleCount), cleanVal(r.newMembers),
+      cleanVal(r.psoMembership), cleanVal(r.psoAttendees), formatPct(r.psoPct),
+      cleanVal(r.publicEventsCount), cleanVal(r.inductionPrograms), cleanVal(r.publicOutreach), cleanVal(r.inactiveContact), cleanVal(r.orgOutreach),
+      cleanVal(r.unitDonations), cleanVal(r.emergencyDonations), cleanVal(r.totalExpenses), cleanVal(r.disciplinaryAction),
+      cleanVal(r.bloodPosts), cleanVal(r.bloodCash), cleanVal(r.bloodTotalCash), cleanVal(r.zakat), cleanVal(r.unitStatus)
     ];
     ws.getRow(rowNum).font = FONT_DATA;
   });
