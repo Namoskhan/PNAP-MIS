@@ -2681,8 +2681,9 @@ exports.proformaForm1Xlsx = asyncHandler(async (req, res) => {
 
 // Form 2: Basic Units Monthly Work & Activity Report
 exports.proformaForm2Html = asyncHandler(async (req, res) => {
-  const { areaId, month, year } = req.query;
+  let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
   _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
@@ -2694,8 +2695,9 @@ exports.proformaForm2Html = asyncHandler(async (req, res) => {
 });
 
 exports.proformaForm2Pdf = asyncHandler(async (req, res) => {
-  const { areaId, month, year } = req.query;
+  let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
   _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
@@ -2706,8 +2708,9 @@ exports.proformaForm2Pdf = asyncHandler(async (req, res) => {
 });
 
 exports.proformaForm2Xlsx = asyncHandler(async (req, res) => {
-  const { areaId, month, year } = req.query;
+  let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
   _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
