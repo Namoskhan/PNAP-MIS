@@ -79,7 +79,10 @@ function NumberStepper({ value, onChange, min = 0, max = Infinity, step = 1, pla
         }}
         placeholder={placeholder}
         style={{
-          width: 44,
+          width: '100%',
+          maxWidth: 44,
+          minWidth: 24,
+          flex: 1,
           textAlign: 'center',
           border: 'none',
           background: 'transparent',
@@ -134,12 +137,15 @@ export default function ProformaReportsPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [showUnitSwitcher, setShowUnitSwitcher] = useState(false);
   const [showAutofillModal, setShowAutofillModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // Basic Units list for Form 4 dropdown selection
   const [basicUnitsList, setBasicUnitsList] = useState([]);
   const [selectedUnitId, setSelectedUnitId] = useState(() => (ctx?.unitLevel === 'BASIC_UNIT' ? ctx?.unitId : ''));
   const [areasList, setAreasList] = useState([]);
   const [selectedAreaId, setSelectedAreaId] = useState('');
+  const [provincesList, setProvincesList] = useState([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState(() => (ctx?.provinceId || user?.scope?.provinceId || ''));
 
   // Active Tab: 'upper' (Overview & Upper Table), 'roster' (Executive Members), 'notes' (Remarks)
   const [activeTab, setActiveTab] = useState('upper');
@@ -148,6 +154,14 @@ export default function ProformaReportsPage() {
   // Form 2 View Mode: 'cards' or 'table'
   const [form2ViewMode, setForm2ViewMode] = useState('cards');
   const [form2Search, setForm2Search] = useState('');
+  // Form 5 View Mode: 'cards' or 'table'
+  const [form5ViewMode, setForm5ViewMode] = useState('cards');
+  const [form5Search, setForm5Search] = useState('');
+  // Form 6 View Mode: 'cards' or 'table'
+  const [form6ViewMode, setForm6ViewMode] = useState('cards');
+  const [form6Search, setForm6Search] = useState('');
+  const [districtsList, setDistrictsList] = useState([]);
+  const [selectedDistrictId, setSelectedDistrictId] = useState(() => (ctx?.districtId || user?.scope?.districtId || ''));
 
   const activeInputRef = useRef(null);
 
@@ -160,6 +174,56 @@ export default function ProformaReportsPage() {
     document.addEventListener('focusin', handleFocus);
     return () => document.removeEventListener('focusin', handleFocus);
   }, []);
+
+  // Load districts list for Form 6
+  useEffect(() => {
+    api.get('/org/districts')
+      .then((res) => {
+        const list = res.data?.data || [];
+        setDistrictsList(list);
+        if (list.length > 0 && !selectedDistrictId) {
+          const defaultDist = (user?.scope?.districtId && list.some((d) => String(d._id) === String(user.scope.districtId)))
+            ? String(user.scope.districtId)
+            : String(list[0]._id);
+          setSelectedDistrictId(defaultDist);
+        }
+      })
+      .catch((err) => console.error('Failed to load districts:', err));
+  }, [user?.scope?.districtId]);
+
+  // Resolve effective districtId
+  const effectiveDistrictId = useMemo(() => {
+    if (selectedDistrictId) return selectedDistrictId;
+    if (ctx?.unitLevel === 'DISTRICT') return ctx.unitId;
+    if (ctx?.districtId) return ctx.districtId;
+    if (user?.scope?.districtId) return user.scope.districtId;
+    return districtsList[0]?._id ? String(districtsList[0]._id) : '';
+  }, [selectedDistrictId, ctx, user, districtsList]);
+
+  // Load provinces list for Form 5
+  useEffect(() => {
+    api.get('/org/provinces')
+      .then((res) => {
+        const list = res.data?.data || [];
+        setProvincesList(list);
+        if (list.length > 0 && !selectedProvinceId) {
+          const defaultProv = (user?.scope?.provinceId && list.some((p) => String(p._id) === String(user.scope.provinceId)))
+            ? String(user.scope.provinceId)
+            : String(list[0]._id);
+          setSelectedProvinceId(defaultProv);
+        }
+      })
+      .catch((err) => console.error('Failed to load provinces:', err));
+  }, [user?.scope?.provinceId]);
+
+  // Resolve effective provinceId
+  const effectiveProvinceId = useMemo(() => {
+    if (selectedProvinceId) return selectedProvinceId;
+    if (ctx?.unitLevel === 'PROVINCE') return ctx.unitId;
+    if (ctx?.provinceId) return ctx.provinceId;
+    if (user?.scope?.provinceId) return user.scope.provinceId;
+    return provincesList[0]?._id ? String(provincesList[0]._id) : '';
+  }, [selectedProvinceId, ctx, user, provincesList]);
 
   // Resolve effective areaId
   const effectiveAreaId = useMemo(() => {
@@ -212,22 +276,38 @@ export default function ProformaReportsPage() {
 
   // Resolve target unit ID based on current formType
   const targetId = useMemo(() => {
+    if (formType === 'form6') {
+      return effectiveDistrictId;
+    }
+    if (formType === 'form5') {
+      return effectiveProvinceId;
+    }
     if (formType === 'form4') {
       if (ctx?.unitLevel === 'BASIC_UNIT') return ctx.unitId;
       return selectedUnitId || (basicUnitsList[0]?._id) || '';
     }
     return effectiveAreaId;
-  }, [formType, ctx, selectedUnitId, basicUnitsList, effectiveAreaId]);
+  }, [formType, effectiveDistrictId, effectiveProvinceId, ctx, selectedUnitId, basicUnitsList, effectiveAreaId]);
 
   // Resolve active unit display name
   const activeUnitDisplayName = useMemo(() => {
+    if (formType === 'form6') {
+      if (ctx?.unitLevel === 'DISTRICT') return ctx.unitName;
+      const found = districtsList.find((d) => String(d._id) === String(targetId));
+      return found?.name || formData.districtName || 'District';
+    }
+    if (formType === 'form5') {
+      if (ctx?.unitLevel === 'PROVINCE') return ctx.unitName;
+      const found = provincesList.find((p) => String(p._id) === String(targetId));
+      return found?.name || formData.provinceName || 'Province';
+    }
     if (formType === 'form4') {
       if (ctx?.unitLevel === 'BASIC_UNIT') return ctx.unitName;
       const found = basicUnitsList.find((b) => String(b._id) === String(targetId));
       return found?.name || formData.unitName || 'Basic Unit';
     }
     return ctx?.unitName || formData.areaName || 'Area Unit';
-  }, [formType, ctx, targetId, basicUnitsList, formData]);
+  }, [formType, ctx, targetId, districtsList, provincesList, basicUnitsList, formData]);
 
   // Sanitize data removing legacy dashes or placeholders
   function sanitizeReportData(raw) {
@@ -263,13 +343,22 @@ export default function ProformaReportsPage() {
     };
     if (cleaned.rows) cleaned.rows = cleanRowsList(cleaned.rows);
     if (cleaned.execRows) cleaned.execRows = cleanRowsList(cleaned.execRows);
+    if (cleaned.inactiveUnits) cleaned.inactiveUnits = cleanRowsList(cleaned.inactiveUnits);
+    if (cleaned.committeeMembers) cleaned.committeeMembers = cleanRowsList(cleaned.committeeMembers);
+    if (cleaned.publicActivities) cleaned.publicActivities = cleanRowsList(cleaned.publicActivities);
+    if (cleaned.educationalActivities) cleaned.educationalActivities = cleanRowsList(cleaned.educationalActivities);
+    if (cleaned.disciplinaryActions) cleaned.disciplinaryActions = cleanRowsList(cleaned.disciplinaryActions);
     return cleaned;
   }
 
   // Load proforma report data from DB or system baseline
   async function loadData(prefillFromSystem = false) {
-    if (!targetId) return;
+    if (!targetId) {
+      setStatusDoc(null);
+      return;
+    }
     setLoading(true);
+    setStatusDoc(null);
     setFeedback({ text: '', type: '' });
     try {
       const params = {
@@ -277,7 +366,9 @@ export default function ProformaReportsPage() {
         year,
         month,
         unitId: targetId,
-        areaId: effectiveAreaId,
+        areaId: (formType === 'form5' || formType === 'form6') ? undefined : effectiveAreaId,
+        provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
+        districtId: formType === 'form6' ? effectiveDistrictId : undefined,
         prefill: prefillFromSystem ? 'true' : undefined,
       };
 
@@ -307,7 +398,9 @@ export default function ProformaReportsPage() {
         year,
         month,
         unitId: targetId,
-        areaId: effectiveAreaId,
+        areaId: (formType === 'form5' || formType === 'form6') ? undefined : effectiveAreaId,
+        provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
+        districtId: formType === 'form6' ? effectiveDistrictId : undefined,
         prefill: 'true',
       };
       const res = await api.get('/proforma/entry', { params });
@@ -321,6 +414,96 @@ export default function ProformaReportsPage() {
       } else {
         // Smart merge: only populate missing or empty fields
         setFormData((prev) => {
+          if (formType === 'form6') {
+            const mergedUpper = { ...(prev.upper || {}) };
+            const sysUpper = sysData.upper || {};
+            for (const [k, v] of Object.entries(sysUpper)) {
+              if (mergedUpper[k] === undefined || mergedUpper[k] === '' || mergedUpper[k] === null) {
+                mergedUpper[k] = v;
+              }
+            }
+
+            let mergedRows = prev.rows || [];
+            const sysRows = sysData.rows || [];
+            if (!mergedRows || mergedRows.length === 0) {
+              mergedRows = sysRows;
+            } else if (sysRows && sysRows.length > 0) {
+              mergedRows = mergedRows.map((r, i) => {
+                const sr = sysRows[i] || {};
+                const updatedR = { ...r };
+                for (const [rk, rv] of Object.entries(sr)) {
+                  if (updatedR[rk] === undefined || updatedR[rk] === '' || updatedR[rk] === null) {
+                    updatedR[rk] = rv;
+                  }
+                }
+                return updatedR;
+              });
+            }
+
+            return {
+              ...prev,
+              districtName: prev.districtName || sysData.districtName,
+              m1: prev.m1 !== undefined ? prev.m1 : (sysData.m1 || ''),
+              m2: prev.m2 !== undefined ? prev.m2 : (sysData.m2 || ''),
+              m3: prev.m3 !== undefined ? prev.m3 : (sysData.m3 || ''),
+              year: prev.year || sysData.year,
+              upper: mergedUpper,
+              rows: mergedRows,
+            };
+          }
+
+          if (formType === 'form5') {
+            let mergedRows = prev.rows || [];
+            const sysRows = sysData.rows || [];
+            if (!mergedRows || mergedRows.length === 0) {
+              mergedRows = sysRows;
+            } else if (sysRows && sysRows.length > 0) {
+              mergedRows = mergedRows.map((r, i) => {
+                const sr = sysRows[i] || {};
+                const updatedR = { ...r };
+                for (const [rk, rv] of Object.entries(sr)) {
+                  if (updatedR[rk] === undefined || updatedR[rk] === '' || updatedR[rk] === null) {
+                    updatedR[rk] = rv;
+                  }
+                }
+                return updatedR;
+              });
+            }
+            return {
+              ...prev,
+              provinceName: prev.provinceName || sysData.provinceName,
+              fromDate: prev.fromDate || sysData.fromDate,
+              toDate: prev.toDate || sysData.toDate,
+              year: prev.year || sysData.year,
+              rows: mergedRows,
+            };
+          }
+
+          if (formType === 'form3') {
+            return {
+              ...prev,
+              areaName: prev.areaName || sysData.areaName,
+              inactiveUnits: (prev.inactiveUnits && prev.inactiveUnits.length > 0) ? prev.inactiveUnits : (sysData.inactiveUnits || []),
+              committeeMembers: (prev.committeeMembers && prev.committeeMembers.length > 0) ? prev.committeeMembers : (sysData.committeeMembers || []),
+              publicActivities: (prev.publicActivities && prev.publicActivities.length > 0) ? prev.publicActivities : (sysData.publicActivities || []),
+              educationalActivities: (prev.educationalActivities && prev.educationalActivities.length > 0) ? prev.educationalActivities : (sysData.educationalActivities || []),
+              disciplinaryActions: (prev.disciplinaryActions && prev.disciplinaryActions.length > 0) ? prev.disciplinaryActions : (sysData.disciplinaryActions || []),
+              bloodBank: {
+                ...(sysData.bloodBank || {}),
+                ...(prev.bloodBank || {}),
+              },
+              proposals: {
+                ...(sysData.proposals || {}),
+                ...(prev.proposals || {}),
+              },
+              officeActivity: prev.officeActivity || sysData.officeActivity || '',
+              socialReport: prev.socialReport || sysData.socialReport || '',
+              misc: prev.misc || sysData.misc || '',
+              secSignature: prev.secSignature || sysData.secSignature || '',
+              seniorSecSignature: prev.seniorSecSignature || sysData.seniorSecSignature || '',
+            };
+          }
+
           const mergedUpper = { ...(prev.upper || {}) };
           const sysUpper = sysData.upper || {};
           for (const [k, v] of Object.entries(sysUpper)) {
@@ -412,6 +595,32 @@ export default function ProformaReportsPage() {
       const balancedAbs = Math.max(0, total - pres - leave);
       u.commAbsent = balancedAbs;
       if (total > 0) u.commPct = `${Math.round((pres / total) * 100)}%`;
+      return { ...prev, upper: u };
+    });
+  }
+
+  function handleAutoBalanceDistrictExec() {
+    setFormData((prev) => {
+      const u = { ...(prev.upper || {}) };
+      const slots = parseInt(u.distExecSlots, 10) || 0;
+      const pres = parseInt(u.distExecPresent, 10) || 0;
+      const leave = parseInt(u.distExecLeave, 10) || 0;
+      const balancedAbs = Math.max(0, slots - pres - leave);
+      u.distExecAbsent = balancedAbs;
+      if (slots > 0) u.distExecPct = `${Math.round((pres / slots) * 100)}%`;
+      return { ...prev, upper: u };
+    });
+  }
+
+  function handleAutoBalanceDistrictComm() {
+    setFormData((prev) => {
+      const u = { ...(prev.upper || {}) };
+      const total = parseInt(u.distCommTotal, 10) || 0;
+      const pres = parseInt(u.distCommPresent, 10) || 0;
+      const leave = parseInt(u.distCommLeave, 10) || 0;
+      const balancedAbs = Math.max(0, total - pres - leave);
+      u.distCommAbsent = balancedAbs;
+      if (total > 0) u.distCommPct = `${Math.round((pres / total) * 100)}%`;
       return { ...prev, upper: u };
     });
   }
@@ -809,7 +1018,7 @@ export default function ProformaReportsPage() {
       });
       return { ...prev, rows: balanced };
     });
-    setFeedback({ text: 'All basic units attendance auto-balanced successfully!', type: 'success' });
+    setFeedback({ text: t('proforma.autoBalanceSuccess', 'All basic units attendance auto-balanced successfully!'), type: 'success' });
   }
 
   // Form 2: Add new basic unit row
@@ -865,7 +1074,800 @@ export default function ProformaReportsPage() {
     });
   }
 
+  // Comprehensive validation function for Form 2 rows
+  function validateForm2Rows(form2Rows = []) {
+    const errors = [];
+    const rowErrors = {};
+
+    form2Rows.forEach((r, i) => {
+      const idx = i;
+      const rowNum = i + 1;
+      const unitName = (r.unitName || '').trim();
+      const rErr = {
+        name: null,
+        exec: null,
+        gb: null,
+        pso: null,
+        finance: null,
+        hasError: false,
+      };
+
+      // 1. Basic Unit Name Validation
+      if (!unitName) {
+        const msg = t('proforma.form2.validation.unitNameRequired', `Basic unit name is required for row #${rowNum}`, { row: rowNum });
+        rErr.name = msg;
+        errors.push(msg);
+      }
+
+      // 2. Executive Attendance Validation
+      const eTot = parseInt(r.execTotal, 10);
+      const ePres = parseInt(r.execPresent, 10);
+      const eAbs = parseInt(r.execAbsent, 10);
+      const eLeave = parseInt(r.execLeave, 10);
+
+      if ((!isNaN(eTot) && eTot < 0) || (!isNaN(ePres) && ePres < 0) || (!isNaN(eAbs) && eAbs < 0) || (!isNaN(eLeave) && eLeave < 0)) {
+        const msg = t('proforma.form2.validation.negativeValue', `Unit '${unitName || rowNum}': Negative attendance numbers are not allowed`, { unit: unitName || rowNum, field: t('proforma.form2.execMeeting', 'Executive Meeting') });
+        rErr.exec = msg;
+        errors.push(msg);
+      } else if (!isNaN(eTot) && eTot > 0) {
+        const p = isNaN(ePres) ? 0 : ePres;
+        const a = isNaN(eAbs) ? 0 : eAbs;
+        const l = isNaN(eLeave) ? 0 : eLeave;
+        const sum = p + a + l;
+        if (p > eTot) {
+          const msg = t('proforma.form2.validation.execMismatch', `Unit '${unitName || rowNum}': Executive present (${p}) exceeds total slots (${eTot})`, { unit: unitName || rowNum, sum: p, total: eTot });
+          rErr.exec = msg;
+          errors.push(msg);
+        } else if (sum > eTot) {
+          const msg = t('proforma.form2.validation.execMismatch', `Unit '${unitName || rowNum}': Executive attendance (${sum}) exceeds total slots (${eTot})`, { unit: unitName || rowNum, sum, total: eTot });
+          rErr.exec = msg;
+          errors.push(msg);
+        }
+      }
+
+      // 3. General Body Attendance Validation
+      const gTot = parseInt(r.gbTotalMembers, 10);
+      const gPres = parseInt(r.gbPresent, 10);
+      const gAbs = parseInt(r.gbAbsent, 10);
+      const gLeave = parseInt(r.gbLeave, 10);
+
+      if ((!isNaN(gTot) && gTot < 0) || (!isNaN(gPres) && gPres < 0) || (!isNaN(gAbs) && gAbs < 0) || (!isNaN(gLeave) && gLeave < 0)) {
+        const msg = t('proforma.form2.validation.negativeValue', `Unit '${unitName || rowNum}': Negative attendance numbers are not allowed`, { unit: unitName || rowNum, field: t('proforma.form2.gbMeeting', 'General Body Meeting') });
+        rErr.gb = msg;
+        errors.push(msg);
+      } else if (!isNaN(gTot) && gTot > 0) {
+        const p = isNaN(gPres) ? 0 : gPres;
+        const a = isNaN(gAbs) ? 0 : gAbs;
+        const l = isNaN(gLeave) ? 0 : gLeave;
+        const sum = p + a + l;
+        if (p > gTot) {
+          const msg = t('proforma.form2.validation.gbMismatch', `Unit '${unitName || rowNum}': General body present (${p}) exceeds membership (${gTot})`, { unit: unitName || rowNum, sum: p, total: gTot });
+          rErr.gb = msg;
+          errors.push(msg);
+        } else if (sum > gTot) {
+          const msg = t('proforma.form2.validation.gbMismatch', `Unit '${unitName || rowNum}': General body attendance (${sum}) exceeds membership (${gTot})`, { unit: unitName || rowNum, sum, total: gTot });
+          rErr.gb = msg;
+          errors.push(msg);
+        }
+      }
+
+      // 4. PSO Validation
+      const psoMem = parseInt(r.psoMembership, 10);
+      const psoAtt = parseInt(r.psoAttendees, 10);
+      if ((!isNaN(psoMem) && psoMem < 0) || (!isNaN(psoAtt) && psoAtt < 0)) {
+        const msg = t('proforma.form2.validation.negativeValue', `Unit '${unitName || rowNum}': Negative PSO numbers are not allowed`, { unit: unitName || rowNum, field: 'PSO' });
+        rErr.pso = msg;
+        errors.push(msg);
+      } else if (!isNaN(psoMem) && psoMem > 0 && !isNaN(psoAtt) && psoAtt > psoMem) {
+        const msg = t('proforma.form2.validation.psoExceeded', `Unit '${unitName || rowNum}': PSO attendees (${psoAtt}) cannot exceed PSO membership (${psoMem})`, { unit: unitName || rowNum, att: psoAtt, mem: psoMem });
+        rErr.pso = msg;
+        errors.push(msg);
+      }
+
+      // 5. Financials Non-negative check
+      const dues = parseInt(r.unitDonations, 10);
+      const emg = parseInt(r.emergencyDonations, 10);
+      const exp = parseInt(r.totalExpenses, 10);
+      const bCash = parseInt(r.bloodCash, 10);
+      const zakat = parseInt(r.zakat, 10);
+
+      if ((!isNaN(dues) && dues < 0) || (!isNaN(emg) && emg < 0) || (!isNaN(exp) && exp < 0) || (!isNaN(bCash) && bCash < 0) || (!isNaN(zakat) && zakat < 0)) {
+        const msg = t('proforma.form2.validation.negativeValue', `Unit '${unitName || rowNum}': Financial amounts cannot be negative`, { unit: unitName || rowNum, field: t('proforma.form2.dues', 'Finances') });
+        rErr.finance = msg;
+        errors.push(msg);
+      }
+
+      if (rErr.name || rErr.exec || rErr.gb || rErr.pso || rErr.finance) {
+        rErr.hasError = true;
+      }
+
+      rowErrors[idx] = rErr;
+    });
+
+    return { errors, rowErrors, isValid: errors.length === 0 };
+  }
+
+  // Form 3 Helper Functions
+  function updateForm3Field(field, val) {
+    setFormData((prev) => ({ ...prev, [field]: val }));
+  }
+
+  // 1. Inactive Units
+  function addInactiveUnitRow() {
+    setFormData((prev) => {
+      const list = [...(prev.inactiveUnits || [])];
+      list.push({
+        srNo: list.length + 1,
+        unitName: '',
+        reason: '',
+        suggestion: '',
+      });
+      return { ...prev, inactiveUnits: list };
+    });
+  }
+
+  function updateInactiveUnitRow(idx, field, val) {
+    setFormData((prev) => {
+      const list = [...(prev.inactiveUnits || [])];
+      if (!list[idx]) list[idx] = {};
+      list[idx] = { ...list[idx], [field]: val };
+      return { ...prev, inactiveUnits: list };
+    });
+  }
+
+  function removeInactiveUnitRow(idx) {
+    setFormData((prev) => {
+      const list = (prev.inactiveUnits || []).filter((_, i) => i !== idx);
+      return { ...prev, inactiveUnits: list };
+    });
+  }
+
+  // 2. Committee Members
+  function addCommitteeMemberRow() {
+    setFormData((prev) => {
+      const list = [...(prev.committeeMembers || [])];
+      list.push({
+        srNo: list.length + 1,
+        name: '',
+        role: '',
+        date: '',
+        areaExec: '',
+        areaComm: '',
+        unitExec: '',
+        unitGb: '',
+        pso: '',
+        conf: '',
+        seminar: '',
+        studyCircle: '',
+        induction: '',
+        rally: '',
+        reading: '',
+        inactiveContact: '',
+        dues: '',
+        tour: '',
+      });
+      return { ...prev, committeeMembers: list };
+    });
+  }
+
+  function updateCommitteeMemberRow(idx, field, val) {
+    setFormData((prev) => {
+      const list = [...(prev.committeeMembers || [])];
+      if (!list[idx]) list[idx] = {};
+      list[idx] = { ...list[idx], [field]: val };
+      return { ...prev, committeeMembers: list };
+    });
+  }
+
+  function removeCommitteeMemberRow(idx) {
+    setFormData((prev) => {
+      const list = (prev.committeeMembers || []).filter((_, i) => i !== idx);
+      return { ...prev, committeeMembers: list };
+    });
+  }
+
+  // 3. Public Gatherings
+  function addPublicActivityRow() {
+    setFormData((prev) => {
+      const list = [...(prev.publicActivities || [])];
+      list.push({
+        srNo: list.length + 1,
+        orgName: activeUnitDisplayName,
+        date: '',
+        location: '',
+        topic: '',
+        programType: '',
+        speakers: '',
+        memberCount: '',
+        publicCount: '',
+      });
+      return { ...prev, publicActivities: list };
+    });
+  }
+
+  function updatePublicActivityRow(idx, field, val) {
+    setFormData((prev) => {
+      const list = [...(prev.publicActivities || [])];
+      if (!list[idx]) list[idx] = {};
+      list[idx] = { ...list[idx], [field]: val };
+      return { ...prev, publicActivities: list };
+    });
+  }
+
+  function removePublicActivityRow(idx) {
+    setFormData((prev) => {
+      const list = (prev.publicActivities || []).filter((_, i) => i !== idx);
+      return { ...prev, publicActivities: list };
+    });
+  }
+
+  // 4. Educational Activities
+  function addEducationalActivityRow() {
+    setFormData((prev) => {
+      const list = [...(prev.educationalActivities || [])];
+      list.push({
+        srNo: list.length + 1,
+        orgName: activeUnitDisplayName,
+        date: '',
+        location: '',
+        topic: '',
+        programType: '',
+        speakers: '',
+        memberCount: '',
+      });
+      return { ...prev, educationalActivities: list };
+    });
+  }
+
+  function updateEducationalActivityRow(idx, field, val) {
+    setFormData((prev) => {
+      const list = [...(prev.educationalActivities || [])];
+      if (!list[idx]) list[idx] = {};
+      list[idx] = { ...list[idx], [field]: val };
+      return { ...prev, educationalActivities: list };
+    });
+  }
+
+  function removeEducationalActivityRow(idx) {
+    setFormData((prev) => {
+      const list = (prev.educationalActivities || []).filter((_, i) => i !== idx);
+      return { ...prev, educationalActivities: list };
+    });
+  }
+
+  // 5. Disciplinary Actions
+  function addDisciplinaryRow() {
+    setFormData((prev) => {
+      const list = [...(prev.disciplinaryActions || [])];
+      list.push({ name: '', role: '', violation: '', action: '' });
+      return { ...prev, disciplinaryActions: list };
+    });
+  }
+
+  function updateDisciplinaryRow(idx, field, val) {
+    setFormData((prev) => {
+      const list = [...(prev.disciplinaryActions || [])];
+      if (!list[idx]) list[idx] = {};
+      list[idx] = { ...list[idx], [field]: val };
+      return { ...prev, disciplinaryActions: list };
+    });
+  }
+
+  function removeDisciplinaryRow(idx) {
+    setFormData((prev) => {
+      const list = (prev.disciplinaryActions || []).filter((_, i) => i !== idx);
+      return { ...prev, disciplinaryActions: list };
+    });
+  }
+
+  // 6. Blood Bank & Zakat
+  function updateBloodBank(field, val) {
+    setFormData((prev) => {
+      const bb = { ...(prev.bloodBank || {}) };
+      bb[field] = val;
+      if (field === 'bloodCash' && (bb.bloodTotalCash === undefined || bb.bloodTotalCash === '' || bb.bloodTotalCash === prev.bloodBank?.bloodCash)) {
+        bb.bloodTotalCash = val;
+      }
+      return { ...prev, bloodBank: bb };
+    });
+  }
+
+  // 7. Proposals & Demands Matrix
+  function updateProposal(cat, col, val) {
+    setFormData((prev) => {
+      const p = { ...(prev.proposals || {}) };
+      p[cat] = { ...(p[cat] || {}), [col]: val };
+      return { ...prev, proposals: p };
+    });
+  }
+
+  function updateDemands(val) {
+    setFormData((prev) => {
+      const p = { ...(prev.proposals || {}) };
+      p.demands = val;
+      return { ...prev, proposals: p };
+    });
+  }
+
+  // Validation function for Form 3
+  function validateForm3Data(data = {}) {
+    const errors = [];
+
+    // Inactive Units validation
+    const inactives = data.inactiveUnits || [];
+    inactives.forEach((u, i) => {
+      if ((u.reason?.trim() || u.suggestion?.trim()) && !u.unitName?.trim()) {
+        const msg = t('proforma.form3.validation.unitNameRequired', `Inactive Unit row #${i + 1}: Unit name is required`, { row: i + 1 });
+        errors.push(msg);
+      }
+    });
+
+    // Committee Members validation
+    const members = data.committeeMembers || [];
+    members.forEach((m, i) => {
+      const numKeys = ['areaExec', 'areaComm', 'unitExec', 'unitGb', 'pso', 'conf', 'seminar', 'studyCircle', 'induction', 'rally', 'reading', 'inactiveContact', 'dues', 'tour'];
+      for (const k of numKeys) {
+        const v = parseInt(m[k], 10);
+        if (!isNaN(v) && v < 0) {
+          const msg = t('proforma.form3.validation.negativeValue', `Committee Member '${m.name || `#${i + 1}`}': Negative count for ${k} is not allowed`);
+          errors.push(msg);
+          break;
+        }
+      }
+    });
+
+    // Blood Bank & Zakat validation
+    const bb = data.bloodBank || {};
+    const bCash = parseInt(bb.bloodCash, 10);
+    const bTot = parseInt(bb.bloodTotalCash, 10);
+    const zakat = parseInt(bb.zakat, 10);
+    const posts = parseInt(bb.bloodPosts, 10);
+    if ((!isNaN(bCash) && bCash < 0) || (!isNaN(bTot) && bTot < 0) || (!isNaN(zakat) && zakat < 0) || (!isNaN(posts) && posts < 0)) {
+      const msg = t('proforma.form3.validation.bloodBankNegative', 'Blood Bank figures and Zakat amounts cannot be negative');
+      errors.push(msg);
+    }
+
+    return { errors, isValid: errors.length === 0 };
+  }
+
+  // Form 5 Helper Functions
+  function addForm5Row() {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      rows.push({
+        srNo: rows.length + 1,
+        name: '',
+        centralComm: 0,
+        provincialJirga: 0,
+        provincialExec: 1,
+        provincialComm: 1,
+        districtExec: 0,
+        districtComm: 0,
+        areaExec: 0,
+        areaComm: 0,
+        basicUnitsExec: 0,
+        basicUnitsGb: 0,
+        ownBasicUnit: 1,
+        psoMeetings: 0,
+        partyConferences: 0,
+        seminars: 0,
+        studyCircles: 1,
+        inductions: 0,
+        ralliesAndProtests: 0,
+        jirgasAndCornerMeetings: 0,
+        pressConferences: 0,
+        alliedMeetings: 0,
+        totalMeetings: 3,
+        dues: 1000,
+        tours: 0,
+        reading: 1,
+        bloodBankPosts: '',
+      });
+      return { ...prev, rows };
+    });
+  }
+
+  function updateForm5Row(idx, field, val) {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      if (!rows[idx]) rows[idx] = {};
+      const updated = { ...rows[idx], [field]: val };
+
+      const meetingFields = [
+        'centralComm', 'provincialJirga', 'provincialExec', 'provincialComm',
+        'districtExec', 'districtComm', 'areaExec', 'areaComm',
+        'basicUnitsExec', 'basicUnitsGb', 'ownBasicUnit', 'psoMeetings'
+      ];
+      if (meetingFields.includes(field)) {
+        const sum = meetingFields.reduce((acc, f) => {
+          const v = parseInt(f === field ? val : updated[f], 10) || 0;
+          return acc + v;
+        }, 0);
+        updated.totalMeetings = sum;
+      }
+
+      rows[idx] = updated;
+      return { ...prev, rows };
+    });
+  }
+
+  function removeForm5Row(idx) {
+    setFormData((prev) => {
+      const rows = (prev.rows || []).filter((_, i) => i !== idx);
+      return { ...prev, rows };
+    });
+  }
+
+  function handleAutoSumForm5Row(idx) {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      if (!rows[idx]) return prev;
+      const r = { ...rows[idx] };
+      const meetingFields = [
+        'centralComm', 'provincialJirga', 'provincialExec', 'provincialComm',
+        'districtExec', 'districtComm', 'areaExec', 'areaComm',
+        'basicUnitsExec', 'basicUnitsGb', 'ownBasicUnit', 'psoMeetings'
+      ];
+      r.totalMeetings = meetingFields.reduce((sum, f) => sum + (parseInt(r[f], 10) || 0), 0);
+      rows[idx] = r;
+      return { ...prev, rows };
+    });
+  }
+
+  function handleAutoSumAllForm5Rows() {
+    setFormData((prev) => {
+      const meetingFields = [
+        'centralComm', 'provincialJirga', 'provincialExec', 'provincialComm',
+        'districtExec', 'districtComm', 'areaExec', 'areaComm',
+        'basicUnitsExec', 'basicUnitsGb', 'ownBasicUnit', 'psoMeetings'
+      ];
+      const rows = (prev.rows || []).map((r) => ({
+        ...r,
+        totalMeetings: meetingFields.reduce((sum, f) => sum + (parseInt(r[f], 10) || 0), 0),
+      }));
+      return { ...prev, rows };
+    });
+    setFeedback({ text: t('proforma.form5.autoSumAllSuccess', 'Total meetings auto-calculated for all executive comrades!'), type: 'success' });
+  }
+
+  function validateForm5Rows(form5Rows = []) {
+    const errors = [];
+    const rowErrors = {};
+
+    form5Rows.forEach((r, i) => {
+      const idx = i;
+      const rowNum = i + 1;
+      const name = (r.name || '').trim();
+      const rErr = {
+        name: null,
+        negative: null,
+        hasError: false,
+      };
+
+      const hasAnyData = Object.entries(r).some(([k, v]) => k !== 'srNo' && k !== 'name' && String(v || '').trim() !== '');
+      if (hasAnyData && !name) {
+        const msg = t('proforma.form5.validation.nameRequired', `Row #${rowNum}: Executive comrade name is required`, { row: rowNum });
+        rErr.name = msg;
+        errors.push(msg);
+      }
+
+      const numKeys = [
+        'centralComm', 'provincialJirga', 'provincialExec', 'provincialComm',
+        'districtExec', 'districtComm', 'areaExec', 'areaComm',
+        'basicUnitsExec', 'basicUnitsGb', 'ownBasicUnit', 'psoMeetings',
+        'partyConferences', 'seminars', 'studyCircles', 'inductions',
+        'ralliesAndProtests', 'jirgasAndCornerMeetings', 'pressConferences',
+        'alliedMeetings', 'totalMeetings', 'dues', 'tours', 'reading'
+      ];
+      for (const k of numKeys) {
+        const val = parseInt(r[k], 10);
+        if (!isNaN(val) && val < 0) {
+          const msg = t('proforma.form5.validation.negativeValue', `Row #${rowNum} (${name || 'Unnamed'}): Negative value for ${k} is not allowed`, { row: rowNum, name: name || 'Unnamed', field: k });
+          rErr.negative = msg;
+          errors.push(msg);
+          break;
+        }
+      }
+
+      if (rErr.name || rErr.negative) {
+        rErr.hasError = true;
+      }
+      rowErrors[idx] = rErr;
+    });
+
+    return { errors, rowErrors, isValid: errors.length === 0 };
+  }
+
+  // Form 6: Update upper summary fields with calculations
+  function updateForm6Upper(k, v) {
+    setFormData((prev) => {
+      const u = { ...(prev.upper || {}), [k]: v };
+
+      const upperAliasMap = {
+        areaUnitsCount: 'areasCount',
+        areasCount: 'areaUnitsCount',
+        newAreaUnitsCount: 'newAreasCount',
+        newAreasCount: 'newAreaUnitsCount',
+        newPsoUnitsCount: 'psoNewUnitsCount',
+        psoNewUnitsCount: 'newPsoUnitsCount',
+        conferencesCount: 'conferences',
+        conferences: 'conferencesCount',
+        studyCirclesCount: 'studyCircles',
+        studyCircles: 'studyCirclesCount',
+        inductionsCount: 'inductions',
+        inductions: 'inductionsCount',
+        ralliesCount: 'ralliesAndProtests',
+        ralliesAndProtests: 'ralliesCount',
+        jirgasCount: 'jirgasAndCornerMeetings',
+        jirgasAndCornerMeetings: 'jirgasCount',
+        alliedMeetingsCount: 'alliedMeetings',
+        alliedMeetings: 'alliedMeetingsCount',
+        districtOfficeActivity: 'officeActivity',
+        officeActivity: 'districtOfficeActivity',
+        duesMonthly: 'dues',
+        dues: 'duesMonthly',
+        duesEmergency: 'emergencyDues',
+        emergencyDues: 'duesEmergency',
+        duesExpenses: 'expenses',
+        expenses: 'duesExpenses',
+        villagesWithoutUnitCount: 'villagesWithoutUnit',
+        villagesWithoutUnit: 'villagesWithoutUnitCount',
+        disciplinaryActionsCount: 'disciplinaryActions',
+        disciplinaryActions: 'disciplinaryActionsCount',
+      };
+      if (upperAliasMap[k]) {
+        u[upperAliasMap[k]] = v;
+      }
+
+      if (k === 'distExecPresent' || k === 'distExecSlots' || k === 'distExecAbsent' || k === 'distExecLeave') {
+        const slots = parseInt(k === 'distExecSlots' ? v : u.distExecSlots, 10) || 0;
+        let pres = parseInt(k === 'distExecPresent' ? v : u.distExecPresent, 10) || 0;
+        let abs = parseInt(k === 'distExecAbsent' ? v : u.distExecAbsent, 10) || 0;
+        let leave = parseInt(k === 'distExecLeave' ? v : u.distExecLeave, 10) || 0;
+
+        if (k === 'distExecPresent' && slots > 0 && pres === slots) {
+          abs = 0;
+          leave = 0;
+          u.distExecAbsent = 0;
+          u.distExecLeave = 0;
+        } else if (k === 'distExecPresent' && slots > 0 && pres + abs + leave > slots) {
+          const rem = Math.max(0, slots - pres);
+          if (abs > rem) {
+            abs = rem;
+            leave = 0;
+          } else {
+            leave = Math.max(0, rem - abs);
+          }
+          u.distExecAbsent = abs;
+          u.distExecLeave = leave;
+        }
+        if (slots > 0) u.distExecPct = `${Math.round((pres / slots) * 100)}%`;
+      }
+
+      if (k === 'distCommPresent' || k === 'distCommTotal' || k === 'distCommAbsent' || k === 'distCommLeave') {
+        const total = parseInt(k === 'distCommTotal' ? v : u.distCommTotal, 10) || 0;
+        let pres = parseInt(k === 'distCommPresent' ? v : u.distCommPresent, 10) || 0;
+        let abs = parseInt(k === 'distCommAbsent' ? v : u.distCommAbsent, 10) || 0;
+        let leave = parseInt(k === 'distCommLeave' ? v : u.distCommLeave, 10) || 0;
+
+        if (k === 'distCommPresent' && total > 0 && pres === total) {
+          abs = 0;
+          leave = 0;
+          u.distCommAbsent = 0;
+          u.distCommLeave = 0;
+        } else if (k === 'distCommPresent' && total > 0 && pres + abs + leave > total) {
+          const rem = Math.max(0, total - pres);
+          if (abs > rem) {
+            abs = rem;
+            leave = 0;
+          } else {
+            leave = Math.max(0, rem - abs);
+          }
+          u.distCommAbsent = abs;
+          u.distCommLeave = leave;
+        }
+        if (total > 0) u.distCommPct = `${Math.round((pres / total) * 100)}%`;
+      }
+
+      if (k === 'areaExecCount' || k === 'areaUnitsCount' || k === 'areasCount') {
+        const c = parseInt(k === 'areaExecCount' ? v : u.areaExecCount, 10) || 0;
+        const tot = parseInt(u.areaUnitsCount || u.areasCount, 10) || 0;
+        if (tot > 0) u.areaExecPct = `${Math.round((c / tot) * 100)}%`;
+      }
+
+      if (k === 'areaCommCount' || k === 'areaUnitsCount' || k === 'areasCount') {
+        const c = parseInt(k === 'areaCommCount' ? v : u.areaCommCount, 10) || 0;
+        const tot = parseInt(u.areaUnitsCount || u.areasCount, 10) || 0;
+        if (tot > 0) u.areaCommPct = `${Math.round((c / tot) * 100)}%`;
+      }
+
+      if (k === 'buExecCount' || k === 'buCount') {
+        const c = parseInt(k === 'buExecCount' ? v : u.buExecCount, 10) || 0;
+        const tot = parseInt(u.buCount, 10) || 0;
+        if (tot > 0) u.buExecPct = `${Math.round((c / tot) * 100)}%`;
+      }
+
+      if (k === 'buGbCount' || k === 'buCount') {
+        const c = parseInt(k === 'buGbCount' ? v : u.buGbCount, 10) || 0;
+        const tot = parseInt(u.buCount, 10) || 0;
+        if (tot > 0) u.buGbPct = `${Math.round((c / tot) * 100)}%`;
+      }
+
+      return { ...prev, upper: u };
+    });
+  }
+
+  // Form 6: Update comrade row in District Executive Roster
+  function updateForm6Row(idx, field, val) {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      if (!rows[idx]) rows[idx] = {};
+
+      const aliasMap = {
+        distExecMeeting: 'distExec',
+        distExec: 'distExecMeeting',
+        distCommMeeting: 'distComm',
+        distComm: 'distCommMeeting',
+        areaExecMeeting: 'areaExec',
+        areaExec: 'areaExecMeeting',
+        areaCommMeeting: 'areaComm',
+        areaComm: 'areaCommMeeting',
+        ownBuMeeting: 'ownBu',
+        ownBu: 'ownBuMeeting',
+        buExecMeeting: 'buExec',
+        buExec: 'buExecMeeting',
+        buGbMeeting: 'buGb',
+        buGb: 'buGbMeeting',
+        psoMeeting: 'pso',
+        pso: 'psoMeeting',
+        conferenceMeeting: 'conf',
+        conf: 'conferenceMeeting',
+        seminarMeeting: 'seminar',
+        seminar: 'seminarMeeting',
+        studyCircleMeeting: 'studyCircle',
+        studyCircle: 'studyCircleMeeting',
+        inductionMeeting: 'induction',
+        induction: 'inductionMeeting',
+        alliedMeeting: 'allied',
+        allied: 'alliedMeeting',
+        rallyMeeting: 'rallies',
+        rallies: 'rallyMeeting',
+        jirgaMeeting: 'jirgas',
+        jirgas: 'jirgaMeeting',
+        monthlyDues: 'dues',
+        dues: 'monthlyDues',
+        bloodBankPosts: 'bloodZakat',
+        bloodZakat: 'bloodBankPosts',
+        ideologicalReading: 'reading',
+        reading: 'ideologicalReading',
+      };
+
+      const updated = { ...rows[idx], [field]: val };
+      if (aliasMap[field]) {
+        updated[aliasMap[field]] = val;
+      }
+
+      const meetingFields = [
+        'distExecMeeting', 'distCommMeeting', 'areaExecMeeting', 'areaCommMeeting',
+        'ownBuMeeting', 'buExecMeeting', 'buGbMeeting', 'psoMeeting',
+        'conferenceMeeting', 'seminarMeeting', 'studyCircleMeeting',
+        'inductionMeeting', 'alliedMeeting', 'rallyMeeting', 'jirgaMeeting',
+      ];
+
+      if (meetingFields.includes(field) || (aliasMap[field] && meetingFields.includes(aliasMap[field]))) {
+        const sum = meetingFields.reduce((acc, f) => {
+          const raw = f === field ? val : (aliasMap[field] === f ? val : updated[f]);
+          const v = parseInt(raw, 10) || 0;
+          return acc + v;
+        }, 0);
+        updated.totalMeetings = sum;
+      }
+
+      rows[idx] = updated;
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 6: Add comrade row to Roster
+  function addForm6Row() {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      rows.push({
+        srNo: rows.length + 1,
+        name: '',
+        distExecMeeting: 1,
+        distCommMeeting: 1,
+        areaExecMeeting: 0,
+        areaCommMeeting: 0,
+        ownBuMeeting: 1,
+        buExecMeeting: 0,
+        buGbMeeting: 0,
+        psoMeeting: 0,
+        conferenceMeeting: 0,
+        seminarMeeting: 0,
+        studyCircleMeeting: 1,
+        inductionMeeting: 0,
+        alliedMeeting: 0,
+        rallyMeeting: 0,
+        jirgaMeeting: 0,
+        totalMeetings: 3,
+        monthlyDues: 1000,
+        tours: 0,
+        publicOutreach: 1,
+        inactiveContact: 0,
+        officeAttendance: 'حاضر',
+        bloodBankPosts: '',
+        activeStatus: 'فعاله',
+        ideologicalReading: '1',
+      });
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 6: Remove comrade row
+  function removeForm6Row(idx) {
+    setFormData((prev) => {
+      const rows = (prev.rows || []).filter((_, i) => i !== idx);
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 6: Auto-Sum All Roster Rows
+  function handleAutoSumAllForm6Rows() {
+    setFormData((prev) => {
+      const meetingFields = [
+        'distExecMeeting', 'distCommMeeting', 'areaExecMeeting', 'areaCommMeeting',
+        'ownBuMeeting', 'buExecMeeting', 'buGbMeeting', 'psoMeeting',
+        'conferenceMeeting', 'seminarMeeting', 'studyCircleMeeting',
+        'inductionMeeting', 'alliedMeeting', 'rallyMeeting', 'jirgaMeeting',
+      ];
+      const rows = (prev.rows || []).map((r) => ({
+        ...r,
+        totalMeetings: meetingFields.reduce((sum, f) => sum + (parseInt(r[f], 10) || 0), 0),
+      }));
+      return { ...prev, rows };
+    });
+    setFeedback({ text: t('proforma.form6.autoSumAllSuccess', 'Total meetings auto-calculated for all district executive comrades!'), type: 'success' });
+  }
+
+  // Form 6 Validation
+  function validateForm6Data(data = {}) {
+    const errors = [];
+    const u = data.upper || {};
+    const dSlots = parseInt(u.distExecSlots, 10) || 0;
+    const dPres = parseInt(u.distExecPresent, 10) || 0;
+    const dAbs = parseInt(u.distExecAbsent, 10) || 0;
+    const dLeave = parseInt(u.distExecLeave, 10) || 0;
+    const dSum = dPres + dAbs + dLeave;
+    if (dSlots > 0 && dSum > dSlots) {
+      errors.push(`District Exec Meeting: Present (${dPres}) + Absent (${dAbs}) + Leave (${dLeave}) = ${dSum} exceeds slots (${dSlots})`);
+    }
+
+    const cTotal = parseInt(u.distCommTotal, 10) || 0;
+    const cPres = parseInt(u.distCommPresent, 10) || 0;
+    const cAbs = parseInt(u.distCommAbsent, 10) || 0;
+    const cLeave = parseInt(u.distCommLeave, 10) || 0;
+    const cSum = cPres + cAbs + cLeave;
+    if (cTotal > 0 && cSum > cTotal) {
+      errors.push(`District Committee Meeting: Present (${cPres}) + Absent (${cAbs}) + Leave (${cLeave}) = ${cSum} exceeds total (${cTotal})`);
+    }
+
+    const rows = data.rows || [];
+    rows.forEach((r, i) => {
+      const hasAnyData = Object.entries(r).some(([k, v]) => k !== 'srNo' && k !== 'name' && String(v || '').trim() !== '');
+      if (hasAnyData && !r.name?.trim()) {
+        errors.push(`Comrade Row #${i + 1}: Name is required`);
+      }
+    });
+
+    return { errors, isValid: errors.length === 0 };
+  }
+
   const rows = formData.rows || formData.execRows || [];
+  const form2Validation = useMemo(() => validateForm2Rows(formData.rows || []), [formData.rows]);
+  const form3Validation = useMemo(() => validateForm3Data(formData), [formData]);
+  const form5Validation = useMemo(() => validateForm5Rows(formData.rows || []), [formData.rows]);
+  const form6Validation = useMemo(() => validateForm6Data(formData), [formData]);
   const upper = formData.upper || formData;
 
   // Real-time calculations for Form 4
@@ -988,9 +1990,123 @@ export default function ProformaReportsPage() {
   const commSum = commPres + commAbs + commLeave;
   const commAttendanceInvalid = commTotal > 0 && commSum > commTotal;
 
+  // Validation and finance calculations for Form 6
+  const form6DistExecSlots = parseInt(upper.distExecSlots, 10) || 0;
+  const form6DistExecPres = parseInt(upper.distExecPresent, 10) || 0;
+  const form6DistExecAbs = parseInt(upper.distExecAbsent, 10) || 0;
+  const form6DistExecLeave = parseInt(upper.distExecLeave, 10) || 0;
+  const form6DistExecSum = form6DistExecPres + form6DistExecAbs + form6DistExecLeave;
+
+  const form6DistCommTotal = parseInt(upper.distCommTotal, 10) || 0;
+  const form6DistCommPres = parseInt(upper.distCommPresent, 10) || 0;
+  const form6DistCommAbs = parseInt(upper.distCommAbsent, 10) || 0;
+  const form6DistCommLeave = parseInt(upper.distCommLeave, 10) || 0;
+  const form6DistCommSum = form6DistCommPres + form6DistCommAbs + form6DistCommLeave;
+
+  const form6NetFinance = useMemo(() => {
+    const m = parseInt(upper.duesMonthly, 10) || 0;
+    const e = parseInt(upper.duesEmergency, 10) || 0;
+    const exp = parseInt(upper.duesExpenses, 10) || 0;
+    return (m + e) - exp;
+  }, [upper.duesMonthly, upper.duesEmergency, upper.duesExpenses]);
+
   // Save silently and return the saved document
-  async function saveReportData() {
-    if (!targetId) throw new Error(formType === 'form4' ? 'No basic unit selected' : 'No area context available');
+  async function saveReportData(targetStatus = 'DRAFT') {
+    if (!targetId) throw new Error(formType === 'form6' ? 'No district selected' : (formType === 'form5' ? 'No province selected' : (formType === 'form4' ? 'No basic unit selected' : 'No area context available')));
+
+    if (formType === 'form6') {
+      const payload = {
+        formType: 'form6',
+        unitLevel: 'DISTRICT',
+        unitId: effectiveDistrictId,
+        districtId: effectiveDistrictId,
+        unitName: activeUnitDisplayName,
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        status: targetStatus,
+        data: sanitizeReportData({
+          ...formData,
+          districtName: activeUnitDisplayName,
+          year: String(year),
+          month: String(month),
+          m1: formData.m1 !== undefined ? formData.m1 : '',
+          m2: formData.m2 !== undefined ? formData.m2 : '',
+          m3: formData.m3 !== undefined ? formData.m3 : '',
+          upper: formData.upper || {},
+          rows: formData.rows || [],
+        }),
+        notes: formData.notes || '',
+      };
+      const res = await api.post('/proforma/save', payload);
+      setStatusDoc(res.data);
+      return res.data;
+    }
+
+    if (formType === 'form5') {
+      const payload = {
+        formType: 'form5',
+        unitLevel: 'PROVINCE',
+        unitId: effectiveProvinceId,
+        provinceId: effectiveProvinceId,
+        unitName: activeUnitDisplayName,
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        status: targetStatus,
+        data: sanitizeReportData({
+          ...formData,
+          provinceName: activeUnitDisplayName,
+          year: String(year),
+          month: String(month),
+          fromDate: formData.fromDate || `01/${String(month).padStart(2, '0')}`,
+          toDate: formData.toDate || `${new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate()}/${String(month).padStart(2, '0')}`,
+          rows: formData.rows || [],
+        }),
+        notes: formData.notes || '',
+      };
+      const res = await api.post('/proforma/save', payload);
+      setStatusDoc(res.data);
+      return res.data;
+    }
+
+    if (formType === 'form3') {
+      const payload = {
+        formType: 'form3',
+        unitLevel: 'AREA',
+        unitId: effectiveAreaId,
+        areaId: effectiveAreaId,
+        unitName: activeUnitDisplayName,
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        status: targetStatus,
+        data: sanitizeReportData({
+          ...formData,
+          areaName: activeUnitDisplayName,
+          month: String(month),
+          year: String(year),
+          inactiveUnits: formData.inactiveUnits || [],
+          committeeMembers: formData.committeeMembers || [],
+          publicActivities: formData.publicActivities || [],
+          educationalActivities: formData.educationalActivities || [],
+          disciplinaryActions: formData.disciplinaryActions || [],
+          bloodBank: formData.bloodBank || { bloodPosts: '', bloodCash: '', bloodTotalCash: '', zakat: '' },
+          proposals: formData.proposals || {
+            political: { exec: '', comm: '', ind: '' },
+            organizational: { exec: '', comm: '', ind: '' },
+            social: { exec: '', comm: '', ind: '' },
+            demands: '',
+          },
+          officeActivity: formData.officeActivity || '',
+          socialReport: formData.socialReport || '',
+          misc: formData.misc || '',
+          secSignature: formData.secSignature || '',
+          seniorSecSignature: formData.seniorSecSignature || '',
+        }),
+        notes: formData.notes || '',
+      };
+      const res = await api.post('/proforma/save', payload);
+      setStatusDoc(res.data);
+      return res.data;
+    }
 
     if (formType === 'form2') {
       const payload = {
@@ -1001,6 +2117,7 @@ export default function ProformaReportsPage() {
         unitName: activeUnitDisplayName,
         year: parseInt(year, 10),
         month: parseInt(month, 10),
+        status: targetStatus,
         data: sanitizeReportData({
           ...formData,
           areaName: activeUnitDisplayName,
@@ -1044,6 +2161,7 @@ export default function ProformaReportsPage() {
       unitName: activeUnitDisplayName,
       year: parseInt(year, 10),
       month: parseInt(month, 10),
+      status: targetStatus,
       data: sanitizeReportData({
         ...formData,
         unitName: activeUnitDisplayName,
@@ -1062,27 +2180,37 @@ export default function ProformaReportsPage() {
     setSaving(true);
     setFeedback({ text: '', type: '' });
 
-    if (formType === 'form2') {
-      const invalidRows = [];
-      (formData.rows || []).forEach((r, i) => {
-        const eTot = parseInt(r.execTotal, 10) || 0;
-        const ePres = parseInt(r.execPresent, 10) || 0;
-        const eAbs = parseInt(r.execAbsent, 10) || 0;
-        const eLeave = parseInt(r.execLeave, 10) || 0;
-        if (eTot > 0 && (ePres + eAbs + eLeave) > eTot) {
-          invalidRows.push(`Unit ${r.unitName || i + 1}: Exec Attendance (${ePres + eAbs + eLeave}/${eTot})`);
-        }
-        const gTot = parseInt(r.gbTotalMembers, 10) || 0;
-        const gPres = parseInt(r.gbPresent, 10) || 0;
-        const gAbs = parseInt(r.gbAbsent, 10) || 0;
-        const gLeave = parseInt(r.gbLeave, 10) || 0;
-        if (gTot > 0 && (gPres + gAbs + gLeave) > gTot) {
-          invalidRows.push(`Unit ${r.unitName || i + 1}: GB Attendance (${gPres + gAbs + gLeave}/${gTot})`);
-        }
-      });
-      if (invalidRows.length > 0) {
+    if (formType === 'form6') {
+      if (!form6Validation.isValid) {
         setFeedback({
-          text: `⚠️ Attendance Mismatch in ${invalidRows.length} unit(s): ${invalidRows.slice(0, 2).join('; ')}. Please adjust numbers or click '⚡ Auto-Balance All Units' before saving.`,
+          text: `⚠️ ${form6Validation.errors[0]}`,
+          type: 'error',
+        });
+        setSaving(false);
+        return;
+      }
+    } else if (formType === 'form5') {
+      if (!form5Validation.isValid) {
+        setFeedback({
+          text: `⚠️ ${form5Validation.errors[0]}`,
+          type: 'error',
+        });
+        setSaving(false);
+        return;
+      }
+    } else if (formType === 'form3') {
+      if (!form3Validation.isValid) {
+        setFeedback({
+          text: `⚠️ ${form3Validation.errors[0]}`,
+          type: 'error',
+        });
+        setSaving(false);
+        return;
+      }
+    } else if (formType === 'form2') {
+      if (!form2Validation.isValid) {
+        setFeedback({
+          text: `⚠️ ${form2Validation.errors[0]}. ${t('proforma.form2.validation.fixNotice', "Please correct highlighted fields or click 'Auto-Balance All Units' before saving.")}`,
           type: 'error',
         });
         setSaving(false);
@@ -1133,8 +2261,9 @@ export default function ProformaReportsPage() {
     }
 
     try {
-      await saveReportData();
+      await saveReportData('SUBMITTED');
       setFeedback({ text: t('proforma.savedSuccess', 'Report officially saved & stored in database successfully!'), type: 'success' });
+      setTimeout(() => setFeedback((prev) => (prev.type === 'success' ? { text: '', type: '' } : prev)), 4000);
     } catch (e) {
       setFeedback({ text: errorMessage(e), type: 'error' });
     } finally {
@@ -1142,27 +2271,92 @@ export default function ProformaReportsPage() {
     }
   }
 
-  // Live Print Preview: Saves latest in-memory data first so preview matches 100%
+  // Revert / Reset current month's report back to baseline
+  async function handleResetReport() {
+    if (!targetId) return;
+    const confirmed = window.confirm(
+      t('proforma.confirmReset', 'Are you sure you want to revert this report to a fresh draft? Any saved edits will be removed.')
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      await api.post('/proforma/reset', {
+        formType,
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        unitId: targetId,
+        areaId: (formType === 'form5' || formType === 'form6') ? undefined : effectiveAreaId,
+        provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
+        districtId: formType === 'form6' ? effectiveDistrictId : undefined,
+      });
+      setFeedback({
+        text: t('proforma.resetSuccess', 'Report reverted to draft successfully.'),
+        type: 'info',
+      });
+      await loadData(false);
+    } catch (err) {
+      setFeedback({ text: errorMessage(err), type: 'error' });
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  // Live Print Preview: Saves latest in-memory data as DRAFT so preview matches without marking as officially submitted
   async function handleOpenPreview() {
     setPreviewLoading(true);
     setPreviewOpen(true);
     try {
-      await saveReportData();
+      try {
+        const isAlreadySubmitted = Boolean(statusDoc?.exists && statusDoc?.metadata?.status === 'SUBMITTED');
+        await saveReportData(isAlreadySubmitted ? 'SUBMITTED' : 'DRAFT');
+      } catch (saveErr) {
+        console.warn('Auto-save before preview notice:', saveErr);
+      }
 
       const q = new URLSearchParams({
         year: String(year),
         month: String(month),
-        ...(formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId }),
+        ...(formType === 'form6'
+          ? { districtId: effectiveDistrictId, m1: formData.m1 || '', m2: formData.m2 || '', m3: formData.m3 || '' }
+          : formType === 'form5'
+          ? { provinceId: effectiveProvinceId, fromDate: formData.fromDate || '', toDate: formData.toDate || '' }
+          : (formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId })),
       });
 
-      const endpoint = formType === 'form4'
-        ? '/api/exports/proforma/form4/html'
-        : (formType === 'form2' ? '/api/exports/proforma/form2/html' : '/api/exports/proforma/form1/html');
+      const endpoint = formType === 'form6'
+        ? '/api/exports/proforma/form6/html'
+        : formType === 'form5'
+        ? '/api/exports/proforma/form5/html'
+        : (formType === 'form4'
+          ? '/api/exports/proforma/form4/html'
+          : (formType === 'form3'
+            ? '/api/exports/proforma/form3/html'
+            : (formType === 'form2' ? '/api/exports/proforma/form2/html' : '/api/exports/proforma/form1/html')));
 
       const res = await fetch(`${endpoint}?${q.toString()}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('pnap_token')}` },
       });
-      if (!res.ok) throw new Error('Preview failed');
+      if (!res.ok) {
+        let errDetail = '';
+        try {
+          const errJson = await res.json();
+          if (errJson.error && typeof errJson.error === 'object') {
+            errDetail = errJson.error.message || errJson.error.code || '';
+          } else if (typeof errJson.error === 'string') {
+            errDetail = errJson.error;
+          } else if (typeof errJson.message === 'string') {
+            errDetail = errJson.message;
+          }
+        } catch {
+          try {
+            errDetail = await res.text();
+          } catch {
+            errDetail = '';
+          }
+        }
+        throw new Error(errDetail || `Preview request failed with status ${res.status}`);
+      }
       const html = await res.text();
       setPreviewHtml(html);
     } catch (e) {
@@ -1172,21 +2366,36 @@ export default function ProformaReportsPage() {
     }
   }
 
-  // Export Downloads: Saves latest in-memory data first so PDF/Excel matches 100%
+  // Export Downloads: Saves latest in-memory data as DRAFT so PDF/Excel matches without submitting
   async function handleDownload(format) {
     try {
       setFeedback({ text: t('proforma.preparingExport', 'Saving and preparing export...'), type: 'info' });
-      await saveReportData();
+      try {
+        const isAlreadySubmitted = Boolean(statusDoc?.exists && statusDoc?.metadata?.status === 'SUBMITTED');
+        await saveReportData(isAlreadySubmitted ? 'SUBMITTED' : 'DRAFT');
+      } catch (saveErr) {
+        console.warn('Auto-save before download notice:', saveErr);
+      }
 
       const q = new URLSearchParams({
         year: String(year),
         month: String(month),
-        ...(formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId }),
+        ...(formType === 'form6'
+          ? { districtId: effectiveDistrictId, m1: formData.m1 || '', m2: formData.m2 || '', m3: formData.m3 || '' }
+          : formType === 'form5'
+          ? { provinceId: effectiveProvinceId, fromDate: formData.fromDate || '', toDate: formData.toDate || '' }
+          : (formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId })),
       });
 
-      const endpoint = formType === 'form4'
-        ? `/api/exports/proforma/form4/${format}`
-        : (formType === 'form2' ? `/api/exports/proforma/form2/${format}` : `/api/exports/proforma/form1/${format}`);
+      const endpoint = formType === 'form6'
+        ? `/api/exports/proforma/form6/${format}`
+        : formType === 'form5'
+        ? `/api/exports/proforma/form5/${format}`
+        : (formType === 'form4'
+          ? `/api/exports/proforma/form4/${format}`
+          : (formType === 'form3'
+            ? `/api/exports/proforma/form3/${format}`
+            : (formType === 'form2' ? `/api/exports/proforma/form2/${format}` : `/api/exports/proforma/form1/${format}`)));
 
       const filename = `proforma-${formType}-${year}-${month}.${format}`;
       await downloadAuthed(`${endpoint}?${q.toString()}`, filename);
@@ -1214,24 +2423,202 @@ export default function ProformaReportsPage() {
 
   return (
     <div className="proforma-page" style={{ maxWidth: 1280, margin: '0 auto', paddingBottom: 40 }}>
+      <style>{`
+        /* Responsive Proforma Layout */
+        .proforma-page {
+          width: 100%;
+          max-width: 1280px;
+          margin: 0 auto;
+          box-sizing: border-box;
+        }
+        .proforma-form-tabs {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 12px;
+          margin-bottom: 14px;
+          border-bottom: 1px solid var(--border);
+          scrollbar-width: thin;
+        }
+        .proforma-form-tabs::-webkit-scrollbar {
+          height: 4px;
+        }
+        .proforma-form-tabs::-webkit-scrollbar-thumb {
+          background: var(--border);
+          border-radius: 4px;
+        }
+        .proforma-form-tabs button {
+          flex-shrink: 0;
+          white-space: nowrap;
+        }
+        .proforma-subtabs-bar {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+          -webkit-overflow-scrolling: touch;
+          border-bottom: 2px solid var(--border);
+          margin-bottom: 16px;
+          padding-bottom: 2px;
+          scrollbar-width: thin;
+        }
+        .proforma-subtabs-bar::-webkit-scrollbar {
+          height: 4px;
+        }
+        .proforma-subtabs-bar::-webkit-scrollbar-thumb {
+          background: var(--border);
+          border-radius: 4px;
+        }
+        .proforma-subtabs-bar button {
+          flex-shrink: 0;
+          white-space: nowrap;
+        }
+        .proforma-filter-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 14px;
+        }
+        .proforma-period-group {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .proforma-action-buttons {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .proforma-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+          gap: 12px;
+        }
+        .proforma-card-subgrid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+          gap: 12px;
+        }
+        @media (max-width: 900px) {
+          .proforma-filter-row {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .proforma-period-group {
+            width: 100%;
+          }
+          .proforma-action-buttons {
+            width: 100%;
+          }
+          .proforma-action-buttons button {
+            flex: 1 1 calc(33.333% - 8px);
+            justify-content: center;
+            text-align: center;
+          }
+        }
+        @media (max-width: 768px) {
+          .proforma-page {
+            padding-left: 8px;
+            padding-right: 8px;
+          }
+          .proforma-period-group {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .proforma-period-group select,
+          .proforma-period-group input {
+            width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box;
+          }
+          .proforma-action-buttons {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+          .proforma-action-buttons button {
+            width: 100% !important;
+            font-size: 12px !important;
+            padding: 8px 6px !important;
+          }
+          .proforma-kpi-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .proforma-form5-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .proforma-form5-toolbar > div {
+            width: 100% !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .proforma-form5-toolbar input {
+            width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box;
+          }
+          .proforma-form5-toolbar-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+          }
+          .proforma-card-subgrid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .proforma-period-group {
+            grid-template-columns: 1fr !important;
+          }
+          .proforma-action-buttons {
+            grid-template-columns: 1fr !important;
+          }
+          .proforma-kpi-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .proforma-form5-toolbar-actions {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
       {/* Standard Page Header */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>{formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : '📋')}</span>
+            <span>{formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋'))))}</span>
             <span>
-              {formType === 'form4'
+              {formType === 'form6'
+                ? t('proforma.form6Title', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (Form 6)')
+                : formType === 'form5'
+                ? t('proforma.form5Title', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (Form 5)')
+                : formType === 'form4'
                 ? t('proforma.form4Title', 'پښتونخوا ملي عوامي پارټي ابتدائي يونټ کار او فعاليت مياشتنئي رپورټ (Form 4)')
                 : formType === 'form2'
                 ? t('proforma.form2Title', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (Form 2)')
+                : formType === 'form3'
+                ? t('proforma.form3Title', 'پښتونخوا ملي عوامي پارټي علاقائي يونټ مياشتنۍ تفصيلي کار او فعاليت رپورټ (Form 3)')
                 : t('proforma.form1Title', 'Area Unit Monthly Work & Activity Report (Form 1)')}
             </span>
           </h2>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            {formType === 'form4'
+            {formType === 'form6'
+              ? `${t('proforma.form6Desc', 'Official party monthly work & activity report for District Executive and Subordinate Units')} · `
+              : formType === 'form5'
+              ? `${t('proforma.form5Desc', 'Official party monthly work & activity report for Provincial Executive Comrades')} · `
+              : formType === 'form4'
               ? `${t('proforma.form4Desc', 'Official party monthly work & activity report for Primary / Basic Unit Executive')} · `
               : formType === 'form2'
               ? `${t('proforma.form2Desc', 'Official party monthly work and activity report for subordinate basic units under Area Unit')} · `
+              : formType === 'form3'
+              ? `${t('proforma.form3Desc', 'Official party monthly detailed work and activity report for Area Unit')} · `
               : `${t('proforma.form1Desc', 'Official party monthly work and activity report for Area Executive and Subordinate Units')} · `}
             <strong>{activeUnitDisplayName}</strong>
           </p>
@@ -1260,7 +2647,7 @@ export default function ProformaReportsPage() {
       {/* Scope, Month & Year Filter Card */}
       <div className="card" style={{ marginBottom: 16 }}>
         {/* Form Selector Tabs */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 14 }}>
+        <div className="proforma-form-tabs">
           <button
             type="button"
             onClick={() => { setFormType('form1'); setActiveTab('upper'); }}
@@ -1281,6 +2668,15 @@ export default function ProformaReportsPage() {
           </button>
           <button
             type="button"
+            onClick={() => { setFormType('form3'); setActiveTab('form3_tab1'); }}
+            className={`btn ${formType === 'form3' ? '' : 'secondary'}`}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+          >
+            <span>📑</span>
+            <span>{t('proforma.form3Btn', 'Form 3: Area Detailed Report (علاقائي يونټ تفصيلي)')}</span>
+          </button>
+          <button
+            type="button"
             onClick={() => { setFormType('form4'); setActiveTab('upper'); }}
             className={`btn ${formType === 'form4' ? '' : 'secondary'}`}
             style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
@@ -1288,11 +2684,29 @@ export default function ProformaReportsPage() {
             <span>📄</span>
             <span>{t('proforma.form4Btn', 'Form 4: Basic Unit Report (بنسټيز يونټ)')}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => { setFormType('form5'); setActiveTab('upper'); }}
+            className={`btn ${formType === 'form5' ? '' : 'secondary'}`}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+          >
+            <span>🏛️</span>
+            <span>{t('proforma.form5Btn', 'Form 5: Provincial Executive (صوبائي ايګزيکټيو)')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setFormType('form6'); setActiveTab('upper'); }}
+            className={`btn ${formType === 'form6' ? '' : 'secondary'}`}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+          >
+            <span>🏛️</span>
+            <span>{t('proforma.form6Btn', 'Form 6: District Report (ضلعي کار او فعاليت)')}</span>
+          </button>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
+        <div className="proforma-filter-row">
           {/* Period Selectors */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div className="proforma-period-group">
             <div>
               <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
                 {t('proforma.month', 'Month')}
@@ -1324,7 +2738,122 @@ export default function ProformaReportsPage() {
             </div>
 
             {/* Target Unit Context Selector */}
-            {formType === 'form4' ? (
+            {formType === 'form6' ? (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                    {t('proforma.form6.district', 'ضلع (District)')}
+                  </label>
+                  {ctx?.unitLevel === 'DISTRICT' ? (
+                    <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
+                      🏛️ {ctx?.unitName || 'Current District'}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedDistrictId}
+                      onChange={(e) => setSelectedDistrictId(e.target.value)}
+                      style={{ minWidth: 180, fontWeight: 600 }}
+                    >
+                      {districtsList.length === 0 ? (
+                        <option value="">(No Districts Found)</option>
+                      ) : (
+                        districtsList.map((d) => (
+                          <option key={d._id} value={d._id}>{d.name}</option>
+                        ))
+                      )}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label
+                    style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}
+                    title="Official printed paper header: دريومياشتو رپورټ: ۱: [...] ۲: [...] ۳: [...]"
+                  >
+                    📅 {t('proforma.form6.quarterlyCycle', 'د دريو مياشتو رپورټ (Quarterly Cycle)')}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface-alt)', padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-soft)' }}>۱:</span>
+                    <input
+                      type="text"
+                      value={formData.m1 !== undefined ? formData.m1 : ''}
+                      onChange={(e) => updateField('m1', e.target.value)}
+                      placeholder={t('proforma.form6.month1Placeholder', 'مياشت ۱')}
+                      title="Month 1 (د دريو مياشتو لومړۍ مياشت)"
+                      style={{ width: 80, padding: '5px 8px', fontSize: 12, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-soft)' }}>۲:</span>
+                    <input
+                      type="text"
+                      value={formData.m2 !== undefined ? formData.m2 : ''}
+                      onChange={(e) => updateField('m2', e.target.value)}
+                      placeholder={t('proforma.form6.month2Placeholder', 'مياشت ۲')}
+                      title="Month 2 (دويمه مياشت)"
+                      style={{ width: 80, padding: '5px 8px', fontSize: 12, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-soft)' }}>۳:</span>
+                    <input
+                      type="text"
+                      value={formData.m3 !== undefined ? formData.m3 : ''}
+                      onChange={(e) => updateField('m3', e.target.value)}
+                      placeholder={t('proforma.form6.month3Placeholder', 'مياشت ۳')}
+                      title="Month 3 (دريمه مياشت)"
+                      style={{ width: 80, padding: '5px 8px', fontSize: 12, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : formType === 'form5' ? (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                    {t('proforma.form5.province', 'صوبه (Province)')}
+                  </label>
+                  {ctx?.unitLevel === 'PROVINCE' ? (
+                    <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
+                      🏛️ {ctx?.unitName || 'Current Province'}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedProvinceId}
+                      onChange={(e) => setSelectedProvinceId(e.target.value)}
+                      style={{ minWidth: 180, fontWeight: 600 }}
+                    >
+                      {provincesList.length === 0 ? (
+                        <option value="">(No Provinces Found)</option>
+                      ) : (
+                        provincesList.map((p) => (
+                          <option key={p._id} value={p._id}>{p.name}</option>
+                        ))
+                      )}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                    {t('proforma.form5.fromDate', 'مياشت او نېټه څخه')}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.fromDate || `01/${String(month).padStart(2, '0')}`}
+                    onChange={(e) => updateField('fromDate', e.target.value)}
+                    placeholder="DD/MM"
+                    style={{ width: 100, padding: '7px 10px', fontSize: 13, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                    {t('proforma.form5.toDate', 'تر مياشت او نېټه پورې')}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.toDate || `${new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate()}/${String(month).padStart(2, '0')}`}
+                    onChange={(e) => updateField('toDate', e.target.value)}
+                    placeholder="DD/MM"
+                    style={{ width: 100, padding: '7px 10px', fontSize: 13, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
+                  />
+                </div>
+              </div>
+            ) : formType === 'form4' ? (
               ctx?.unitLevel === 'BASIC_UNIT' ? (
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
@@ -1385,7 +2914,7 @@ export default function ProformaReportsPage() {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div className="proforma-action-buttons">
             <button
               type="button"
               className="btn"
@@ -1434,45 +2963,93 @@ export default function ProformaReportsPage() {
         </div>
 
         {/* Database Stored Status Banner */}
-        <div
-          style={{
-            marginTop: 14,
-            padding: '10px 14px',
-            borderRadius: 8,
-            background: statusDoc?.exists ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-            border: `1.5px solid ${statusDoc?.exists ? '#22c55e' : '#eab308'}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 10,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>{statusDoc?.exists ? '✅' : '📝'}</span>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 13, color: statusDoc?.exists ? '#22c55e' : '#eab308' }}>
-                {statusDoc?.exists
-                  ? t('proforma.statusSaved', 'Report Officially Stored in Database')
-                  : t('proforma.statusDraft', 'Draft - Not Submitted Yet')}
-              </div>
-              {statusDoc?.metadata?.submittedByName && (
-                <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>
-                  {t('proforma.submittedBy', 'Submitted by')}: <strong>{statusDoc.metadata.submittedByName}</strong> ({statusDoc.metadata.submittedByRole}) · {new Date(statusDoc.metadata.submittedAt).toLocaleDateString()}
-                </div>
-              )}
-            </div>
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>
-            {formType === 'form4'
-              ? 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنئي رپورټ (Form 4)'
-              : formType === 'form2'
-              ? 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (Form 2)'
-              : 'پښتونخوا ملي عوامي پارټي علاقائي يونټ کار او فعاليت مياشتنئي رپورټ (Form 1)'}
-          </div>
-        </div>
+        {(() => {
+          const isSubmitted = Boolean(statusDoc?.exists && statusDoc?.metadata?.status === 'SUBMITTED');
+          const isDraftSaved = Boolean(statusDoc?.report && statusDoc?.metadata?.status === 'DRAFT');
 
-        {feedback.text && (
+          return (
+            <div
+              className="proforma-status-banner"
+              style={{
+                marginTop: 14,
+                padding: '10px 14px',
+                borderRadius: 8,
+                background: isSubmitted ? 'rgba(34, 197, 94, 0.1)' : (isDraftSaved ? 'rgba(56, 189, 248, 0.1)' : 'rgba(234, 179, 8, 0.1)'),
+                border: `1.5px solid ${isSubmitted ? '#22c55e' : (isDraftSaved ? '#38bdf8' : '#eab308')}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 20 }}>{isSubmitted ? '✅' : (isDraftSaved ? '💾' : '📝')}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: isSubmitted ? '#22c55e' : (isDraftSaved ? '#38bdf8' : '#eab308') }}>
+                    {isSubmitted
+                      ? t('proforma.statusSaved', 'Report Officially Stored in Database')
+                      : (isDraftSaved
+                        ? t('proforma.statusDraftSaved', 'Draft Saved (Not Officially Submitted Yet)')
+                        : t('proforma.statusDraft', 'Draft - Not Submitted Yet'))}
+                  </div>
+                  {isSubmitted && statusDoc?.metadata?.submittedByName && (
+                    <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>
+                      {t('proforma.submittedBy', 'Submitted by')}: <strong>{statusDoc.metadata.submittedByName}</strong> ({statusDoc.metadata.submittedByRole}) · {statusDoc.metadata.submittedAt ? new Date(statusDoc.metadata.submittedAt).toLocaleDateString() : ''}
+                    </div>
+                  )}
+                  {isDraftSaved && (
+                    <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>
+                      {t('proforma.draftNotice', 'Unsubmitted working draft. Click "Save to Database" to officially file.')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                {(isSubmitted || isDraftSaved) && (
+                  <button
+                    type="button"
+                    onClick={handleResetReport}
+                    disabled={resetting}
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      borderRadius: 6,
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      color: '#ef4444',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      cursor: resetting ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                    title={t('proforma.revertToDraft', 'Revert to Draft')}
+                  >
+                    ↺ {resetting ? t('proforma.resetting', 'Reverting...') : t('proforma.revertToDraft', 'Revert to Draft')}
+                  </button>
+                )}
+
+                <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>
+                  {formType === 'form6'
+                    ? t('proforma.form6Title', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (Form 6)')
+                    : formType === 'form5'
+                    ? t('proforma.form5Title', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (Form 5)')
+                    : formType === 'form4'
+                    ? t('proforma.form4Title', 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنئي رپورټ (Form 4)')
+                    : formType === 'form2'
+                    ? t('proforma.form2Title', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (Form 2)')
+                    : formType === 'form3'
+                    ? t('proforma.form3Title', 'پښتونخوا ملي عوامي پارټي علاقائي يونټ مياشتنۍ تفصيلي کار او فعاليت رپورټ (Form 3)')
+                    : t('proforma.form1Title', 'پښتونخوا ملي عوامي پارټي علاقائي يونټ کار او فعاليت مياشتنئي رپورټ (Form 1)')}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {feedback.text && (!statusDoc?.exists || feedback.type !== 'success') && (
           <div className={`alert ${feedback.type === 'success' ? 'good' : (feedback.type === 'error' ? 'error' : 'info')}`} style={{ marginTop: 12 }}>
             {feedback.text}
           </div>
@@ -1480,61 +3057,1222 @@ export default function ProformaReportsPage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div style={{ display: 'flex', gap: 10, borderBottom: '2px solid var(--border)', marginBottom: 16 }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('upper')}
-          className={`btn ${activeTab === 'upper' ? '' : 'secondary'}`}
-          style={{
-            borderRadius: '8px 8px 0 0',
-            padding: '10px 18px',
-            fontWeight: 700,
-            borderBottom: activeTab === 'upper' ? '2px solid var(--primary, #38bdf8)' : 'none',
-          }}
-        >
-          📊 {formType === 'form2'
-            ? t('proforma.tabUnitsForm2', '1. د ماتحتو بنسټيزو يونټونو کار او فعاليت (Subordinate Units Activity)')
-            : formType === 'form4'
-            ? t('proforma.tabOverviewForm4', '1. د ابتدائي يونټ مياشتنئ لنډيز (Unit Summary)')
-            : t('proforma.tabOverview', '1. Area Summary & Metrics')}
-        </button>
-        {formType !== 'form2' && (
+      {formType === 'form3' ? (
+        <div className="proforma-subtabs-bar">
           <button
             type="button"
-            onClick={() => setActiveTab('roster')}
-            className={`btn ${activeTab === 'roster' ? '' : 'secondary'}`}
+            onClick={() => setActiveTab('form3_tab1')}
+            className={`btn ${activeTab === 'form3_tab1' ? '' : 'secondary'}`}
             style={{
               borderRadius: '8px 8px 0 0',
               padding: '10px 18px',
               fontWeight: 700,
-              borderBottom: activeTab === 'roster' ? '2px solid var(--primary, #38bdf8)' : 'none',
+              whiteSpace: 'nowrap',
+              borderBottom: activeTab === 'form3_tab1' ? '2px solid var(--primary, #38bdf8)' : 'none',
             }}
           >
-            👥 {formType === 'form4'
-              ? t('proforma.tabRosterForm4', '2. ابتدائي يونټ ايګزيکټيو ځانګړي فعاليت')
-              : t('proforma.tabRoster', '2. Executive Members Activity')} ({rows.length})
+            🏢 {t('proforma.form3.tab1', '1. Inactive Units & Committee Members')}
           </button>
-        )}
-        <button
-          type="button"
-          onClick={() => setActiveTab('notes')}
-          className={`btn ${activeTab === 'notes' ? '' : 'secondary'}`}
-          style={{
-            borderRadius: '8px 8px 0 0',
-            padding: '10px 18px',
-            fontWeight: 700,
-            borderBottom: activeTab === 'notes' ? '2px solid var(--primary, #38bdf8)' : 'none',
-          }}
-        >
-          📝 {formType === 'form2' ? t('proforma.tabNotes', '2. Remarks & Observations') : t('proforma.tabNotes', '3. Remarks & Observations')}
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('form3_tab2')}
+            className={`btn ${activeTab === 'form3_tab2' ? '' : 'secondary'}`}
+            style={{
+              borderRadius: '8px 8px 0 0',
+              padding: '10px 18px',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              borderBottom: activeTab === 'form3_tab2' ? '2px solid var(--primary, #38bdf8)' : 'none',
+            }}
+          >
+            📢 {t('proforma.form3.tab2', '2. Public Gatherings & Education')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('form3_tab3')}
+            className={`btn ${activeTab === 'form3_tab3' ? '' : 'secondary'}`}
+            style={{
+              borderRadius: '8px 8px 0 0',
+              padding: '10px 18px',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              borderBottom: activeTab === 'form3_tab3' ? '2px solid var(--primary, #38bdf8)' : 'none',
+            }}
+          >
+            ⚖️ {t('proforma.form3.tab3', '3. Discipline, Blood Bank & Proposals')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('form3_tab4')}
+            className={`btn ${activeTab === 'form3_tab4' ? '' : 'secondary'}`}
+            style={{
+              borderRadius: '8px 8px 0 0',
+              padding: '10px 18px',
+              fontWeight: 700,
+              whiteSpace: 'nowrap',
+              borderBottom: activeTab === 'form3_tab4' ? '2px solid var(--primary, #38bdf8)' : 'none',
+            }}
+          >
+            ✍️ {t('proforma.form3.tab4', '4. Office Activity & Signatures')}
+          </button>
+        </div>
+      ) : (
+        <div className="proforma-subtabs-bar">
+          <button
+            type="button"
+            onClick={() => setActiveTab('upper')}
+            className={`btn ${activeTab === 'upper' ? '' : 'secondary'}`}
+            style={{
+              borderRadius: '8px 8px 0 0',
+              padding: '10px 18px',
+              fontWeight: 700,
+              borderBottom: activeTab === 'upper' ? '2px solid var(--primary, #38bdf8)' : 'none',
+            }}
+          >
+            📊 {formType === 'form6'
+              ? t('proforma.form6.tabUpper', '1. د ضلعې او ماتحتو څانګو لنډيز (Summary & Subordinate Metrics)')
+              : formType === 'form5'
+              ? t('proforma.form5.tabRoster', '1. د صوبائي ايګزيکټيو ملګرو ځانګړي فعاليت (Executive Activity)')
+              : formType === 'form2'
+              ? t('proforma.tabUnitsForm2', '1. د ماتحتو بنسټيزو يونټونو کار او فعاليت (Subordinate Units Activity)')
+              : formType === 'form4'
+              ? t('proforma.tabOverviewForm4', '1. د ابتدائي يونټ مياشتنئ لنډيز (Unit Summary)')
+              : t('proforma.tabOverview', '1. Area Summary & Metrics')}
+          </button>
+          {formType !== 'form2' && formType !== 'form5' && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('roster')}
+              className={`btn ${activeTab === 'roster' ? '' : 'secondary'}`}
+              style={{
+                borderRadius: '8px 8px 0 0',
+                padding: '10px 18px',
+                fontWeight: 700,
+                borderBottom: activeTab === 'roster' ? '2px solid var(--primary, #38bdf8)' : 'none',
+              }}
+            >
+              👥 {formType === 'form6'
+                ? t('proforma.form6.tabRoster', '2. ضلعي ايګزيکټيو ملګرو ځانګړي کار (Executive Comrades Activity)')
+                : formType === 'form4'
+                ? t('proforma.tabRosterForm4', '2. ابتدائي يونټ ايګزيکټيو ځانګړي فعاليت')
+                : t('proforma.tabRoster', '2. Executive Members Activity')} ({rows.length})
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('notes')}
+            className={`btn ${activeTab === 'notes' ? '' : 'secondary'}`}
+            style={{
+              borderRadius: '8px 8px 0 0',
+              padding: '10px 18px',
+              fontWeight: 700,
+              borderBottom: activeTab === 'notes' ? '2px solid var(--primary, #38bdf8)' : 'none',
+            }}
+          >
+            📝 {formType === 'form2' || formType === 'form5' ? t('proforma.tabNotes2', '2. Remarks & Observations') : t('proforma.tabNotes', '3. Remarks & Observations')}
+          </button>
+        </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* TAB 1: UPPER / SUMMARY METRICS & FORM 2 WORKSPACE */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'upper' && (
-        formType === 'form2' ? (
+        formType === 'form6' ? (
+          /* FORM 6 DISTRICT SUMMARY & SUBORDINATE METRICS WORKSPACE */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* KPI Summary Cards */}
+            <div className="proforma-kpi-grid">
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #0284c7' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #0284c7' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form6.kpiDistExec', 'District Exec Mtgs')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  🏛️ {upper.distExecSlots || 0}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #10b981' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #10b981' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form6.kpiDistComm', 'District Committee Members')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  👥 {upper.distCommTotal || 0}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #8b5cf6' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #8b5cf6' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form6.kpiAreaUnits', 'Area Units (Total / New)')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  🏢 {upper.areaUnitsCount || 0} {parseInt(upper.newAreaUnitsCount, 10) > 0 ? `(+${upper.newAreaUnitsCount})` : ''}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #f59e0b' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #f59e0b' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form6.kpiBasicUnits', 'Basic Units (Total / New)')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  🏘️ {upper.buCount || 0} {parseInt(upper.newBuCount, 10) > 0 ? `(+${upper.newBuCount})` : ''}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #ec4899' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #ec4899' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form6.kpiPublicEvents', 'Rallies, Jirgas & Circles')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  📢 {(parseInt(upper.ralliesCount, 10) || 0) + (parseInt(upper.jirgasCount, 10) || 0) + (parseInt(upper.studyCirclesCount, 10) || 0)}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #14b8a6' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #14b8a6' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form6.kpiNetDues', 'Net Finance (PKR)')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4, color: form6NetFinance >= 0 ? '#10b981' : '#ef4444' }}>
+                  💰 PKR {form6NetFinance.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Validation Alert */}
+            {!form6Validation.isValid && (
+              <div
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 8,
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1.5px solid #ef4444',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span>{form6Validation.errors[0]}</span>
+              </div>
+            )}
+
+            {/* Row 1: District Executive & District Committee Meetings */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+              {/* District Executive Meeting */}
+              <div className="card" style={{ padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: 14 }}>🏛️ {t('proforma.form6.distExecTitle', 'ضلعي ايګزيکټيو غونډي (District Executive)')}</strong>
+                    {form6DistExecSlots > 0 && (
+                      form6DistExecSum === form6DistExecSlots ? (
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid #22c55e', fontWeight: 600 }}>
+                          ✓ {t('proforma.balanced', 'Balanced')}: {form6DistExecSum}/{form6DistExecSlots}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', fontWeight: 600 }}>
+                          ⚠️ {form6DistExecSum}/{form6DistExecSlots}
+                        </span>
+                      )
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleAutoBalanceDistrictExec}
+                      className="btn secondary"
+                      style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, borderColor: '#0284c7', color: '#38bdf8' }}
+                      title={t('proforma.autoBalance', 'Auto-Balance attendance to match Total Slots')}
+                    >
+                      ⚡ {t('proforma.autoBalance', 'Auto-Balance')}
+                    </button>
+                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
+                      {upper.distExecPct || '0%'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.meetingDate', 'نيټه (Date)')}</label>
+                    <input
+                      type="text"
+                      value={upper.distExecDate || ''}
+                      onChange={(e) => updateForm6Upper('distExecDate', e.target.value)}
+                      placeholder="DD/MM"
+                      style={{ padding: '5px 8px', fontSize: 13, textAlign: 'center' }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.totalMembers', 'غړو شمير (Total)')}</label>
+                    <NumberStepper
+                      value={upper.distExecSlots ?? ''}
+                      onChange={(val) => updateForm6Upper('distExecSlots', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'حاضر (Present)')}</label>
+                    <NumberStepper
+                      value={upper.distExecPresent ?? ''}
+                      max={form6DistExecSlots > 0 ? form6DistExecSlots : Infinity}
+                      onChange={(val) => updateForm6Upper('distExecPresent', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'غير حاضر (Absent)')}</label>
+                    <NumberStepper
+                      value={upper.distExecAbsent ?? ''}
+                      onChange={(val) => updateForm6Upper('distExecAbsent', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'رخصت (Leave)')}</label>
+                    <NumberStepper
+                      value={upper.distExecLeave ?? ''}
+                      onChange={(val) => updateForm6Upper('distExecLeave', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'حاضري فيصدي (%)')}</label>
+                    <input
+                      type="text"
+                      value={upper.distExecPct || '0%'}
+                      onChange={(e) => updateForm6Upper('distExecPct', e.target.value)}
+                      style={{ textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* District Committee Meeting */}
+              <div className="card" style={{ padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: 14 }}>👥 {t('proforma.form6.distCommTitle', 'ضلعي کميټي غونډي (District Committee)')}</strong>
+                    {form6DistCommTotal > 0 && (
+                      form6DistCommSum === form6DistCommTotal ? (
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid #22c55e', fontWeight: 600 }}>
+                          ✓ {t('proforma.balanced', 'Balanced')}: {form6DistCommSum}/{form6DistCommTotal}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', fontWeight: 600 }}>
+                          ⚠️ {form6DistCommSum}/{form6DistCommTotal}
+                        </span>
+                      )
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleAutoBalanceDistrictComm}
+                      className="btn secondary"
+                      style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, borderColor: '#0284c7', color: '#38bdf8' }}
+                      title={t('proforma.autoBalance', 'Auto-Balance attendance to match Total Members')}
+                    >
+                      ⚡ {t('proforma.autoBalance', 'Auto-Balance')}
+                    </button>
+                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
+                      {upper.distCommPct || '0%'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.meetingDate', 'نيټه (Date)')}</label>
+                    <input
+                      type="text"
+                      value={upper.distCommDate || ''}
+                      onChange={(e) => updateForm6Upper('distCommDate', e.target.value)}
+                      placeholder="DD/MM"
+                      style={{ padding: '5px 8px', fontSize: 13, textAlign: 'center' }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.totalMembers', 'غړو شمير (Total)')}</label>
+                    <NumberStepper
+                      value={upper.distCommTotal ?? ''}
+                      onChange={(val) => updateForm6Upper('distCommTotal', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'حاضر (Present)')}</label>
+                    <NumberStepper
+                      value={upper.distCommPresent ?? ''}
+                      max={form6DistCommTotal > 0 ? form6DistCommTotal : Infinity}
+                      onChange={(val) => updateForm6Upper('distCommPresent', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'غير حاضر (Absent)')}</label>
+                    <NumberStepper
+                      value={upper.distCommAbsent ?? ''}
+                      onChange={(val) => updateForm6Upper('distCommAbsent', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'رخصت (Leave)')}</label>
+                    <NumberStepper
+                      value={upper.distCommLeave ?? ''}
+                      onChange={(val) => updateForm6Upper('distCommLeave', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'حاضري فيصدي (%)')}</label>
+                    <input
+                      type="text"
+                      value={upper.distCommPct || '0%'}
+                      onChange={(e) => updateForm6Upper('distCommPct', e.target.value)}
+                      style={{ textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Subordinate Area Units & Basic Units Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+              {/* Subordinate Area Units */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🏢 {t('proforma.form6.areaUnitsSec', 'علاقائي يونټونه (Area Units Metrics)')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaUnitsCount', 'علاقائي يونټانو شمير (Total)')}</label>
+                    <NumberStepper
+                      value={upper.areaUnitsCount ?? ''}
+                      onChange={(val) => updateForm6Upper('areaUnitsCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.newAreaUnitsCount', 'نوي علاقائي يونټانو شمير (New)')}</label>
+                    <NumberStepper
+                      value={upper.newAreaUnitsCount ?? ''}
+                      onChange={(val) => updateForm6Upper('newAreaUnitsCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaExecCount', 'علاقائي ايګزيکټيو غونډو شمير')}</label>
+                    <NumberStepper
+                      value={upper.areaExecCount ?? ''}
+                      onChange={(val) => updateForm6Upper('areaExecCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaExecPct', 'غونډو فيصدي (%)')}</label>
+                    <input
+                      type="text"
+                      value={upper.areaExecPct || '0%'}
+                      onChange={(e) => updateForm6Upper('areaExecPct', e.target.value)}
+                      style={{ textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaCommCount', 'علاقائي کميټي غونډو شمير')}</label>
+                    <NumberStepper
+                      value={upper.areaCommCount ?? ''}
+                      onChange={(val) => updateForm6Upper('areaCommCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaCommPct', 'غونډو فيصدي (%)')}</label>
+                    <input
+                      type="text"
+                      value={upper.areaCommPct || '0%'}
+                      onChange={(e) => updateForm6Upper('areaCommPct', e.target.value)}
+                      style={{ textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Subordinate Basic Units */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🏘️ {t('proforma.form6.basicUnitsSec', 'ابتدائي يونټونه (Basic Units Metrics)')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buCount', 'ابتدائي يونټانو شمير (Total)')}</label>
+                    <NumberStepper
+                      value={upper.buCount ?? ''}
+                      onChange={(val) => updateForm6Upper('buCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.newBuCount', 'نوي يونټانو شمير (New)')}</label>
+                    <NumberStepper
+                      value={upper.newBuCount ?? ''}
+                      onChange={(val) => updateForm6Upper('newBuCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buExecCount', 'يونټانو ايګزيکټيو غونډو شمير')}</label>
+                    <NumberStepper
+                      value={upper.buExecCount ?? ''}
+                      onChange={(val) => updateForm6Upper('buExecCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buExecPct', 'غونډو فيصدي (%)')}</label>
+                    <input
+                      type="text"
+                      value={upper.buExecPct || '0%'}
+                      onChange={(e) => updateForm6Upper('buExecPct', e.target.value)}
+                      style={{ textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buGbCount', 'يونټانو General Body غونډي')}</label>
+                    <NumberStepper
+                      value={upper.buGbCount ?? ''}
+                      onChange={(val) => updateForm6Upper('buGbCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buGbPct', 'غونډو فيصدي (%)')}</label>
+                    <input
+                      type="text"
+                      value={upper.buGbPct || '0%'}
+                      onChange={(e) => updateForm6Upper('buGbPct', e.target.value)}
+                      style={{ textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 3: Political Reading & Student Wing (PSO) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+              {/* Political Reading */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>📖 {t('proforma.form6.studySec', 'لوستنه / مطالعه (Ideological Political Study)')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyDistComm', 'ضلعي کميټي')}</label>
+                    <NumberStepper
+                      value={upper.studyDistComm ?? ''}
+                      onChange={(val) => updateForm6Upper('studyDistComm', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyAreaComm', 'علاقائي کميټي')}</label>
+                    <NumberStepper
+                      value={upper.studyAreaComm ?? ''}
+                      onChange={(val) => updateForm6Upper('studyAreaComm', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyUnitsCount', 'يونټانو شمير')}</label>
+                    <NumberStepper
+                      value={upper.studyUnitsCount ?? ''}
+                      onChange={(val) => updateForm6Upper('studyUnitsCount', val)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Wing (PSO) */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🎓 {t('proforma.form6.psoSec', 'پي ايس او - PSO (Pashtun Students Org)')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.psoUnitsCount', 'يونټانو شمير (PSO Units)')}</label>
+                    <NumberStepper
+                      value={upper.psoUnitsCount ?? ''}
+                      onChange={(val) => updateForm6Upper('psoUnitsCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.newPsoUnitsCount', 'نوي يونټانو شمير (New PSO Units)')}</label>
+                    <NumberStepper
+                      value={upper.newPsoUnitsCount ?? ''}
+                      onChange={(val) => updateForm6Upper('newPsoUnitsCount', val)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 4: Programs, Inductions & Public Gatherings */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+              {/* Programs & Seminars */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>📚 {t('proforma.form6.programsSec', 'پروګرامونه، سټډي سرکل او شموليت')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.conferencesCount', 'کانفرنس / سيمينار')}</label>
+                    <NumberStepper
+                      value={upper.conferencesCount ?? ''}
+                      onChange={(val) => updateForm6Upper('conferencesCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyCirclesCount', 'سټډي سرکل')}</label>
+                    <NumberStepper
+                      value={upper.studyCirclesCount ?? ''}
+                      onChange={(val) => updateForm6Upper('studyCirclesCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.inductionsCount', 'نوي شموليت')}</label>
+                    <NumberStepper
+                      value={upper.inductionsCount ?? ''}
+                      onChange={(val) => updateForm6Upper('inductionsCount', val)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Public Gatherings & Allied Parties */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>📢 {t('proforma.form6.gatheringsSec', 'اولسي غونډي او اتحاديانو سره رابطے')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.ralliesCount', 'جلسے مظاهرے')}</label>
+                    <NumberStepper
+                      value={upper.ralliesCount ?? ''}
+                      onChange={(val) => updateForm6Upper('ralliesCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.jirgasCount', 'جرګے / اولسي غونډي')}</label>
+                    <NumberStepper
+                      value={upper.jirgasCount ?? ''}
+                      onChange={(val) => updateForm6Upper('jirgasCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.alliedMeetingsCount', 'اتحاديانو پارټيانو سره غونډي')}</label>
+                    <NumberStepper
+                      value={upper.alliedMeetingsCount ?? ''}
+                      onChange={(val) => updateForm6Upper('alliedMeetingsCount', val)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 5: Operations, Villages Without Unit & Disciplinary Actions */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+              {/* Operations & Villages */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🏢 {t('proforma.form6.operationsSec', 'دفتر، کلي او تاديبي کاروائي')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.districtOfficeActivity', 'ضلعي دفتر ته فعاليت')}</label>
+                    <input
+                      type="text"
+                      value={upper.districtOfficeActivity || ''}
+                      onChange={(e) => updateForm6Upper('districtOfficeActivity', e.target.value)}
+                      placeholder="e.g. منظم فعاليت / Weekly hours"
+                      style={{ padding: '6px 10px', fontSize: 13 }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.villagesWithoutUnitCount', 'هغه کليو شمير چي يونټ نسته')}</label>
+                    <NumberStepper
+                      value={upper.villagesWithoutUnitCount ?? ''}
+                      onChange={(val) => updateForm6Upper('villagesWithoutUnitCount', val)}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.disciplinaryActionsCount', 'تاديبي کاروائي (Disciplinary)')}</label>
+                    <input
+                      type="text"
+                      value={upper.disciplinaryActionsCount ?? ''}
+                      onChange={(e) => updateForm6Upper('disciplinaryActionsCount', e.target.value)}
+                      placeholder="0 or details"
+                      style={{ padding: '6px 10px', fontSize: 13 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Dues & Finances */}
+              <div className="card" style={{ padding: 16 }}>
+                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>💰 {t('proforma.form6.financesSec', 'چنده او مالي چارې (Dues & Expenses)')}</strong>
+                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.duesMonthly', 'مياشتنۍ چنده (PKR)')}</label>
+                    <input
+                      type="number"
+                      value={upper.duesMonthly ?? ''}
+                      onChange={(e) => updateForm6Upper('duesMonthly', e.target.value)}
+                      placeholder="0"
+                      style={{ padding: '6px 8px', fontSize: 13, textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12 }}>{t('proforma.form6.duesEmergency', 'هنګامي چنده (PKR)')}</label>
+                    <input
+                      type="number"
+                      value={upper.duesEmergency ?? ''}
+                      onChange={(e) => updateForm6Upper('duesEmergency', e.target.value)}
+                      placeholder="0"
+                      style={{ padding: '6px 8px', fontSize: 13, textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.form6.duesExpenses', 'خرڅ (Expenses)')}</label>
+                    <input
+                      type="number"
+                      value={upper.duesExpenses ?? ''}
+                      onChange={(e) => updateForm6Upper('duesExpenses', e.target.value)}
+                      placeholder="0"
+                      style={{ padding: '6px 8px', fontSize: 13, textAlign: 'center', fontWeight: 'bold' }}
+                    />
+                  </div>
+                  <div className="field">
+                    <label style={{ fontSize: 12, color: form6NetFinance >= 0 ? '#10b981' : '#ef4444' }}>{t('proforma.netBalance', 'Net Balance')}</label>
+                    <div style={{ padding: '7px 10px', fontWeight: 'bold', fontSize: 14, color: form6NetFinance >= 0 ? '#10b981' : '#ef4444', textAlign: 'center' }}>
+                      PKR {form6NetFinance.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : formType === 'form5' ? (
+          /* FORM 5 PROVINCIAL EXECUTIVE WORKSPACE */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* KPI Summary Cards */}
+            <div className="proforma-kpi-grid">
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #0284c7' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #0284c7' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form5.kpiTotalComrades', 'Executive Comrades')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🏛️ {rows.length}</span>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #10b981' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #10b981' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form5.kpiTotalMeetings', 'Total Mtgs Attended')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  🤝 {rows.reduce((sum, r) => sum + (parseInt(r.totalMeetings, 10) || 0), 0)}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #8b5cf6' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #8b5cf6' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form5.provincialExec', 'Provincial Exec Mtgs')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  👥 {rows.reduce((sum, r) => sum + (parseInt(r.provincialExec, 10) || 0), 0)}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #f59e0b' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #f59e0b' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form5.provincialJirga', 'Provincial Jirga Mtgs')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  🏛️ {rows.reduce((sum, r) => sum + (parseInt(r.provincialJirga, 10) || 0), 0)}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #ec4899' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #ec4899' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form5.publicGatherings', 'Public Events / Jirgas')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  📢 {rows.reduce((sum, r) => sum + (parseInt(r.ralliesAndProtests, 10) || 0) + (parseInt(r.jirgasAndCornerMeetings, 10) || 0), 0)}
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '12px 16px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRight: isRtl ? '4px solid #14b8a6' : '1px solid var(--border)', borderLeft: !isRtl ? '4px solid #14b8a6' : '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>{t('proforma.form5.dues', 'Total Dues (PKR)')}</div>
+                <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
+                  💰 PKR {rows.reduce((sum, r) => sum + (parseInt(r.dues, 10) || 0), 0).toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Form 5 Validation Alert */}
+            {!form5Validation.isValid && (
+              <div
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 8,
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1.5px solid #ef4444',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: 18 }}>⚠️</span>
+                <span>
+                  {form5Validation.errors[0]}
+                </span>
+              </div>
+            )}
+
+            {/* Action Bar: Search, View Mode Toggle, Auto-Sum All, Add Member */}
+            <div
+              className="proforma-form5-toolbar"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 10,
+                padding: '10px 14px',
+                background: 'var(--surface)',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={form5Search}
+                  onChange={(e) => setForm5Search(e.target.value)}
+                  placeholder={t('proforma.form5.searchPlaceholder', 'Search executive comrade by name...')}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: 13,
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    minWidth: 240,
+                  }}
+                />
+
+                {/* View Mode Toggle: Cards vs Table */}
+                <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setForm5ViewMode('cards')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      border: 'none',
+                      background: form5ViewMode === 'cards' ? 'var(--primary, #38bdf8)' : 'var(--surface-alt)',
+                      color: form5ViewMode === 'cards' ? '#fff' : 'var(--text-main)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🗂️ {t('proforma.viewCards', 'Cards')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm5ViewMode('table')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      border: 'none',
+                      background: form5ViewMode === 'table' ? 'var(--primary, #38bdf8)' : 'var(--surface-alt)',
+                      color: form5ViewMode === 'table' ? '#fff' : 'var(--text-main)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📊 {t('proforma.viewTable', 'Spreadsheet Table')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="proforma-form5-toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleAutoSumAllForm5Rows}
+                  className="btn secondary"
+                  style={{ fontSize: 12, borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}
+                  title={t('proforma.form5.autoSumAll', 'Auto-Sum All Total Meetings')}
+                >
+                  ⚡ {t('proforma.form5.autoSumAll', 'Auto-Sum All Total Meetings')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={addForm5Row}
+                  className="btn"
+                  style={{ fontSize: 12, background: '#0284c7', borderColor: '#0284c7', fontWeight: 700 }}
+                >
+                  ➕ {t('proforma.form5.addMember', '+ Add Executive Comrade')}
+                </button>
+              </div>
+            </div>
+
+            {/* CARDS VIEW */}
+            {form5ViewMode === 'cards' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {rows
+                  .filter((r) => {
+                    if (!form5Search.trim()) return true;
+                    return (r.name || '').toLowerCase().includes(form5Search.toLowerCase());
+                  })
+                  .map((r, idx) => {
+                    const rErr = form5Validation.rowErrors[idx] || {};
+                    return (
+                      <div
+                        key={idx}
+                        className="card"
+                        style={{
+                          position: 'relative',
+                          border: rErr.hasError ? '2px solid #ef4444' : '1px solid var(--border)',
+                          padding: 14,
+                        }}
+                      >
+                        {/* Header */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderBottom: '1px solid var(--border)',
+                            paddingBottom: 10,
+                            marginBottom: 12,
+                            flexWrap: 'wrap',
+                            gap: 8,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                background: '#0284c7',
+                                color: '#fff',
+                                borderRadius: '50%',
+                                width: 26,
+                                height: 26,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 13,
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              {r.srNo || idx + 1}
+                            </span>
+                            <input
+                              type="text"
+                              value={r.name || ''}
+                              onChange={(e) => updateForm5Row(idx, 'name', e.target.value)}
+                              placeholder={t('proforma.form5.name', 'ايګزيکټيو نوم (Executive Comrade Name)')}
+                              style={{
+                                fontWeight: 'bold',
+                                fontSize: 14,
+                                padding: '4px 10px',
+                                minWidth: 220,
+                                borderColor: rErr.name ? '#ef4444' : undefined,
+                                background: rErr.name ? 'rgba(239, 68, 68, 0.08)' : undefined,
+                              }}
+                            />
+                            {rErr.name && (
+                              <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>
+                                ⚠️ {rErr.name}
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleAutoSumForm5Row(idx)}
+                              className="btn secondary"
+                              style={{ padding: '3px 8px', fontSize: 11, borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}
+                              title="Auto-calculate total meetings for this member"
+                            >
+                              ⚡ {t('proforma.form5.autoSumRow', 'Sum')}: {r.totalMeetings || 0}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeForm5Row(idx)}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}
+                              title="Remove Member"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 6 Sub-sections matching all columns */}
+                        <div className="proforma-card-subgrid">
+                          {/* 1. Central & Provincial Meetings */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--primary, #38bdf8)', marginBottom: 8 }}>
+                              🏛️ {t('proforma.form5.highMeetingsSection', '1. Central & Provincial Meetings (مرکزي او صوبائي غونډي)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.centralComm', 'مرکزي کميټي')}</label>
+                                <NumberStepper value={r.centralComm} onChange={(v) => updateForm5Row(idx, 'centralComm', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.provincialJirga', 'صوبائي جرګے')}</label>
+                                <NumberStepper value={r.provincialJirga} onChange={(v) => updateForm5Row(idx, 'provincialJirga', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.provincialExec', 'صوبائي ايګزيکټيو')}</label>
+                                <NumberStepper value={r.provincialExec} onChange={(v) => updateForm5Row(idx, 'provincialExec', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.provincialComm', 'صوبائي کميټي')}</label>
+                                <NumberStepper value={r.provincialComm} onChange={(v) => updateForm5Row(idx, 'provincialComm', v)} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. District & Area Meetings */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: '#10b981', marginBottom: 8 }}>
+                              🏢 {t('proforma.form5.districtAreaMeetingsSection', '2. District & Area Meetings (ضلع او علاقه غونډي)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.districtExec', 'ضلع ايګزيکټيو')}</label>
+                                <NumberStepper value={r.districtExec} onChange={(v) => updateForm5Row(idx, 'districtExec', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.districtComm', 'ضلعي کميټي')}</label>
+                                <NumberStepper value={r.districtComm} onChange={(v) => updateForm5Row(idx, 'districtComm', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.areaExec', 'علاقائي ايګزيکټيو')}</label>
+                                <NumberStepper value={r.areaExec} onChange={(v) => updateForm5Row(idx, 'areaExec', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.areaComm', 'علاقائي کميټي')}</label>
+                                <NumberStepper value={r.areaComm} onChange={(v) => updateForm5Row(idx, 'areaComm', v)} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3. Basic Units & PSO Meetings */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: '#8b5cf6', marginBottom: 8 }}>
+                              🤝 {t('proforma.form5.basicUnitsPsoSection', '3. Basic Units & PSO Meetings (ابتدائي يونټونه او PSO)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.basicUnitsExec', 'ابتدائي يونټانو ايګزيکټيو')}</label>
+                                <NumberStepper value={r.basicUnitsExec} onChange={(v) => updateForm5Row(idx, 'basicUnitsExec', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.basicUnitsGb', 'ابتدائي يونټانو غونډي')}</label>
+                                <NumberStepper value={r.basicUnitsGb} onChange={(v) => updateForm5Row(idx, 'basicUnitsGb', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.ownBasicUnit', 'خپل ابتدائي يونټ')}</label>
+                                <NumberStepper value={r.ownBasicUnit} onChange={(v) => updateForm5Row(idx, 'ownBasicUnit', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.psoMeetings', 'PSO غونډي')}</label>
+                                <NumberStepper value={r.psoMeetings} onChange={(v) => updateForm5Row(idx, 'psoMeetings', v)} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 4. Education & Conferences */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: '#f59e0b', marginBottom: 8 }}>
+                              📚 {t('proforma.form5.educationIdeologySection', '4. Education & Conferences (کانفرنسونه او سټډي سرکل)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.partyConferences', 'پارټي کانفرنسونه')}</label>
+                                <NumberStepper value={r.partyConferences} onChange={(v) => updateForm5Row(idx, 'partyConferences', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.seminars', 'سيمينارونه')}</label>
+                                <NumberStepper value={r.seminars} onChange={(v) => updateForm5Row(idx, 'seminars', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.studyCircles', 'سټډي سرکل')}</label>
+                                <NumberStepper value={r.studyCircles} onChange={(v) => updateForm5Row(idx, 'studyCircles', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.inductions', 'نوي شموليت')}</label>
+                                <NumberStepper value={r.inductions} onChange={(v) => updateForm5Row(idx, 'inductions', v)} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 5. Public Events & Allies */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: '#ec4899', marginBottom: 8 }}>
+                              📢 {t('proforma.form5.publicOutreachSection', '5. Public Events & Allies (جلسے، جرګے او اتحاديان)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.ralliesAndProtests', 'جلسے مظاهرے')}</label>
+                                <NumberStepper value={r.ralliesAndProtests} onChange={(v) => updateForm5Row(idx, 'ralliesAndProtests', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.jirgasAndCornerMeetings', 'جرګے کارنر ميټنګ')}</label>
+                                <NumberStepper value={r.jirgasAndCornerMeetings} onChange={(v) => updateForm5Row(idx, 'jirgasAndCornerMeetings', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.pressConferences', 'پريس کانفرنسونه')}</label>
+                                <NumberStepper value={r.pressConferences} onChange={(v) => updateForm5Row(idx, 'pressConferences', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.alliedMeetings', 'اتحاديانو سره غونډي')}</label>
+                                <NumberStepper value={r.alliedMeetings} onChange={(v) => updateForm5Row(idx, 'alliedMeetings', v)} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 6. Totals, Dues, Tours, Reading & Blood Bank */}
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: '#14b8a6', marginBottom: 8 }}>
+                              💰 {t('proforma.form5.financeOutreachSection', '6. Totals, Dues & Blood Bank (ټولي غونډي، چنده او مطالعه)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e', fontWeight: 700 }}>{t('proforma.form5.totalMeetings', 'ټولي غونډي')}</label>
+                                <NumberStepper value={r.totalMeetings} onChange={(v) => updateForm5Row(idx, 'totalMeetings', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.dues', 'چنده (PKR)')}</label>
+                                <NumberStepper value={r.dues} step={500} onChange={(v) => updateForm5Row(idx, 'dues', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.tours', 'دوره')}</label>
+                                <NumberStepper value={r.tours} onChange={(v) => updateForm5Row(idx, 'tours', v)} />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.reading', 'لوستنه (مطالعه)')}</label>
+                                <NumberStepper value={r.reading} onChange={(v) => updateForm5Row(idx, 'reading', v)} />
+                              </div>
+                              <div style={{ gridColumn: 'span 2' }}>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form5.bloodBankPosts', 'بلډ بينک پوسټ')}</label>
+                                <input
+                                  type="text"
+                                  value={r.bloodBankPosts || ''}
+                                  onChange={(e) => updateForm5Row(idx, 'bloodBankPosts', e.target.value)}
+                                  placeholder="e.g. O+ / 2 posts"
+                                  style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* SPREADSHEET TABLE VIEW */}
+            {form5ViewMode === 'table' && (
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+                <table
+                  className="table"
+                  style={{
+                    width: '100%',
+                    minWidth: 1650,
+                    fontSize: 12,
+                    borderCollapse: 'collapse',
+                    textAlign: 'center',
+                    direction: 'rtl',
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 35 }}>{t('proforma.form5.srNo', 'شمير')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 8px', minWidth: 130 }}>{t('proforma.form5.name', 'ايګزيکټيو نوم')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.centralComm', 'مرکزي کميټي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.provincialJirga', 'صوبائي جرګے')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.provincialExec', 'صوبائي ايګزيکټيو')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.provincialComm', 'صوبائي کميټي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.districtExec', 'ضلع ايګزيکټيو')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.districtComm', 'ضلعي کميټي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.areaExec', 'علاقائي ايګزيکټيو')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.areaComm', 'علاقائي کميټي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 55 }}>{t('proforma.form5.basicUnitsExec', 'ابتدائي يونټانو ايګزيکټيو')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 50 }}>{t('proforma.form5.basicUnitsGb', 'ابتدائي يونټانو غونډي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 50 }}>{t('proforma.form5.ownBasicUnit', 'خپل ابتدائي يونټ')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.psoMeetings', 'PSO غونډي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 50 }}>{t('proforma.form5.partyConferences', 'پارټي کانفرنسونه')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.seminars', 'سيمينارونه')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 45 }}>{t('proforma.form5.studyCircles', 'سټډي سرکل')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 50 }}>{t('proforma.form5.inductions', 'نوي شموليت')}</th>
+                      <th colSpan="2" style={{ padding: '4px 6px', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' }}>{t('proforma.form5.publicGatherings', 'اولسي غونډي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 50 }}>{t('proforma.form5.pressConferences', 'پريس کانفرنس')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 65 }}>{t('proforma.form5.alliedMeetings', 'اتحاديانو سره غونډي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 50, color: '#22c55e' }}>{t('proforma.form5.totalMeetings', 'ټولي غونډي')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 55 }}>{t('proforma.form5.dues', 'چنده')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 40 }}>{t('proforma.form5.tours', 'دوره')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 50 }}>{t('proforma.form5.reading', 'لوستنه (مطالعه)')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 55 }}>{t('proforma.form5.bloodBankPosts', 'بلډ بينک')}</th>
+                      <th rowSpan="2" style={{ padding: '6px 4px', width: 35 }}>✕</th>
+                    </tr>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '4px 4px', width: 45 }}>{t('proforma.form5.ralliesAndProtests', 'جلسے مظاهرے')}</th>
+                      <th style={{ padding: '4px 4px', width: 55 }}>{t('proforma.form5.jirgasAndCornerMeetings', 'جرګے کارنر')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.length === 0 ? (
+                      <tr>
+                        <td colSpan="28" style={{ padding: 24, textAlign: 'center', color: 'var(--text-soft)' }}>
+                          {t('proforma.form5.noMembers', 'No provincial executive comrades added yet.')}
+                        </td>
+                      </tr>
+                    ) : (
+                      rows
+                        .filter((r) => {
+                          if (!form5Search.trim()) return true;
+                          return (r.name || '').toLowerCase().includes(form5Search.toLowerCase());
+                        })
+                        .map((r, idx) => {
+                          const rErr = form5Validation.rowErrors[idx] || {};
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: 3, fontWeight: 'bold' }}>{r.srNo || idx + 1}</td>
+                              <td style={{ padding: 3 }}>
+                                <input
+                                  type="text"
+                                  value={r.name || ''}
+                                  onChange={(e) => updateForm5Row(idx, 'name', e.target.value)}
+                                  placeholder={t('proforma.form5.name', 'Comrade name')}
+                                  style={{
+                                    width: '100%',
+                                    padding: '3px 6px',
+                                    fontWeight: 600,
+                                    fontSize: 12,
+                                    borderColor: rErr.name ? '#ef4444' : undefined,
+                                    background: rErr.name ? 'rgba(239, 68, 68, 0.08)' : undefined,
+                                  }}
+                                />
+                              </td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.centralComm ?? ''} onChange={(e) => updateForm5Row(idx, 'centralComm', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.provincialJirga ?? ''} onChange={(e) => updateForm5Row(idx, 'provincialJirga', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.provincialExec ?? ''} onChange={(e) => updateForm5Row(idx, 'provincialExec', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.provincialComm ?? ''} onChange={(e) => updateForm5Row(idx, 'provincialComm', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.districtExec ?? ''} onChange={(e) => updateForm5Row(idx, 'districtExec', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.districtComm ?? ''} onChange={(e) => updateForm5Row(idx, 'districtComm', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.areaExec ?? ''} onChange={(e) => updateForm5Row(idx, 'areaExec', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.areaComm ?? ''} onChange={(e) => updateForm5Row(idx, 'areaComm', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.basicUnitsExec ?? ''} onChange={(e) => updateForm5Row(idx, 'basicUnitsExec', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.basicUnitsGb ?? ''} onChange={(e) => updateForm5Row(idx, 'basicUnitsGb', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.ownBasicUnit ?? ''} onChange={(e) => updateForm5Row(idx, 'ownBasicUnit', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.psoMeetings ?? ''} onChange={(e) => updateForm5Row(idx, 'psoMeetings', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.partyConferences ?? ''} onChange={(e) => updateForm5Row(idx, 'partyConferences', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.seminars ?? ''} onChange={(e) => updateForm5Row(idx, 'seminars', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.studyCircles ?? ''} onChange={(e) => updateForm5Row(idx, 'studyCircles', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.inductions ?? ''} onChange={(e) => updateForm5Row(idx, 'inductions', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.ralliesAndProtests ?? ''} onChange={(e) => updateForm5Row(idx, 'ralliesAndProtests', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.jirgasAndCornerMeetings ?? ''} onChange={(e) => updateForm5Row(idx, 'jirgasAndCornerMeetings', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.pressConferences ?? ''} onChange={(e) => updateForm5Row(idx, 'pressConferences', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.alliedMeetings ?? ''} onChange={(e) => updateForm5Row(idx, 'alliedMeetings', e.target.value)} style={{ width: 45, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}>
+                                <input
+                                  type="text"
+                                  value={r.totalMeetings ?? ''}
+                                  onChange={(e) => updateForm5Row(idx, 'totalMeetings', e.target.value)}
+                                  style={{ width: 42, textAlign: 'center', fontSize: 12, fontWeight: 'bold', color: '#22c55e' }}
+                                />
+                              </td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.dues ?? ''} onChange={(e) => updateForm5Row(idx, 'dues', e.target.value)} style={{ width: 55, textAlign: 'center', fontSize: 12, fontWeight: 600 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.tours ?? ''} onChange={(e) => updateForm5Row(idx, 'tours', e.target.value)} style={{ width: 35, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.reading ?? ''} onChange={(e) => updateForm5Row(idx, 'reading', e.target.value)} style={{ width: 42, textAlign: 'center', fontSize: 12 }} /></td>
+                              <td style={{ padding: 2 }}><input type="text" value={r.bloodBankPosts || ''} onChange={(e) => updateForm5Row(idx, 'bloodBankPosts', e.target.value)} style={{ width: 55, textAlign: 'center', fontSize: 11 }} /></td>
+                              <td style={{ padding: 2 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => removeForm5Row(idx)}
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14 }}
+                                  title="Remove Member"
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : formType === 'form2' ? (
           /* FORM 2 SUBORDINATE BASIC UNITS WORKSPACE */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* KPI Summary Cards */}
@@ -1673,6 +4411,41 @@ export default function ProformaReportsPage() {
               </div>
             </div>
 
+            {/* Top Validation Warning Banner if any row is invalid */}
+            {!form2Validation.isValid && (
+              <div
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 8,
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid #ef4444',
+                  color: '#ef4444',
+                  fontSize: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 16 }}>⚠️</span>
+                  <strong>
+                    {t('proforma.form2.validation.issuesFound', '{{count}} validation issue(s) detected in subordinate units', { count: form2Validation.errors.length })}:
+                  </strong>
+                  <span>{form2Validation.errors.slice(0, 2).join('; ')}{form2Validation.errors.length > 2 ? ` (+${form2Validation.errors.length - 2} more)` : ''}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAutoBalanceAllForm2Rows}
+                  className="btn"
+                  style={{ padding: '4px 12px', fontSize: 12, background: '#ef4444', borderColor: '#ef4444', color: '#fff', fontWeight: 600 }}
+                >
+                  ⚡ {t('proforma.autoBalanceAll', 'Auto-Balance All Units')}
+                </button>
+              </div>
+            )}
+
             {/* FORM 2: CARDS VIEW */}
             {form2ViewMode === 'cards' && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
@@ -1689,6 +4462,9 @@ export default function ProformaReportsPage() {
                     .filter((r) => !form2Search.trim() || (r.unitName || '').toLowerCase().includes(form2Search.trim().toLowerCase()))
                     .map((r) => {
                       const idx = r._origIdx;
+                      const rErr = form2Validation.rowErrors[idx] || {};
+                      const hasRowError = rErr.hasError;
+
                       const execTotal = parseInt(r.execTotal, 10) || 0;
                       const execPres = parseInt(r.execPresent, 10) || 0;
                       const execAbs = parseInt(r.execAbsent, 10) || 0;
@@ -1706,19 +4482,37 @@ export default function ProformaReportsPage() {
                       const netFin = ((parseInt(r.unitDonations, 10) || 0) + (parseInt(r.emergencyDonations, 10) || 0)) - (parseInt(r.totalExpenses, 10) || 0);
 
                       return (
-                        <div key={idx} className="card" style={{ border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div
+                          key={idx}
+                          className="card"
+                          style={{
+                            border: hasRowError ? '1.5px solid #ef4444' : '1px solid var(--border)',
+                            boxShadow: hasRowError ? '0 0 0 1px rgba(239, 68, 68, 0.15)' : 'none',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 12,
+                          }}
+                        >
                           {/* Unit Card Header */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 10 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                              <span style={{ background: '#0284c7', color: '#fff', borderRadius: '50%', width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 'bold' }}>
+                              <span style={{ background: hasRowError ? '#ef4444' : '#0284c7', color: '#fff', borderRadius: '50%', width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 'bold' }}>
                                 {r.srNo || idx + 1}
                               </span>
                               <input
                                 type="text"
                                 value={r.unitName || ''}
                                 onChange={(e) => updateForm2Row(idx, 'unitName', e.target.value)}
-                                placeholder={t('proforma.unitNamePlaceholder', 'Basic Unit Name / د يونټ نوم')}
-                                style={{ fontWeight: 'bold', fontSize: 15, padding: '4px 8px', flex: 1, maxWidth: 260 }}
+                                placeholder={t('proforma.form2.unitName', 'Basic Unit Name / د يونټ نوم')}
+                                style={{
+                                  fontWeight: 'bold',
+                                  fontSize: 15,
+                                  padding: '4px 8px',
+                                  flex: 1,
+                                  maxWidth: 260,
+                                  border: rErr.name ? '1.5px solid #ef4444' : undefined,
+                                  background: rErr.name ? 'rgba(239, 68, 68, 0.08)' : undefined,
+                                }}
                               />
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1736,24 +4530,58 @@ export default function ProformaReportsPage() {
                                   color: r.unitStatus === 'غير فعاله' ? '#eab308' : '#22c55e',
                                 }}
                               >
-                                {r.unitStatus || 'فعاله'}
+                                {r.unitStatus === 'غير فعاله' ? t('proforma.inactive', 'غير فعاله') : t('proforma.active', 'فعاله')}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => removeForm2Row(idx)}
                                 style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}
-                                title="Remove Unit"
+                                title={t('proforma.form2.remove', 'Remove Unit')}
                               >
                                 ✕
                               </button>
                             </div>
                           </div>
 
+                          {/* Row Error Banner if present */}
+                          {hasRowError && (
+                            <div
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: 6,
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                color: '#ef4444',
+                                fontSize: 12,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: 6,
+                              }}
+                            >
+                              <span>⚠️ {[rErr.name, rErr.exec, rErr.gb, rErr.pso, rErr.finance].filter(Boolean).join(' • ')}</span>
+                              {(rErr.exec || rErr.gb) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (rErr.exec) handleAutoBalanceForm2Row(idx, 'exec');
+                                    if (rErr.gb) handleAutoBalanceForm2Row(idx, 'gb');
+                                  }}
+                                  className="btn secondary"
+                                  style={{ padding: '2px 8px', fontSize: 11, borderColor: '#ef4444', color: '#ef4444', background: 'transparent' }}
+                                >
+                                  ⚡ {t('proforma.autoBalance', 'Auto-Balance')}
+                                </button>
+                              )}
+                            </div>
+                          )}
+
                           {/* 1. Unit Executive Meeting */}
-                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: rErr.exec ? '1.5px solid #ef4444' : '1px solid var(--border)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                               <span style={{ fontWeight: 600, fontSize: 13, color: '#0284c7' }}>
-                                🤝 {t('proforma.execMeeting', 'يونټ ايګزيکټيو غونډي')}
+                                🤝 {t('proforma.form2.execMeetingsSection', '1. Unit Executive Meetings')}
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {!execBalanced && (
@@ -1763,7 +4591,7 @@ export default function ProformaReportsPage() {
                                     className="btn secondary"
                                     style={{ padding: '2px 6px', fontSize: 11, borderColor: '#0284c7', color: '#38bdf8' }}
                                   >
-                                    ⚡ {t('proforma.autoBalance', 'Balance')}
+                                    ⚡ {t('proforma.form2.balanceExec', 'Balance')}
                                   </button>
                                 )}
                                 <span className="badge ACTIVE" style={{ fontSize: 11, fontWeight: 'bold' }}>
@@ -1773,7 +4601,7 @@ export default function ProformaReportsPage() {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', gap: 6 }}>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.date', 'نيټه')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.date', 'Date')}</label>
                                 <input
                                   type="text"
                                   value={r.execMeetingDate || ''}
@@ -1783,29 +4611,29 @@ export default function ProformaReportsPage() {
                                 />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.total', 'ټول')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.totalSlots', 'Total')}</label>
                                 <NumberStepper value={r.execTotal} onChange={(val) => updateForm2Row(idx, 'execTotal', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>{t('proforma.present', 'حاضر')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>{t('proforma.form2.present', 'Present')}</label>
                                 <NumberStepper value={r.execPresent} onChange={(val) => updateForm2Row(idx, 'execPresent', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>{t('proforma.absent', 'غير')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>{t('proforma.form2.absent', 'Absent')}</label>
                                 <NumberStepper value={r.execAbsent} onChange={(val) => updateForm2Row(idx, 'execAbsent', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#eab308' }}>{t('proforma.leave', 'رخصت')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#eab308' }}>{t('proforma.form2.leave', 'Leave')}</label>
                                 <NumberStepper value={r.execLeave} onChange={(val) => updateForm2Row(idx, 'execLeave', val)} style={{ minWidth: 70 }} />
                               </div>
                             </div>
                           </div>
 
                           {/* 2. Unit General Body Meeting */}
-                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: rErr.gb ? '1.5px solid #ef4444' : '1px solid var(--border)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                               <span style={{ fontWeight: 600, fontSize: 13, color: '#10b981' }}>
-                                👥 {t('proforma.gbMeeting', 'يونټ جنرل باډي غونډي')}
+                                👥 {t('proforma.form2.gbMeetingsSection', '2. Unit General Body Meetings')}
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {!gbBalanced && (
@@ -1815,7 +4643,7 @@ export default function ProformaReportsPage() {
                                     className="btn secondary"
                                     style={{ padding: '2px 6px', fontSize: 11, borderColor: '#10b981', color: '#10b981' }}
                                   >
-                                    ⚡ {t('proforma.autoBalance', 'Balance')}
+                                    ⚡ {t('proforma.form2.balanceGb', 'Balance')}
                                   </button>
                                 )}
                                 <span className="badge ACTIVE" style={{ fontSize: 11, fontWeight: 'bold', background: '#10b981' }}>
@@ -1825,7 +4653,7 @@ export default function ProformaReportsPage() {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr 1fr', gap: 6 }}>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.date', 'نيټه')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.date', 'Date')}</label>
                                 <input
                                   type="text"
                                   value={r.gbMeetingDate || ''}
@@ -1835,52 +4663,52 @@ export default function ProformaReportsPage() {
                                 />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.members', 'ممبرشپ')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.membership', 'Membership')}</label>
                                 <NumberStepper value={r.gbTotalMembers} onChange={(val) => updateForm2Row(idx, 'gbTotalMembers', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>{t('proforma.present', 'حاضر')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>{t('proforma.form2.present', 'Present')}</label>
                                 <NumberStepper value={r.gbPresent} onChange={(val) => updateForm2Row(idx, 'gbPresent', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>{t('proforma.absent', 'غير')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>{t('proforma.form2.absent', 'Absent')}</label>
                                 <NumberStepper value={r.gbAbsent} onChange={(val) => updateForm2Row(idx, 'gbAbsent', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#eab308' }}>{t('proforma.leave', 'رخصت')}</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#eab308' }}>{t('proforma.form2.leave', 'Leave')}</label>
                                 <NumberStepper value={r.gbLeave} onChange={(val) => updateForm2Row(idx, 'gbLeave', val)} style={{ minWidth: 70 }} />
                               </div>
                             </div>
                           </div>
 
                           {/* 3. Study, Education & PSO */}
-                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: rErr.pso ? '1.5px solid #ef4444' : '1px solid var(--border)' }}>
                             <div style={{ fontWeight: 600, fontSize: 13, color: '#8b5cf6', marginBottom: 8 }}>
-                              📚 {t('proforma.studyPso', 'لوستنه، زده کړه او پي ايس او')}
+                              📚 {t('proforma.form2.studyPsoSection', '3. Study, Education & PSO')}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: 8 }}>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>لوستنه (مطالعه)</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.studyReading', 'Reading (Study)')}</label>
                                 <NumberStepper value={r.studyReading} onChange={(val) => updateForm2Row(idx, 'studyReading', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>سيمينار</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.seminar', 'Seminar')}</label>
                                 <NumberStepper value={r.seminarCount} onChange={(val) => updateForm2Row(idx, 'seminarCount', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>سټډي سرکل</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.studyCircle', 'Study Circle')}</label>
                                 <NumberStepper value={r.studyCircleCount} onChange={(val) => updateForm2Row(idx, 'studyCircleCount', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>نوي شموليتونه</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.newMembers', 'New Joinees')}</label>
                                 <NumberStepper value={r.newMembers} onChange={(val) => updateForm2Row(idx, 'newMembers', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>پي ايس او ممبر</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.psoMembership', 'PSO Membership')}</label>
                                 <NumberStepper value={r.psoMembership} onChange={(val) => updateForm2Row(idx, 'psoMembership', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>پي ايس او حاضر</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#22c55e' }}>{t('proforma.form2.psoAttendees', 'Meeting Attendees')}</label>
                                 <NumberStepper value={r.psoAttendees} onChange={(val) => updateForm2Row(idx, 'psoAttendees', val)} style={{ minWidth: 70 }} />
                               </div>
                             </div>
@@ -1889,53 +4717,53 @@ export default function ProformaReportsPage() {
                           {/* 4. Public Gatherings & Outreach */}
                           <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
                             <div style={{ fontWeight: 600, fontSize: 13, color: '#f59e0b', marginBottom: 8 }}>
-                              📢 {t('proforma.eventsOutreach', 'جلسې، شموليت او رابطې')}
+                              📢 {t('proforma.form2.eventsOutreachSection', '4. Events, Inductions & Outreach')}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: 8 }}>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>جلسے/جرګے</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.publicEvents', 'Public Rallies / Jirgas')}</label>
                                 <NumberStepper value={r.publicEventsCount} onChange={(val) => updateForm2Row(idx, 'publicEventsCount', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>شموليت پروګرام</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.inductionProgram', 'Induction Program')}</label>
                                 <NumberStepper value={r.inductionPrograms} onChange={(val) => updateForm2Row(idx, 'inductionPrograms', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>اولسي رابطے</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.publicOutreach', 'Public Contacts')}</label>
                                 <NumberStepper value={r.publicOutreach} onChange={(val) => updateForm2Row(idx, 'publicOutreach', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>غير فعاله ملګرو</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.inactiveContact', 'Inactive Comrades')}</label>
                                 <NumberStepper value={r.inactiveContact} onChange={(val) => updateForm2Row(idx, 'inactiveContact', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>تنظيمي رابطے</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.orgOutreach', 'Organizational Contacts')}</label>
                                 <NumberStepper value={r.orgOutreach} onChange={(val) => updateForm2Row(idx, 'orgOutreach', val)} style={{ minWidth: 70 }} />
                               </div>
                             </div>
                           </div>
 
                           {/* 5. Finances & Dues */}
-                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
+                          <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: rErr.finance ? '1.5px solid #ef4444' : '1px solid var(--border)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                               <span style={{ fontWeight: 600, fontSize: 13, color: '#10b981' }}>
-                                💰 {t('proforma.finances', 'چنده او مالي چارې (روپۍ)')}
+                                💰 {t('proforma.form2.financesSection', '5. Finances & Dues (PKR)')}
                               </span>
                               <span style={{ fontSize: 12, fontWeight: 'bold', color: netFin >= 0 ? '#10b981' : '#ef4444' }}>
-                                Net: PKR {netFin.toLocaleString()}
+                                {t('proforma.form2.netFinance', 'Net')}: PKR {netFin.toLocaleString()}
                               </span>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8 }}>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>يونټ چنده</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.unitDues', 'Unit Dues')}</label>
                                 <NumberStepper value={r.unitDonations} step={100} onChange={(val) => updateForm2Row(idx, 'unitDonations', val)} style={{ minWidth: 85 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>هنګامي چنده</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.emergencyDues', 'Emergency Fund')}</label>
                                 <NumberStepper value={r.emergencyDonations} step={100} onChange={(val) => updateForm2Row(idx, 'emergencyDonations', val)} style={{ minWidth: 85 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>خرڅ</label>
+                                <label style={{ fontSize: 11, display: 'block', color: '#ef4444' }}>{t('proforma.form2.expenses', 'Expenses')}</label>
                                 <NumberStepper value={r.totalExpenses} step={100} onChange={(val) => updateForm2Row(idx, 'totalExpenses', val)} style={{ minWidth: 85 }} />
                               </div>
                             </div>
@@ -1944,11 +4772,11 @@ export default function ProformaReportsPage() {
                           {/* 6. Discipline & Blood Bank */}
                           <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 6, border: '1px solid var(--border)' }}>
                             <div style={{ fontWeight: 600, fontSize: 13, color: '#ec4899', marginBottom: 8 }}>
-                              🩸 {t('proforma.bloodDiscipline', 'تاديبي کاروائي او بلډ بينک')}
+                              🩸 {t('proforma.form2.bloodDisciplineSection', '6. Discipline & Blood Bank')}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, 1fr)', gap: 8 }}>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>تاديبي کاروائي</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.disciplinaryAction', 'Disciplinary Action')}</label>
                                 <input
                                   type="text"
                                   value={r.disciplinaryAction || ''}
@@ -1958,19 +4786,19 @@ export default function ProformaReportsPage() {
                                 />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>پوستونه</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.bloodPosts', 'Posts')}</label>
                                 <NumberStepper value={r.bloodPosts} onChange={(val) => updateForm2Row(idx, 'bloodPosts', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>نغدي</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.bloodCash', 'Cash')}</label>
                                 <NumberStepper value={r.bloodCash} step={100} onChange={(val) => updateForm2Row(idx, 'bloodCash', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>ټولي نغدي</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.bloodTotalCash', 'Total Cash')}</label>
                                 <NumberStepper value={r.bloodTotalCash} step={100} onChange={(val) => updateForm2Row(idx, 'bloodTotalCash', val)} style={{ minWidth: 70 }} />
                               </div>
                               <div>
-                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>زکات</label>
+                                <label style={{ fontSize: 11, display: 'block', color: 'var(--text-soft)' }}>{t('proforma.form2.zakat', 'Zakat')}</label>
                                 <NumberStepper value={r.zakat} step={100} onChange={(val) => updateForm2Row(idx, 'zakat', val)} style={{ minWidth: 70 }} />
                               </div>
                             </div>
@@ -1988,56 +4816,56 @@ export default function ProformaReportsPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 2600, textAlign: 'center' }}>
                   <thead style={{ background: 'var(--surface-alt)', position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr style={{ borderBottom: '1px solid var(--border)', fontSize: 11 }}>
-                      <th rowSpan={2} style={{ padding: '8px 4px', width: 40, position: 'sticky', [isRtl ? 'right' : 'left']: 0, background: 'var(--surface-alt)', zIndex: 12 }}>شمير</th>
-                      <th rowSpan={2} style={{ padding: '8px 6px', minWidth: 160, position: 'sticky', [isRtl ? 'right' : 'left']: 40, background: 'var(--surface-alt)', zIndex: 12 }}>يونټ نوم</th>
-                      <th colSpan={6} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(2, 132, 199, 0.08)' }}>يونټ ايګزيکټيو غونډي</th>
-                      <th colSpan={6} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(16, 185, 129, 0.08)' }}>يونټ جنرل باډي غونډي</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65, whiteSpace: 'nowrap' }}>لوستنه<br />(مطالعه)</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 55 }}>سيمينار</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 55 }}>سټډي<br />سرکل</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65 }}>نوي<br />شموليتونه</th>
-                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(139, 92, 246, 0.08)' }}>پي ايس او</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 85 }}>جلسے اولسي<br />غونډي جرګے</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65 }}>شموليت<br />پروګرام</th>
-                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>رابطے</th>
-                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.08)' }}>چنده</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 75 }}>تاديبي<br />کاروائي</th>
-                      <th colSpan={4} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(236, 72, 153, 0.08)' }}>بلډ بينک</th>
-                      <th rowSpan={2} style={{ padding: '6px 4px', width: 80 }}>فعاله /<br />غير فعاله</th>
+                      <th rowSpan={2} style={{ padding: '8px 4px', width: 40, position: 'sticky', [isRtl ? 'right' : 'left']: 0, background: 'var(--surface-alt)', zIndex: 12 }}>{t('proforma.form2.srNo', 'شمير')}</th>
+                      <th rowSpan={2} style={{ padding: '8px 6px', minWidth: 160, position: 'sticky', [isRtl ? 'right' : 'left']: 40, background: 'var(--surface-alt)', zIndex: 12 }}>{t('proforma.form2.unitName', 'يونټ نوم')}</th>
+                      <th colSpan={6} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(2, 132, 199, 0.08)' }}>{t('proforma.form2.execMeeting', 'يونټ ايګزيکټيو غونډي')}</th>
+                      <th colSpan={6} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(16, 185, 129, 0.08)' }}>{t('proforma.form2.gbMeeting', 'يونټ جنرل باډي غونډي')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65, whiteSpace: 'nowrap' }}>{t('proforma.form2.studyReading', 'لوستنه (مطالعه)')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 55 }}>{t('proforma.form2.seminar', 'سيمينار')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 55 }}>{t('proforma.form2.studyCircle', 'سټډي سرکل')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65 }}>{t('proforma.form2.newMembers', 'نوي شموليتونه')}</th>
+                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(139, 92, 246, 0.08)' }}>{t('proforma.form2.pso', 'پي ايس او')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 85 }}>{t('proforma.form2.publicEvents', 'جلسے اولسي غونډي جرګے')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 65 }}>{t('proforma.form2.inductionProgram', 'شموليت پروګرام')}</th>
+                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(245, 158, 11, 0.08)' }}>{t('proforma.form2.contacts', 'رابطے')}</th>
+                      <th colSpan={3} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(239, 68, 68, 0.08)' }}>{t('proforma.form2.dues', 'چنده')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 75 }}>{t('proforma.form2.disciplinaryAction', 'تاديبي کاروائي')}</th>
+                      <th colSpan={4} style={{ padding: '6px 4px', borderRight: '1px solid var(--border)', borderLeft: '1px solid var(--border)', background: 'rgba(236, 72, 153, 0.08)' }}>{t('proforma.form2.bloodBank', 'بلډ بينک')}</th>
+                      <th rowSpan={2} style={{ padding: '6px 4px', width: 80 }}>{t('proforma.form2.status', 'فعاله / غير فعاله')}</th>
                       <th rowSpan={2} style={{ padding: '6px 4px', width: 36 }}>✕</th>
                     </tr>
                     <tr style={{ borderBottom: '2px solid var(--border)', fontSize: 10 }}>
                       {/* Exec */}
-                      <th style={{ width: 65 }}>نيټه</th>
-                      <th style={{ width: 50 }}>شمير</th>
-                      <th style={{ width: 45 }}>حاضر</th>
-                      <th style={{ width: 45 }}>غير</th>
-                      <th style={{ width: 45 }}>رخصت</th>
-                      <th style={{ width: 55 }}>فيصدي</th>
+                      <th style={{ width: 65 }}>{t('proforma.form2.date', 'نيټه')}</th>
+                      <th style={{ width: 50 }}>{t('proforma.form2.totalSlots', 'شمير')}</th>
+                      <th style={{ width: 45 }}>{t('proforma.form2.present', 'حاضر')}</th>
+                      <th style={{ width: 45 }}>{t('proforma.form2.absent', 'غير')}</th>
+                      <th style={{ width: 45 }}>{t('proforma.form2.leave', 'رخصت')}</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.pct', 'فيصدي')}</th>
                       {/* GB */}
-                      <th style={{ width: 65 }}>نيټه</th>
-                      <th style={{ width: 55 }}>ممبرشپ</th>
-                      <th style={{ width: 45 }}>حاضر</th>
-                      <th style={{ width: 45 }}>غير</th>
-                      <th style={{ width: 45 }}>رخصت</th>
-                      <th style={{ width: 55 }}>فيصدي</th>
+                      <th style={{ width: 65 }}>{t('proforma.form2.date', 'نيټه')}</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.membership', 'ممبرشپ')}</th>
+                      <th style={{ width: 45 }}>{t('proforma.form2.present', 'حاضر')}</th>
+                      <th style={{ width: 45 }}>{t('proforma.form2.absent', 'غير')}</th>
+                      <th style={{ width: 45 }}>{t('proforma.form2.leave', 'رخصت')}</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.pct', 'فيصدي')}</th>
                       {/* PSO */}
-                      <th style={{ width: 55 }}>ممبر شپ</th>
-                      <th style={{ width: 55 }}>حاضر شمير</th>
-                      <th style={{ width: 55 }}>فيصدي</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.psoMembership', 'ممبر شپ')}</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.psoAttendees', 'حاضر شمير')}</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.psoPct', 'فيصدي')}</th>
                       {/* Outreach */}
-                      <th style={{ width: 55 }}>اولسي</th>
-                      <th style={{ width: 85 }}>غير فعاله ملګرو</th>
-                      <th style={{ width: 55 }}>تنظيمي</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.publicOutreach', 'اولسي')}</th>
+                      <th style={{ width: 85 }}>{t('proforma.form2.inactiveContact', 'غير فعاله ملګرو')}</th>
+                      <th style={{ width: 55 }}>{t('proforma.form2.orgOutreach', 'تنظيمي')}</th>
                       {/* Dues */}
-                      <th style={{ width: 70 }}>يونټ چنده</th>
-                      <th style={{ width: 65 }}>هنګامي</th>
-                      <th style={{ width: 65 }}>خرڅ</th>
+                      <th style={{ width: 70 }}>{t('proforma.form2.unitDues', 'يونټ چنده')}</th>
+                      <th style={{ width: 65 }}>{t('proforma.form2.emergencyDues', 'هنګامي')}</th>
+                      <th style={{ width: 65 }}>{t('proforma.form2.expenses', 'خرڅ')}</th>
                       {/* Blood Bank */}
-                      <th style={{ width: 50 }}>پوستونه</th>
-                      <th style={{ width: 65 }}>نغدي</th>
-                      <th style={{ width: 65 }}>ټولي نغدي</th>
-                      <th style={{ width: 60 }}>زکات</th>
+                      <th style={{ width: 50 }}>{t('proforma.form2.bloodPosts', 'پوستونه')}</th>
+                      <th style={{ width: 65 }}>{t('proforma.form2.bloodCash', 'نغدي')}</th>
+                      <th style={{ width: 65 }}>{t('proforma.form2.bloodTotalCash', 'ټولي نغدي')}</th>
+                      <th style={{ width: 60 }}>{t('proforma.form2.zakat', 'زکات')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2053,41 +4881,62 @@ export default function ProformaReportsPage() {
                         .filter((r) => !form2Search.trim() || (r.unitName || '').toLowerCase().includes(form2Search.trim().toLowerCase()))
                         .map((r) => {
                           const idx = r._origIdx;
+                          const rErr = form2Validation.rowErrors[idx] || {};
+                          const hasRowError = rErr.hasError;
+
                           return (
-                            <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                              <td style={{ padding: 4, position: 'sticky', [isRtl ? 'right' : 'left']: 0, background: 'var(--surface)', zIndex: 5, fontWeight: 'bold' }}>
-                                {r.srNo || idx + 1}
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--border)', background: hasRowError ? 'rgba(239, 68, 68, 0.03)' : undefined }}>
+                              <td
+                                style={{
+                                  padding: 4,
+                                  position: 'sticky',
+                                  [isRtl ? 'right' : 'left']: 0,
+                                  background: 'var(--surface)',
+                                  zIndex: 5,
+                                  fontWeight: 'bold',
+                                  color: hasRowError ? '#ef4444' : 'inherit',
+                                }}
+                                title={hasRowError ? [rErr.name, rErr.exec, rErr.gb, rErr.pso, rErr.finance].filter(Boolean).join(' | ') : undefined}
+                              >
+                                {hasRowError ? `⚠️ ${r.srNo || idx + 1}` : (r.srNo || idx + 1)}
                               </td>
                               <td style={{ padding: 4, position: 'sticky', [isRtl ? 'right' : 'left']: 40, background: 'var(--surface)', zIndex: 5 }}>
                                 <input
                                   type="text"
                                   value={r.unitName || ''}
                                   onChange={(e) => updateForm2Row(idx, 'unitName', e.target.value)}
-                                  placeholder="Unit Name"
-                                  style={{ width: '100%', padding: '3px 6px', fontWeight: 600, fontSize: 12 }}
+                                  placeholder={t('proforma.form2.unitName', 'Unit Name')}
+                                  style={{
+                                    width: '100%',
+                                    padding: '3px 6px',
+                                    fontWeight: 600,
+                                    fontSize: 12,
+                                    borderColor: rErr.name ? '#ef4444' : undefined,
+                                    background: rErr.name ? 'rgba(239, 68, 68, 0.08)' : undefined,
+                                  }}
                                 />
                               </td>
                               {/* Exec */}
                               <td style={{ padding: 3 }}><input type="text" value={r.execMeetingDate || ''} onChange={(e) => updateForm2Row(idx, 'execMeetingDate', e.target.value)} placeholder="12/10" style={{ width: 55, textAlign: 'center', fontSize: 11 }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.execTotal ?? ''} onChange={(e) => updateForm2Row(idx, 'execTotal', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12 }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.execPresent ?? ''} onChange={(e) => updateForm2Row(idx, 'execPresent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#22c55e', fontWeight: 'bold' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.execAbsent ?? ''} onChange={(e) => updateForm2Row(idx, 'execAbsent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#ef4444' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.execLeave ?? ''} onChange={(e) => updateForm2Row(idx, 'execLeave', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#eab308' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execTotal ?? ''} onChange={(e) => updateForm2Row(idx, 'execTotal', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, borderColor: rErr.exec ? '#ef4444' : undefined, background: rErr.exec ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execPresent ?? ''} onChange={(e) => updateForm2Row(idx, 'execPresent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#22c55e', fontWeight: 'bold', borderColor: rErr.exec ? '#ef4444' : undefined, background: rErr.exec ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execAbsent ?? ''} onChange={(e) => updateForm2Row(idx, 'execAbsent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#ef4444', borderColor: rErr.exec ? '#ef4444' : undefined, background: rErr.exec ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.execLeave ?? ''} onChange={(e) => updateForm2Row(idx, 'execLeave', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#eab308', borderColor: rErr.exec ? '#ef4444' : undefined, background: rErr.exec ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
                               <td style={{ padding: 3, fontWeight: 'bold', fontSize: 11, color: '#0284c7' }}>{r.execPct ? (String(r.execPct).includes('%') ? r.execPct : `${r.execPct}%`) : ''}</td>
                               {/* GB */}
                               <td style={{ padding: 3 }}><input type="text" value={r.gbMeetingDate || ''} onChange={(e) => updateForm2Row(idx, 'gbMeetingDate', e.target.value)} placeholder="14/10" style={{ width: 55, textAlign: 'center', fontSize: 11 }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.gbTotalMembers ?? ''} onChange={(e) => updateForm2Row(idx, 'gbTotalMembers', e.target.value)} style={{ width: 45, textAlign: 'center', fontSize: 12 }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.gbPresent ?? ''} onChange={(e) => updateForm2Row(idx, 'gbPresent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#22c55e', fontWeight: 'bold' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.gbAbsent ?? ''} onChange={(e) => updateForm2Row(idx, 'gbAbsent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#ef4444' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.gbLeave ?? ''} onChange={(e) => updateForm2Row(idx, 'gbLeave', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#eab308' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbTotalMembers ?? ''} onChange={(e) => updateForm2Row(idx, 'gbTotalMembers', e.target.value)} style={{ width: 45, textAlign: 'center', fontSize: 12, borderColor: rErr.gb ? '#ef4444' : undefined, background: rErr.gb ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbPresent ?? ''} onChange={(e) => updateForm2Row(idx, 'gbPresent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#22c55e', fontWeight: 'bold', borderColor: rErr.gb ? '#ef4444' : undefined, background: rErr.gb ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbAbsent ?? ''} onChange={(e) => updateForm2Row(idx, 'gbAbsent', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#ef4444', borderColor: rErr.gb ? '#ef4444' : undefined, background: rErr.gb ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.gbLeave ?? ''} onChange={(e) => updateForm2Row(idx, 'gbLeave', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 12, color: '#eab308', borderColor: rErr.gb ? '#ef4444' : undefined, background: rErr.gb ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
                               <td style={{ padding: 3, fontWeight: 'bold', fontSize: 11, color: '#10b981' }}>{r.gbPct ? (String(r.gbPct).includes('%') ? r.gbPct : `${r.gbPct}%`) : ''}</td>
                               {/* Education & PSO */}
                               <td style={{ padding: 3 }}><input type="text" value={r.studyReading ?? ''} onChange={(e) => updateForm2Row(idx, 'studyReading', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
                               <td style={{ padding: 3 }}><input type="text" value={r.seminarCount ?? ''} onChange={(e) => updateForm2Row(idx, 'seminarCount', e.target.value)} style={{ width: 40, textAlign: 'center' }} /></td>
                               <td style={{ padding: 3 }}><input type="text" value={r.studyCircleCount ?? ''} onChange={(e) => updateForm2Row(idx, 'studyCircleCount', e.target.value)} style={{ width: 40, textAlign: 'center' }} /></td>
                               <td style={{ padding: 3 }}><input type="text" value={r.newMembers ?? ''} onChange={(e) => updateForm2Row(idx, 'newMembers', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.psoMembership ?? ''} onChange={(e) => updateForm2Row(idx, 'psoMembership', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.psoAttendees ?? ''} onChange={(e) => updateForm2Row(idx, 'psoAttendees', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.psoMembership ?? ''} onChange={(e) => updateForm2Row(idx, 'psoMembership', e.target.value)} style={{ width: 45, textAlign: 'center', borderColor: rErr.pso ? '#ef4444' : undefined, background: rErr.pso ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.psoAttendees ?? ''} onChange={(e) => updateForm2Row(idx, 'psoAttendees', e.target.value)} style={{ width: 45, textAlign: 'center', borderColor: rErr.pso ? '#ef4444' : undefined, background: rErr.pso ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
                               <td style={{ padding: 3, fontWeight: 'bold', fontSize: 11, color: '#8b5cf6' }}>{r.psoPct ? (String(r.psoPct).includes('%') ? r.psoPct : `${r.psoPct}%`) : ''}</td>
                               {/* Gatherings & Outreach */}
                               <td style={{ padding: 3 }}><input type="text" value={r.publicEventsCount ?? ''} onChange={(e) => updateForm2Row(idx, 'publicEventsCount', e.target.value)} style={{ width: 50, textAlign: 'center' }} /></td>
@@ -2096,15 +4945,15 @@ export default function ProformaReportsPage() {
                               <td style={{ padding: 3 }}><input type="text" value={r.inactiveContact ?? ''} onChange={(e) => updateForm2Row(idx, 'inactiveContact', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
                               <td style={{ padding: 3 }}><input type="text" value={r.orgOutreach ?? ''} onChange={(e) => updateForm2Row(idx, 'orgOutreach', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
                               {/* Finances */}
-                              <td style={{ padding: 3 }}><input type="text" value={r.unitDonations ?? ''} onChange={(e) => updateForm2Row(idx, 'unitDonations', e.target.value)} style={{ width: 60, textAlign: 'center' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.emergencyDonations ?? ''} onChange={(e) => updateForm2Row(idx, 'emergencyDonations', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.totalExpenses ?? ''} onChange={(e) => updateForm2Row(idx, 'totalExpenses', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.unitDonations ?? ''} onChange={(e) => updateForm2Row(idx, 'unitDonations', e.target.value)} style={{ width: 60, textAlign: 'center', borderColor: rErr.finance ? '#ef4444' : undefined, background: rErr.finance ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.emergencyDonations ?? ''} onChange={(e) => updateForm2Row(idx, 'emergencyDonations', e.target.value)} style={{ width: 55, textAlign: 'center', borderColor: rErr.finance ? '#ef4444' : undefined, background: rErr.finance ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.totalExpenses ?? ''} onChange={(e) => updateForm2Row(idx, 'totalExpenses', e.target.value)} style={{ width: 55, textAlign: 'center', borderColor: rErr.finance ? '#ef4444' : undefined, background: rErr.finance ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
                               {/* Discipline & Blood Bank */}
                               <td style={{ padding: 3 }}><input type="text" value={r.disciplinaryAction || ''} onChange={(e) => updateForm2Row(idx, 'disciplinaryAction', e.target.value)} style={{ width: 65, textAlign: 'center' }} /></td>
                               <td style={{ padding: 3 }}><input type="text" value={r.bloodPosts ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodPosts', e.target.value)} style={{ width: 45, textAlign: 'center' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.bloodCash ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodCash', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.bloodTotalCash ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodTotalCash', e.target.value)} style={{ width: 55, textAlign: 'center' }} /></td>
-                              <td style={{ padding: 3 }}><input type="text" value={r.zakat ?? ''} onChange={(e) => updateForm2Row(idx, 'zakat', e.target.value)} style={{ width: 50, textAlign: 'center' }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.bloodCash ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodCash', e.target.value)} style={{ width: 55, textAlign: 'center', borderColor: rErr.finance ? '#ef4444' : undefined, background: rErr.finance ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.bloodTotalCash ?? ''} onChange={(e) => updateForm2Row(idx, 'bloodTotalCash', e.target.value)} style={{ width: 55, textAlign: 'center', borderColor: rErr.finance ? '#ef4444' : undefined, background: rErr.finance ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
+                              <td style={{ padding: 3 }}><input type="text" value={r.zakat ?? ''} onChange={(e) => updateForm2Row(idx, 'zakat', e.target.value)} style={{ width: 50, textAlign: 'center', borderColor: rErr.finance ? '#ef4444' : undefined, background: rErr.finance ? 'rgba(239, 68, 68, 0.08)' : undefined }} /></td>
                               {/* Status */}
                               <td style={{ padding: 3 }}>
                                 <select
@@ -2112,8 +4961,8 @@ export default function ProformaReportsPage() {
                                   onChange={(e) => updateForm2Row(idx, 'unitStatus', e.target.value)}
                                   style={{ padding: '2px 4px', fontSize: 11, fontWeight: 600 }}
                                 >
-                                  <option value="فعاله">فعاله</option>
-                                  <option value="غير فعاله">غير فعاله</option>
+                                  <option value="فعاله">{t('proforma.active', 'فعاله')}</option>
+                                  <option value="غير فعاله">{t('proforma.inactive', 'غير فعاله')}</option>
                                 </select>
                               </td>
                               {/* Delete */}
@@ -2122,6 +4971,7 @@ export default function ProformaReportsPage() {
                                   type="button"
                                   onClick={() => removeForm2Row(idx)}
                                   style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14 }}
+                                  title={t('proforma.form2.remove', 'Remove Unit')}
                                 >
                                   ✕
                                 </button>
@@ -2885,44 +5735,519 @@ export default function ProformaReportsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <h3 style={{ margin: 0, color: 'var(--primary, #38bdf8)' }}>
-                {formType === 'form4'
+                {formType === 'form6'
+                  ? t('proforma.form6.rosterTitle', 'ضلعي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ')
+                  : formType === 'form4'
                   ? t('proforma.tabRosterForm4', 'ابتدائي يونټ ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت')
                   : t('proforma.rosterTitle', 'Area Executive Members Performance')}
               </h3>
               <p className="muted" style={{ margin: '2px 0 0', fontSize: 13 }}>
-                {formType === 'form4'
+                {formType === 'form6'
+                  ? t('proforma.form6.rosterSubtitle', 'ضلعي ايګزيکټيو ملګرو د ټولو غونډو، اولسي فعاليتونو، او تنظيمي کارونو ۲۶ ستنو رسمي تفصيل')
+                  : formType === 'form4'
                   ? 'Individual performance metrics for each cabinet member of this basic unit'
                   : t('proforma.rosterDesc', 'Official 24-column record of monthly meetings, attendance, donations, tours, and outreach')}
               </p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                type="button"
-                className={`btn ${rosterViewMode === 'cards' ? '' : 'secondary'}`}
-                onClick={() => setRosterViewMode('cards')}
-                style={{ fontSize: 12, padding: '6px 12px' }}
-              >
-                🗂️ {t('proforma.cardsView', 'Card View')}
-              </button>
-              <button
-                type="button"
-                className={`btn ${rosterViewMode === 'table' ? '' : 'secondary'}`}
-                onClick={() => setRosterViewMode('table')}
-                style={{ fontSize: 12, padding: '6px 12px' }}
-              >
-                📊 {t('proforma.tableView', 'Official Table View')}
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={addRow}
-                style={{ fontSize: 12, padding: '6px 12px', background: '#0284c7', borderColor: '#0284c7' }}
-              >
-                ➕ {t('proforma.addMember', 'Add Member')}
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {formType === 'form6' ? (
+                <>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      value={form6Search}
+                      onChange={(e) => setForm6Search(e.target.value)}
+                      placeholder={`🔍 ${t('proforma.searchPlaceholder', 'Search comrade / name...')}`}
+                      style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, minWidth: 180 }}
+                    />
+                    {form6Search && (
+                      <button
+                        type="button"
+                        onClick={() => setForm6Search('')}
+                        style={{ position: 'absolute', right: isRtl ? 'auto' : 8, left: isRtl ? 8 : 'auto', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-soft)' }}
+                      >✕</button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className={`btn ${form6ViewMode === 'cards' ? '' : 'secondary'}`}
+                    onClick={() => setForm6ViewMode('cards')}
+                    style={{ fontSize: 12, padding: '6px 12px' }}
+                  >
+                    🗂️ {t('proforma.cardsView', 'Card View')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${form6ViewMode === 'table' ? '' : 'secondary'}`}
+                    onClick={() => setForm6ViewMode('table')}
+                    style={{ fontSize: 12, padding: '6px 12px' }}
+                  >
+                    📊 {t('proforma.tableView', 'Official Table View')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={handleAutoSumAllForm6Rows}
+                    title="Auto-calculate total meetings for all comrades"
+                    style={{ fontSize: 12, padding: '6px 12px' }}
+                  >
+                    ⚡ {t('proforma.form6.autoSumAll', 'Auto-Sum All')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={addForm6Row}
+                    style={{ fontSize: 12, padding: '6px 12px', background: '#0284c7', borderColor: '#0284c7' }}
+                  >
+                    ➕ {t('proforma.form6.addComrade', '+ Add Comrade')}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={`btn ${rosterViewMode === 'cards' ? '' : 'secondary'}`}
+                    onClick={() => setRosterViewMode('cards')}
+                    style={{ fontSize: 12, padding: '6px 12px' }}
+                  >
+                    🗂️ {t('proforma.cardsView', 'Card View')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${rosterViewMode === 'table' ? '' : 'secondary'}`}
+                    onClick={() => setRosterViewMode('table')}
+                    style={{ fontSize: 12, padding: '6px 12px' }}
+                  >
+                    📊 {t('proforma.tableView', 'Official Table View')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={addRow}
+                    style={{ fontSize: 12, padding: '6px 12px', background: '#0284c7', borderColor: '#0284c7' }}
+                  >
+                    ➕ {t('proforma.addMember', 'Add Member')}
+                  </button>
+                </>
+              )}
             </div>
           </div>
+
+          {/* FORM 6 ROSTER: CARDS VIEW */}
+          {formType === 'form6' && form6ViewMode === 'cards' && (
+            <div>
+              {rows.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--text-soft)' }}>
+                  {t('proforma.form6.noComrades', 'ضلعي ايګزيکټيو کښي تر اوسه ملګري نشته. د ملګري زياتولو لپاره "+ Add Comrade" کليک کړئ يا د سسټم څخه اتومات راوباسئ.')}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
+                  {rows
+                    .map((r, originalIdx) => ({ ...r, _idx: originalIdx }))
+                    .filter((r) => !form6Search.trim() || (r.name || '').toLowerCase().includes(form6Search.toLowerCase().trim()))
+                    .map((r) => {
+                      const idx = r._idx;
+                      return (
+                        <div key={idx} className="card" style={{ position: 'relative', border: '1px solid var(--border)' }}>
+                          {/* Card Header */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 10, marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                              <span style={{ background: '#0284c7', color: '#fff', borderRadius: '50%', width: 26, height: 26, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 'bold', flexShrink: 0 }}>
+                                {idx + 1}
+                              </span>
+                              <input
+                                type="text"
+                                value={r.name || ''}
+                                onChange={(e) => updateForm6Row(idx, 'name', e.target.value)}
+                                placeholder={t('proforma.form6.comradeName', 'ضلع ايګزيکټيو نوم (Comrade Name)')}
+                                style={{ fontWeight: 'bold', fontSize: 14, padding: '4px 8px', width: '100%' }}
+                              />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginInlineStart: 8 }}>
+                              <select
+                                value={r.activeStatus || 'فعاله'}
+                                onChange={(e) => updateForm6Row(idx, 'activeStatus', e.target.value)}
+                                style={{ fontSize: 11, padding: '3px 6px', borderRadius: 4 }}
+                              >
+                                <option value="فعاله">{t('proforma.active', 'فعاله')}</option>
+                                <option value="غير فعاله">{t('proforma.inactive', 'غير فعاله')}</option>
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => removeForm6Row(idx)}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}
+                                title={t('proforma.remove', 'Remove Member')}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quick Summary Strip */}
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14, background: 'var(--surface-alt)', padding: '6px 10px', borderRadius: 6, fontSize: 12, alignItems: 'center' }}>
+                            <span style={{ color: 'var(--primary, #38bdf8)', fontWeight: 700 }}>
+                              🤝 {t('proforma.form6.totalMeetings', 'ټولي غونډي')}: <strong>{r.totalMeetings ?? 0}</strong>
+                            </span>
+                            <span style={{ color: 'var(--text-soft)' }}>•</span>
+                            <span style={{ fontWeight: 600 }}>
+                              💰 {t('proforma.form6.duesMonthly', 'چنده')}: PKR {(parseInt(r.monthlyDues || r.dues, 10) || 0).toLocaleString()}
+                            </span>
+                            <span style={{ color: 'var(--text-soft)' }}>•</span>
+                            <span>
+                              🏛️ {t('proforma.form6.officeAttendance', 'دفتر')}: {r.officeAttendance || 'حاضر'}
+                            </span>
+                          </div>
+
+                          {/* Sub-Section 1: District & Area Meetings (ضلعي او علاقائي غونډي) */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary, #38bdf8)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>🏛️</span> {t('proforma.form6.secDistAreaMeetings', 'ضلعي او علاقائي غونډي (District & Area Meetings)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.distExec', 'ضلع ايګزيکټيو')}</label>
+                                <NumberStepper value={r.distExecMeeting} onChange={(v) => updateForm6Row(idx, 'distExecMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.distComm', 'ضلع کميټي')}</label>
+                                <NumberStepper value={r.distCommMeeting} onChange={(v) => updateForm6Row(idx, 'distCommMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.areaExec', 'علاقائي ايګزيکټيو')}</label>
+                                <NumberStepper value={r.areaExecMeeting} onChange={(v) => updateForm6Row(idx, 'areaExecMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.areaComm', 'علاقائي کميټي')}</label>
+                                <NumberStepper value={r.areaCommMeeting} onChange={(v) => updateForm6Row(idx, 'areaCommMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sub-Section 2: Basic Units & PSO Wing (بنسټيز يونټونه او پي ايس او) */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>🏢</span> {t('proforma.form6.secBuPsoMeetings', 'بنسټيز يونټونه او پي ايس او (Basic Units & PSO)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.ownBu', 'خپل يونټ')}</label>
+                                <NumberStepper value={r.ownBuMeeting} onChange={(v) => updateForm6Row(idx, 'ownBuMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.buExec', 'يونټ ايګزيکټيو')}</label>
+                                <NumberStepper value={r.buExecMeeting} onChange={(v) => updateForm6Row(idx, 'buExecMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.buGb', 'يونټانو غونډي')}</label>
+                                <NumberStepper value={r.buGbMeeting} onChange={(v) => updateForm6Row(idx, 'buGbMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.pso', 'PSO غونډي')}</label>
+                                <NumberStepper value={r.psoMeeting} onChange={(v) => updateForm6Row(idx, 'psoMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sub-Section 3: Party Programs & Education (پروګرامونه، کانفرنسونه، سټډي سرکل) */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#8b5cf6', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>📚</span> {t('proforma.form6.secProgramsEducation', 'پروګرامونه او زده کړه (Programs & Education)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.conf', 'کانفرنس')}</label>
+                                <NumberStepper value={r.conferenceMeeting} onChange={(v) => updateForm6Row(idx, 'conferenceMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.seminar', 'سيمينار')}</label>
+                                <NumberStepper value={r.seminarMeeting} onChange={(v) => updateForm6Row(idx, 'seminarMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.studyCircle', 'سټډي سرکل')}</label>
+                                <NumberStepper value={r.studyCircleMeeting} onChange={(v) => updateForm6Row(idx, 'studyCircleMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.induction', 'شموليت')}</label>
+                                <NumberStepper value={r.inductionMeeting} onChange={(v) => updateForm6Row(idx, 'inductionMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.allied', 'اتحاديان')}</label>
+                                <NumberStepper value={r.alliedMeeting} onChange={(v) => updateForm6Row(idx, 'alliedMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sub-Section 4: Mass Action & Outreach (اولسي غونډي او دورې) */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>📢</span> {t('proforma.form6.secMassAction', 'اولسي فعاليت او دورې (Public Action & Tours)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.rallies', 'جلسے مظاهرے')}</label>
+                                <NumberStepper value={r.rallyMeeting} onChange={(v) => updateForm6Row(idx, 'rallyMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.jirgas', 'جرګے')}</label>
+                                <NumberStepper value={r.jirgaMeeting} onChange={(v) => updateForm6Row(idx, 'jirgaMeeting', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.tours', 'دورې')}</label>
+                                <NumberStepper value={r.tours} onChange={(v) => updateForm6Row(idx, 'tours', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.publicOutreach', 'اولسي رابطې')}</label>
+                                <NumberStepper value={r.publicOutreach} onChange={(v) => updateForm6Row(idx, 'publicOutreach', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sub-Section 5: Attendance, Finances & Ideology (حاضري، چنده او نظرياتي لوستنه) */}
+                          <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 10 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-soft)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>💼</span> {t('proforma.form6.secAdministration', 'اداري، مالي چارې او مطالعه (Admin, Dues & Ideology)')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.inactiveContact', 'غير فعاله رابطې')}</label>
+                                <NumberStepper value={r.inactiveContact} onChange={(v) => updateForm6Row(idx, 'inactiveContact', v)} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between' }} />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.monthlyDues', 'مياشتني چنده (PKR)')}</label>
+                                <input
+                                  type="number"
+                                  value={r.monthlyDues ?? ''}
+                                  onChange={(e) => updateForm6Row(idx, 'monthlyDues', e.target.value)}
+                                  placeholder="0"
+                                  style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4, fontWeight: 'bold' }}
+                                />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.officeAttendance', 'دفتر حاضري')}</label>
+                                <select
+                                  value={r.officeAttendance || 'حاضر'}
+                                  onChange={(e) => updateForm6Row(idx, 'officeAttendance', e.target.value)}
+                                  style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4 }}
+                                >
+                                  <option value="حاضر">{t('proforma.present', 'حاضر')}</option>
+                                  <option value="غير حاضر">{t('proforma.absent', 'غير حاضر')}</option>
+                                  <option value="رخصت">{t('proforma.leave', 'رخصت')}</option>
+                                </select>
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.bloodBank', 'بلډ بينک / زکات')}</label>
+                                <input
+                                  type="text"
+                                  value={r.bloodBankPosts || ''}
+                                  onChange={(e) => updateForm6Row(idx, 'bloodBankPosts', e.target.value)}
+                                  placeholder="e.g. O+, 500"
+                                  style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4 }}
+                                />
+                              </div>
+                              <div style={{ background: 'var(--surface-alt)', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-soft)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('proforma.form6.ideologyReading', 'مطالعه سياسي نظرياتي')}</label>
+                                <input
+                                  type="text"
+                                  value={r.ideologicalReading || ''}
+                                  onChange={(e) => updateForm6Row(idx, 'ideologicalReading', e.target.value)}
+                                  placeholder="e.g. کتاب / مجله"
+                                  style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4 }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* FORM 6 ROSTER: OFFICIAL TABLE VIEW (26 COLUMNS MATCHING PRINTED SHEET) */}
+          {formType === 'form6' && form6ViewMode === 'table' && (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto', background: 'var(--surface)' }}>
+              <table className="table" style={{ width: '100%', minWidth: 1600, fontSize: 11, borderCollapse: 'collapse', textAlign: 'center' }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface-alt)' }}>
+                    <th rowSpan={2} style={{ width: 36 }}>#</th>
+                    <th rowSpan={2} style={{ minWidth: 150, textAlign: isRtl ? 'right' : 'left' }}>{t('proforma.form6.comradeName', 'ضلع ايګزيکټيو نوم')}</th>
+                    <th rowSpan={2} title="ضلع ايګزيکټيو غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.distExec', 'ضلع ايګزي')}</th>
+                    <th rowSpan={2} title="ضلع کميټي غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.distComm', 'ضلع کمي')}</th>
+                    <th rowSpan={2} title="علاقائي ايګزيکټيو غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.areaExec', 'علاقائي ايګ')}</th>
+                    <th rowSpan={2} title="علاقائي کميټي غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.areaComm', 'علاقائي کم')}</th>
+                    <th rowSpan={2} title="خپل ابتدائي يونټ غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.ownBu', 'خپل يونټ')}</th>
+                    <th rowSpan={2} title="ابتدائي يونټ ايګزيکټيو غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.buExec', 'يونټ ايګ')}</th>
+                    <th rowSpan={2} title="ابتدائي يونټانو غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.buGb', 'يونټ غونډي')}</th>
+                    <th rowSpan={2} title="PSO سره غونډي" style={{ minWidth: 50 }}>PSO</th>
+                    <th rowSpan={2} title="پارټي کانفرنسونه" style={{ minWidth: 50 }}>{t('proforma.form6.conf', 'کانفرنس')}</th>
+                    <th rowSpan={2} title="سيمينارونه" style={{ minWidth: 50 }}>{t('proforma.form6.seminar', 'سيمينار')}</th>
+                    <th rowSpan={2} title="سټډي سرکل" style={{ minWidth: 50 }}>{t('proforma.form6.studyCircle', 'سټډي')}</th>
+                    <th rowSpan={2} title="نوي شموليت پروګرام" style={{ minWidth: 50 }}>{t('proforma.form6.induction', 'شموليت')}</th>
+                    <th rowSpan={2} title="اتحاديانو جماعتو سره غونډي" style={{ minWidth: 55 }}>{t('proforma.form6.allied', 'اتحاديان')}</th>
+                    <th colSpan={2} style={{ background: '#fef3c7', color: '#92400e' }}>{t('proforma.form6.publicGatherings', 'اولسي غونډي')}</th>
+                    <th rowSpan={2} title="ټولي غونډي" style={{ minWidth: 55, background: 'var(--primary, #38bdf8)', color: '#fff', fontWeight: 'bold' }}>{t('proforma.form6.totalMeetings', 'ټولي')}</th>
+                    <th rowSpan={2} title="مياشتني چنده (PKR)" style={{ minWidth: 75 }}>{t('proforma.form6.monthlyDues', 'چنده')}</th>
+                    <th rowSpan={2} title="دورې" style={{ minWidth: 45 }}>{t('proforma.form6.tours', 'دورې')}</th>
+                    <th rowSpan={2} title="اولسي تنظيمي رابطې" style={{ minWidth: 55 }}>{t('proforma.form6.publicOutreach', 'اولسي')}</th>
+                    <th rowSpan={2} title="غير فعاله رابطې" style={{ minWidth: 55 }}>{t('proforma.form6.inactiveContact', 'غير فعاله')}</th>
+                    <th rowSpan={2} title="دفتر حاضري" style={{ minWidth: 65 }}>{t('proforma.form6.officeAttendance', 'دفتر')}</th>
+                    <th rowSpan={2} title="بلډ بينک پوسټ / زکات" style={{ minWidth: 70 }}>{t('proforma.form6.bloodBank', 'بلډ/زکات')}</th>
+                    <th rowSpan={2} title="فعاله / غير فعاله" style={{ minWidth: 65 }}>{t('proforma.form6.status', 'حالت')}</th>
+                    <th rowSpan={2} title="لوستنه (مطالعه) سياسي نظرياتي" style={{ minWidth: 90 }}>{t('proforma.form6.ideologyReading', 'مطالعه')}</th>
+                    <th rowSpan={2} style={{ width: 35 }}>✕</th>
+                  </tr>
+                  <tr style={{ background: 'var(--surface-alt)' }}>
+                    <th title="جلسے مظاهرے" style={{ minWidth: 50, background: '#fef3c7', color: '#92400e' }}>{t('proforma.form6.rallies', 'جلسے')}</th>
+                    <th title="جرګے اولسي" style={{ minWidth: 50, background: '#fef3c7', color: '#92400e' }}>{t('proforma.form6.jirgas', 'جرګے')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={27} style={{ padding: 30, color: 'var(--text-soft)' }}>
+                        {t('proforma.form6.noComrades', 'ضلعي ايګزيکټيو کښي تر اوسه ملګري نشته. د ملګري زياتولو لپاره "+ Add Comrade" کليک کړئ.')}
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((r, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: 4, fontWeight: 'bold' }}>{idx + 1}</td>
+                        <td style={{ padding: 4, textAlign: isRtl ? 'right' : 'left' }}>
+                          <input
+                            type="text"
+                            value={r.name || ''}
+                            onChange={(e) => updateForm6Row(idx, 'name', e.target.value)}
+                            placeholder={t('proforma.form6.comradeName', 'ملګري نوم')}
+                            style={{ width: '100%', padding: '3px 6px', fontWeight: 600, fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.distExecMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'distExecMeeting', e.target.value)} style={{ width: 44, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.distCommMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'distCommMeeting', e.target.value)} style={{ width: 44, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.areaExecMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'areaExecMeeting', e.target.value)} style={{ width: 44, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.areaCommMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'areaCommMeeting', e.target.value)} style={{ width: 44, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.ownBuMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'ownBuMeeting', e.target.value)} style={{ width: 44, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.buExecMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'buExecMeeting', e.target.value)} style={{ width: 44, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.buGbMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'buGbMeeting', e.target.value)} style={{ width: 44, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.psoMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'psoMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.conferenceMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'conferenceMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.seminarMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'seminarMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.studyCircleMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'studyCircleMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.inductionMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'inductionMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.alliedMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'alliedMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2, background: '#fffbeb' }}><input type="number" min={0} value={r.rallyMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'rallyMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2, background: '#fffbeb' }}><input type="number" min={0} value={r.jirgaMeeting ?? ''} onChange={(e) => updateForm6Row(idx, 'jirgaMeeting', e.target.value)} style={{ width: 40, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2, background: 'rgba(56, 189, 248, 0.12)', fontWeight: 'bold' }}>
+                          <input
+                            type="number"
+                            readOnly
+                            value={r.totalMeetings ?? ''}
+                            style={{ width: 44, textAlign: 'center', fontWeight: 'bold', fontSize: 12, border: 'none', background: 'transparent' }}
+                          />
+                        </td>
+                        <td style={{ padding: 2 }}>
+                          <input
+                            type="number"
+                            min={0}
+                            value={r.monthlyDues ?? ''}
+                            onChange={(e) => updateForm6Row(idx, 'monthlyDues', e.target.value)}
+                            style={{ width: 68, textAlign: 'center', fontSize: 11, padding: 2, fontWeight: 600 }}
+                          />
+                        </td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.tours ?? ''} onChange={(e) => updateForm6Row(idx, 'tours', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.publicOutreach ?? ''} onChange={(e) => updateForm6Row(idx, 'publicOutreach', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}><input type="number" min={0} value={r.inactiveContact ?? ''} onChange={(e) => updateForm6Row(idx, 'inactiveContact', e.target.value)} style={{ width: 38, textAlign: 'center', fontSize: 11, padding: 2 }} /></td>
+                        <td style={{ padding: 2 }}>
+                          <select
+                            value={r.officeAttendance || 'حاضر'}
+                            onChange={(e) => updateForm6Row(idx, 'officeAttendance', e.target.value)}
+                            style={{ fontSize: 11, padding: '2px 4px', borderRadius: 4 }}
+                          >
+                            <option value="حاضر">{t('proforma.present', 'حاضر')}</option>
+                            <option value="غير حاضر">{t('proforma.absent', 'غير حاضر')}</option>
+                            <option value="رخصت">{t('proforma.leave', 'رخصت')}</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: 2 }}>
+                          <input
+                            type="text"
+                            value={r.bloodBankPosts || ''}
+                            onChange={(e) => updateForm6Row(idx, 'bloodBankPosts', e.target.value)}
+                            placeholder="O+ / زکات"
+                            style={{ width: 65, textAlign: 'center', fontSize: 11, padding: 2 }}
+                          />
+                        </td>
+                        <td style={{ padding: 2 }}>
+                          <select
+                            value={r.activeStatus || 'فعاله'}
+                            onChange={(e) => updateForm6Row(idx, 'activeStatus', e.target.value)}
+                            style={{ fontSize: 11, padding: '2px 4px', borderRadius: 4 }}
+                          >
+                            <option value="فعاله">{t('proforma.active', 'فعاله')}</option>
+                            <option value="غير فعاله">{t('proforma.inactive', 'غير فعاله')}</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: 2 }}>
+                          <input
+                            type="text"
+                            value={r.ideologicalReading || ''}
+                            onChange={(e) => updateForm6Row(idx, 'ideologicalReading', e.target.value)}
+                            placeholder="کتاب / مجله"
+                            style={{ width: 85, fontSize: 11, padding: 2 }}
+                          />
+                        </td>
+                        <td style={{ padding: 2 }}>
+                          <button
+                            type="button"
+                            onClick={() => removeForm6Row(idx)}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14 }}
+                            title={t('proforma.remove', 'Remove Member')}
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {rows.length > 0 && (
+                  <tfoot>
+                    <tr style={{ background: 'var(--surface-alt)', fontWeight: 'bold' }}>
+                      <td colSpan={2} style={{ padding: 6, textAlign: isRtl ? 'right' : 'left' }}>
+                        {t('proforma.form6.totalComrades', 'ټول ملګري')}: {rows.length}
+                      </td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.distExecMeeting || r.distExec, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.distCommMeeting || r.distComm, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.areaExecMeeting || r.areaExec, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.areaCommMeeting || r.areaComm, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.ownBuMeeting || r.ownBu, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.buExecMeeting || r.buExec, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.buGbMeeting || r.buGb, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.psoMeeting || r.pso, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.conferenceMeeting || r.conf, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.seminarMeeting || r.seminar, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.studyCircleMeeting || r.studyCircle, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.inductionMeeting || r.induction, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.alliedMeeting || r.allied, 10) || 0), 0)}</td>
+                      <td style={{ background: '#fffbeb' }}>{rows.reduce((s, r) => s + (parseInt(r.rallyMeeting || r.rallies, 10) || 0), 0)}</td>
+                      <td style={{ background: '#fffbeb' }}>{rows.reduce((s, r) => s + (parseInt(r.jirgaMeeting || r.jirgas, 10) || 0), 0)}</td>
+                      <td style={{ background: 'var(--primary, #38bdf8)', color: '#fff' }}>
+                        {rows.reduce((s, r) => s + (parseInt(r.totalMeetings, 10) || 0), 0)}
+                      </td>
+                      <td style={{ color: '#10b981' }}>
+                        PKR {rows.reduce((s, r) => s + (parseInt(r.monthlyDues || r.dues, 10) || 0), 0).toLocaleString()}
+                      </td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.tours, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.publicOutreach, 10) || 0), 0)}</td>
+                      <td>{rows.reduce((s, r) => s + (parseInt(r.inactiveContact, 10) || 0), 0)}</td>
+                      <td colSpan={5}></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
 
           {/* FORM 4 ROSTER: CARDS VIEW */}
           {formType === 'form4' && rosterViewMode === 'cards' && (
@@ -3592,7 +6917,9 @@ export default function ProformaReportsPage() {
       {activeTab === 'notes' && (
         <div className="card">
           <h3 style={{ margin: '0 0 10px', color: 'var(--primary, #38bdf8)' }}>
-            {t('proforma.tabNotes', 'Remarks & Observations')}
+            {formType === 'form2' || formType === 'form5'
+              ? t('proforma.tabNotes2', '2. Remarks & Observations')
+              : t('proforma.tabNotes', '3. Remarks & Observations')}
           </h3>
           <p className="muted" style={{ margin: '0 0 14px', fontSize: 13 }}>
             {t('proforma.notesPrompt', 'Write detailed political, organizational observations, unit reports, and upcoming resolutions for this month:')}
@@ -3601,13 +6928,854 @@ export default function ProformaReportsPage() {
             rows={8}
             value={formData.notes || ''}
             onChange={(e) => updateField('notes', e.target.value)}
-            placeholder={formType === 'form4'
+            placeholder={formType === 'form6'
+              ? t('proforma.notesPlaceholderForm6', 'e.g., During this month/quarter, district executive meetings were conducted, subordinate area and basic units performance was evaluated, ideological study circles were held, and political rallies were organized...')
+              : formType === 'form5'
+              ? t('proforma.notesPlaceholderForm5', 'e.g., During this period, provincial executive comrades completed organizational tours, attended central and provincial meetings, conducted study circles, and submitted individual activity summaries...')
+              : formType === 'form4'
               ? t('proforma.notesPlaceholderForm4', 'e.g., During this month, the basic unit executive meeting was held with full attendance, new members were inducted, and upcoming political rallies were scheduled...')
               : formType === 'form2'
               ? t('proforma.notesPlaceholderForm2', 'e.g., During this month, subordinate basic units held regular executive and general body meetings, study circles were conducted, and dues were collected...')
               : t('proforma.notesPlaceholder', 'e.g., During this month, the area executive meeting was held with full attendance, new members were inducted, and upcoming political rallies were scheduled...')}
             style={{ width: '100%', padding: 12, borderRadius: 8, lineHeight: 1.6, fontSize: 14 }}
           />
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* FORM 3 TABS 1 TO 4 (ALL 8 SECTIONS) */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {formType === 'form3' && activeTab === 'form3_tab1' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Section 1: Inactive Basic Units */}
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                  <span>🏢</span>
+                  <span>{t('proforma.form3.sec1Title', 'علاقائي يونټ کښي غير فعاله ابتدائي يونټانو نومونه،وجوهات / وړانديزونه')}</span>
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 4 }}>
+                  {t('proforma.form3.sec1Subtitle', 'Names of inactive basic units, specific causes/reasons, and revival proposals')}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={addInactiveUnitRow}
+                style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, background: '#0284c7', borderColor: '#0284c7' }}
+              >
+                <span>➕</span>
+                <span>{t('proforma.form3.addInactiveUnit', '+ Add Inactive Unit')}</span>
+              </button>
+            </div>
+
+            {(formData.inactiveUnits || []).length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-soft)', background: 'var(--surface-alt)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                {t('proforma.form3.noInactiveUnits', 'No inactive units recorded in this area.')}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="table" style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)' }}>
+                      <th style={{ width: 50, textAlign: 'center' }}>#</th>
+                      <th style={{ minWidth: 200 }}>{t('proforma.form3.unitName', 'Basic Unit Name')}</th>
+                      <th style={{ minWidth: 280 }}>{t('proforma.form3.reason', 'Reasons for Inactivity')}</th>
+                      <th style={{ minWidth: 280 }}>{t('proforma.form3.suggestion', 'Suggestions / Proposals')}</th>
+                      <th style={{ width: 60, textAlign: 'center' }}>✕</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formData.inactiveUnits || []).map((u, idx) => (
+                      <tr key={idx}>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{idx + 1}</td>
+                        <td>
+                          <input
+                            type="text"
+                            value={u.unitName || ''}
+                            onChange={(e) => updateInactiveUnitRow(idx, 'unitName', e.target.value)}
+                            placeholder={t('proforma.form3.unitNamePlaceholder', 'e.g., کلي څانګه / Basic Unit name')}
+                            style={{ width: '100%', padding: '6px 10px', borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={u.reason || ''}
+                            onChange={(e) => updateInactiveUnitRow(idx, 'reason', e.target.value)}
+                            placeholder={t('proforma.form3.reasonPlaceholder', 'e.g., مشر ملګری مسافر دی / lack of regular meetings...')}
+                            style={{ width: '100%', padding: '6px 10px', borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={u.suggestion || ''}
+                            onChange={(e) => updateInactiveUnitRow(idx, 'suggestion', e.target.value)}
+                            placeholder={t('proforma.form3.suggestionPlaceholder', 'e.g., د نوي باډۍ ټاکل / reorganization visit proposed...')}
+                            style={{ width: '100%', padding: '6px 10px', borderRadius: 4 }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => removeInactiveUnitRow(idx)}
+                            title="Remove"
+                            style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 16 }}
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Higher Committee Members Activity */}
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                  <span>👥</span>
+                  <span>{t('proforma.form3.sec2Title', 'علاقائي يونټ کښي مرکزي، زونل،ضلعي،علاقائي کميټي د غړو کار او فعاليت رپورټ')}</span>
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 4 }}>
+                  {t('proforma.form3.sec2Subtitle', 'Comprehensive attendance, education, outreach and dues register for high-tier committee leaders')}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={addCommitteeMemberRow}
+                style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, background: '#0284c7', borderColor: '#0284c7' }}
+              >
+                <span>➕</span>
+                <span>{t('proforma.form3.addMember', '+ Add Committee Member')}</span>
+              </button>
+            </div>
+
+            {(formData.committeeMembers || []).length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-soft)', background: 'var(--surface-alt)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                {t('proforma.form3.noMembers', 'No committee members registered yet. Click "+ Add Committee Member" or auto-fill.')}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <table className="table" style={{ width: '100%', minWidth: 1400, fontSize: 12, borderCollapse: 'collapse', textAlign: 'center' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)' }}>
+                      <th style={{ width: 40 }}>#</th>
+                      <th style={{ minWidth: 150, textAlign: isRtl ? 'right' : 'left' }}>{t('proforma.form3.name', 'Comrade / Member Name')}</th>
+                      <th style={{ minWidth: 120 }}>{t('proforma.form3.role', 'Designation')}</th>
+                      <th style={{ minWidth: 100 }}>{t('proforma.form3.date', 'Date')}</th>
+                      <th title="علاقائي ايګزيکټيو غونډي" style={{ minWidth: 70 }}>{t('proforma.form3.areaExec', 'Area Exec')}</th>
+                      <th title="علاقائي کميټي غونډي" style={{ minWidth: 70 }}>{t('proforma.form3.areaComm', 'Area Comm')}</th>
+                      <th title="يونټ ايګزيکټيو غونډي" style={{ minWidth: 70 }}>{t('proforma.form3.unitExec', 'Unit Exec')}</th>
+                      <th title="يونټ جنرل باډي غونډي" style={{ minWidth: 70 }}>{t('proforma.form3.unitGb', 'Unit GB')}</th>
+                      <th title="پي ايس او غونډي" style={{ minWidth: 65 }}>{t('proforma.form3.pso', 'PSO')}</th>
+                      <th title="کانفرنس" style={{ minWidth: 65 }}>{t('proforma.form3.conf', 'Conf')}</th>
+                      <th title="سيمينار" style={{ minWidth: 65 }}>{t('proforma.form3.seminar', 'Seminar')}</th>
+                      <th title="سټډي سرکل" style={{ minWidth: 70 }}>{t('proforma.form3.studyCircle', 'Study')}</th>
+                      <th title="شموليت پروګرام" style={{ minWidth: 70 }}>{t('proforma.form3.induction', 'Induction')}</th>
+                      <th title="جلسه مظاهره جرګه" style={{ minWidth: 75 }}>{t('proforma.form3.rally', 'Rally/Jirga')}</th>
+                      <th title="لوستنه (مطالعه)" style={{ minWidth: 70 }}>{t('proforma.form3.reading', 'Reading')}</th>
+                      <th title="غير فعاله ايګزيکټيو او ملګرو سره رابطه" style={{ minWidth: 80 }}>{t('proforma.form3.inactiveContact', 'Inactive Outreach')}</th>
+                      <th title="چنده (PKR)" style={{ minWidth: 90 }}>{t('proforma.form3.dues', 'Dues')}</th>
+                      <th title="دوره" style={{ minWidth: 65 }}>{t('proforma.form3.tour', 'Tour')}</th>
+                      <th style={{ width: 45 }}>✕</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formData.committeeMembers || []).map((m, idx) => (
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 'bold' }}>{idx + 1}</td>
+                        <td style={{ textAlign: isRtl ? 'right' : 'left' }}>
+                          <input
+                            type="text"
+                            value={m.name || ''}
+                            onChange={(e) => updateCommitteeMemberRow(idx, 'name', e.target.value)}
+                            placeholder="Comrade Name"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={m.role || ''}
+                            onChange={(e) => updateCommitteeMemberRow(idx, 'role', e.target.value)}
+                            placeholder="Role / Title"
+                            style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={m.date || ''}
+                            onChange={(e) => updateCommitteeMemberRow(idx, 'date', e.target.value)}
+                            placeholder="DD/MM"
+                            style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4, textAlign: 'center' }}
+                          />
+                        </td>
+                        {['areaExec', 'areaComm', 'unitExec', 'unitGb', 'pso', 'conf', 'seminar', 'studyCircle', 'induction', 'rally', 'reading', 'inactiveContact'].map((col) => (
+                          <td key={col}>
+                            <NumberStepper
+                              value={m[col]}
+                              onChange={(val) => updateCommitteeMemberRow(idx, col, val)}
+                              min={0}
+                              style={{ minWidth: 70, transform: 'scale(0.92)' }}
+                            />
+                          </td>
+                        ))}
+                        <td>
+                          <input
+                            type="number"
+                            value={m.dues ?? ''}
+                            min={0}
+                            onChange={(e) => updateCommitteeMemberRow(idx, 'dues', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                            placeholder="0"
+                            style={{ width: 75, padding: '4px 6px', fontSize: 12, borderRadius: 4, textAlign: 'center', fontWeight: 'bold' }}
+                          />
+                        </td>
+                        <td>
+                          <NumberStepper
+                            value={m.tour}
+                            onChange={(val) => updateCommitteeMemberRow(idx, 'tour', val)}
+                            min={0}
+                            style={{ minWidth: 70, transform: 'scale(0.92)' }}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            onClick={() => removeCommitteeMemberRow(idx)}
+                            title="Remove"
+                            style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 15 }}
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: PUBLIC GATHERINGS & EDUCATION */}
+      {formType === 'form3' && activeTab === 'form3_tab2' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Section 3: Public Gatherings, Rallies, Protests, Jirgas, Corner Meetings, Inductions */}
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                  <span>📢</span>
+                  <span>{t('proforma.form3.sec3Title', 'علاقائي يونټ کي اولسي غونډي، جلسے،مظاهرے، جرګے،کارنر ميټنګ،شموليت پرګرامونو رپورټ')}</span>
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 4 }}>
+                  {t('proforma.form3.sec3Subtitle', 'Mass rallies, demonstrations, public jirgas, corner meetings, and new membership induction ceremonies')}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={addPublicActivityRow}
+                style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, background: '#0284c7', borderColor: '#0284c7' }}
+              >
+                <span>➕</span>
+                <span>{t('proforma.form3.addPublicActivity', '+ Add Public Gathering')}</span>
+              </button>
+            </div>
+
+            {(formData.publicActivities || []).length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-soft)', background: 'var(--surface-alt)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                {t('proforma.form3.noPublicActivities', 'No public gatherings recorded.')}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <table className="table" style={{ width: '100%', minWidth: 1000, fontSize: 12, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)' }}>
+                      <th style={{ width: 40, textAlign: 'center' }}>#</th>
+                      <th style={{ minWidth: 140 }}>{t('proforma.form3.orgName', 'Organ / Unit Name')}</th>
+                      <th style={{ width: 95 }}>{t('proforma.form3.date', 'Date')}</th>
+                      <th style={{ minWidth: 130 }}>{t('proforma.form3.location', 'Venue / Location')}</th>
+                      <th style={{ minWidth: 160 }}>{t('proforma.form3.topic', 'Topic / Subject')}</th>
+                      <th style={{ minWidth: 130 }}>{t('proforma.form3.programType', 'Program Type')}</th>
+                      <th style={{ minWidth: 160 }}>{t('proforma.form3.speakers', 'Key Speakers')}</th>
+                      <th style={{ width: 90, textAlign: 'center' }}>{t('proforma.form3.memberCount', 'Members Count')}</th>
+                      <th style={{ width: 90, textAlign: 'center' }}>{t('proforma.form3.publicCount', 'Public Attendees')}</th>
+                      <th style={{ width: 45, textAlign: 'center' }}>✕</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formData.publicActivities || []).map((p, idx) => (
+                      <tr key={idx}>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{idx + 1}</td>
+                        <td>
+                          <input
+                            type="text"
+                            value={p.orgName || ''}
+                            onChange={(e) => updatePublicActivityRow(idx, 'orgName', e.target.value)}
+                            placeholder="Organ / Unit Name"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={p.date || ''}
+                            onChange={(e) => updatePublicActivityRow(idx, 'date', e.target.value)}
+                            placeholder="DD/MM"
+                            style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4, textAlign: 'center' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={p.location || ''}
+                            onChange={(e) => updatePublicActivityRow(idx, 'location', e.target.value)}
+                            placeholder="Venue"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={p.topic || ''}
+                            onChange={(e) => updatePublicActivityRow(idx, 'topic', e.target.value)}
+                            placeholder="Subject / Agenda"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={p.programType || ''}
+                            onChange={(e) => updatePublicActivityRow(idx, 'programType', e.target.value)}
+                            placeholder="Program Type"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={p.speakers || ''}
+                            onChange={(e) => updatePublicActivityRow(idx, 'speakers', e.target.value)}
+                            placeholder="Key Speakers"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            value={p.memberCount ?? ''}
+                            min={0}
+                            onChange={(e) => updatePublicActivityRow(idx, 'memberCount', e.target.value)}
+                            placeholder="0"
+                            style={{ width: 65, padding: '4px 6px', fontSize: 12, borderRadius: 4, textAlign: 'center' }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            value={p.publicCount ?? ''}
+                            min={0}
+                            onChange={(e) => updatePublicActivityRow(idx, 'publicCount', e.target.value)}
+                            placeholder="0"
+                            style={{ width: 65, padding: '4px 6px', fontSize: 12, borderRadius: 4, textAlign: 'center' }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => removePublicActivityRow(idx)}
+                            title="Remove"
+                            style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 15 }}
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 4: Party Conferences, Seminars & Study Circles */}
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                  <span>📚</span>
+                  <span>{t('proforma.form3.sec4Title', 'علاقائي يونټ کښي پارټي کانفرنس، سيمينار او سټډي سرکل')}</span>
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 4 }}>
+                  {t('proforma.form3.sec4Subtitle', 'Educational programs, ideology study circles, symposiums and party conferences')}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={addEducationalActivityRow}
+                style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, background: '#0284c7', borderColor: '#0284c7' }}
+              >
+                <span>➕</span>
+                <span>{t('proforma.form3.addEduActivity', '+ Add Conference / Study Circle')}</span>
+              </button>
+            </div>
+
+            {(formData.educationalActivities || []).length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-soft)', background: 'var(--surface-alt)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                {t('proforma.form3.noEduActivities', 'No conferences or study circles recorded.')}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <table className="table" style={{ width: '100%', minWidth: 900, fontSize: 12, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)' }}>
+                      <th style={{ width: 40, textAlign: 'center' }}>#</th>
+                      <th style={{ minWidth: 140 }}>{t('proforma.form3.orgName', 'Organ / Unit Name')}</th>
+                      <th style={{ width: 95 }}>{t('proforma.form3.date', 'Date')}</th>
+                      <th style={{ minWidth: 130 }}>{t('proforma.form3.location', 'Venue / Location')}</th>
+                      <th style={{ minWidth: 160 }}>{t('proforma.form3.topic', 'Topic / Subject')}</th>
+                      <th style={{ minWidth: 130 }}>{t('proforma.form3.programType', 'Program Type')}</th>
+                      <th style={{ minWidth: 160 }}>{t('proforma.form3.speakers', 'Key Speakers')}</th>
+                      <th style={{ width: 95, textAlign: 'center' }}>{t('proforma.form3.memberCount', 'Members Count')}</th>
+                      <th style={{ width: 45, textAlign: 'center' }}>✕</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formData.educationalActivities || []).map((eRow, idx) => (
+                      <tr key={idx}>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{idx + 1}</td>
+                        <td>
+                          <input
+                            type="text"
+                            value={eRow.orgName || ''}
+                            onChange={(e) => updateEducationalActivityRow(idx, 'orgName', e.target.value)}
+                            placeholder="Organ / Unit Name"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={eRow.date || ''}
+                            onChange={(e) => updateEducationalActivityRow(idx, 'date', e.target.value)}
+                            placeholder="DD/MM"
+                            style={{ width: '100%', padding: '4px 6px', fontSize: 12, borderRadius: 4, textAlign: 'center' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={eRow.location || ''}
+                            onChange={(e) => updateEducationalActivityRow(idx, 'location', e.target.value)}
+                            placeholder="Venue"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={eRow.topic || ''}
+                            onChange={(e) => updateEducationalActivityRow(idx, 'topic', e.target.value)}
+                            placeholder="Subject / Agenda"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={eRow.programType || ''}
+                            onChange={(e) => updateEducationalActivityRow(idx, 'programType', e.target.value)}
+                            placeholder="Study Circle / Seminar..."
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={eRow.speakers || ''}
+                            onChange={(e) => updateEducationalActivityRow(idx, 'speakers', e.target.value)}
+                            placeholder="Key Speakers / Instructor"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            value={eRow.memberCount ?? ''}
+                            min={0}
+                            onChange={(e) => updateEducationalActivityRow(idx, 'memberCount', e.target.value)}
+                            placeholder="0"
+                            style={{ width: 70, padding: '4px 6px', fontSize: 12, borderRadius: 4, textAlign: 'center' }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => removeEducationalActivityRow(idx)}
+                            title="Remove"
+                            style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 15 }}
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: DISCIPLINE, BLOOD BANK & PROPOSALS */}
+      {formType === 'form3' && activeTab === 'form3_tab3' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Section 5: Disciplinary Actions */}
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+                  <span>⚖️</span>
+                  <span>{t('proforma.form3.sec5Title', 'علاقه کي تاديبي کاروائي')}</span>
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 4 }}>
+                  {t('proforma.form3.sec5Subtitle', 'Disciplinary actions, constitutional violations investigated, and measures taken in area')}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={addDisciplinaryRow}
+                style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, background: '#0284c7', borderColor: '#0284c7' }}
+              >
+                <span>➕</span>
+                <span>{t('proforma.form3.addDisciplinary', '+ Add Disciplinary Record')}</span>
+              </button>
+            </div>
+
+            {(formData.disciplinaryActions || []).length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-soft)', background: 'var(--surface-alt)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                {t('proforma.form3.noDisciplinary', 'No disciplinary actions recorded in this area.')}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <table className="table" style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)' }}>
+                      <th style={{ width: 40, textAlign: 'center' }}>#</th>
+                      <th style={{ minWidth: 160 }}>{t('proforma.form3.name', 'Comrade Name')}</th>
+                      <th style={{ minWidth: 140 }}>{t('proforma.form3.role', 'Designation')}</th>
+                      <th style={{ minWidth: 240 }}>{t('proforma.form3.violation', 'Violation Committed')}</th>
+                      <th style={{ minWidth: 240 }}>{t('proforma.form3.action', 'Disciplinary Action Taken')}</th>
+                      <th style={{ width: 45, textAlign: 'center' }}>✕</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(formData.disciplinaryActions || []).map((d, idx) => (
+                      <tr key={idx}>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{idx + 1}</td>
+                        <td>
+                          <input
+                            type="text"
+                            value={d.name || ''}
+                            onChange={(e) => updateDisciplinaryRow(idx, 'name', e.target.value)}
+                            placeholder="Comrade Name"
+                            style={{ width: '100%', padding: '5px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={d.role || ''}
+                            onChange={(e) => updateDisciplinaryRow(idx, 'role', e.target.value)}
+                            placeholder="Role / Unit"
+                            style={{ width: '100%', padding: '5px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={d.violation || ''}
+                            onChange={(e) => updateDisciplinaryRow(idx, 'violation', e.target.value)}
+                            placeholder="Nature of constitutional or discipline breach"
+                            style={{ width: '100%', padding: '5px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            value={d.action || ''}
+                            onChange={(e) => updateDisciplinaryRow(idx, 'action', e.target.value)}
+                            placeholder="Warning / suspension / expulsion..."
+                            style={{ width: '100%', padding: '5px 8px', fontSize: 12, borderRadius: 4 }}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => removeDisciplinaryRow(idx)}
+                            title="Remove"
+                            style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 15 }}
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 6: Blood Bank & Zakat Report */}
+          <div className="card" style={{ padding: 18 }}>
+            <h3 style={{ margin: '0 0 4px', color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+              <span>🩸</span>
+              <span>{t('proforma.form3.sec6Title', 'علاقائي يونټ کښي بلډ بينک د پاره پوستونه،نغدي او زکات رپورټ')}</span>
+            </h3>
+            <div style={{ fontSize: 12, color: 'var(--text-soft)', marginBottom: 16 }}>
+              {t('proforma.form3.sec6Subtitle', 'Emergency blood appeal posts, cash funds collected, and party welfare Zakat register')}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+              {/* Blood Posts */}
+              <div style={{ padding: 14, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                  <span>📢</span>
+                  <span>{t('proforma.form3.bloodPosts', 'Blood Bank Appeals / Posts')}</span>
+                </label>
+                <NumberStepper
+                  value={formData.bloodBank?.bloodPosts}
+                  onChange={(val) => updateBloodBank('bloodPosts', val)}
+                  min={0}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {/* Blood Cash */}
+              <div style={{ padding: 14, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                  <span>💵</span>
+                  <span>{t('proforma.form3.bloodCash', 'Cash Received (PKR)')}</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.bloodBank?.bloodCash ?? ''}
+                  min={0}
+                  onChange={(e) => updateBloodBank('bloodCash', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                  placeholder="0"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 'bold', borderRadius: 6 }}
+                />
+              </div>
+
+              {/* Total Cash */}
+              <div style={{ padding: 14, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                  <span>💰</span>
+                  <span>{t('proforma.form3.bloodTotalCash', 'Total Cash (PKR)')}</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.bloodBank?.bloodTotalCash ?? ''}
+                  min={0}
+                  onChange={(e) => updateBloodBank('bloodTotalCash', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                  placeholder="0"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 'bold', borderRadius: 6 }}
+                />
+              </div>
+
+              {/* Zakat */}
+              <div style={{ padding: 14, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                  <span>🤲</span>
+                  <span>{t('proforma.form3.zakat', 'Zakat (PKR)')}</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.bloodBank?.zakat ?? ''}
+                  min={0}
+                  onChange={(e) => updateBloodBank('zakat', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                  placeholder="0"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 14, fontWeight: 'bold', borderRadius: 6, color: '#10b981' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 7: Proposals & Demands Matrix */}
+          <div className="card" style={{ padding: 18 }}>
+            <h3 style={{ margin: '0 0 4px', color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+              <span>💡</span>
+              <span>{t('proforma.form3.sec7Title', 'وړانديزونه (پيشنهادونه،تجاويز) او غوښتنې')}</span>
+            </h3>
+            <div style={{ fontSize: 12, color: 'var(--text-soft)', marginBottom: 16 }}>
+              {t('proforma.form3.sec7Subtitle', 'Multi-channel proposals matrix organized by Political, Organizational and Social categories, plus Public Demands')}
+            </div>
+
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 16 }}>
+              <table className="table" style={{ width: '100%', minWidth: 700, fontSize: 13, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface-alt)' }}>
+                    <th style={{ width: 160 }}>{t('proforma.form3.category', 'Category')}</th>
+                    <th>{t('proforma.form3.byExec', 'By Executive (ايګزيکټيو لخوا)')}</th>
+                    <th>{t('proforma.form3.byComm', 'By Unit & Area Comm (يونټ او علاقائي کميټي لخوا)')}</th>
+                    <th>{t('proforma.form3.byInd', 'By Individual (فرد لخوا)')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { key: 'political', label: t('proforma.form3.political', 'Political (سياسي)') },
+                    { key: 'organizational', label: t('proforma.form3.organizational', 'Organizational (تنظيمي)') },
+                    { key: 'social', label: t('proforma.form3.social', 'Social Work (ټولنيزو کارو)') },
+                  ].map(({ key, label }) => (
+                    <tr key={key}>
+                      <td style={{ fontWeight: 700, background: 'var(--surface-alt)' }}>{label}</td>
+                      <td>
+                        <textarea
+                          rows={2}
+                          value={formData.proposals?.[key]?.exec || ''}
+                          onChange={(e) => updateProposal(key, 'exec', e.target.value)}
+                          placeholder={t('proforma.form3.proposalPlaceholder', 'Enter executive proposal...')}
+                          style={{ width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 4, resize: 'vertical' }}
+                        />
+                      </td>
+                      <td>
+                        <textarea
+                          rows={2}
+                          value={formData.proposals?.[key]?.comm || ''}
+                          onChange={(e) => updateProposal(key, 'comm', e.target.value)}
+                          placeholder={t('proforma.form3.proposalPlaceholder', 'Enter committee proposal...')}
+                          style={{ width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 4, resize: 'vertical' }}
+                        />
+                      </td>
+                      <td>
+                        <textarea
+                          rows={2}
+                          value={formData.proposals?.[key]?.ind || ''}
+                          onChange={(e) => updateProposal(key, 'ind', e.target.value)}
+                          placeholder={t('proforma.form3.proposalPlaceholder', 'Enter individual proposal...')}
+                          style={{ width: '100%', padding: '6px 8px', fontSize: 12, borderRadius: 4, resize: 'vertical' }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Demands */}
+            <div style={{ padding: 14, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 6, color: '#eab308' }}>
+                ✊ {t('proforma.form3.demands', 'Demands / Rights (غوښتنې)')}
+              </label>
+              <textarea
+                rows={3}
+                value={formData.proposals?.demands || ''}
+                onChange={(e) => updateDemands(e.target.value)}
+                placeholder={t('proforma.form3.demandsPlaceholder', 'Enter public, civil, educational and developmental demands forwarded to party leadership...')}
+                style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, lineHeight: 1.5 }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: OFFICE ACTIVITY, SOCIAL WORK & SIGNATURES */}
+      {formType === 'form3' && activeTab === 'form3_tab4' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Section 8: Office Activity, Social Work, Misc & Signatures */}
+          <div className="card" style={{ padding: 18 }}>
+            <h3 style={{ margin: '0 0 16px', color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+              <span>✍️</span>
+              <span>{t('proforma.form3.sec8Title', 'علاقائي دفتر فعاليت، ټولنيز کارونه او لاسليکونه')}</span>
+            </h3>
+
+            {/* 1. Area Office Activity */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+                ۱۔ {t('proforma.form3.officeActivity', 'علاقائي دفتر فعاليت (Area Office Activity)')}
+              </label>
+              <textarea
+                rows={4}
+                value={formData.officeActivity || ''}
+                onChange={(e) => updateForm3Field('officeActivity', e.target.value)}
+                placeholder={t('proforma.form3.officeActivityPlaceholder', 'Detail office operations, hours open, coordination activities during the month...')}
+                style={{ width: '100%', padding: '10px 12px', fontSize: 13, borderRadius: 6, lineHeight: 1.5 }}
+              />
+            </div>
+
+            {/* 2. Brief Report of Social Work */}
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+                ۲۔ {t('proforma.form3.socialReport', 'ټولنيزو کارو لنډ رپورټ (Brief Report of Social Work)')}
+              </label>
+              <textarea
+                rows={4}
+                value={formData.socialReport || ''}
+                onChange={(e) => updateForm3Field('socialReport', e.target.value)}
+                placeholder={t('proforma.form3.socialReportPlaceholder', 'Report public welfare initiatives, resolving communal disputes, disaster aid, medical camps...')}
+                style={{ width: '100%', padding: '10px 12px', fontSize: 13, borderRadius: 6, lineHeight: 1.5 }}
+              />
+            </div>
+
+            {/* 3. Miscellaneous */}
+            <div style={{ marginBottom: 22 }}>
+              <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+                ۳۔ {t('proforma.form3.misc', 'متفرق (Miscellaneous)')}
+              </label>
+              <textarea
+                rows={3}
+                value={formData.misc || ''}
+                onChange={(e) => updateForm3Field('misc', e.target.value)}
+                placeholder={t('proforma.form3.miscPlaceholder', 'Other observations, notes, notices, or relevant party matters...')}
+                style={{ width: '100%', padding: '10px 12px', fontSize: 13, borderRadius: 6, lineHeight: 1.5 }}
+              />
+            </div>
+
+            {/* Official Signatures Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              <div style={{ padding: 14, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-main)' }}>
+                  ✍️ {t('proforma.form3.secSignature', 'علاقائي سيکرټري لاسليک (Area Secretary Signature)')}
+                </label>
+                <input
+                  type="text"
+                  value={formData.secSignature || ''}
+                  onChange={(e) => updateForm3Field('secSignature', e.target.value)}
+                  placeholder={t('proforma.form3.secSignaturePlaceholder', 'Name / Digital signature / Date')}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600 }}
+                />
+              </div>
+
+              <div style={{ padding: 14, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-main)' }}>
+                  ✍️ {t('proforma.form3.seniorSecSignature', 'علاقائي سينئر معاون لاس ليک (Area Senior Deputy Signature)')}
+                </label>
+                <input
+                  type="text"
+                  value={formData.seniorSecSignature || ''}
+                  onChange={(e) => updateForm3Field('seniorSecSignature', e.target.value)}
+                  placeholder={t('proforma.form3.seniorSecSignaturePlaceholder', 'Name / Digital signature / Date')}
+                  style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600 }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -3631,6 +7799,7 @@ export default function ProformaReportsPage() {
           }}
         >
           <div
+            className="proforma-preview-modal"
             style={{
               background: '#fff',
               color: '#000',
@@ -3645,6 +7814,7 @@ export default function ProformaReportsPage() {
             }}
           >
             <div
+              className="proforma-preview-header"
               style={{
                 padding: '12px 18px',
                 borderBottom: '1px solid #e2e8f0',
@@ -3659,10 +7829,16 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 20 }}>🖨️</span>
                 <strong>
-                  {formType === 'form4'
+                  {formType === 'form6'
+                    ? t('proforma.previewModalTitleForm6', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
+                    : formType === 'form5'
+                    ? t('proforma.previewModalTitleForm5', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (A4 Landscape Preview)')
+                    : formType === 'form4'
                     ? t('proforma.previewModalTitleForm4', 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
                     : formType === 'form2'
                     ? t('proforma.previewModalTitleForm2', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (A4 Landscape Preview)')
+                    : formType === 'form3'
+                    ? t('proforma.previewModalTitleForm3', 'د علاقائي يونټ مياشتنی تفصيلي کار او فعاليت راپور (A4 Portrait Preview)')
                     : t('proforma.previewModalTitle', 'Area Unit Monthly Work & Activity Report (A4 Landscape Preview)')}
                 </strong>
               </div>
