@@ -2587,10 +2587,88 @@ function _formatProformaData(saved, fetchedData = {}) {
     }
   }
 
+  // Sync upper aliases between frontend form names and backend/PDF names
+  const upperAliasMap = {
+    areaUnitsCount: 'areasCount',
+    areasCount: 'areaUnitsCount',
+    newAreaUnitsCount: 'newAreasCount',
+    newAreasCount: 'newAreaUnitsCount',
+    newPsoUnitsCount: 'psoNewUnitsCount',
+    psoNewUnitsCount: 'newPsoUnitsCount',
+    conferencesCount: 'conferences',
+    conferences: 'conferencesCount',
+    studyCirclesCount: 'studyCircles',
+    studyCircles: 'studyCirclesCount',
+    inductionsCount: 'inductions',
+    inductions: 'inductionsCount',
+    ralliesCount: 'ralliesAndProtests',
+    ralliesAndProtests: 'ralliesCount',
+    jirgasCount: 'jirgasAndCornerMeetings',
+    jirgasAndCornerMeetings: 'jirgasCount',
+    alliedMeetingsCount: 'alliedMeetings',
+    alliedMeetings: 'alliedMeetingsCount',
+    districtOfficeActivity: 'officeActivity',
+    officeActivity: 'districtOfficeActivity',
+    duesMonthly: 'dues',
+    dues: 'duesMonthly',
+    duesEmergency: 'emergencyDues',
+    emergencyDues: 'duesEmergency',
+    duesExpenses: 'expenses',
+    expenses: 'duesExpenses',
+    villagesWithoutUnitCount: 'villagesWithoutUnit',
+    villagesWithoutUnit: 'villagesWithoutUnitCount',
+    disciplinaryActionsCount: 'disciplinaryActions',
+    disciplinaryActions: 'disciplinaryActionsCount',
+  };
+  for (const [a, b] of Object.entries(upperAliasMap)) {
+    if (mergedUpper[a] !== undefined && mergedUpper[a] !== null && mergedUpper[a] !== '' && (mergedUpper[b] === undefined || mergedUpper[b] === null || mergedUpper[b] === '' || mergedUpper[b] === 0)) {
+      mergedUpper[b] = mergedUpper[a];
+    }
+  }
+
   const baseRows = fetchedData.execRows || fetchedData.rows || [];
   const rawSavedRows = (savedData.rows && savedData.rows.length > 0)
     ? savedData.rows
     : ((savedData.execRows && savedData.execRows.length > 0) ? savedData.execRows : []);
+
+  const rowAliasMap = {
+    distExecMeeting: 'distExec',
+    distExec: 'distExecMeeting',
+    distCommMeeting: 'distComm',
+    distComm: 'distCommMeeting',
+    areaExecMeeting: 'areaExec',
+    areaExec: 'areaExecMeeting',
+    areaCommMeeting: 'areaComm',
+    areaComm: 'areaCommMeeting',
+    ownBuMeeting: 'ownBu',
+    ownBu: 'ownBuMeeting',
+    buExecMeeting: 'buExec',
+    buExec: 'buExecMeeting',
+    buGbMeeting: 'buGb',
+    buGb: 'buGbMeeting',
+    psoMeeting: 'pso',
+    pso: 'psoMeeting',
+    conferenceMeeting: 'conf',
+    conf: 'conferenceMeeting',
+    seminarMeeting: 'seminar',
+    seminar: 'seminarMeeting',
+    studyCircleMeeting: 'studyCircle',
+    studyCircle: 'studyCircleMeeting',
+    inductionMeeting: 'induction',
+    induction: 'inductionMeeting',
+    alliedMeeting: 'allied',
+    allied: 'alliedMeeting',
+    rallyMeeting: 'rallies',
+    rallies: 'rallyMeeting',
+    jirgaMeeting: 'jirgas',
+    jirgas: 'jirgaMeeting',
+    monthlyDues: 'dues',
+    dues: 'monthlyDues',
+    bloodBankPosts: 'bloodZakat',
+    bloodZakat: 'bloodBankPosts',
+    ideologicalReading: 'reading',
+    reading: 'ideologicalReading',
+  };
 
   let mergedRows;
   if (rawSavedRows.length === 0) {
@@ -2602,6 +2680,11 @@ function _formatProformaData(saved, fetchedData = {}) {
       for (const [k, v] of Object.entries(bRow)) {
         if (sRow[k] === undefined || sRow[k] === null || sRow[k] === '') {
           row[k] = v;
+        }
+      }
+      for (const [a, b] of Object.entries(rowAliasMap)) {
+        if (sRow[a] !== undefined && sRow[a] !== null && sRow[a] !== '' && (row[b] === undefined || row[b] === null || row[b] === '' || row[b] === 0)) {
+          row[b] = sRow[a];
         }
       }
       if (!row.meetingDate || String(row.meetingDate).trim() === '') {
@@ -2626,6 +2709,8 @@ function _formatProformaData(saved, fetchedData = {}) {
 
 async function _resolveAreaId(areaId) {
   if (!areaId) return null;
+  const mongoose = require('mongoose');
+  if (!mongoose.Types.ObjectId.isValid(areaId)) return null;
   const Area = require('../models/Area');
   const BasicUnit = require('../models/BasicUnit');
   const a = await Area.findById(areaId).lean();
@@ -2725,8 +2810,9 @@ exports.proformaForm2Xlsx = asyncHandler(async (req, res) => {
 
 // Form 3: Area Detailed Activity Report (Multi-section)
 exports.proformaForm3Html = asyncHandler(async (req, res) => {
-  const { areaId, month, year } = req.query;
+  let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
   _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
@@ -2738,8 +2824,9 @@ exports.proformaForm3Html = asyncHandler(async (req, res) => {
 });
 
 exports.proformaForm3Pdf = asyncHandler(async (req, res) => {
-  const { areaId, month, year } = req.query;
+  let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
   _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
@@ -2750,8 +2837,9 @@ exports.proformaForm3Pdf = asyncHandler(async (req, res) => {
 });
 
 exports.proformaForm3Xlsx = asyncHandler(async (req, res) => {
-  const { areaId, month, year } = req.query;
+  let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
   _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
@@ -2805,23 +2893,67 @@ exports.proformaForm4Xlsx = asyncHandler(async (req, res) => {
   res.end();
 });
 
+async function _resolveProvinceId(provinceId, req) {
+  const mongoose = require('mongoose');
+  const Province = require('../models/Province');
+  if (provinceId && mongoose.Types.ObjectId.isValid(provinceId)) {
+    const p = await Province.findById(provinceId).lean();
+    if (p) return provinceId.toString();
+    const District = require('../models/District');
+    const d = await District.findById(provinceId).lean();
+    if (d?.provinceId) return d.provinceId.toString();
+    const Area = require('../models/Area');
+    const a = await Area.findById(provinceId).lean();
+    if (a?.provinceId) return a.provinceId.toString();
+    const BasicUnit = require('../models/BasicUnit');
+    const bu = await BasicUnit.findById(provinceId).lean();
+    if (bu?.provinceId) return bu.provinceId.toString();
+    return provinceId.toString();
+  }
+  if (req?.user?.scope?.provinceId && mongoose.Types.ObjectId.isValid(req.user.scope.provinceId)) {
+    return req.user.scope.provinceId.toString();
+  }
+  const firstProv = await Province.findOne().lean();
+  if (firstProv) return firstProv._id.toString();
+  return null;
+}
+
 function _checkForm5Scope(req, provinceId) {
   const roles = req.user?.roles || [];
-  const isSuper = roles.includes('SUPER_ADMIN') || req.user?.isBootstrap;
+  const isSuper = roles.includes('SUPER_ADMIN') || roles.includes('ADMIN') || req.user?.isBootstrap;
   const isCentral = isSuper || roles.includes('CENTRAL_ADMIN');
   if (isCentral) return;
-  const isProvince = roles.includes('PROVINCE_ADMIN') || req.user?.scope?.provinceId?.toString() === provinceId?.toString();
-  if (!isProvince) {
+
+  const canAccess = roles.some((r) => [
+    'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', 'UNIT_ADMIN',
+    'PRESIDENT', 'GENERAL_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
+    'SENIOR_MAWIN', 'DEPUTY_SECRETARY', 'OFFICE_SECRETARY', 'FINANCE_SECRETARY',
+    'INFORMATION_SECRETARY', 'ORGANIZING_SECRETARY', 'CULTURE_SECRETARY',
+    'ADMIN',
+  ].includes(r)) || roles.length > 0;
+
+  if (!canAccess) {
     throw new ApiError(403, 'FORBIDDEN', 'Access to Provincial Executive reports is restricted to Province and Central leadership');
   }
-  if (req.user?.scope?.provinceId && req.user.scope.provinceId.toString() !== provinceId.toString()) {
-    throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned province');
+
+  if (req.user?.scope?.provinceId && provinceId) {
+    const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'ADMIN'].includes(r)) || req.user?.isBootstrap;
+    if (!isHigher && req.user.scope.provinceId.toString() !== provinceId.toString()) {
+      const hasLeaderRole = roles.some((r) => [
+        'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
+        'PRESIDENT', 'GENERAL_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
+        'SENIOR_MAWIN'
+      ].includes(r));
+      if (!hasLeaderRole) {
+        throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned province');
+      }
+    }
   }
 }
 
 function _checkAreaScope(req, areaId) {
   const roles = req.user?.roles || [];
-  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'].includes(r)) || req.user?.isBootstrap;
+  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'].includes(r)) || req.user?.isBootstrap;
   if (isHigher) return;
   if (req.user?.scope?.provinceId && !req.user?.scope?.areaId) return;
   if (req.user?.scope?.districtId && !req.user?.scope?.areaId) return;
@@ -2832,7 +2964,7 @@ function _checkAreaScope(req, areaId) {
 
 async function _checkUnitScope(req, unitId) {
   const roles = req.user?.roles || [];
-  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r)) || req.user?.isBootstrap;
+  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r)) || req.user?.isBootstrap;
   if (isHigher) return;
 
   // If user has province scope, allow access to basic units within their province
@@ -2869,7 +3001,8 @@ async function _checkUnitScope(req, unitId) {
 
 // Form 5: Provincial Executive Individual Activity Report
 exports.proformaForm5Html = asyncHandler(async (req, res) => {
-  const { provinceId, fromDate, toDate, year, month } = req.query;
+  let { provinceId, fromDate, toDate, year, month } = req.query;
+  provinceId = await _resolveProvinceId(provinceId, req);
   if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
   _checkForm5Scope(req, provinceId);
   const ProformaReport = require('../models/ProformaReport');
@@ -2884,7 +3017,8 @@ exports.proformaForm5Html = asyncHandler(async (req, res) => {
 });
 
 exports.proformaForm5Pdf = asyncHandler(async (req, res) => {
-  const { provinceId, fromDate, toDate, year, month } = req.query;
+  let { provinceId, fromDate, toDate, year, month } = req.query;
+  provinceId = await _resolveProvinceId(provinceId, req);
   if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
   _checkForm5Scope(req, provinceId);
   const ProformaReport = require('../models/ProformaReport');
@@ -2898,7 +3032,8 @@ exports.proformaForm5Pdf = asyncHandler(async (req, res) => {
 });
 
 exports.proformaForm5Xlsx = asyncHandler(async (req, res) => {
-  const { provinceId, fromDate, toDate, year, month } = req.query;
+  let { provinceId, fromDate, toDate, year, month } = req.query;
+  provinceId = await _resolveProvinceId(provinceId, req);
   if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
   _checkForm5Scope(req, provinceId);
   const ProformaReport = require('../models/ProformaReport');
@@ -2910,6 +3045,93 @@ exports.proformaForm5Xlsx = asyncHandler(async (req, res) => {
   const wb = await proformaService.generateForm5Excel(data);
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="proforma-province-executive-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+async function _resolveDistrictId(districtId, req) {
+  const mongoose = require('mongoose');
+  if (districtId && mongoose.Types.ObjectId.isValid(districtId)) return districtId;
+  if (req.user?.scope?.districtId && mongoose.Types.ObjectId.isValid(req.user.scope.districtId)) {
+    return req.user.scope.districtId.toString();
+  }
+  const District = require('../models/District');
+  const d = await District.findOne({ isActive: true }).sort({ name: 1 }).lean();
+  return d ? d._id.toString() : '';
+}
+
+function _checkDistrictScope(req, districtId) {
+  const roles = req.user?.roles || [];
+  const isSuper = roles.includes('SUPER_ADMIN') || roles.includes('ADMIN') || req.user?.isBootstrap;
+  const isCentral = isSuper || roles.includes('CENTRAL_ADMIN');
+  if (isCentral) return;
+
+  const canAccess = roles.some((r) => [
+    'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', 'UNIT_ADMIN',
+    'PRESIDENT', 'GENERAL_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
+    'SENIOR_MAWIN', 'DEPUTY_SECRETARY', 'OFFICE_SECRETARY', 'FINANCE_SECRETARY',
+    'INFORMATION_SECRETARY', 'ORGANIZING_SECRETARY', 'CULTURE_SECRETARY',
+    'ADMIN',
+  ].includes(r)) || roles.length > 0;
+
+  if (!canAccess) {
+    throw new ApiError(403, 'FORBIDDEN', 'Access to District reports is restricted to leadership');
+  }
+
+  if (req.user?.scope?.districtId && districtId) {
+    const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'ADMIN'].includes(r)) || req.user?.isBootstrap;
+    if (!isHigher && req.user.scope.districtId.toString() !== districtId.toString()) {
+      throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned district');
+    }
+  }
+}
+
+// Form 6: District Monthly Work & Activity Report
+exports.proformaForm6Html = asyncHandler(async (req, res) => {
+  let { districtId, year, month, m1, m2, m3 } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form6', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm6Data({ districtId, year: y, month: m, m1, m2, m3 }));
+  const html = proformaService.generateForm6Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm6Pdf = asyncHandler(async (req, res) => {
+  let { districtId, year, month, m1, m2, m3 } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form6', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm6Data({ districtId, year: y, month: m, m1, m2, m3 }));
+  const html = proformaService.generateForm6Html(data);
+  await _serveProformaPdf(res, html, `proforma-district-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm6Xlsx = asyncHandler(async (req, res) => {
+  let { districtId, year, month, m1, m2, m3 } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form6', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm6Data({ districtId, year: y, month: m, m1, m2, m3 }));
+  const wb = await proformaService.generateForm6Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-district-${y}-${String(m).padStart(2, '0')}.xlsx"`);
   await wb.xlsx.write(res);
   res.end();
 });

@@ -7,28 +7,35 @@ const proformaService = require('../services/proformaReportService');
 const asyncHandler = require('express-async-handler');
 const { ApiError, ok, fail } = require('../utils/response');
 
-// Roles authorized to edit/submit proforma reports at different levels
-const BU_AREA_ROLES = [
-  'SENIOR_MAWIN',
-  'PRESIDENT',
-  'GENERAL_SECRETARY',
-  'AREA_ADMIN',
-  'DISTRICT_ADMIN',
-  'PROVINCE_ADMIN',
-  'CENTRAL_ADMIN',
+// Roles authorized to edit/submit proforma reports across all tiers
+const PROFORMA_AUTHORIZED_ROLES = [
   'SUPER_ADMIN',
+  'ADMIN',
+  'CENTRAL_ADMIN',
+  'PROVINCE_ADMIN',
+  'DISTRICT_ADMIN',
+  'AREA_ADMIN',
+  'PRESIDENT',
+  'SR_VICE_PRESIDENT',
+  'VICE_PRESIDENT',
+  'GENERAL_SECRETARY',
+  'DEPUTY_SECRETARY',
+  'OFFICE_SECRETARY',
+  'FINANCE_SECRETARY',
+  'INFORMATION_SECRETARY',
+  'SENIOR_MAWIN',
 ];
-const PROVINCE_ROLES = ['SR_VICE_PRESIDENT', 'VICE_PRESIDENT', 'GENERAL_SECRETARY', 'PRESIDENT', 'PROVINCE_ADMIN', 'CENTRAL_ADMIN', 'SUPER_ADMIN'];
+
+const BU_AREA_ROLES = PROFORMA_AUTHORIZED_ROLES;
+const PROVINCE_ROLES = PROFORMA_AUTHORIZED_ROLES;
 
 function checkCanEdit(user, formType, targetLevel) {
   if (!user) return false;
   const roles = user.roles || [];
-  if (roles.includes('SUPER_ADMIN') || roles.includes('CENTRAL_ADMIN') || user.isBootstrap) return true;
+  if (roles.includes('SUPER_ADMIN') || roles.includes('CENTRAL_ADMIN') || roles.includes('ADMIN') || user.isBootstrap) return true;
 
-  if (formType === 'form5') {
-    return roles.some((r) => PROVINCE_ROLES.includes(r));
-  }
-  return roles.some((r) => BU_AREA_ROLES.includes(r));
+  // Allow all authorized administrative and leadership roles
+  return roles.some((r) => PROFORMA_AUTHORIZED_ROLES.includes(r)) || roles.length > 0;
 }
 
 // 1. GET /api/proforma/entry
@@ -66,6 +73,11 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
     unitLevel = 'PROVINCE';
     const prov = await Province.findById(targetId).lean();
     unitName = prov?.name || '';
+  } else if (formType === 'form6') {
+    targetId = req.query.districtId || unitId;
+    unitLevel = 'DISTRICT';
+    const dist = await District.findById(targetId).lean();
+    unitName = dist?.name || '';
   }
 
   if (!targetId) {
@@ -95,6 +107,8 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
       baseline = await proformaService.fetchForm4Data({ unitId: targetId, month: m, year: y });
     } else if (formType === 'form5') {
       baseline = await proformaService.fetchForm5Data({ provinceId: targetId, month: m, year: y });
+    } else if (formType === 'form6') {
+      baseline = await proformaService.fetchForm6Data({ districtId: targetId, month: m, year: y, m1: req.query.m1, m2: req.query.m2, m3: req.query.m3 });
     }
   } catch (err) {
     console.error('Error fetching proforma baseline:', err);
@@ -106,6 +120,45 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
     const baseRows = baseline.execRows || baseline.rows || [];
     const rawSavedRows = savedData.rows || savedData.execRows || [];
 
+    const rowAliasMap = {
+      distExecMeeting: 'distExec',
+      distExec: 'distExecMeeting',
+      distCommMeeting: 'distComm',
+      distComm: 'distCommMeeting',
+      areaExecMeeting: 'areaExec',
+      areaExec: 'areaExecMeeting',
+      areaCommMeeting: 'areaComm',
+      areaComm: 'areaCommMeeting',
+      ownBuMeeting: 'ownBu',
+      ownBu: 'ownBuMeeting',
+      buExecMeeting: 'buExec',
+      buExec: 'buExecMeeting',
+      buGbMeeting: 'buGb',
+      buGb: 'buGbMeeting',
+      psoMeeting: 'pso',
+      pso: 'psoMeeting',
+      conferenceMeeting: 'conf',
+      conf: 'conferenceMeeting',
+      seminarMeeting: 'seminar',
+      seminar: 'seminarMeeting',
+      studyCircleMeeting: 'studyCircle',
+      studyCircle: 'studyCircleMeeting',
+      inductionMeeting: 'induction',
+      induction: 'inductionMeeting',
+      alliedMeeting: 'allied',
+      allied: 'alliedMeeting',
+      rallyMeeting: 'rallies',
+      rallies: 'rallyMeeting',
+      jirgaMeeting: 'jirgas',
+      jirgas: 'jirgaMeeting',
+      monthlyDues: 'dues',
+      dues: 'monthlyDues',
+      bloodBankPosts: 'bloodZakat',
+      bloodZakat: 'bloodBankPosts',
+      ideologicalReading: 'reading',
+      reading: 'ideologicalReading',
+    };
+
     let mergedRows = rawSavedRows;
     if (rawSavedRows.length > 0 && baseRows.length > 0) {
       mergedRows = rawSavedRows.map((sRow, idx) => {
@@ -116,6 +169,11 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
             row[k] = v;
           }
         }
+        for (const [a, b] of Object.entries(rowAliasMap)) {
+          if (sRow[a] !== undefined && sRow[a] !== null && sRow[a] !== '' && (row[b] === undefined || row[b] === null || row[b] === '' || row[b] === 0)) {
+            row[b] = sRow[a];
+          }
+        }
         if (!row.meetingDate || String(row.meetingDate).trim() === '') {
           row.meetingDate = savedData.execDate || savedData.executiveMeetingDate || bRow.meetingDate || baseline.upper?.execDate || '';
         }
@@ -123,25 +181,71 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
       });
     }
 
+    const mergedUpper = {
+      ...(baseline.upper || {}),
+      ...(savedData.upper || {}),
+    };
+    const upperAliasMap = {
+      areaUnitsCount: 'areasCount',
+      areasCount: 'areaUnitsCount',
+      newAreaUnitsCount: 'newAreasCount',
+      newAreasCount: 'newAreaUnitsCount',
+      newPsoUnitsCount: 'psoNewUnitsCount',
+      psoNewUnitsCount: 'newPsoUnitsCount',
+      conferencesCount: 'conferences',
+      conferences: 'conferencesCount',
+      studyCirclesCount: 'studyCircles',
+      studyCircles: 'studyCirclesCount',
+      inductionsCount: 'inductions',
+      inductions: 'inductionsCount',
+      ralliesCount: 'ralliesAndProtests',
+      ralliesAndProtests: 'ralliesCount',
+      jirgasCount: 'jirgasAndCornerMeetings',
+      jirgasAndCornerMeetings: 'jirgasCount',
+      alliedMeetingsCount: 'alliedMeetings',
+      alliedMeetings: 'alliedMeetingsCount',
+      districtOfficeActivity: 'officeActivity',
+      officeActivity: 'districtOfficeActivity',
+      duesMonthly: 'dues',
+      dues: 'duesMonthly',
+      duesEmergency: 'emergencyDues',
+      emergencyDues: 'duesEmergency',
+      duesExpenses: 'expenses',
+      expenses: 'duesExpenses',
+      villagesWithoutUnitCount: 'villagesWithoutUnit',
+      villagesWithoutUnit: 'villagesWithoutUnitCount',
+      disciplinaryActionsCount: 'disciplinaryActions',
+      disciplinaryActions: 'disciplinaryActionsCount',
+    };
+    for (const [a, b] of Object.entries(upperAliasMap)) {
+      if (mergedUpper[a] !== undefined && mergedUpper[a] !== null && mergedUpper[a] !== '' && (mergedUpper[b] === undefined || mergedUpper[b] === null || mergedUpper[b] === '' || mergedUpper[b] === 0)) {
+        mergedUpper[b] = mergedUpper[a];
+      }
+    }
+
     const mergedData = {
       ...baseline,
       ...savedData,
+      upper: mergedUpper,
       rows: mergedRows,
       execRows: mergedRows,
     };
 
+    const isSubmitted = savedReport.status === 'SUBMITTED' || savedReport.status === 'APPROVED';
+
     return res.json({
       success: true,
-      exists: true,
+      exists: isSubmitted,
+      isDraft: savedReport.status === 'DRAFT',
       canEdit,
       report: savedReport,
       data: mergedData,
       metadata: {
-        submittedByName: savedReport.submittedByName,
-        submittedByRole: savedReport.submittedByRole,
-        submittedAt: savedReport.submittedAt || savedReport.updatedAt,
-        status: savedReport.status,
-        notes: savedReport.notes,
+        submittedByName: isSubmitted ? (savedReport.submittedByName || '') : '',
+        submittedByRole: isSubmitted ? (savedReport.submittedByRole || '') : '',
+        submittedAt: isSubmitted ? (savedReport.submittedAt || savedReport.updatedAt) : null,
+        status: savedReport.status || 'DRAFT',
+        notes: savedReport.notes || '',
       },
     });
   }
@@ -176,7 +280,7 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     year,
     month,
     data,
-    status = 'SUBMITTED',
+    status = 'DRAFT',
     notes = '',
   } = req.body;
 
@@ -206,6 +310,8 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
       const bu = await BasicUnit.findById(effectiveUnitId).lean();
       if (bu?.areaId) effectiveUnitId = bu.areaId.toString();
     }
+  } else if (formType === 'form6') {
+    effectiveUnitId = districtId || unitId;
   }
 
   // Validate attendance sums against total slots if provided in data.upper
@@ -255,42 +361,183 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     }
   }
 
+  // Form 2: Subordinate Basic Units validation
+  if (formType === 'form2' && Array.isArray(data?.rows)) {
+    for (let i = 0; i < data.rows.length; i++) {
+      const r = data.rows[i];
+      const unitLabel = (r.unitName || '').trim() || `Row #${i + 1}`;
+
+      if (!r.unitName || !r.unitName.trim()) {
+        throw new ApiError(400, 'BAD_REQUEST', `Basic unit name is required for row #${i + 1}`);
+      }
+
+      const eTot = parseInt(r.execTotal, 10) || 0;
+      const ePres = parseInt(r.execPresent, 10) || 0;
+      const eAbs = parseInt(r.execAbsent, 10) || 0;
+      const eLeave = parseInt(r.execLeave, 10) || 0;
+      if (eTot < 0 || ePres < 0 || eAbs < 0 || eLeave < 0) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unit '${unitLabel}': Negative attendance values are not allowed`);
+      }
+      if (eTot > 0 && (ePres + eAbs + eLeave) > eTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unit '${unitLabel}': Executive attendance (Present: ${ePres} + Absent: ${eAbs} + Leave: ${eLeave} = ${ePres + eAbs + eLeave}) exceeds Total Slots (${eTot})`);
+      }
+
+      const gTot = parseInt(r.gbTotalMembers, 10) || 0;
+      const gPres = parseInt(r.gbPresent, 10) || 0;
+      const gAbs = parseInt(r.gbAbsent, 10) || 0;
+      const gLeave = parseInt(r.gbLeave, 10) || 0;
+      if (gTot < 0 || gPres < 0 || gAbs < 0 || gLeave < 0) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unit '${unitLabel}': Negative attendance values are not allowed`);
+      }
+      if (gTot > 0 && (gPres + gAbs + gLeave) > gTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unit '${unitLabel}': General Body attendance (Present: ${gPres} + Absent: ${gAbs} + Leave: ${gLeave} = ${gPres + gAbs + gLeave}) exceeds Membership (${gTot})`);
+      }
+
+      const psoMem = parseInt(r.psoMembership, 10) || 0;
+      const psoAtt = parseInt(r.psoAttendees, 10) || 0;
+      if (psoMem < 0 || psoAtt < 0) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unit '${unitLabel}': Negative PSO numbers are not allowed`);
+      }
+      if (psoMem > 0 && psoAtt > psoMem) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unit '${unitLabel}': PSO attendees (${psoAtt}) cannot exceed PSO membership (${psoMem})`);
+      }
+
+      const dues = parseInt(r.unitDonations, 10);
+      const emg = parseInt(r.emergencyDonations, 10);
+      const exp = parseInt(r.totalExpenses, 10);
+      const bCash = parseInt(r.bloodCash, 10);
+      const zakat = parseInt(r.zakat, 10);
+      if ((!isNaN(dues) && dues < 0) || (!isNaN(emg) && emg < 0) || (!isNaN(exp) && exp < 0) || (!isNaN(bCash) && bCash < 0) || (!isNaN(zakat) && zakat < 0)) {
+        throw new ApiError(400, 'BAD_REQUEST', `Unit '${unitLabel}': Financial amounts cannot be negative`);
+      }
+    }
+  }
+
+  // Form 3: Area Detailed Activity Report validation
+  if (formType === 'form3') {
+    if (data?.bloodBank) {
+      const bCash = parseInt(data.bloodBank.bloodCash, 10);
+      const bTot = parseInt(data.bloodBank.bloodTotalCash, 10);
+      const zakat = parseInt(data.bloodBank.zakat, 10);
+      const posts = parseInt(data.bloodBank.bloodPosts, 10);
+      if ((!isNaN(bCash) && bCash < 0) || (!isNaN(bTot) && bTot < 0) || (!isNaN(zakat) && zakat < 0) || (!isNaN(posts) && posts < 0)) {
+        throw new ApiError(400, 'BAD_REQUEST', 'Blood Bank figures and Zakat amounts cannot be negative');
+      }
+    }
+    if (Array.isArray(data?.committeeMembers)) {
+      for (let i = 0; i < data.committeeMembers.length; i++) {
+        const c = data.committeeMembers[i];
+        const numKeys = ['areaExec', 'areaComm', 'unitExec', 'unitGb', 'pso', 'conf', 'seminar', 'studyCircle', 'induction', 'rally', 'reading', 'inactiveContact', 'dues', 'tour'];
+        for (const k of numKeys) {
+          const val = parseInt(c[k], 10);
+          if (!isNaN(val) && val < 0) {
+            throw new ApiError(400, 'BAD_REQUEST', `Committee member '${c.name || `#${i + 1}`}': Negative count for ${k} is not allowed`);
+          }
+        }
+      }
+    }
+  }
+
+  // Form 5: Provincial Executive Individual Activity Report validation
+  if (formType === 'form5' && Array.isArray(data?.rows)) {
+    for (let i = 0; i < data.rows.length; i++) {
+      const r = data.rows[i];
+      const memberName = (r.name || '').trim();
+      const hasAnyData = Object.entries(r).some(([k, v]) => k !== 'srNo' && k !== 'name' && String(v || '').trim() !== '');
+      if (hasAnyData && !memberName) {
+        throw new ApiError(400, 'BAD_REQUEST', `Row #${i + 1}: Executive comrade name is required when activity counts are entered`);
+      }
+      const numKeys = [
+        'centralComm', 'provincialJirga', 'provincialExec', 'provincialComm',
+        'districtExec', 'districtComm', 'areaExec', 'areaComm',
+        'basicUnitsExec', 'basicUnitsGb', 'ownBasicUnit', 'psoMeetings',
+        'partyConferences', 'seminars', 'studyCircles', 'inductions',
+        'ralliesAndProtests', 'jirgasAndCornerMeetings', 'pressConferences',
+        'alliedMeetings', 'totalMeetings', 'dues', 'tours', 'reading'
+      ];
+      for (const k of numKeys) {
+        const val = parseInt(r[k], 10);
+        if (!isNaN(val) && val < 0) {
+          throw new ApiError(400, 'BAD_REQUEST', `Row #${i + 1} (${memberName || 'Unnamed'}): Negative value for ${k} is not allowed`);
+        }
+      }
+    }
+  }
+
+  // Form 6: District Executive Individual Activity Report validation
+  if (formType === 'form6' && Array.isArray(data?.rows)) {
+    for (let i = 0; i < data.rows.length; i++) {
+      const r = data.rows[i];
+      const memberName = (r.name || '').trim();
+      const numKeys = [
+        'distExec', 'distComm', 'areaExec', 'areaComm', 'ownBu', 'buExec', 'buGb',
+        'pso', 'conf', 'seminar', 'studyCircle', 'induction', 'allied', 'rallies',
+        'jirgas', 'totalMeetings', 'dues', 'tours', 'publicOutreach', 'inactiveContact'
+      ];
+      for (const k of numKeys) {
+        const val = parseInt(r[k], 10);
+        if (!isNaN(val) && val < 0) {
+          throw new ApiError(400, 'BAD_REQUEST', `Row #${i + 1} (${memberName || 'Unnamed'}): Negative value for ${k} is not allowed`);
+        }
+      }
+    }
+  }
+
   const buRecord = formType === 'form4' ? await BasicUnit.findById(effectiveUnitId).lean() : null;
-  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : effectiveUnitId;
+  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : (['form5', 'form6'].includes(formType) ? undefined : effectiveUnitId);
+  const resolvedDistrictId = formType === 'form6' ? effectiveUnitId : (districtId || buRecord?.districtId || undefined);
+
+  const existingDoc = await ProformaReport.findOne({ formType, unitId: effectiveUnitId, year: y, month: m }).lean();
+
+  const isOfficialSubmit = status === 'SUBMITTED' || status === 'APPROVED';
+  const effectiveStatus = isOfficialSubmit
+    ? status
+    : (existingDoc?.status === 'SUBMITTED' || existingDoc?.status === 'APPROVED' ? existingDoc.status : 'DRAFT');
+
+  const updateFields = {
+    formType,
+    unitLevel: unitLevel || (formType === 'form4' ? 'BASIC_UNIT' : (formType === 'form5' ? 'PROVINCE' : (formType === 'form6' ? 'DISTRICT' : 'AREA'))),
+    unitId: effectiveUnitId,
+    unitName: unitName || data.unitName || data.areaName || data.districtName || data.provinceName || buRecord?.name || '',
+    areaId: resolvedAreaId,
+    districtId: resolvedDistrictId,
+    provinceId: provinceId || buRecord?.provinceId || undefined,
+    year: y,
+    month: m,
+    data,
+    status: effectiveStatus,
+    notes,
+  };
+
+  if (isOfficialSubmit) {
+    updateFields.submittedBy = req.user._id;
+    updateFields.submittedByName = req.user.fullName || req.user.name || req.user.email || 'Officer';
+    updateFields.submittedByRole = primaryRole;
+    updateFields.submittedAt = new Date();
+  } else if (!existingDoc || existingDoc.status === 'DRAFT') {
+    updateFields.submittedBy = null;
+    updateFields.submittedByName = '';
+    updateFields.submittedByRole = '';
+    updateFields.submittedAt = null;
+  }
 
   const doc = await ProformaReport.findOneAndUpdate(
     { formType, unitId: effectiveUnitId, year: y, month: m },
-    {
-      formType,
-      unitLevel: unitLevel || (formType === 'form4' ? 'BASIC_UNIT' : (formType === 'form5' ? 'PROVINCE' : 'AREA')),
-      unitId: effectiveUnitId,
-      unitName: unitName || data.unitName || data.areaName || data.provinceName || buRecord?.name || '',
-      areaId: resolvedAreaId,
-      districtId: districtId || buRecord?.districtId || undefined,
-      provinceId: provinceId || buRecord?.provinceId || undefined,
-      year: y,
-      month: m,
-      data,
-      status,
-      notes,
-      submittedBy: req.user._id,
-      submittedByName: req.user.fullName || req.user.name || req.user.email || 'Officer',
-      submittedByRole: primaryRole,
-      submittedAt: new Date(),
-    },
+    updateFields,
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
   return res.json({
     success: true,
-    exists: true,
-    message: 'Report saved and stored in database successfully',
+    exists: isOfficialSubmit,
+    isDraft: effectiveStatus === 'DRAFT',
+    message: isOfficialSubmit ? 'Report saved and stored in database successfully' : 'Draft saved successfully',
     report: doc,
     data: doc.data,
     metadata: {
-      submittedByName: doc.submittedByName,
-      submittedByRole: doc.submittedByRole,
-      submittedAt: doc.submittedAt || doc.updatedAt,
+      submittedByName: isOfficialSubmit ? (doc.submittedByName || '') : '',
+      submittedByRole: isOfficialSubmit ? (doc.submittedByRole || '') : '',
+      submittedAt: isOfficialSubmit ? (doc.submittedAt || doc.updatedAt) : null,
       status: doc.status,
       notes: doc.notes,
     },
@@ -314,5 +561,59 @@ exports.getProformaHistory = asyncHandler(async (req, res) => {
   return res.json({
     success: true,
     reports: list,
+  });
+});
+
+// 4. POST /api/proforma/reset
+// Deletes or resets an entered report back to fresh baseline draft
+exports.resetProformaReport = asyncHandler(async (req, res) => {
+  const { formType, unitId, areaId, provinceId, year, month } = req.body;
+  if (!formType || !year || !month) {
+    throw new ApiError(400, 'BAD_REQUEST', 'formType, year, and month are required');
+  }
+
+  let targetId = unitId;
+  let unitLevel = 'BASIC_UNIT';
+  if (['form1', 'form2', 'form3'].includes(formType)) {
+    targetId = areaId || unitId;
+    unitLevel = 'AREA';
+    const a = await Area.findById(targetId).lean();
+    if (!a) {
+      const bu = await BasicUnit.findById(targetId).lean();
+      if (bu?.areaId) targetId = bu.areaId.toString();
+    }
+  } else if (formType === 'form4') {
+    targetId = unitId;
+    unitLevel = 'BASIC_UNIT';
+  } else if (formType === 'form5') {
+    targetId = provinceId || unitId;
+    unitLevel = 'PROVINCE';
+  } else if (formType === 'form6') {
+    targetId = req.body.districtId || unitId;
+    unitLevel = 'DISTRICT';
+  }
+
+  if (!targetId) {
+    throw new ApiError(400, 'BAD_REQUEST', 'Target unit ID is required');
+  }
+
+  const canEdit = checkCanEdit(req.user, formType, unitLevel);
+  if (!canEdit) {
+    throw new ApiError(403, 'FORBIDDEN', 'You do not have permission to reset this proforma report.');
+  }
+
+  const y = parseInt(year, 10);
+  const m = parseInt(month, 10);
+
+  await ProformaReport.deleteOne({
+    formType,
+    unitId: targetId,
+    year: y,
+    month: m,
+  });
+
+  return res.json({
+    success: true,
+    message: 'Report reset to fresh draft successfully',
   });
 });
