@@ -3136,6 +3136,55 @@ exports.proformaForm6Xlsx = asyncHandler(async (req, res) => {
   res.end();
 });
 
+exports.proformaForm7Html = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form7', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm7Data({ districtId, year: y, month: m }));
+  const html = proformaService.generateForm7Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm7Pdf = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form7', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm7Data({ districtId, year: y, month: m }));
+  const html = proformaService.generateForm7Html(data);
+  await _serveProformaPdf(res, html, `proforma-form7-district-areas-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm7Xlsx = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form7', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm7Data({ districtId, year: y, month: m }));
+  const wb = await proformaService.generateForm7Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-form7-district-areas-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
 // PR U7 — exposed so reportTemplateService can reuse the data
 // gathering layer without duplication. The existing controller
 // actions above keep using the local function reference; the new
