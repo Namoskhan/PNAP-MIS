@@ -43,14 +43,6 @@ export default function CategoryPills({
       label: t('commandCenter.tabGovernance', 'Meetings & Field'),
       count: counts.meetings ? String(counts.meetings) : null,
     },
-    {
-      key: 'alerts',
-      iconName: 'alert-circle-outline',
-      iconActiveName: 'alert-circle',
-      label: t('commandCenter.tabAlerts', 'Needs Attention'),
-      count: counts.alerts ? String(counts.alerts) : null,
-      isAlert: true,
-    },
   ];
 
   return (

@@ -5,7 +5,6 @@ import {
   RefreshControl,
   SafeAreaView,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,7 +29,6 @@ import MembershipAnalytics from './dashboard/MembershipAnalytics';
 import CampaignsAnalytics from './dashboard/CampaignsAnalytics';
 import MeetingsAnalytics from './dashboard/MeetingsAnalytics';
 import ReportsAnalytics from './dashboard/ReportsAnalytics';
-import { InactiveUnitsTable } from './dashboard/InactiveTables';
 import ExecutivePulse from './dashboard/ExecutivePulse';
 import ExecutiveQuickActions from './dashboard/ExecutiveQuickActions';
 import CategoryPills from './dashboard/CategoryPills';
@@ -309,41 +307,7 @@ export default function CommandCenter({ accessScope = null }) {
     filters.days !== 365
   );
 
-  const handleShareBriefing = useCallback(async () => {
-    const orgData = summary.data?.organization;
-    const memData = summary.data?.membership;
-    const mtgData = summary.data?.meetings;
-    const scopeLabel = scopeName === t('commandCenter.theWholeCountry', 'All Pakistan') ? 'National' : scopeName;
-    const today = new Date().toLocaleDateString();
 
-    const textLines = [
-      `🇵🇰 PNAP Executive Briefing — ${scopeLabel}`,
-      `📅 Date: ${today}`,
-      `════════════════════════════════`,
-      `👥 Total Members: ${(memData?.total ?? 0).toLocaleString()}`,
-      memData?.newMembers ? `✨ New: +${(memData.newMembers).toLocaleString()}` : null,
-      `════════════════════════════════`,
-      `🏢 Units Activity:`,
-      orgData?.provinces ? `• Provinces: ${orgData.provinces.active} / ${orgData.provinces.total}` : null,
-      orgData?.districts ? `• Districts: ${orgData.districts.active} / ${orgData.districts.total}` : null,
-      orgData?.areas ? `• Areas: ${orgData.areas.active} / ${orgData.areas.total}` : null,
-      orgData?.basicUnits ? `• Basic Units: ${orgData.basicUnits.active} / ${orgData.basicUnits.total}` : null,
-      `════════════════════════════════`,
-      mtgData ? `📅 Meetings: ${mtgData.conducted ?? 0} / ${mtgData.total ?? 0}` : null,
-      pendingApprovals > 0 ? `⏳ Pending Approvals: ${pendingApprovals}` : null,
-      `════════════════════════════════`,
-      `PNAP MIS Command Center`,
-    ].filter(Boolean).join('\n');
-
-    try {
-      await Share.share({
-        message: textLines,
-        title: 'PNAP Executive Briefing',
-      });
-    } catch {
-      // dismissed
-    }
-  }, [summary.data, scopeName, pendingApprovals, t]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -367,16 +331,6 @@ export default function CommandCenter({ accessScope = null }) {
           <Text style={[styles.mastheadScopeName, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
             {scopeName === t('commandCenter.theWholeCountry', 'All Pakistan') ? t('commandCenter.title', 'National Overview') : scopeName}
           </Text>
-
-          {/* 1-Tap Share Button */}
-          <TouchableOpacity
-            style={styles.mastheadShareBtn}
-            activeOpacity={0.8}
-            onPress={handleShareBriefing}
-          >
-            <Ionicons name="share-social-outline" size={14} color="#ffffff" />
-            <Text style={styles.mastheadShareText}>{t('commandCenter.shareBrief', 'Share')}</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -522,13 +476,12 @@ export default function CommandCenter({ accessScope = null }) {
           onPressMembers={() => handleNavClick('members', 'members')}
           onPressUnits={() => handleNavClick('units', 'units')}
           onPressGovernance={() => handleNavClick('governance', 'meetings')}
-          onPressAlerts={() => handleNavClick('alerts', 'alerts')}
+          onPressAlerts={() => router.push('/admin/pending-approvals')}
         />
 
         {/* ── QUICK SPEED DIAL ── */}
         <ExecutiveQuickActions
           pendingApprovals={pendingApprovals}
-          onShareBriefing={handleShareBriefing}
           isRTL={isRTL}
           t={t}
         />
@@ -546,7 +499,6 @@ export default function CommandCenter({ accessScope = null }) {
               units: (o?.provinces?.active || 0) + (o?.districts?.active || 0) + (o?.areas?.active || 0) + (o?.basicUnits?.active || 0) || null,
               members: s?.membership?.total ? num(s.membership.total) : null,
               meetings: s?.meetings?.conducted ? num(s.meetings.conducted) : null,
-              alerts: (pendingApprovals || 0) + (s?.reports?.outstanding || 0) || null,
             }}
             isRTL={isRTL}
             t={t}
@@ -708,50 +660,6 @@ export default function CommandCenter({ accessScope = null }) {
             />
           </SectionCard>
         )}
-
-        {/* ── SECTION 7: Needs Attention ── */}
-        {(activeCategory === 'all' || activeCategory === 'alerts') && (
-          <SectionCard
-            icon={<Ionicons name="alert-circle-outline" size={18} color="#d97706" />}
-            title={t('dashboard.needsAttention', 'Needs Attention')}
-            meta={pendingApprovals > 0 ? `${pendingApprovals} pending` : null}
-            onLayout={(e) => {
-              sectionPositions.current['alerts'] = e.nativeEvent.layout.y;
-              if (pendingScrollTarget?.targetSection === 'alerts') {
-                triggerScroll(e.nativeEvent.layout.y);
-              }
-            }}
-          >
-            <View style={{ gap: Spacing.sm }}>
-              {pendingApprovals > 0 && (
-                <View style={[styles.priorityAlertCard, isRTL && { flexDirection: 'row-reverse' }]}>
-                  <View style={styles.priorityAlertBadge}>
-                    <Ionicons name="hourglass-outline" size={18} color="#d97706" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.priorityAlertTitle, isRTL && { textAlign: 'right' }]}>
-                      {pendingApprovals} {t('nav.pendingRoleApprovals', 'Role Approvals Pending')}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.priorityAlertBtn}
-                      activeOpacity={0.8}
-                      onPress={() => router.push('/admin/pending-approvals')}
-                    >
-                      <View style={styles.btnRow}>
-                        <Ionicons name="flash-outline" size={13} color="#ffffff" />
-                        <Text style={styles.priorityAlertBtnText}>
-                          {t('common.review', 'Review Now')}
-                        </Text>
-                        <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={13} color="#ffffff" />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-              <InactiveUnitsTable params={params} />
-            </View>
-          </SectionCard>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -831,22 +739,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     flex: 1,
   },
-  mastheadShareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  mastheadShareText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
+
 
   // ── PERIOD STRIP ──
   quickFilterBar: {

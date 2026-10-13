@@ -468,7 +468,7 @@ export default function CommitteeScreen() {
                     <View style={[styles.quickNavIconBox, { backgroundColor: '#f3e8ff' }]}>
                       <Ionicons name="swap-horizontal-outline" size={20} color="#7c3aed" />
                     </View>
-                    <Text style={styles.quickNavBtnText}>{t('finance.transfers', 'Transfers')}</Text>
+                    <Text style={styles.quickNavBtnText}>{t('nav.fundTransfers', 'Fund Transfers')}</Text>
                   </TouchableOpacity>
                 </>
               )}

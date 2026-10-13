@@ -51,7 +51,7 @@ import { formatUnitArrangedBy } from '../../../src/utils/unitFormat';
 const FINANCE_TABS = [
   { label: 'Donations', value: 'DONATIONS', icon: 'cash-outline' },
   { label: 'Expenses', value: 'EXPENSES', icon: 'receipt-outline' },
-  { label: 'Transfers', value: 'TRANSFERS', icon: 'swap-horizontal-outline' },
+  { label: 'Fund Transfers', value: 'TRANSFERS', icon: 'swap-horizontal-outline' },
   { label: 'Monthly', value: 'MONTHLY', icon: 'bar-chart-outline' },
 ];
 
@@ -130,8 +130,8 @@ export default function FinanceScreen() {
     const list = [
       { label: t('finance.donations', 'Donations'), value: 'DONATIONS', icon: 'cash-outline' },
       { label: t('finance.expenses', 'Expenses'), value: 'EXPENSES', icon: 'receipt-outline' },
-      { label: t('finance.transfers', 'Transfers'), value: 'TRANSFERS', icon: 'swap-horizontal-outline' },
-      { label: t('finance.monthly', 'Monthly'), value: 'MONTHLY', icon: 'bar-chart-outline' },
+      { label: t('nav.fundTransfers', t('finance.fundTransfers', 'Fund Transfers')), value: 'TRANSFERS', icon: 'swap-horizontal-outline' },
+      { label: t('finance.monthly', 'Monthly Summary'), value: 'MONTHLY', icon: 'bar-chart-outline' },
     ];
     if (isCongressView) {
       return list.filter((item) => item.value !== 'TRANSFERS');
@@ -968,7 +968,7 @@ export default function FinanceScreen() {
                   })}
                 >
                   <Ionicons name="swap-horizontal-outline" size={15} color={Colors.primary} />
-                  <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>{t('finance.transfers', 'Transfers')}</Text>
+                  <Text style={[styles.btnExportText, { color: Colors.primary, fontWeight: '700' }]}>{t('nav.fundTransfers', t('finance.fundTransfers', 'Fund Transfers'))}</Text>
                 </TouchableOpacity>
               )}
 

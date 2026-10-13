@@ -459,7 +459,7 @@ export default function JirgaScreen() {
                   <View style={[styles.quickNavIconBox, { backgroundColor: '#fdf4ff' }]}>
                     <Ionicons name="swap-horizontal-outline" size={20} color="#c026d3" />
                   </View>
-                  <Text style={styles.quickNavBtnText}>{t('finance.transfers', 'Transfers')}</Text>
+                  <Text style={styles.quickNavBtnText}>{t('nav.fundTransfers', 'Fund Transfers')}</Text>
                 </TouchableOpacity>
               </>
             )}

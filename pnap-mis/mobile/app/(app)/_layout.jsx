@@ -230,7 +230,7 @@ export default function AppLayout() {
       <Tabs.Screen name="members/metrics/[type]" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="reports/metrics/[type]" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="finance/index" options={{ href: null, headerTitle: t('nav.finance', 'Finance'), headerShown: true }} />
-      <Tabs.Screen name="finance/transfers" options={{ href: null, headerTitle: t('nav.transfers', 'Transfers'), headerShown: true }} />
+      <Tabs.Screen name="finance/transfers" options={{ href: null, headerTitle: t('nav.fundTransfers', 'Fund Transfers'), headerShown: true }} />
 
       {/* Cabinet, Announcements, Notifications, Unit */}
       <Tabs.Screen name="cabinet/index" options={{ href: null, headerTitle: t('nav.cabinet', 'Cabinet'), headerShown: true }} />

@@ -11,7 +11,6 @@ import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
  */
 export default function ExecutiveQuickActions({
   pendingApprovals = 0,
-  onShareBriefing,
   isRTL = false,
   t,
 }) {
@@ -46,15 +45,6 @@ export default function ExecutiveQuickActions({
       bg: '#faf5ff',
       border: '#e9d5ff',
       onPress: () => router.push('/announcements'),
-    },
-    {
-      key: 'share',
-      iconName: 'share-social-outline',
-      iconColor: '#0284c7',
-      title: t('commandCenter.shareBrief', 'Share'),
-      bg: '#f0f9ff',
-      border: '#bae6fd',
-      onPress: onShareBriefing,
     },
   ];
 
