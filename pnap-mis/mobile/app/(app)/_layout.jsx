@@ -7,6 +7,8 @@ import OfflineBanner from '../../src/components/OfflineBanner';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { canManageFinance, isHigherAdmin, isAreaAdmin, isSuperAdmin, canInitiateRole, canDecideRole, hasPermission, isPureMember } from '../../src/utils/permissions';
 
+import NotificationBell from '../../src/components/NotificationBell';
+
 function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size ? Math.min(size, 22) : 22} color={color} />;
 }
@@ -136,6 +138,7 @@ export default function AppLayout() {
           headerTintColor: '#fff',
           headerTitleStyle: { fontWeight: '700' },
           headerLeft: route.name === 'index' ? undefined : () => <HeaderBackButton currentRoute={route.name} />,
+          headerRight: () => (route.name !== 'notifications' ? <NotificationBell /> : null),
           tabBarActiveTintColor: Colors.primary,
           tabBarInactiveTintColor: Colors.textMuted,
           tabBarStyle: {

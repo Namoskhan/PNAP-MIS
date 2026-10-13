@@ -46,6 +46,15 @@ export default function ExecutiveQuickActions({
       border: '#e9d5ff',
       onPress: () => router.push('/announcements'),
     },
+    {
+      key: 'notifications',
+      iconName: 'notifications-outline',
+      iconColor: '#0284c7',
+      title: t('nav.notifications', 'Alerts'),
+      bg: '#f0f9ff',
+      border: '#bae6fd',
+      onPress: () => router.push('/notifications'),
+    },
   ];
 
   return (
