@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
 import UnitSwitcher from '../../components/UnitSwitcher';
 import PashtoKeyboardHelper from '../../components/PashtoKeyboardHelper';
+import Form7Workspace from './proforma/Form7Workspace';
 
 function downloadAuthed(path, filename) {
   const token = localStorage.getItem('pnap_token');
@@ -160,6 +161,9 @@ export default function ProformaReportsPage() {
   // Form 6 View Mode: 'cards' or 'table'
   const [form6ViewMode, setForm6ViewMode] = useState('cards');
   const [form6Search, setForm6Search] = useState('');
+  // Form 7 View Mode: 'cards' or 'table'
+  const [form7ViewMode, setForm7ViewMode] = useState('cards');
+  const [form7Search, setForm7Search] = useState('');
   const [districtsList, setDistrictsList] = useState([]);
   const [selectedDistrictId, setSelectedDistrictId] = useState(() => (ctx?.districtId || user?.scope?.districtId || ''));
 
@@ -276,7 +280,7 @@ export default function ProformaReportsPage() {
 
   // Resolve target unit ID based on current formType
   const targetId = useMemo(() => {
-    if (formType === 'form6') {
+    if (formType === 'form6' || formType === 'form7') {
       return effectiveDistrictId;
     }
     if (formType === 'form5') {
@@ -291,7 +295,7 @@ export default function ProformaReportsPage() {
 
   // Resolve active unit display name
   const activeUnitDisplayName = useMemo(() => {
-    if (formType === 'form6') {
+    if (formType === 'form6' || formType === 'form7') {
       if (ctx?.unitLevel === 'DISTRICT') return ctx.unitName;
       const found = districtsList.find((d) => String(d._id) === String(targetId));
       return found?.name || formData.districtName || 'District';
@@ -366,9 +370,9 @@ export default function ProformaReportsPage() {
         year,
         month,
         unitId: targetId,
-        areaId: (formType === 'form5' || formType === 'form6') ? undefined : effectiveAreaId,
+        areaId: (formType === 'form5' || formType === 'form6' || formType === 'form7') ? undefined : effectiveAreaId,
         provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
-        districtId: formType === 'form6' ? effectiveDistrictId : undefined,
+        districtId: (formType === 'form6' || formType === 'form7') ? effectiveDistrictId : undefined,
         prefill: prefillFromSystem ? 'true' : undefined,
       };
 
@@ -398,9 +402,9 @@ export default function ProformaReportsPage() {
         year,
         month,
         unitId: targetId,
-        areaId: (formType === 'form5' || formType === 'form6') ? undefined : effectiveAreaId,
+        areaId: (formType === 'form5' || formType === 'form6' || formType === 'form7') ? undefined : effectiveAreaId,
         provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
-        districtId: formType === 'form6' ? effectiveDistrictId : undefined,
+        districtId: (formType === 'form6' || formType === 'form7') ? effectiveDistrictId : undefined,
         prefill: 'true',
       };
       const res = await api.get('/proforma/entry', { params });
@@ -414,6 +418,33 @@ export default function ProformaReportsPage() {
       } else {
         // Smart merge: only populate missing or empty fields
         setFormData((prev) => {
+          if (formType === 'form7') {
+            let mergedRows = prev.rows || [];
+            const sysRows = sysData.rows || [];
+            if (!mergedRows || mergedRows.length === 0) {
+              mergedRows = sysRows;
+            } else if (sysRows && sysRows.length > 0) {
+              mergedRows = mergedRows.map((r, i) => {
+                const sr = sysRows.find((x) => x.unitId && String(x.unitId) === String(r.unitId)) || sysRows[i] || {};
+                const updatedR = { ...r };
+                for (const [rk, rv] of Object.entries(sr)) {
+                  if (updatedR[rk] === undefined || updatedR[rk] === '' || updatedR[rk] === null) {
+                    updatedR[rk] = rv;
+                  }
+                }
+                return updatedR;
+              });
+            }
+
+            return {
+              ...prev,
+              districtName: prev.districtName || sysData.districtName,
+              year: prev.year || sysData.year,
+              month: prev.month || sysData.month,
+              rows: mergedRows,
+            };
+          }
+
           if (formType === 'form6') {
             const mergedUpper = { ...(prev.upper || {}) };
             const sysUpper = sysData.upper || {};
@@ -1863,11 +1894,137 @@ export default function ProformaReportsPage() {
     return { errors, isValid: errors.length === 0 };
   }
 
+  // Form 7: Update Area Unit row
+  function updateForm7Row(idx, field, val) {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      const r = { ...rows[idx], [field]: val };
+
+      // Auto-compute percentages
+      if (field === 'execHeld' || field === 'execMeetings') {
+        const total = parseInt(field === 'execMeetings' ? val : r.execMeetings, 10) || 0;
+        const held = parseInt(field === 'execHeld' ? val : r.execHeld, 10) || 0;
+        if (total > 0) r.execPct = `${Math.min(100, Math.round((held / total) * 100))}%`;
+      }
+      if (field === 'commHeld' || field === 'commMeetings') {
+        const total = parseInt(field === 'commMeetings' ? val : r.commMeetings, 10) || 0;
+        const held = parseInt(field === 'commHeld' ? val : r.commHeld, 10) || 0;
+        if (total > 0) r.commPct = `${Math.min(100, Math.round((held / total) * 100))}%`;
+      }
+      if (field === 'buExecMeetingsHeld' || field === 'buExecMeetingsTotal') {
+        const total = parseInt(field === 'buExecMeetingsTotal' ? val : r.buExecMeetingsTotal, 10) || 0;
+        const held = parseInt(field === 'buExecMeetingsHeld' ? val : r.buExecMeetingsHeld, 10) || 0;
+        if (total > 0) r.buExecPct = `${Math.min(100, Math.round((held / total) * 100))}%`;
+      }
+      if (field === 'buGbMeetingsHeld' || field === 'buGbMeetingsTotal') {
+        const total = parseInt(field === 'buGbMeetingsTotal' ? val : r.buGbMeetingsTotal, 10) || 0;
+        const held = parseInt(field === 'buGbMeetingsHeld' ? val : r.buGbMeetingsHeld, 10) || 0;
+        if (total > 0) r.buGbPct = `${Math.min(100, Math.round((held / total) * 100))}%`;
+      }
+      if (field === 'membershipPresent' || field === 'membershipTotal') {
+        const total = parseInt(field === 'membershipTotal' ? val : r.membershipTotal, 10) || 0;
+        const pres = parseInt(field === 'membershipPresent' ? val : r.membershipPresent, 10) || 0;
+        if (total > 0) r.membershipPct = `${Math.min(100, Math.round((pres / total) * 100))}%`;
+      }
+      if (field === 'studyUnitsCount' || field === 'studyUnitsComm') {
+        const total = parseInt(field === 'studyUnitsComm' ? val : r.studyUnitsComm, 10) || 0;
+        const count = parseInt(field === 'studyUnitsCount' ? val : r.studyUnitsCount, 10) || 0;
+        if (total > 0) r.studyPct = `${Math.min(100, Math.round((count / total) * 100))}%`;
+      }
+
+      rows[idx] = r;
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 7: Add Area Unit row
+  function addForm7Row() {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      rows.push({
+        srNo: rows.length + 1,
+        unitName: '',
+        execMeetings: 1, execTotalMembers: 0, execPresent: 0, execHeld: 1, execPct: '100%',
+        commMeetings: 1, commTotalMembers: 0, commPresent: 0, commHeld: 1, commPct: '100%',
+        buCount: 0, newBuCount: 0,
+        buExecUnitsTotal: 0, buExecUnitsPresent: 0, buExecMeetingsTotal: 0, buExecMeetingsHeld: 0, buExecPct: '',
+        buGbMeetingsTotal: 0, buGbMeetingsHeld: 0, buGbPct: '', inactiveBuCount: 0,
+        membershipTotal: 0, membershipPresent: 0, membershipPct: '',
+        studyAreaComm: 0, studyUnitsComm: 0, studyUnitsCount: 0, studyPct: '',
+        programsCount: 0, inductionPrograms: 0, newInductions: 0,
+        psoUnitsCount: 0,
+        ralliesCount: 0, jirgasCount: 0, unitGatherings: 0,
+        villagesWithoutUnit: 0, officeActivity: 'فعاله',
+        duesMonthly: 0, duesOrg: 0, duesEmergency: 0,
+        bloodPosts: 0, bloodCash: 0, bloodZakat: 0,
+      });
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 7: Remove Area Unit row
+  function removeForm7Row(idx) {
+    setFormData((prev) => {
+      const rows = (prev.rows || []).filter((_, i) => i !== idx).map((r, i) => ({ ...r, srNo: i + 1 }));
+      return { ...prev, rows };
+    });
+  }
+
+  // Form 7: Auto-Calculate All Percentages Across All Rows
+  function handleAutoCalcAllForm7Rows() {
+    setFormData((prev) => {
+      const rows = (prev.rows || []).map((r) => {
+        const updated = { ...r };
+        const eTot = parseInt(r.execMeetings, 10) || 0;
+        const eHeld = parseInt(r.execHeld, 10) || 0;
+        if (eTot > 0) updated.execPct = `${Math.min(100, Math.round((eHeld / eTot) * 100))}%`;
+
+        const cTot = parseInt(r.commMeetings, 10) || 0;
+        const cHeld = parseInt(r.commHeld, 10) || 0;
+        if (cTot > 0) updated.commPct = `${Math.min(100, Math.round((cHeld / cTot) * 100))}%`;
+
+        const beTot = parseInt(r.buExecMeetingsTotal, 10) || 0;
+        const beHeld = parseInt(r.buExecMeetingsHeld, 10) || 0;
+        if (beTot > 0) updated.buExecPct = `${Math.min(100, Math.round((beHeld / beTot) * 100))}%`;
+
+        const bgTot = parseInt(r.buGbMeetingsTotal, 10) || 0;
+        const bgHeld = parseInt(r.buGbMeetingsHeld, 10) || 0;
+        if (bgTot > 0) updated.buGbPct = `${Math.min(100, Math.round((bgHeld / bgTot) * 100))}%`;
+
+        const mTot = parseInt(r.membershipTotal, 10) || 0;
+        const mPres = parseInt(r.membershipPresent, 10) || 0;
+        if (mTot > 0) updated.membershipPct = `${Math.min(100, Math.round((mPres / mTot) * 100))}%`;
+
+        const sTot = parseInt(r.studyUnitsComm, 10) || 0;
+        const sCount = parseInt(r.studyUnitsCount, 10) || 0;
+        if (sTot > 0) updated.studyPct = `${Math.min(100, Math.round((sCount / sTot) * 100))}%`;
+
+        return updated;
+      });
+      return { ...prev, rows };
+    });
+    setFeedback({ text: t('proforma.form7.autoCalcSuccess', 'Percentages and metrics auto-calculated successfully!'), type: 'success' });
+  }
+
+  // Form 7 Validation
+  function validateForm7Data(data = {}) {
+    const errors = [];
+    const rows = data.rows || [];
+    rows.forEach((r, i) => {
+      const hasAnyData = Object.entries(r).some(([k, v]) => k !== 'srNo' && k !== 'unitName' && String(v || '').trim() !== '');
+      if (hasAnyData && !r.unitName?.trim()) {
+        errors.push(`Area Unit Row #${i + 1}: Area Unit Name (علاقائي يونټ نوم) is required`);
+      }
+    });
+    return { errors, isValid: errors.length === 0 };
+  }
+
   const rows = formData.rows || formData.execRows || [];
   const form2Validation = useMemo(() => validateForm2Rows(formData.rows || []), [formData.rows]);
   const form3Validation = useMemo(() => validateForm3Data(formData), [formData]);
   const form5Validation = useMemo(() => validateForm5Rows(formData.rows || []), [formData.rows]);
   const form6Validation = useMemo(() => validateForm6Data(formData), [formData]);
+  const form7Validation = useMemo(() => validateForm7Data(formData), [formData]);
   const upper = formData.upper || formData;
 
   // Real-time calculations for Form 4
@@ -2012,7 +2169,31 @@ export default function ProformaReportsPage() {
 
   // Save silently and return the saved document
   async function saveReportData(targetStatus = 'DRAFT') {
-    if (!targetId) throw new Error(formType === 'form6' ? 'No district selected' : (formType === 'form5' ? 'No province selected' : (formType === 'form4' ? 'No basic unit selected' : 'No area context available')));
+    if (!targetId) throw new Error((formType === 'form6' || formType === 'form7') ? 'No district selected' : (formType === 'form5' ? 'No province selected' : (formType === 'form4' ? 'No basic unit selected' : 'No area context available')));
+
+    if (formType === 'form7') {
+      const payload = {
+        formType: 'form7',
+        unitLevel: 'DISTRICT',
+        unitId: effectiveDistrictId,
+        districtId: effectiveDistrictId,
+        unitName: activeUnitDisplayName,
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        status: targetStatus,
+        data: sanitizeReportData({
+          ...formData,
+          districtName: activeUnitDisplayName,
+          year: String(year),
+          month: String(month),
+          rows: formData.rows || [],
+        }),
+        notes: formData.notes || '',
+      };
+      const res = await api.post('/proforma/save', payload);
+      setStatusDoc(res.data);
+      return res.data;
+    }
 
     if (formType === 'form6') {
       const payload = {
@@ -2180,7 +2361,16 @@ export default function ProformaReportsPage() {
     setSaving(true);
     setFeedback({ text: '', type: '' });
 
-    if (formType === 'form6') {
+    if (formType === 'form7') {
+      if (!form7Validation.isValid) {
+        setFeedback({
+          text: `⚠️ ${form7Validation.errors[0]}`,
+          type: 'error',
+        });
+        setSaving(false);
+        return;
+      }
+    } else if (formType === 'form6') {
       if (!form6Validation.isValid) {
         setFeedback({
           text: `⚠️ ${form6Validation.errors[0]}`,
@@ -2286,9 +2476,9 @@ export default function ProformaReportsPage() {
         year: parseInt(year, 10),
         month: parseInt(month, 10),
         unitId: targetId,
-        areaId: (formType === 'form5' || formType === 'form6') ? undefined : effectiveAreaId,
+        areaId: (formType === 'form5' || formType === 'form6' || formType === 'form7') ? undefined : effectiveAreaId,
         provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
-        districtId: formType === 'form6' ? effectiveDistrictId : undefined,
+        districtId: (formType === 'form6' || formType === 'form7') ? effectiveDistrictId : undefined,
       });
       setFeedback({
         text: t('proforma.resetSuccess', 'Report reverted to draft successfully.'),
@@ -2317,14 +2507,18 @@ export default function ProformaReportsPage() {
       const q = new URLSearchParams({
         year: String(year),
         month: String(month),
-        ...(formType === 'form6'
+        ...(formType === 'form7'
+          ? { districtId: effectiveDistrictId }
+          : formType === 'form6'
           ? { districtId: effectiveDistrictId, m1: formData.m1 || '', m2: formData.m2 || '', m3: formData.m3 || '' }
           : formType === 'form5'
           ? { provinceId: effectiveProvinceId, fromDate: formData.fromDate || '', toDate: formData.toDate || '' }
           : (formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId })),
       });
 
-      const endpoint = formType === 'form6'
+      const endpoint = formType === 'form7'
+        ? '/api/exports/proforma/form7/html'
+        : formType === 'form6'
         ? '/api/exports/proforma/form6/html'
         : formType === 'form5'
         ? '/api/exports/proforma/form5/html'
@@ -2380,14 +2574,18 @@ export default function ProformaReportsPage() {
       const q = new URLSearchParams({
         year: String(year),
         month: String(month),
-        ...(formType === 'form6'
+        ...(formType === 'form7'
+          ? { districtId: effectiveDistrictId }
+          : formType === 'form6'
           ? { districtId: effectiveDistrictId, m1: formData.m1 || '', m2: formData.m2 || '', m3: formData.m3 || '' }
           : formType === 'form5'
           ? { provinceId: effectiveProvinceId, fromDate: formData.fromDate || '', toDate: formData.toDate || '' }
           : (formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId })),
       });
 
-      const endpoint = formType === 'form6'
+      const endpoint = formType === 'form7'
+        ? `/api/exports/proforma/form7/${format}`
+        : formType === 'form6'
         ? `/api/exports/proforma/form6/${format}`
         : formType === 'form5'
         ? `/api/exports/proforma/form5/${format}`
@@ -2593,9 +2791,11 @@ export default function ProformaReportsPage() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>{formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋'))))}</span>
+            <span>{formType === 'form7' ? '📑' : (formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋')))))}</span>
             <span>
-              {formType === 'form6'
+              {formType === 'form7'
+                ? t('proforma.form7Title', 'پښتونخوا ملي عوامي پارټي ضلع کښي علاقائي يونټانو د کار او فعاليت مياشتنئي رپورټ (Form 7)')
+                : formType === 'form6'
                 ? t('proforma.form6Title', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (Form 6)')
                 : formType === 'form5'
                 ? t('proforma.form5Title', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (Form 5)')
@@ -2609,7 +2809,9 @@ export default function ProformaReportsPage() {
             </span>
           </h2>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            {formType === 'form6'
+            {formType === 'form7'
+              ? `${t('proforma.form7Desc', 'Official party monthly work & activity report for subordinate Area Units under District')} · `
+              : formType === 'form6'
               ? `${t('proforma.form6Desc', 'Official party monthly work & activity report for District Executive and Subordinate Units')} · `
               : formType === 'form5'
               ? `${t('proforma.form5Desc', 'Official party monthly work & activity report for Provincial Executive Comrades')} · `
@@ -2702,6 +2904,15 @@ export default function ProformaReportsPage() {
             <span>🏛️</span>
             <span>{t('proforma.form6Btn', 'Form 6: District Report (ضلعي کار او فعاليت)')}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => { setFormType('form7'); setActiveTab('upper'); }}
+            className={`btn ${formType === 'form7' ? '' : 'secondary'}`}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+          >
+            <span>📑</span>
+            <span>{t('proforma.form7Btn', 'Form 7: District Subordinate Area Units (ضلع کښي علاقائي يونټونه)')}</span>
+          </button>
         </div>
 
         <div className="proforma-filter-row">
@@ -2738,7 +2949,34 @@ export default function ProformaReportsPage() {
             </div>
 
             {/* Target Unit Context Selector */}
-            {formType === 'form6' ? (
+            {formType === 'form7' ? (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                    {t('proforma.form7.district', 'ضلع (District)')}
+                  </label>
+                  {ctx?.unitLevel === 'DISTRICT' ? (
+                    <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
+                      🏛️ {ctx?.unitName || 'Current District'}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedDistrictId}
+                      onChange={(e) => setSelectedDistrictId(e.target.value)}
+                      style={{ minWidth: 180, fontWeight: 600 }}
+                    >
+                      {districtsList.length === 0 ? (
+                        <option value="">(No Districts Found)</option>
+                      ) : (
+                        districtsList.map((d) => (
+                          <option key={d._id} value={d._id}>{d.name}</option>
+                        ))
+                      )}
+                    </select>
+                  )}
+                </div>
+              </div>
+            ) : formType === 'form6' ? (
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
@@ -3129,7 +3367,9 @@ export default function ProformaReportsPage() {
               borderBottom: activeTab === 'upper' ? '2px solid var(--primary, #38bdf8)' : 'none',
             }}
           >
-            📊 {formType === 'form6'
+            📊 {formType === 'form7'
+              ? t('proforma.form7.tabUnits', '1. د علاقائي يونټانو کار او فعاليت (Area Units Performance & Activity)')
+              : formType === 'form6'
               ? t('proforma.form6.tabUpper', '1. د ضلعې او ماتحتو څانګو لنډيز (Summary & Subordinate Metrics)')
               : formType === 'form5'
               ? t('proforma.form5.tabRoster', '1. د صوبائي ايګزيکټيو ملګرو ځانګړي فعاليت (Executive Activity)')
@@ -3139,7 +3379,7 @@ export default function ProformaReportsPage() {
               ? t('proforma.tabOverviewForm4', '1. د ابتدائي يونټ مياشتنئ لنډيز (Unit Summary)')
               : t('proforma.tabOverview', '1. Area Summary & Metrics')}
           </button>
-          {formType !== 'form2' && formType !== 'form5' && (
+          {formType !== 'form2' && formType !== 'form5' && formType !== 'form7' && (
             <button
               type="button"
               onClick={() => setActiveTab('roster')}
@@ -3169,7 +3409,7 @@ export default function ProformaReportsPage() {
               borderBottom: activeTab === 'notes' ? '2px solid var(--primary, #38bdf8)' : 'none',
             }}
           >
-            📝 {formType === 'form2' || formType === 'form5' ? t('proforma.tabNotes2', '2. Remarks & Observations') : t('proforma.tabNotes', '3. Remarks & Observations')}
+            📝 {['form2', 'form5', 'form7'].includes(formType) ? t('proforma.tabNotes2', '2. Remarks & Observations') : t('proforma.tabNotes', '3. Remarks & Observations')}
           </button>
         </div>
       )}
@@ -3178,7 +3418,25 @@ export default function ProformaReportsPage() {
       {/* TAB 1: UPPER / SUMMARY METRICS & FORM 2 WORKSPACE */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'upper' && (
-        formType === 'form6' ? (
+        formType === 'form7' ? (
+          /* FORM 7 DISTRICT AREA UNITS MONTHLY WORKSPACE */
+          <Form7Workspace
+            formData={formData}
+            rows={formData.rows || []}
+            form7ViewMode={form7ViewMode}
+            setForm7ViewMode={setForm7ViewMode}
+            form7Search={form7Search}
+            setForm7Search={setForm7Search}
+            updateForm7Row={updateForm7Row}
+            addForm7Row={addForm7Row}
+            removeForm7Row={removeForm7Row}
+            handleAutoCalcAllForm7Rows={handleAutoCalcAllForm7Rows}
+            form7Validation={form7Validation}
+            isRtl={isRtl}
+            t={t}
+            updateField={updateField}
+          />
+        ) : formType === 'form6' ? (
           /* FORM 6 DISTRICT SUMMARY & SUBORDINATE METRICS WORKSPACE */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* KPI Summary Cards */}
@@ -6917,7 +7175,7 @@ export default function ProformaReportsPage() {
       {activeTab === 'notes' && (
         <div className="card">
           <h3 style={{ margin: '0 0 10px', color: 'var(--primary, #38bdf8)' }}>
-            {formType === 'form2' || formType === 'form5'
+            {formType === 'form2' || formType === 'form5' || formType === 'form7'
               ? t('proforma.tabNotes2', '2. Remarks & Observations')
               : t('proforma.tabNotes', '3. Remarks & Observations')}
           </h3>
@@ -6928,7 +7186,9 @@ export default function ProformaReportsPage() {
             rows={8}
             value={formData.notes || ''}
             onChange={(e) => updateField('notes', e.target.value)}
-            placeholder={formType === 'form6'
+            placeholder={formType === 'form7'
+              ? t('proforma.form7.notesPlaceholder', 'e.g., During this month, subordinate area units held regular executive and general body meetings, basic units were supervised, ideological study circles were conducted, and dues were remitted to district leadership...')
+              : formType === 'form6'
               ? t('proforma.notesPlaceholderForm6', 'e.g., During this month/quarter, district executive meetings were conducted, subordinate area and basic units performance was evaluated, ideological study circles were held, and political rallies were organized...')
               : formType === 'form5'
               ? t('proforma.notesPlaceholderForm5', 'e.g., During this period, provincial executive comrades completed organizational tours, attended central and provincial meetings, conducted study circles, and submitted individual activity summaries...')
@@ -7829,7 +8089,9 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 20 }}>🖨️</span>
                 <strong>
-                  {formType === 'form6'
+                  {formType === 'form7'
+                    ? t('proforma.previewModalTitleForm7', 'پښتونخوا ملي عوامي پارټي ضلع کښي علاقائي يونټانو د کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
+                    : formType === 'form6'
                     ? t('proforma.previewModalTitleForm6', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
                     : formType === 'form5'
                     ? t('proforma.previewModalTitleForm5', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (A4 Landscape Preview)')
