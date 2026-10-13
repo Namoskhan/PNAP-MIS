@@ -745,6 +745,14 @@ export default function MeetingsScreen() {
               <Ionicons name="grid-outline" size={20} color={isOnline ? Colors.primary : Colors.textMuted} />
             )}
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.analyticsBtn, isRTL && { flexDirection: 'row-reverse' }]}
+            onPress={() => router.push('/meetings/metrics/total')}
+          >
+            <Ionicons name="stats-chart" size={15} color={Colors.primary} style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+            <Text style={styles.analyticsBtnText}>{t('meetings.analytics', 'Stats')}</Text>
+          </TouchableOpacity>
+
           {canManage && (
             <TouchableOpacity
               style={[styles.primaryBtn, isRTL && { flexDirection: 'row-reverse' }]}
@@ -763,6 +771,28 @@ export default function MeetingsScreen() {
           )}
         </View>
       </View>
+
+      {/* Meetings Analytics Shortcut Banner */}
+      <TouchableOpacity
+        style={[styles.meetingsBanner, isRTL && { flexDirection: 'row-reverse' }]}
+        onPress={() => router.push('/meetings/metrics/total')}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.bannerLeft, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={styles.bannerIconBox}>
+            <Text style={styles.bannerIcon}>📅</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.bannerTitle, isRTL && { textAlign: 'right' }]}>
+              {t('meetings.meetingsPerformance', 'Meetings Trends & Governance')}
+            </Text>
+            <Text style={[styles.bannerSub, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+              {t('meetings.meetingsPerformanceSub', '6-month & all-time graphs, conducted vs scheduled, regional distribution')}
+            </Text>
+          </View>
+        </View>
+        <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={16} color={Colors.primary} />
+      </TouchableOpacity>
 
       {/* Body tabs if multiple streams */}
       {tabs.length > 0 && (
@@ -1247,5 +1277,62 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.text,
+  },
+  analyticsBtn: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  analyticsBtnText: {
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: FontSize.sm,
+  },
+  meetingsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: Radius.md,
+    gap: 10,
+  },
+  bannerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bannerIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.sm,
+    backgroundColor: '#bfdbfe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerIcon: {
+    fontSize: 15,
+  },
+  bannerTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  bannerSub: {
+    fontSize: 10,
+    color: '#3b82f6',
+    marginTop: 1,
   },
 });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -6,54 +6,123 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import useAnalytics from '../../hooks/useAnalytics';
 import { useLanguage } from '../../context/LanguageContext';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import Card from '../Card';
-import { AreaTrendChart, HBar, SmartKpi, StackedHBar, BRAND } from '../charts';
+import { Ionicons } from '@expo/vector-icons';
 
-function ChartCard({ title, sub, meta, children }) {
-  const { isRTL } = useLanguage();
+/**
+ * MembershipAnalytics — Main Dashboard View
+ *
+ * Renders exactly 4 interactive KPI tiles on the main dashboard.
+ * Each tile navigates to its own dedicated full-screen detail page
+ * (/members/metrics/[type]) which contains the trend chart,
+ * geographic filters, and tier breakdown.
+ *
+ * The registration-trend chart and breakdown cards have been moved
+ * out of this component and now live in the dedicated detail screens.
+ */
+
+const KPI_CONFIG = [
+  {
+    type: 'total',
+    labelKey: 'dashboard.totalMembers',
+    labelFallback: 'Total Members',
+    icon: '👥',
+    iconColor: Colors.primary,
+    iconBg: 'rgba(30, 64, 175, 0.12)',
+    valueKey: 'total',
+    accent: Colors.primary,
+  },
+  {
+    type: 'new',
+    labelKey: 'dashboard.newMembers',
+    labelFallback: 'New Members',
+    icon: '⚡',
+    iconColor: '#d97706',
+    iconBg: 'rgba(217, 119, 6, 0.12)',
+    valueKey: 'newMembers',
+    accent: '#d97706',
+  },
+  {
+    type: 'active',
+    labelKey: 'dashboard.activeMembers',
+    labelFallback: 'Active',
+    icon: '✅',
+    iconColor: Colors.success,
+    iconBg: 'rgba(22, 163, 74, 0.12)',
+    valueKey: 'active',
+    accent: Colors.success,
+  },
+  {
+    type: 'inactive',
+    labelKey: 'dashboard.inactiveMembers',
+    labelFallback: 'Inactive',
+    icon: '➖',
+    iconColor: Colors.textMuted,
+    iconBg: 'rgba(100, 116, 139, 0.15)',
+    valueKey: 'inactive',
+    accent: Colors.textMuted,
+  },
+];
+
+function MemberKpiTile({ config, value, isRTL, onPress }) {
+  const isLoading = value == null;
   return (
-    <Card style={styles.chartCard}>
-      <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{title}</Text>
-          {sub && <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{sub}</Text>}
+    <TouchableOpacity
+      style={[styles.kpiTile, { borderLeftColor: config.accent }]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={[styles.kpiTileRow, isRTL && { flexDirection: 'row-reverse' }]}>
+        {/* Icon */}
+        <View style={[styles.kpiIconBox, { backgroundColor: config.iconBg }]}>
+          <Text style={styles.kpiIcon}>{config.icon}</Text>
         </View>
-        {meta && <Text style={styles.cardMeta}>{meta}</Text>}
+        {/* Value & Label */}
+        <View style={[styles.kpiTextCol, isRTL && { alignItems: 'flex-end' }]}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color={config.iconColor} />
+          ) : (
+            <Text style={[styles.kpiValue, { color: config.accent }]}>
+              {(value ?? 0).toLocaleString()}
+            </Text>
+          )}
+        </View>
+        {/* Chevron */}
+        <Ionicons
+          name={isRTL ? 'chevron-back' : 'chevron-forward'}
+          size={14}
+          color={Colors.textMuted}
+          style={styles.kpiChevron}
+        />
       </View>
-      {children}
-    </Card>
+      {/* Label below */}
+      <Text style={[styles.kpiLabel, isRTL && { textAlign: 'right' }]}>{config.labelFallback}</Text>
+    </TouchableOpacity>
   );
 }
 
 export default function MembershipAnalytics({ params, windowLabel = 'last 12 months', byStatus }) {
   const { t, isRTL } = useLanguage();
+  const router = useRouter();
   const { data, loading, error } = useAnalytics('/dashboard/membership', params);
-  const [tier, setTier] = useState(null);
 
-  const levelNounMap = {
-    PROVINCE: t('units.province', 'Province'),
-    DISTRICT: t('units.district', 'District'),
-    AREA: t('units.area', 'Area'),
-    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
-  };
+  const navigate = useCallback(
+    (type) => router.push(`/members/metrics/${type}`),
+    [router]
+  );
 
-  const statusMeta = [
-    { key: 'ACTIVE', label: t('common.active', 'Active'), color: Colors.success },
-    { key: 'PENDING_APPROVAL', label: t('dashboard.pendingApprovals', 'Pending approval'), color: Colors.warning },
-    { key: 'REJECTED', label: t('common.rejected', 'Rejected'), color: Colors.error },
-    { key: 'INACTIVE', label: t('dashboard.inactive', 'Inactive'), color: Colors.textMuted },
-    { key: 'SUSPENDED', label: t('dashboard.statuses.SUSPENDED', 'Suspended'), color: Colors.accent },
-    { key: 'EXPELLED', label: t('dashboard.statuses.EXPELLED', 'Expelled'), color: '#991b1b' },
-    { key: 'DECEASED', label: t('dashboard.statuses.DECEASED', 'Deceased'), color: '#94a3b8' },
-  ];
+  const totals = data?.totals || {};
 
   if (loading && !data) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={styles.loadingRow}>
+        {KPI_CONFIG.map((cfg) => (
+          <View key={cfg.type} style={[styles.kpiTile, styles.kpiTileSkeleton]} />
+        ))}
       </View>
     );
   }
@@ -66,198 +135,106 @@ export default function MembershipAnalytics({ params, windowLabel = 'last 12 mon
     );
   }
 
-  if (!data) return null;
-
-  const totals = data.totals || {};
-  const levels = data.levels || [];
-  const activeTier = levels.includes(tier) ? tier : levels[0] || null;
-  const rows = activeTier ? (data.byLevel[activeTier] || []) : [];
-  const noun = activeTier ? levelNounMap[activeTier] : null;
-  const top = rows.slice(0, 10);
-
-  const statusRows = statusMeta
-    .map((m) => ({ label: m.label, value: byStatus?.[m.key] || 0, color: m.color }))
-    .filter((r) => r.value > 0);
-  const statusTotal = statusRows.reduce((s, r) => s + r.value, 0);
-
-  const trendBuckets = (data.trend || []).map((b) => ({
-    month: b.label,
-    total: b.newMembers || 0,
-  }));
-
   return (
     <View style={styles.container}>
-      {/* 4 Headline KPIs */}
       <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
-        <SmartKpi
-          label={t('dashboard.totalMembers', 'Total Membership')}
-          value={totals.total}
-          icon="👥"
-          iconBg="rgba(30, 64, 175, 0.12)"
-          iconColor={Colors.primary}
-        />
-        <SmartKpi
-          label={t('dashboard.newMembers', 'New Membership')}
-          value={totals.newMembers}
-          icon="⚡"
-          iconBg="rgba(30, 64, 175, 0.12)"
-          iconColor={Colors.primary}
-        />
+        {/* Row 1: Total + New */}
+        {KPI_CONFIG.slice(0, 2).map((cfg) => (
+          <MemberKpiTile
+            key={cfg.type}
+            config={cfg}
+            value={totals[cfg.valueKey]}
+            isRTL={isRTL}
+            onPress={() => navigate(cfg.type)}
+          />
+        ))}
       </View>
       <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
-        <SmartKpi
-          label={t('dashboard.activeMembers', 'Active')}
-          value={totals.active}
-          icon="✅"
-          iconBg="rgba(22, 163, 74, 0.12)"
-          iconColor={Colors.success}
-        />
-        <SmartKpi
-          label={t('dashboard.inactiveMembers', 'Inactive')}
-          value={totals.inactive}
-          icon="➖"
-          iconBg="rgba(100, 116, 139, 0.15)"
-          iconColor={Colors.textMuted}
-        />
+        {/* Row 2: Active + Inactive */}
+        {KPI_CONFIG.slice(2, 4).map((cfg) => (
+          <MemberKpiTile
+            key={cfg.type}
+            config={cfg}
+            value={totals[cfg.valueKey]}
+            isRTL={isRTL}
+            onPress={() => navigate(cfg.type)}
+          />
+        ))}
       </View>
-
-      {/* Tier Switcher Chips */}
-      {levels.length > 1 && (
-        <View style={styles.tierSwitcher}>
-          <Text style={[styles.tierSwitcherLabel, isRTL && { textAlign: 'right' }]}>{t('dashboard.showBy', 'Break down by:')}</Text>
-          <View style={[styles.tierChipsRow, isRTL && { flexDirection: 'row-reverse' }]}>
-            {levels.map((lvl) => {
-              const isActive = activeTier === lvl;
-              return (
-                <TouchableOpacity
-                  key={lvl}
-                  style={[styles.tierChip, isActive && styles.tierChipActive]}
-                  onPress={() => setTier(lvl)}
-                >
-                  <Text style={[styles.tierChipText, isActive && styles.tierChipTextActive]}>
-                    {levelNounMap[lvl] || lvl}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {/* Member Status Distribution */}
-      {statusRows.length > 0 && (
-        <ChartCard
-          title={t('dashboard.membersByStatus', 'Member status distribution')}
-          sub={t('dashboard.membersByStatusSub', 'Registration workflow state')}
-          meta={`${statusTotal.toLocaleString()} ${t('common.total', 'total')}`}
-        >
-          <HBar rows={statusRows} emptyLabel={t('common.noData', 'No members registered yet.')} />
-        </ChartCard>
-      )}
-
-      {/* Registration Trend */}
-      <ChartCard
-        title={t('dashboard.newMembersEachMonth', 'Registration trend')}
-        sub={t('dashboard.newMembersPerMonth12', 'New members per month')}
-        meta={`${(totals.newMembers || 0).toLocaleString()} ${t('dashboard.inWindow', 'in window')}`}
-      >
-        {trendBuckets.length > 1 ? (
-          <AreaTrendChart
-            trend={trendBuckets}
-            height={130}
-            barColor={BRAND.dark}
-            trackColor={BRAND.tint}
-          />
-        ) : (
-          <Text style={styles.mutedText}>{t('dashboard.notEnoughDataChart', 'Not enough history yet.')}</Text>
-        )}
-      </ChartCard>
-
-      {/* Tier-wise Membership breakdown */}
-      {noun && (
-        <>
-          <ChartCard
-            title={`${t('common.members', 'Members')} by ${noun.toLowerCase()}`}
-            sub={t('dashboard.totalMembers', 'Total members')}
-          >
-            <HBar
-              rows={top.map((r) => ({ label: r.name, value: r.total }))}
-              accent={BRAND.dark}
-              emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units in this scope.')}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={`${t('dashboard.newMembers', 'New members')} by ${noun.toLowerCase()}`}
-            sub={`${t('auth.register', 'Registered')} in ${windowLabel}`}
-          >
-            <HBar
-              rows={top.map((r) => ({ label: r.name, value: r.newMembers }))}
-              accent={BRAND.bright}
-              emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units in this scope.')}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={`${t('dashboard.activeMembers', 'Active members')} by ${noun.toLowerCase()}`}
-            sub={t('dashboard.takingPart', 'Acted inside window')}
-          >
-            <HBar
-              rows={top.map((r) => ({ label: r.name, value: r.active }))}
-              accent={Colors.success}
-              emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units in this scope.')}
-            />
-          </ChartCard>
-
-          <ChartCard
-            title={`${t('dashboard.inactiveMembers', 'Inactive members')} by ${noun.toLowerCase()}`}
-            sub={t('dashboard.notTakingPart', 'No activity in window')}
-          >
-            <HBar
-              rows={top.map((r) => ({ label: r.name, value: r.inactive }))}
-              accent={Colors.textMuted}
-              emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units in this scope.')}
-            />
-          </ChartCard>
-        </>
-      )}
-
-      {/* Side-by-side active vs inactive stacked chart */}
-      {noun && rows.length > 0 && (
-        <ChartCard
-          title={t('dashboard.everyTierSideBySide', 'Every {{tier}}, side by side', { tier: noun.toLowerCase() })}
-          sub={t('dashboard.composition30d', 'Bar length is total members. Colors show active vs inactive.')}
-          meta={`${rows.length} ${noun.toLowerCase()}`}
-        >
-          <StackedHBar
-            rows={rows.slice(0, 15).map((r) => ({
-              label: r.name,
-              values: { active: r.active, inactive: r.inactive },
-              note: r.newMembers,
-            }))}
-            series={[
-              { key: 'active', label: t('dashboard.takingPart', 'Taking part'), color: Colors.success },
-              { key: 'inactive', label: t('dashboard.notTakingPart', 'Not taking part'), color: Colors.textMuted },
-            ]}
-            emptyLabel={t('dashboard.noUnitsFoundSelection', 'No units in this scope.')}
-          />
-          <Text style={[styles.footnote, isRTL && { textAlign: 'right' }]}>
-            {t('dashboard.joinedRecentlyNote', 'The green number (+X) shows new members joined recently.')}
-          </Text>
-        </ChartCard>
-      )}
+      {/* Hint text */}
+      <Text style={[styles.tapHint, isRTL && { textAlign: 'right' }]}>
+        {t('dashboard.tapForDetails', 'Tap a tile to see detailed breakdown & trends')}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
-  center: {
-    padding: Spacing.xl,
+  loadingRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    flexWrap: 'wrap',
+  },
+  kpiGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  kpiTile: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderLeftWidth: 3,
+    padding: Spacing.sm,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  kpiTileSkeleton: {
+    height: 72,
+    backgroundColor: Colors.surfaceAlt,
+    borderLeftColor: Colors.border,
+    opacity: 0.5,
+  },
+  kpiTileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  kpiIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  kpiIcon: {
+    fontSize: 14,
+  },
+  kpiTextCol: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  kpiValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  kpiChevron: {
+    marginLeft: 4,
+  },
+  kpiLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   errorCard: {
     padding: Spacing.md,
@@ -269,81 +246,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: '600',
   },
-  kpiGrid: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  tierSwitcher: {
-    gap: 4,
-  },
-  tierSwitcherLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    textTransform: 'uppercase',
-  },
-  tierChipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  tierChip: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  tierChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  tierChipText: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  tierChipTextActive: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  chartCard: {
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  cardSub: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 1,
-  },
-  cardMeta: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  mutedText: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: 12,
-  },
-  footnote: {
+  tapHint: {
     fontSize: 10,
     color: Colors.textMuted,
-    marginTop: 6,
-    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 2,
   },
 });

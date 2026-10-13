@@ -83,7 +83,17 @@ export default function LoginCustomizationScreen() {
           </View>
         </View>
         <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
-          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={saving}>
+          <TouchableOpacity
+            style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/admin/settings');
+              }
+            }}
+            disabled={saving}
+          >
             <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
             <Text style={styles.btnOutlineText}>{t('admin.settings.backToSettings', 'Back')}</Text>
           </TouchableOpacity>

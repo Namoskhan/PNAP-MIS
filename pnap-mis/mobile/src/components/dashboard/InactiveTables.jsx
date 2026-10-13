@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +12,19 @@ import { useLanguage } from '../../context/LanguageContext';
 import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import Card from '../Card';
 import Badge from '../Badge';
+
+function handleCall(phone) {
+  if (!phone) return;
+  const clean = String(phone).replace(/\s+/g, '');
+  Linking.openURL(`tel:${clean}`).catch(() => {});
+}
+
+function handleWhatsApp(phone, name) {
+  if (!phone) return;
+  const digits = String(phone).replace(/[^0-9]/g, '');
+  const url = `https://wa.me/${digits}?text=${encodeURIComponent(`Salam ${name ? name : ''}, this is from PNAP Central concerning unit mobilization.`)}`;
+  Linking.openURL(url).catch(() => {});
+}
 
 function fmtDate(d, t) {
   return d ? new Date(d).toLocaleDateString() : (t ? t('dashboard.never', 'Never') : 'Never');
@@ -155,19 +169,43 @@ export function InactiveUnitsTable({ params }) {
                   />
                 </View>
 
-                {/* Responsible Officer */}
+                {/* Responsible Officer & One-Tap Actions */}
                 <View style={[styles.itemOfficer, isRTL && { flexDirection: 'row-reverse' }]}>
-                  <Text style={styles.metaLabel}>{t('dashboard.officerInCharge', 'Officer')}: </Text>
-                  {u.officer ? (
-                    <Text style={[styles.officerText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
-                      {u.officer.fullName}{' '}
-                      <Text style={styles.officerRole}>
-                        ({String(u.officer.roleCode || '').replace(/_/g, ' ').toLowerCase()})
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.metaLabel}>{t('dashboard.officerInCharge', 'Officer')}: </Text>
+                    {u.officer ? (
+                      <Text style={[styles.officerText, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+                        {u.officer.fullName}{' '}
+                        <Text style={styles.officerRole}>
+                          ({String(u.officer.roleCode || '').replace(/_/g, ' ').toLowerCase()})
+                        </Text>
                       </Text>
-                    </Text>
-                  ) : (
-                    <Text style={styles.noOfficerText}>{t('dashboard.noCabinetAppointed', 'No cabinet appointed')}</Text>
-                  )}
+                    ) : (
+                      <View style={styles.vacantBadge}>
+                        <Text style={styles.vacantBadgeText}>⚠️ {t('dashboard.noCabinetAppointed', 'No cabinet appointed')}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* 1-Tap Action Call & WhatsApp if phone exists */}
+                  {u.officer?.phone ? (
+                    <View style={[styles.actionButtonsRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <TouchableOpacity
+                        style={styles.callBtn}
+                        activeOpacity={0.7}
+                        onPress={() => handleCall(u.officer.phone)}
+                      >
+                        <Text style={styles.callBtnText}>📞 {t('common.call', 'Call')}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.waBtn}
+                        activeOpacity={0.7}
+                        onPress={() => handleWhatsApp(u.officer.phone, u.officer.fullName)}
+                      >
+                        <Text style={styles.waBtnText}>💬 {t('common.chat', 'WhatsApp')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
                 </View>
 
                 {/* Activity & Days */}
@@ -271,6 +309,29 @@ export function InactiveMembersTable({ params }) {
                   <Text style={[styles.memberLoc, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
                     📍 {loc}
                   </Text>
+                ) : null}
+
+                {/* 1-Tap Call & WhatsApp for dormant members */}
+                {m.phone ? (
+                  <View style={[styles.memberContactRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <Text style={styles.memberPhoneText}>📱 {m.phone}</Text>
+                    <View style={[styles.actionButtonsRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                      <TouchableOpacity
+                        style={styles.callBtn}
+                        activeOpacity={0.7}
+                        onPress={() => handleCall(m.phone)}
+                      >
+                        <Text style={styles.callBtnText}>📞 {t('common.call', 'Call')}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.waBtn}
+                        activeOpacity={0.7}
+                        onPress={() => handleWhatsApp(m.phone, m.fullName)}
+                      >
+                        <Text style={styles.waBtnText}>💬 {t('common.chat', 'WhatsApp')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 ) : null}
 
                 <View style={[styles.itemBottom, isRTL && { flexDirection: 'row-reverse' }]}>
@@ -405,6 +466,64 @@ const styles = StyleSheet.create({
   itemOfficer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  callBtn: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: Radius.sm || 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  callBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#1d4ed8',
+  },
+  waBtn: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    borderRadius: Radius.sm || 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  waBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#15803d',
+  },
+  vacantBadge: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: Radius.xs || 6,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  vacantBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#b91c1c',
+  },
+  memberContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 2,
+  },
+  memberPhoneText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Colors.textMuted,
   },
   metaLabel: {
     fontSize: 11,

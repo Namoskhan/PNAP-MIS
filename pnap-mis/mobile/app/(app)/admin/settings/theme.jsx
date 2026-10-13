@@ -224,7 +224,17 @@ export default function ThemeManagerScreen() {
             </View>
           </View>
           <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
-            <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={busy}>
+            <TouchableOpacity
+              style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/admin/settings');
+                }
+              }}
+              disabled={busy}
+            >
               <Ionicons name="arrow-back" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
               <Text style={styles.btnOutlineText}>{t('common.back', 'Back')}</Text>
             </TouchableOpacity>

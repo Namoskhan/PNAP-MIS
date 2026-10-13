@@ -102,6 +102,7 @@ export default function ActivitiesScreen() {
   const { ctx, provinces, setCtx } = useUnit();
   const toast = useToast();
   const params = useLocalSearchParams();
+  const router = useRouter();
 
   const queryBody = params.body;
   const isCongressView = queryBody === 'CONGRESS';
@@ -1134,6 +1135,14 @@ export default function ActivitiesScreen() {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[styles.analyticsBtn, isRTL && { flexDirection: 'row-reverse' }]}
+            onPress={() => router.push('/campaigns/metrics/running')}
+          >
+            <Ionicons name="stats-chart" size={15} color={Colors.primary} style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+            <Text style={styles.analyticsBtnText}>{t('activities.campaignAnalytics', 'Campaigns')}</Text>
+          </TouchableOpacity>
+
           {canManage && (
             <TouchableOpacity style={[styles.primaryBtn, isRTL && { flexDirection: 'row-reverse' }]} onPress={openCreate}>
               <Ionicons name="add" size={18} color="#fff" />
@@ -1142,6 +1151,28 @@ export default function ActivitiesScreen() {
           )}
         </View>
       </View>
+
+      {/* Campaign Analytics Shortcut Banner */}
+      <TouchableOpacity
+        style={[styles.campaignBanner, isRTL && { flexDirection: 'row-reverse' }]}
+        onPress={() => router.push('/campaigns/metrics/running')}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.bannerLeft, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={styles.bannerIconBox}>
+            <Text style={styles.bannerIcon}>🎯</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.bannerTitle, isRTL && { textAlign: 'right' }]}>
+              {t('activities.campaignPerformance', 'Campaign Trends & Performance')}
+            </Text>
+            <Text style={[styles.bannerSub, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+              {t('activities.campaignPerformanceSub', '6-month & all-time charts, reach stats, regional distribution')}
+            </Text>
+          </View>
+        </View>
+        <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={16} color={Colors.primary} />
+      </TouchableOpacity>
 
       {isMobile ? (
         <FlatList
@@ -1877,5 +1908,62 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     textAlign: 'center',
     maxWidth: 280,
+  },
+  analyticsBtn: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  analyticsBtnText: {
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: FontSize.sm,
+  },
+  campaignBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: Radius.md,
+    gap: 10,
+  },
+  bannerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bannerIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.sm,
+    backgroundColor: '#bfdbfe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerIcon: {
+    fontSize: 15,
+  },
+  bannerTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  bannerSub: {
+    fontSize: 10,
+    color: '#3b82f6',
+    marginTop: 1,
   },
 });

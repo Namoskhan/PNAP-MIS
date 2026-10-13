@@ -174,7 +174,7 @@ export default function CommandCenter({ accessScope = null }) {
   const trail = isSuper
     ? scopeInfo.data?.trail?.filter((item) => item.level !== 'NATIONAL')
     : scopeInfo.data?.trail;
-  const scopeName = trail?.length ? trail[trail.length - 1].name : 'the whole country';
+  const scopeName = trail?.length ? trail[trail.length - 1].name : t('commandCenter.theWholeCountry', 'All Pakistan');
   const windowLabel = `last ${filters.days} days`;
   const childNoun = LEVEL_NOUN[org.data?.level] || 'Province';
 
@@ -192,7 +192,7 @@ export default function CommandCenter({ accessScope = null }) {
       <header className="cc-masthead">
         <div>
           {!isSuper && <div className="cc-eyebrow">Dashboard</div>}
-          <h2 className="cc-title">{scopeName === 'the whole country' ? t('nav.commandCenter', 'Command Center') : scopeName}</h2>
+          <h2 className="cc-title">{scopeName === t('commandCenter.theWholeCountry', 'All Pakistan') ? t('nav.commandCenter', 'Command Center') : scopeName}</h2>
         </div>
         <div className="cc-live" title="Totals update every minute">
           <span className="cc-live-dot" aria-hidden="true" />

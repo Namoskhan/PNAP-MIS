@@ -78,7 +78,17 @@ export default function SystemIdentityScreen() {
           </View>
         </View>
         <View style={[styles.heroActions, isRTL && { flexDirection: 'row-reverse' }]}>
-          <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={busy || saving}>
+          <TouchableOpacity
+            style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/admin/settings');
+              }
+            }}
+            disabled={busy || saving}
+          >
             <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
             <Text style={styles.btnOutlineText}>{t('admin.settings.backToSettings', 'Back')}</Text>
           </TouchableOpacity>
@@ -117,7 +127,17 @@ export default function SystemIdentityScreen() {
 
           {canWrite && (
             <View style={[styles.footer, isRTL && { flexDirection: 'row-reverse' }]}>
-              <TouchableOpacity style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]} onPress={() => router.back()} disabled={saving}>
+              <TouchableOpacity
+                style={[styles.btnOutline, isRTL && { flexDirection: 'row-reverse' }]}
+                onPress={() => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace('/admin/settings');
+                  }
+                }}
+                disabled={saving}
+              >
                 <Ionicons name="close" size={16} color={Colors.text} style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
                 <Text style={styles.btnOutlineText}>{t('common.cancel', 'Cancel')}</Text>
               </TouchableOpacity>

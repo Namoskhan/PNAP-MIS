@@ -1,6 +1,6 @@
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, useRouter, useNavigation } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
-import { ActivityIndicator, View, Platform, Image } from 'react-native';
+import { ActivityIndicator, View, Platform, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../src/constants/colors';
 import OfflineBanner from '../../src/components/OfflineBanner';
@@ -9,6 +9,101 @@ import { canManageFinance, isHigherAdmin, isAreaAdmin, isSuperAdmin, canInitiate
 
 function TabIcon({ name, color, size }) {
   return <Ionicons name={name} size={size ? Math.min(size, 22) : 22} color={color} />;
+}
+
+function getParentRoute(routeName) {
+  if (!routeName) return '/(app)';
+
+  // Settings sub-pages -> /admin/settings
+  if (routeName.startsWith('admin/settings/') && routeName !== 'admin/settings') {
+    return '/admin/settings';
+  }
+  // Units sub-pages -> /admin/units
+  if (routeName.startsWith('admin/units/') && routeName !== 'admin/units/index' && routeName !== 'admin/units') {
+    return '/admin/units';
+  }
+  // Roles sub-pages -> /admin/roles
+  if (routeName.startsWith('admin/roles/') && routeName !== 'admin/roles/index' && routeName !== 'admin/roles') {
+    return '/admin/roles';
+  }
+  // Event types sub-pages -> /admin
+  if (routeName.startsWith('admin/event-types/')) {
+    return '/admin';
+  }
+  // Any other admin screen (settings, units, roles, users, audit, reports, etc.) -> /admin
+  if (routeName.startsWith('admin/') && routeName !== 'admin/index') {
+    return '/admin';
+  }
+
+  // Member details -> /members
+  if (routeName.startsWith('members/') && routeName !== 'members/index') {
+    return '/members';
+  }
+  // Meeting details -> /meetings
+  if (routeName.startsWith('meetings/') && routeName !== 'meetings/index') {
+    return '/meetings';
+  }
+  // Activity details -> /activities
+  if (routeName.startsWith('activities/') && routeName !== 'activities/index') {
+    return '/activities';
+  }
+  // Finance sub-page -> /finance
+  if (routeName === 'finance/transfers') {
+    return '/finance';
+  }
+  // Unit sub-pages -> /cabinet
+  if (routeName.startsWith('unit/')) {
+    return '/cabinet';
+  }
+
+  // Fallback to home dashboard
+  return '/(app)';
+}
+
+function HeaderBackButton({ currentRoute }) {
+  const router = useRouter();
+  const navigation = useNavigation();
+  const { isRTL } = useLanguage();
+
+  const handlePress = () => {
+    // 1. Check if the tab / navigation stack can pop back in visited history
+    if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    // 2. Fallback to router.back() if router has history
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    // 3. Fallback to the logical parent screen rather than dumping user on home
+    const parent = getParentRoute(currentRoute);
+    router.replace(parent);
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      style={{
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginLeft: isRTL ? 0 : 4,
+        marginRight: isRTL ? 4 : 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+    >
+      <Ionicons
+        name={isRTL ? 'arrow-forward' : 'arrow-back'}
+        size={22}
+        color="#ffffff"
+      />
+    </TouchableOpacity>
+  );
 }
 
 export default function AppLayout() {
@@ -35,14 +130,16 @@ export default function AppLayout() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <OfflineBanner />
       <Tabs
-        screenOptions={{
-        headerStyle: { backgroundColor: Colors.primary },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '700' },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: {
-          borderTopColor: Colors.border,
+        backBehavior="history"
+        screenOptions={({ route }) => ({
+          headerStyle: { backgroundColor: Colors.primary },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: '700' },
+          headerLeft: route.name === 'index' ? undefined : () => <HeaderBackButton currentRoute={route.name} />,
+          tabBarActiveTintColor: Colors.primary,
+          tabBarInactiveTintColor: Colors.textMuted,
+          tabBarStyle: {
+            borderTopColor: Colors.border,
           borderTopWidth: 1,
           backgroundColor: Colors.surface,
           paddingTop: 4,
@@ -77,7 +174,7 @@ export default function AppLayout() {
           justifyContent: 'center',
           alignItems: 'center',
         },
-      }}
+      })}
     >
       {/* ─── 1. Dashboard Tab ─── */}
       <Tabs.Screen
@@ -122,18 +219,22 @@ export default function AppLayout() {
       {/* Activities & Meetings */}
       <Tabs.Screen name="activities/index" options={{ href: null, headerTitle: t('nav.activities', 'Activities'), headerShown: true }} />
       <Tabs.Screen name="activities/[id]" options={{ href: null, headerTitle: t('nav.activityDetail', 'Activity Detail'), headerShown: true }} />
+      <Tabs.Screen name="campaigns/metrics/[type]" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="meetings/index" options={{ href: null, headerTitle: t('nav.meetings', 'Meetings'), headerShown: true }} />
       <Tabs.Screen name="meetings/[id]" options={{ href: null, headerTitle: t('nav.meetingDetail', 'Meeting Detail'), headerShown: true }} />
+      <Tabs.Screen name="meetings/metrics/[type]" options={{ href: null, headerShown: false }} />
 
       {/* Members & Finance */}
       <Tabs.Screen name="members/index" options={{ href: null, headerTitle: t('nav.members', 'Members'), headerShown: true }} />
       <Tabs.Screen name="members/[id]" options={{ href: null, headerTitle: t('nav.memberDetail', 'Member Detail'), headerShown: true }} />
+      <Tabs.Screen name="members/metrics/[type]" options={{ href: null, headerShown: false }} />
+      <Tabs.Screen name="reports/metrics/[type]" options={{ href: null, headerShown: false }} />
       <Tabs.Screen name="finance/index" options={{ href: null, headerTitle: t('nav.finance', 'Finance'), headerShown: true }} />
       <Tabs.Screen name="finance/transfers" options={{ href: null, headerTitle: t('nav.transfers', 'Transfers'), headerShown: true }} />
 
       {/* Cabinet, Announcements, Notifications, Unit */}
       <Tabs.Screen name="cabinet/index" options={{ href: null, headerTitle: t('nav.cabinet', 'Cabinet'), headerShown: true }} />
-      <Tabs.Screen name="announcements" options={{ href: null, headerTitle: t('nav.announcements', 'Announcements'), headerShown: false }} />
+      <Tabs.Screen name="announcements" options={{ href: null, headerTitle: t('nav.announcements', 'Announcements'), headerShown: true }} />
       <Tabs.Screen name="notifications" options={{ href: null, headerTitle: t('nav.notifications', 'Notifications'), headerShown: true }} />
       <Tabs.Screen name="unit/jirga" options={{ href: null, headerTitle: t('nav.sobayiJirga', 'Sobayi Jirga'), headerShown: true }} />
       <Tabs.Screen name="unit/committee" options={{ href: null, headerTitle: t('nav.committeeRoster', 'Committee Roster'), headerShown: true }} />

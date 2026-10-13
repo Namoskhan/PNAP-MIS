@@ -558,15 +558,24 @@ export default function MembersScreen() {
             {meta.total ? t('members.registeredCount', { count: meta.total, defaultValue: `${meta.total} registered members` }) : t('members.manageAndSearch', 'Manage and search members')}
           </Text>
         </View>
-        {showRegisterButton && (
+        <View style={[styles.headerActions, isRTL && { flexDirection: 'row-reverse' }]}>
           <TouchableOpacity
-            style={[styles.registerBtn, isRTL && { flexDirection: 'row-reverse' }]}
-            onPress={() => setShowCreate(true)}
+            style={[styles.analyticsBtn, isRTL && { flexDirection: 'row-reverse' }]}
+            onPress={() => router.push('/members/metrics/new')}
           >
-            <Ionicons name="person-add-outline" size={16} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
-            <Text style={styles.registerBtnText}>{t('members.register', 'Register')}</Text>
+            <Ionicons name="stats-chart" size={15} color={Colors.primary} style={isRTL ? { marginLeft: 4 } : { marginRight: 4 }} />
+            <Text style={styles.analyticsBtnText}>{t('members.analytics', 'Stats')}</Text>
           </TouchableOpacity>
-        )}
+          {showRegisterButton && (
+            <TouchableOpacity
+              style={[styles.registerBtn, isRTL && { flexDirection: 'row-reverse' }]}
+              onPress={() => setShowCreate(true)}
+            >
+              <Ionicons name="person-add-outline" size={16} color="#fff" style={isRTL ? { marginLeft: 6 } : { marginRight: 6 }} />
+              <Text style={styles.registerBtnText}>{t('members.register', 'Register')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={[styles.searchBar, isRTL && { flexDirection: 'row-reverse' }]}>
@@ -608,6 +617,28 @@ export default function MembersScreen() {
           ))}
         </ScrollView>
       </View>
+
+      {/* New Members Analytics Shortcut Banner */}
+      <TouchableOpacity
+        style={[styles.newMembersBanner, isRTL && { flexDirection: 'row-reverse' }]}
+        onPress={() => router.push('/members/metrics/new')}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.bannerLeft, isRTL && { flexDirection: 'row-reverse' }]}>
+          <View style={styles.bannerIconBox}>
+            <Text style={styles.bannerIcon}>⚡</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.bannerTitle, isRTL && { textAlign: 'right' }]}>
+              {t('members.newMembersAnalytics', 'New Members Trends & Analytics')}
+            </Text>
+            <Text style={[styles.bannerSub, isRTL && { textAlign: 'right' }]} numberOfLines={1}>
+              {t('members.newMembersAnalyticsSub', '6-month & all-time graphs, province & district filters')}
+            </Text>
+          </View>
+        </View>
+        <Ionicons name={isRTL ? 'chevron-back' : 'chevron-forward'} size={16} color={Colors.primary} />
+      </TouchableOpacity>
 
       {/* List */}
       <FlatList
@@ -961,6 +992,26 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: FontSize.lg, fontWeight: '800', color: Colors.text },
   headerSub: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  analyticsBtn: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  analyticsBtnText: {
+    color: Colors.primary,
+    fontWeight: '700',
+    fontSize: FontSize.sm,
+  },
   registerBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,
@@ -970,6 +1021,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   registerBtnText: { color: '#fff', fontWeight: '700', fontSize: FontSize.sm },
+  newMembersBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fef3c7',
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: Radius.md,
+    gap: 10,
+  },
+  bannerLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bannerIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: Radius.sm,
+    backgroundColor: '#fde68a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerIcon: {
+    fontSize: 15,
+  },
+  bannerTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: '#92400e',
+  },
+  bannerSub: {
+    fontSize: 10,
+    color: '#b45309',
+    marginTop: 1,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',

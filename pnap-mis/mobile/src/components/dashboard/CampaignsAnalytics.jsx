@@ -1,53 +1,134 @@
+import { useCallback } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import useAnalytics from '../../hooks/useAnalytics';
 import { useLanguage } from '../../context/LanguageContext';
-import { Colors, FontSize, Spacing } from '../../constants/colors';
+import { Colors, FontSize, Radius, Spacing } from '../../constants/colors';
 import Card from '../Card';
-import { AreaTrendChart, HBar, PieChart, SmartKpi, BRAND } from '../charts';
+import { Ionicons } from '@expo/vector-icons';
 
-const LEVEL_ACCENT = {
-  PROVINCE: BRAND.dark,
-  DISTRICT: BRAND.mid,
-  AREA: BRAND.bright,
-  BASIC_UNIT: BRAND.light,
-};
+/**
+ * CampaignsAnalytics — Main Dashboard View
+ *
+ * Renders exactly 4 interactive KPI tiles on the main dashboard:
+ *   1. Active (Running) Campaigns
+ *   2. Upcoming Campaigns
+ *   3. Completed Campaigns
+ *   4. Total Recorded Campaigns
+ *
+ * Each tile navigates to its own dedicated full-screen detail page
+ * (/campaigns/metrics/[type]) containing:
+ *   - 6-month & all-time horizontal trend graphs
+ *   - Cascading geo-filters (Province -> District -> Area)
+ *   - Level-wise breakdown table
+ *   - Reach metrics
+ *   - Direct link to campaign roster
+ */
 
-function ChartCard({ title, sub, meta, children }) {
-  const { isRTL } = useLanguage();
+const KPI_CONFIG = [
+  {
+    type: 'running',
+    labelKey: 'dashboard.activeCampaigns',
+    labelFallback: 'Active Campaigns',
+    icon: '🎯',
+    iconColor: Colors.primary,
+    iconBg: 'rgba(30, 64, 175, 0.12)',
+    valueKey: 'running',
+    accent: Colors.primary,
+  },
+  {
+    type: 'upcoming',
+    labelKey: 'dashboard.upcomingCampaigns',
+    labelFallback: 'Upcoming',
+    icon: '⏱️',
+    iconColor: '#d97706',
+    iconBg: 'rgba(217, 119, 6, 0.12)',
+    valueKey: 'upcoming',
+    accent: '#d97706',
+  },
+  {
+    type: 'completed',
+    labelKey: 'dashboard.completedCampaigns',
+    labelFallback: 'Completed',
+    icon: '✅',
+    iconColor: Colors.success,
+    iconBg: 'rgba(22, 163, 74, 0.12)',
+    valueKey: 'completed',
+    accent: Colors.success,
+  },
+  {
+    type: 'total',
+    labelKey: 'common.totalRecorded',
+    labelFallback: 'Total Recorded',
+    icon: '📋',
+    iconColor: Colors.textMuted,
+    iconBg: 'rgba(100, 116, 139, 0.15)',
+    valueKey: 'total',
+    accent: Colors.textMuted,
+  },
+];
+
+function CampaignKpiTile({ config, value, isRTL, onPress }) {
+  const isLoading = value == null;
   return (
-    <Card style={styles.chartCard}>
-      <View style={[styles.cardHeader, isRTL && { flexDirection: 'row-reverse' }]}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>{title}</Text>
-          {sub && <Text style={[styles.cardSub, isRTL && { textAlign: 'right' }]}>{sub}</Text>}
+    <TouchableOpacity
+      style={[styles.kpiTile, { borderLeftColor: config.accent }]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <View style={[styles.kpiTileRow, isRTL && { flexDirection: 'row-reverse' }]}>
+        {/* Icon */}
+        <View style={[styles.kpiIconBox, { backgroundColor: config.iconBg }]}>
+          <Text style={styles.kpiIcon}>{config.icon}</Text>
         </View>
-        {meta && <Text style={styles.cardMeta}>{meta}</Text>}
+        {/* Value */}
+        <View style={[styles.kpiTextCol, isRTL && { alignItems: 'flex-end' }]}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color={config.iconColor} />
+          ) : (
+            <Text style={[styles.kpiValue, { color: config.accent }]}>
+              {(value ?? 0).toLocaleString()}
+            </Text>
+          )}
+        </View>
+        {/* Chevron */}
+        <Ionicons
+          name={isRTL ? 'chevron-back' : 'chevron-forward'}
+          size={14}
+          color={Colors.textMuted}
+          style={styles.kpiChevron}
+        />
       </View>
-      {children}
-    </Card>
+      {/* Label */}
+      <Text style={[styles.kpiLabel, isRTL && { textAlign: 'right' }]}>{config.labelFallback}</Text>
+    </TouchableOpacity>
   );
 }
 
 export default function CampaignsAnalytics({ params, windowLabel = 'last 12 months' }) {
   const { t, isRTL } = useLanguage();
+  const router = useRouter();
   const { data, loading, error } = useAnalytics('/dashboard/campaigns', params);
 
-  const levelNoun = {
-    PROVINCE: t('units.province', 'Province'),
-    DISTRICT: t('units.district', 'District'),
-    AREA: t('units.area', 'Area'),
-    BASIC_UNIT: t('units.basicUnit', 'Basic Unit'),
-  };
+  const navigate = useCallback(
+    (type) => router.push(`/campaigns/metrics/${type}`),
+    [router]
+  );
+
+  const totals = data?.totals || {};
 
   if (loading && !data) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <View style={styles.loadingRow}>
+        {KPI_CONFIG.map((cfg) => (
+          <View key={cfg.type} style={[styles.kpiTile, styles.kpiTileSkeleton]} />
+        ))}
       </View>
     );
   }
@@ -60,188 +141,106 @@ export default function CampaignsAnalytics({ params, windowLabel = 'last 12 mont
     );
   }
 
-  if (!data) return null;
-
-  const totals = data.totals || {};
-  const levels = data.levels || [];
-
-  if ((totals.total || 0) === 0) {
-    return (
-      <Card style={styles.emptyCard}>
-        <Text style={styles.emptyIcon}>🎯</Text>
-        <Text style={styles.emptyText}>
-          {t('dashboard.noCampaignsRecorded', 'No campaigns recorded in the {{windowLabel}} for this scope.', { windowLabel })}
-        </Text>
-      </Card>
-    );
-  }
-
-  const stageRows = [
-    { label: t('dashboard.running', 'Running'), value: totals.running || 0, color: BRAND.dark },
-    { label: t('dashboard.upcoming', 'Upcoming'), value: totals.upcoming || 0, color: Colors.warning },
-    { label: t('common.completed', 'Completed'), value: totals.completed || 0, color: Colors.success },
-    { label: t('common.cancelled', 'Cancelled'), value: totals.cancelled || 0, color: Colors.textMuted },
-  ].filter((r) => r.value > 0);
-
-  const trendBuckets = (data.trend || []).map((b) => ({
-    month: b.label,
-    total: b.total || 0,
-  }));
-
   return (
     <View style={styles.container}>
-      {/* 4 KPIs */}
       <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
-        <SmartKpi
-          label={t('dashboard.activeCampaigns', 'Active Campaigns')}
-          value={totals.running}
-          icon="🎯"
-          iconBg="rgba(30, 64, 175, 0.12)"
-          iconColor={Colors.primary}
-        />
-        <SmartKpi
-          label={t('dashboard.completedCampaigns', 'Completed')}
-          value={totals.completed}
-          icon="✅"
-          iconBg="rgba(22, 163, 74, 0.12)"
-          iconColor={Colors.success}
-        />
+        {/* Row 1: Active + Upcoming */}
+        {KPI_CONFIG.slice(0, 2).map((cfg) => (
+          <CampaignKpiTile
+            key={cfg.type}
+            config={cfg}
+            value={totals[cfg.valueKey]}
+            isRTL={isRTL}
+            onPress={() => navigate(cfg.type)}
+          />
+        ))}
       </View>
       <View style={[styles.kpiGrid, isRTL && { flexDirection: 'row-reverse' }]}>
-        <SmartKpi
-          label={t('dashboard.upcomingCampaigns', 'Upcoming')}
-          value={totals.upcoming}
-          icon="⏱️"
-          iconBg="rgba(217, 119, 6, 0.12)"
-          iconColor={Colors.warning}
-        />
-        {data.reach ? (
-          <SmartKpi
-            label={t('dashboard.peopleContacted', 'People Contacted')}
-            value={data.reach.peopleContacted}
-            icon="👥"
-            iconBg="rgba(30, 64, 175, 0.12)"
-            iconColor={Colors.primary}
+        {/* Row 2: Completed + Total */}
+        {KPI_CONFIG.slice(2, 4).map((cfg) => (
+          <CampaignKpiTile
+            key={cfg.type}
+            config={cfg}
+            value={totals[cfg.valueKey]}
+            isRTL={isRTL}
+            onPress={() => navigate(cfg.type)}
           />
-        ) : (
-          <SmartKpi
-            label={t('common.total', 'Total Recorded')}
-            value={totals.total}
-            icon="📋"
-            iconBg="rgba(100, 116, 139, 0.15)"
-            iconColor={Colors.textMuted}
-          />
-        )}
+        ))}
       </View>
-
-      {/* Campaign Trend */}
-      <ChartCard
-        title={t('dashboard.campaignsEachMonth', 'Campaign trend')}
-        sub={t('dashboard.campaignsPerMonth12', 'Campaigns per month')}
-        meta={`${(totals.total || 0).toLocaleString()} ${t('common.in', 'in')} ${windowLabel}`}
-      >
-        {trendBuckets.length > 1 ? (
-          <AreaTrendChart
-            trend={trendBuckets}
-            height={130}
-            barColor={BRAND.dark}
-            trackColor={BRAND.tint}
-          />
-        ) : (
-          <Text style={styles.mutedText}>{t('dashboard.notEnoughHistory', 'Not enough history yet.')}</Text>
-        )}
-      </ChartCard>
-
-      {/* Campaigns by Stage */}
-      <ChartCard title={t('dashboard.campaignStatus', 'Campaigns by stage')} sub={windowLabel}>
-        <View style={styles.stageChartContainer}>
-          <PieChart
-            segments={stageRows.map((s) => ({
-              label: s.label,
-              value: s.value,
-              color: s.color,
-            }))}
-            size={90}
-          />
-          <View style={{ flex: 1 }}>
-            <HBar rows={stageRows} />
-          </View>
-        </View>
-      </ChartCard>
-
-      {/* Level-wise campaigns */}
-      {levels.map((lvl) => {
-        const rows = data.byLevel?.[lvl] || [];
-        const attributed = rows.reduce((a, r) => a + (r.total || 0), 0);
-        return (
-          <ChartCard
-            key={lvl}
-            title={`${t('dashboard.campaignsBy', 'Campaigns by')} ${levelNoun[lvl] || lvl}`}
-            sub={t('dashboard.allCampaignStatuses', 'All stages')}
-            meta={attributed < totals.total ? `${attributed} ${t('common.of', 'of')} ${totals.total}` : undefined}
-          >
-            <HBar
-              rows={rows.slice(0, 10).map((r) => ({ label: r.name, value: r.total }))}
-              accent={LEVEL_ACCENT[lvl]}
-              emptyLabel={t('dashboard.noCampaignsRecorded', 'No campaigns recorded in this scope.')}
-            />
-          </ChartCard>
-        );
-      })}
-
-      {/* Campaign Reach Details */}
-      {data.reach && (
-        <ChartCard title={t('dashboard.campaignResults', 'Campaign reach')} sub={t('dashboard.totalsRecordedCampaigns', 'Aggregated across recorded campaigns')}>
-          <View style={styles.reachTable}>
-            {[
-              [t('dashboard.homesVisited', 'Households visited'), data.reach.householdsVisited],
-              [t('dashboard.peopleContacted', 'People contacted'), data.reach.peopleContacted],
-              [t('dashboard.peopleExpectedJoin', 'Expected joiners'), data.reach.expectedJoiners],
-              [t('dashboard.peopleWhoJoined', 'Actual joiners'), data.reach.actualJoiners],
-              [t('dashboard.volHoursLong', 'Volunteer hours'), data.reach.volunteerHours],
-            ].map(([label, v]) => (
-              <View key={label} style={[styles.reachRow, isRTL && { flexDirection: 'row-reverse' }]}>
-                <Text style={styles.reachLabel}>{label}</Text>
-                <Text style={styles.reachVal}>{(v || 0).toLocaleString()}</Text>
-              </View>
-            ))}
-            {data.reach.conversionPct != null && (
-              <View style={[styles.reachRow, styles.conversionRow, isRTL && { flexDirection: 'row-reverse' }]}>
-                <Text style={styles.reachLabel}>{t('dashboard.peopleWhoJoinedVsExpected', 'Conversion')}</Text>
-                <Text style={[styles.reachVal, { color: Colors.success, fontWeight: '800' }]}>
-                  {data.reach.conversionPct}%
-                </Text>
-              </View>
-            )}
-          </View>
-        </ChartCard>
-      )}
+      {/* Tap hint */}
+      <Text style={[styles.tapHint, isRTL && { textAlign: 'right' }]}>
+        {t('dashboard.tapForDetails', 'Tap a tile to see detailed breakdown & trends')}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.md,
-  },
-  center: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyCard: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: Spacing.sm,
   },
-  emptyIcon: {
-    fontSize: 32,
+  loadingRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    flexWrap: 'wrap',
   },
-  emptyText: {
+  kpiGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  kpiTile: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderLeftWidth: 3,
+    padding: Spacing.sm,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  kpiTileSkeleton: {
+    height: 72,
+    backgroundColor: Colors.surfaceAlt,
+    borderLeftColor: Colors.border,
+    opacity: 0.5,
+  },
+  kpiTileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  kpiIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kpiIcon: {
+    fontSize: 14,
+  },
+  kpiTextCol: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  kpiValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  kpiChevron: {
+    marginLeft: 4,
+  },
+  kpiLabel: {
+    fontSize: 11,
+    fontWeight: '600',
     color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    textAlign: 'center',
+    marginTop: 2,
   },
   errorCard: {
     padding: Spacing.md,
@@ -253,68 +252,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: '600',
   },
-  kpiGrid: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  chartCard: {
-    padding: Spacing.md,
-    gap: Spacing.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  cardSub: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 1,
-  },
-  cardMeta: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  stageChartContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  reachTable: {
-    gap: 8,
-  },
-  reachRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  conversionRow: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: 8,
-    marginTop: 2,
-  },
-  reachLabel: {
-    fontSize: FontSize.xs,
-    color: Colors.textMuted,
-  },
-  reachVal: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  mutedText: {
-    fontSize: FontSize.xs,
+  tapHint: {
+    fontSize: 10,
     color: Colors.textMuted,
     textAlign: 'center',
-    paddingVertical: 12,
+    marginTop: 2,
   },
 });

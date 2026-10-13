@@ -159,16 +159,21 @@ function parseFilters(query = {}) {
   const now = new Date();
   let to = query.to ? new Date(query.to) : null;
   if (to && !isNaN(to.getTime())) to = endOfDayIfDateOnly(query.to, to);
-  const days = Math.min(
-    3650,
-    Math.max(1, parseInt(query.days, 10) || ACTIVE_WINDOW_DAYS),
-  );
-  const from = query.from
-    ? new Date(query.from)
-    : activityService.activityCutoff(days, to || now);
+  const isAllTime = query.days === 'all' || query.allTime === 'true' || String(query.days) === '3650';
+  const days = isAllTime
+    ? 3650
+    : Math.min(
+        3650,
+        Math.max(1, parseInt(query.days, 10) || 365),
+      );
+  const from = isAllTime
+    ? new Date(0)
+    : (query.from
+        ? new Date(query.from)
+        : activityService.activityCutoff(days, to || now));
 
   return {
-    from: isNaN(from.getTime()) ? activityService.activityCutoff(days, now) : from,
+    from: isNaN(from.getTime()) ? (isAllTime ? new Date(0) : activityService.activityCutoff(days, now)) : from,
     // A null `to` means "up to now", which unlocks the fast path in
     // activeMemberClause(). Only an explicit historical end date
     // forces the ranged path.
@@ -845,6 +850,11 @@ function monthBuckets(end, span, rowsById, pick) {
  * "New" means registered inside the window (Member.createdAt), which
  * is distinct from "active" (acted inside the window). Both are
  * computed in the same pass as the totals.
+ *
+ * Returns:
+ *   trend6     — last 6 months (default dashboard view)
+ *   trendAll   — all-time monthly buckets (for the "extend" scrollable view)
+ *   trend      — backward-compat alias for trend6
  */
 async function membershipAnalytics(f) {
   return cached('membership', f, async () => {
@@ -882,12 +892,17 @@ async function membershipAnalytics(f) {
               newMembers: { $sum: { $cond: [isNew, 1, 0] } },
             },
           }],
-          trend: [{
-            $group: {
-              _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
-              newMembers: { $sum: 1 },
+          // All-time trend sorted ascending — used to build both 6-month
+          // and all-time views from a single DB pass.
+          trendAllRaw: [
+            {
+              $group: {
+                _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+                newMembers: { $sum: 1 },
+              },
             },
-          }],
+            { $sort: { _id: 1 } },
+          ],
           ...Object.fromEntries(levels.map((lvl) => [lvl, [{
             $group: {
               _id: `$${LEVEL_FK[lvl]}`,
@@ -904,7 +919,7 @@ async function membershipAnalytics(f) {
 
     const facets = membershipRows[0] || {};
     const totals = facets.totals || [];
-    const trendRows = facets.trend || [];
+    const trendAllRaw = facets.trendAllRaw || [];
     const unitsFor = unitListsOf(org);
 
     // One rows[] per tier. Units with no members are kept here (unlike
@@ -926,6 +941,30 @@ async function membershipAnalytics(f) {
     }
 
     const t = totals[0] || { total: 0, active: 0, newMembers: 0 };
+
+    // Build last-6-months view (fixed width, even spacing)
+    const rawMap = new Map(trendAllRaw.map((r) => [r._id, r]));
+    const trend6 = monthBuckets(
+      f.to || new Date(), 6, rawMap,
+      (hit) => ({ newMembers: hit?.newMembers || 0 }),
+    );
+
+    // Build all-time view spanning from the earliest DB record to now
+    let trendAll;
+    if (trendAllRaw.length > 0) {
+      const earliest = trendAllRaw[0]._id; // 'YYYY-MM' (already sorted asc)
+      const [eYear, eMon] = earliest.split('-').map(Number);
+      const now = f.to || new Date();
+      const spanMonths =
+        (now.getFullYear() - eYear) * 12 + (now.getMonth() + 1 - eMon) + 1;
+      trendAll = monthBuckets(
+        now, Math.max(spanMonths, 6), rawMap,
+        (hit) => ({ newMembers: hit?.newMembers || 0 }),
+      );
+    } else {
+      trendAll = trend6;
+    }
+
     return {
       levels: levels.filter((l) => byLevel[l].length > 0),
       byLevel,
@@ -935,11 +974,9 @@ async function membershipAnalytics(f) {
         inactive: t.total - t.active,
         newMembers: t.newMembers,
       },
-      trend: monthBuckets(
-        f.to || new Date(), 12,
-        new Map(trendRows.map((r) => [r._id, r])),
-        (hit) => ({ newMembers: hit?.newMembers || 0 }),
-      ),
+      trend: trend6,   // backward-compat
+      trend6,
+      trendAll,
     };
   });
 }
@@ -997,7 +1034,9 @@ async function meetingsAnalytics(f, { yearBasis = 'CALENDAR', years = 5 } = {}) 
         return d;
       })();
 
-    const [byState, byTier, trendRows, overdue, yearRows] = await Promise.all([
+    const levels = tiersBelow(scopeLevel(f));
+
+    const [byState, byTier, byUnit, trendRows, overdue, yearRows, org] = await Promise.all([
       Meeting.aggregate([
         { $match: windowed },
         { $group: { _id: '$state', count: { $sum: 1 } } },
@@ -1013,15 +1052,33 @@ async function meetingsAnalytics(f, { yearBasis = 'CALENDAR', years = 5 } = {}) 
           },
         },
       ]),
+      levels.length ? Meeting.aggregate([
+        { $match: windowed },
+        {
+          $facet: Object.fromEntries(levels.map((lvl) => [
+            lvl,
+            [{
+              $group: {
+                _id: `$${LEVEL_FK[lvl]}`,
+                total: { $sum: 1 },
+                conducted: { $sum: { $cond: [{ $eq: ['$state', 'FINALIZED'] }, 1, 0] } },
+                scheduled: { $sum: { $cond: [{ $eq: ['$state', 'SCHEDULED'] }, 1, 0] } },
+              },
+            }],
+          ])),
+        },
+      ]) : Promise.resolve([]),
       Meeting.aggregate([
-        { $match: { ...scope, startAt: { $gte: trendStart, $lte: end } } },
+        { $match: { ...scope, ...(f.to ? { startAt: { $lte: end } } : {}) } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m', date: '$startAt' } },
             total: { $sum: 1 },
             conducted: { $sum: { $cond: [{ $eq: ['$state', 'FINALIZED'] }, 1, 0] } },
+            scheduled: { $sum: { $cond: [{ $eq: ['$state', 'SCHEDULED'] }, 1, 0] } },
           },
         },
+        { $sort: { _id: 1 } },
       ]),
       // Reports overdue: the meeting has ended but was never finalized.
       // Same rule centralController.alertsFeed already applies.
@@ -1048,6 +1105,7 @@ async function meetingsAnalytics(f, { yearBasis = 'CALENDAR', years = 5 } = {}) 
           },
         },
       ]),
+      unitDirectory(f),
     ]);
 
     const states = Object.fromEntries(Meeting.STATES.map((s) => [s, 0]));
@@ -1136,6 +1194,53 @@ async function meetingsAnalytics(f, { yearBasis = 'CALENDAR', years = 5 } = {}) 
       CALENDAR: 'Calendar year',
     }[basis];
 
+    const facets = byUnit[0] || {};
+    const unitsFor = unitListsOf(org);
+    const byLevel = {};
+    for (const lvl of levels) {
+      const by = new Map((facets[lvl] || []).map((r) => [str(r._id), r]));
+      byLevel[lvl] = (unitsFor[lvl] || []).map((u) => {
+        const r = by.get(str(u._id)) || { total: 0, conducted: 0, scheduled: 0 };
+        return {
+          _id: u._id,
+          name: u.name,
+          total: r.total,
+          conducted: r.conducted,
+          scheduled: r.scheduled,
+          overdue: 0,
+        };
+      }).filter((r) => r.total > 0)
+        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+    }
+
+    const rawMap = new Map(trendRows.map((r) => [r._id, r]));
+    const trend6 = monthBuckets(
+      end, 6, rawMap,
+      (hit) => ({
+        total: hit?.total || 0,
+        conducted: hit?.conducted || 0,
+        scheduled: hit?.scheduled || 0,
+      }),
+    );
+
+    let trendAll;
+    if (trendRows.length > 0) {
+      const earliest = trendRows[0]._id; // 'YYYY-MM'
+      const [eYear, eMon] = earliest.split('-').map(Number);
+      const spanMonths =
+        (end.getFullYear() - eYear) * 12 + (end.getMonth() + 1 - eMon) + 1;
+      trendAll = monthBuckets(
+        end, Math.max(spanMonths, 6), rawMap,
+        (hit) => ({
+          total: hit?.total || 0,
+          conducted: hit?.conducted || 0,
+          scheduled: hit?.scheduled || 0,
+        }),
+      );
+    } else {
+      trendAll = trend6;
+    }
+
     return {
       yearBasis: basis,
       yearBasisLabel: basisLabel,
@@ -1166,11 +1271,11 @@ async function meetingsAnalytics(f, { yearBasis = 'CALENDAR', years = 5 } = {}) 
       })).sort((a, b) => b.total - a.total),
       // Declared, not implied — see the note above this function.
       jirgaTracked: false,
-      trend: monthBuckets(
-        end, 12,
-        new Map(trendRows.map((r) => [r._id, r])),
-        (hit) => ({ total: hit?.total || 0, conducted: hit?.conducted || 0 }),
-      ),
+      levels: levels.filter((l) => byLevel[l].length > 0),
+      byLevel,
+      trend: trend6,
+      trend6,
+      trendAll,
     };
   });
 }
@@ -1251,14 +1356,43 @@ async function campaignsAnalytics(f) {
         },
       ]),
       Activity.aggregate([
-        { $match: { ...scope, type: CAMPAIGN_TYPE, startAt: { $gte: trendStart, $lte: end } } },
+        { $match: { ...scope, type: CAMPAIGN_TYPE, ...(f.to ? { startAt: { $lte: end } } : {}) } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m', date: '$startAt' } },
             total: { $sum: 1 },
             completed: { $sum: { $cond: [{ $eq: ['$state', 'COMPLETED'] }, 1, 0] } },
+            running: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$state', 'COMPLETED'] },
+                      { $ne: ['$state', 'CANCELLED'] },
+                      { $lte: ['$startAt', now] },
+                    ],
+                  },
+                  1, 0,
+                ],
+              },
+            },
+            upcoming: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$state', 'COMPLETED'] },
+                      { $ne: ['$state', 'CANCELLED'] },
+                      { $gt: ['$startAt', now] },
+                    ],
+                  },
+                  1, 0,
+                ],
+              },
+            },
           },
         },
+        { $sort: { _id: 1 } },
       ]),
       unitDirectory(f),
     ]);
@@ -1293,6 +1427,38 @@ async function campaignsAnalytics(f) {
     }
 
     const rc = reach[0] || null;
+
+    // Build 6-month and all-time trend views
+    const rawMap = new Map(trendRows.map((r) => [r._id, r]));
+    const trend6 = monthBuckets(
+      end, 6, rawMap,
+      (hit) => ({
+        total: hit?.total || 0,
+        completed: hit?.completed || 0,
+        running: hit?.running || 0,
+        upcoming: hit?.upcoming || 0,
+      }),
+    );
+
+    let trendAll;
+    if (trendRows.length > 0) {
+      const earliest = trendRows[0]._id; // 'YYYY-MM'
+      const [eYear, eMon] = earliest.split('-').map(Number);
+      const spanMonths =
+        (end.getFullYear() - eYear) * 12 + (end.getMonth() + 1 - eMon) + 1;
+      trendAll = monthBuckets(
+        end, Math.max(spanMonths, 6), rawMap,
+        (hit) => ({
+          total: hit?.total || 0,
+          completed: hit?.completed || 0,
+          running: hit?.running || 0,
+          upcoming: hit?.upcoming || 0,
+        }),
+      );
+    } else {
+      trendAll = trend6;
+    }
+
     return {
       // Tiers that carry at least one campaign — the UI renders a
       // chart per entry, so empty tiers are dropped here rather than
@@ -1308,11 +1474,9 @@ async function campaignsAnalytics(f) {
         volunteerHours: rc.volunteerHours,
         conversionPct: rc.expectedJoiners ? Math.round((rc.actualJoiners / rc.expectedJoiners) * 100) : null,
       } : null,
-      trend: monthBuckets(
-        end, 12,
-        new Map(trendRows.map((r) => [r._id, r])),
-        (hit) => ({ total: hit?.total || 0, completed: hit?.completed || 0 }),
-      ),
+      trend: trend6,
+      trend6,
+      trendAll,
     };
   });
 }
@@ -1345,23 +1509,50 @@ async function reportsAnalytics(f) {
     const windowed = { ...scope, startAt: { $gte: f.from, ...(f.to ? { $lte: f.to } : {}) } };
 
     const childLevel = CHILD_OF[scopeLevel(f)];
+    const levels = tiersBelow(scopeLevel(f));
     const fk = LEVEL_FK[childLevel] || 'provinceId';
+    const end = f.to || now;
 
-    const [filedAgg, outstandingAgg, byUnit, org] = await Promise.all([
+    const [filedAgg, outstandingAgg, byUnitFacet, trendRows, org] = await Promise.all([
       Meeting.countDocuments({ ...windowed, state: 'FINALIZED' }),
       Meeting.countDocuments({
         ...scope,
         state: { $in: ['SCHEDULED', 'IN_PROGRESS', 'PENDING_REPORT'] },
         endAt: { $lt: now },
       }),
-      // Filed vs outstanding per child unit, in one pass. `outstanding`
-      // deliberately ignores the date window — a report from six months
-      // ago is still outstanding today.
-      Meeting.aggregate([
+      // Filed vs outstanding per child unit and across all sub-tiers
+      levels.length ? Meeting.aggregate([
         { $match: { ...scope, $or: [{ startAt: windowed.startAt }, { endAt: { $lt: now }, state: { $in: ['SCHEDULED', 'IN_PROGRESS', 'PENDING_REPORT'] } }] } },
         {
+          $facet: Object.fromEntries(levels.map((lvl) => [
+            lvl,
+            [{
+              $group: {
+                _id: `$${LEVEL_FK[lvl]}`,
+                filed: { $sum: { $cond: [{ $eq: ['$state', 'FINALIZED'] }, 1, 0] } },
+                outstanding: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $in: ['$state', ['SCHEDULED', 'IN_PROGRESS', 'PENDING_REPORT']] },
+                          { $lt: ['$endAt', now] },
+                        ],
+                      }, 1, 0,
+                    ],
+                  },
+                },
+              },
+            }],
+          ])),
+        },
+      ]) : Promise.resolve([]),
+      // Monthly trend rows: filed vs outstanding
+      Meeting.aggregate([
+        { $match: { ...scope, ...(f.to ? { startAt: { $lte: end } } : {}) } },
+        {
           $group: {
-            _id: `$${fk}`,
+            _id: { $dateToString: { format: '%Y-%m', date: '$startAt' } },
             filed: { $sum: { $cond: [{ $eq: ['$state', 'FINALIZED'] }, 1, 0] } },
             outstanding: {
               $sum: {
@@ -1377,36 +1568,93 @@ async function reportsAnalytics(f) {
             },
           },
         },
+        { $sort: { _id: 1 } },
       ]),
       unitDirectory(f),
     ]);
 
-    const units = (unitListsOf(org)[childLevel]) || [];
-    const by = new Map(byUnit.map((r) => [str(r._id), r]));
+    const facets = byUnitFacet[0] || {};
+    const unitsFor = unitListsOf(org);
+    const byLevel = {};
 
-    const rows = units.map((u) => {
-      const r = by.get(str(u._id)) || { filed: 0, outstanding: 0 };
-      const total = r.filed + r.outstanding;
-      return {
-        _id: u._id,
-        name: u.name,
-        filed: r.filed,
-        outstanding: r.outstanding,
-        total,
-        filingRate: total ? Math.round((r.filed / total) * 100) : null,
-      };
-    }).filter((r) => r.total > 0)
-      .sort((a, b) => b.outstanding - a.outstanding || a.name.localeCompare(b.name));
+    for (const lvl of levels) {
+      const byMap = new Map((facets[lvl] || []).map((r) => [str(r._id), r]));
+      byLevel[lvl] = (unitsFor[lvl] || []).map((u) => {
+        const r = byMap.get(str(u._id)) || { filed: 0, outstanding: 0 };
+        const total = r.filed + r.outstanding;
+        return {
+          _id: u._id,
+          name: u.name,
+          filed: r.filed,
+          outstanding: r.outstanding,
+          total,
+          filingRate: total ? Math.round((r.filed / total) * 100) : 0,
+        };
+      }).filter((r) => r.total > 0)
+        .sort((a, b) => b.outstanding - a.outstanding || a.name.localeCompare(b.name));
+    }
+
+    // Keep backwards-compatible rows for immediate child level
+    const rows = (childLevel && byLevel[childLevel]) ? byLevel[childLevel] : [];
+
+    // Monthly trend 6-month & all-time
+    const rawTrendMap = new Map(trendRows.map((r) => [r._id, r]));
+    const trend6 = monthBuckets(
+      end, 6, rawTrendMap,
+      (hit) => {
+        const filed = hit?.filed || 0;
+        const outstanding = hit?.outstanding || 0;
+        const total = filed + outstanding;
+        return {
+          filed,
+          outstanding,
+          total,
+          rate: total > 0 ? Math.round((filed / total) * 100) : 0,
+        };
+      },
+    );
+
+    let trendAll;
+    if (trendRows.length > 0) {
+      const earliest = trendRows[0]._id;
+      const [eYear, eMon] = earliest.split('-').map(Number);
+      const spanMonths =
+        (end.getFullYear() - eYear) * 12 + (end.getMonth() + 1 - eMon) + 1;
+      trendAll = monthBuckets(
+        end, Math.max(spanMonths, 6), rawTrendMap,
+        (hit) => {
+          const filed = hit?.filed || 0;
+          const outstanding = hit?.outstanding || 0;
+          const total = filed + outstanding;
+          return {
+            filed,
+            outstanding,
+            total,
+            rate: total > 0 ? Math.round((filed / total) * 100) : 0,
+          };
+        },
+      );
+    } else {
+      trendAll = trend6;
+    }
 
     const total = filedAgg + outstandingAgg;
+    const totalUnits = Object.values(byLevel).reduce((sum, list) => sum + (list ? list.length : 0), 0) || rows.length;
     return {
       level: childLevel,
+      levels: levels.filter((l) => byLevel[l] && byLevel[l].length > 0),
+      byLevel,
       totals: {
         filed: filedAgg,
         outstanding: outstandingAgg,
+        total,
         filingRate: total ? Math.round((filedAgg / total) * 100) : null,
+        units: rows.length || totalUnits || total,
       },
       rows,
+      trend: trend6,
+      trend6,
+      trendAll,
     };
   });
 }

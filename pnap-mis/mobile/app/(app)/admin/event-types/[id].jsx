@@ -258,7 +258,16 @@ export default function EventTypeEditorScreen() {
       {/* Hero Header */}
       <View style={styles.hero}>
         <View style={styles.heroTopRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace(entity === 'MEETING' ? '/admin/event-types/meetings' : '/admin/event-types/activities');
+              }
+            }}
+            style={styles.backBtn}
+          >
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: Spacing.sm }}>

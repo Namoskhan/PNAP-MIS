@@ -105,7 +105,9 @@ export function NetworkProvider({ children }) {
 
     // NetInfo event listener
     const unsubNetInfo = NetInfo.addEventListener((state) => {
-      const online = Boolean(state.isConnected && (state.isInternetReachable !== false));
+      // In local LAN development or when switching networks,
+      // isInternetReachable can be false or null even when connected to Wi-Fi.
+      const online = Boolean(state.isConnected);
       setIsOnline(online);
       setIsInternetReachable(state.isInternetReachable);
 
