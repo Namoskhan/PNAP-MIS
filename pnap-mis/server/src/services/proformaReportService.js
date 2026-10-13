@@ -4,6 +4,7 @@ const form2 = require('./proforma/form2');
 const form3 = require('./proforma/form3');
 const form4 = require('./proforma/form4');
 const form5 = require('./proforma/form5');
+const form6 = require('./proforma/form6');
 
 module.exports = {
   // Common utilities
@@ -34,4 +35,9 @@ module.exports = {
   fetchForm5Data: form5.fetchForm5Data,
   generateForm5Html: form5.generateForm5Html,
   generateForm5Excel: form5.generateForm5Excel,
+
+  // Form 6: District Monthly & Executive Activity Report
+  fetchForm6Data: form6.fetchForm6Data,
+  generateForm6Html: form6.generateForm6Html,
+  generateForm6Excel: form6.generateForm6Excel,
 };

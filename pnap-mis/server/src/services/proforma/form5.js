@@ -9,7 +9,11 @@ async function fetchForm5Data({ provinceId, fromDate, toDate, year, month }) {
   const Activity = require('../../models/Activity');
   const Donation = require('../../models/Donation');
 
-  const province = await Province.findById(provinceId).lean();
+  const mongoose = require('mongoose');
+  let province = null;
+  if (provinceId && mongoose.Types.ObjectId.isValid(provinceId)) {
+    province = await Province.findById(provinceId).lean();
+  }
   const provinceName = province ? province.name : '';
 
   const y = parseInt(year, 10) || new Date().getFullYear();
@@ -17,11 +21,53 @@ async function fetchForm5Data({ provinceId, fromDate, toDate, year, month }) {
 
   let startDate, endDate, dispFrom, dispTo;
 
-  if (fromDate && toDate) {
-    startDate = new Date(fromDate);
-    endDate = new Date(toDate);
-    dispFrom = new Date(fromDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
-    dispTo = new Date(toDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+  function parseInputDate(str, isEnd = false) {
+    if (!str || typeof str !== 'string') return null;
+    const trimmed = str.trim();
+    if (!trimmed) return null;
+
+    // DD/MM (e.g. "01/10" or "31/10")
+    const dmMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (dmMatch) {
+      const d = parseInt(dmMatch[1], 10);
+      const mo = parseInt(dmMatch[2], 10);
+      if (isEnd) return new Date(Date.UTC(y, mo - 1, d, 23, 59, 59, 999));
+      return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
+    }
+
+    // DD/MM/YYYY
+    const dmyMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmyMatch) {
+      const d = parseInt(dmyMatch[1], 10);
+      const mo = parseInt(dmyMatch[2], 10);
+      const yr = parseInt(dmyMatch[3], 10);
+      if (isEnd) return new Date(Date.UTC(yr, mo - 1, d, 23, 59, 59, 999));
+      return new Date(Date.UTC(yr, mo - 1, d, 0, 0, 0, 0));
+    }
+
+    // YYYY-MM-DD
+    const ymdMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymdMatch) {
+      const yr = parseInt(ymdMatch[1], 10);
+      const mo = parseInt(ymdMatch[2], 10);
+      const d = parseInt(ymdMatch[3], 10);
+      if (isEnd) return new Date(Date.UTC(yr, mo - 1, d, 23, 59, 59, 999));
+      return new Date(Date.UTC(yr, mo - 1, d, 0, 0, 0, 0));
+    }
+
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) return parsed;
+    return null;
+  }
+
+  const parsedStart = parseInputDate(fromDate, false);
+  const parsedEnd = parseInputDate(toDate, true);
+
+  if (parsedStart && parsedEnd) {
+    startDate = parsedStart;
+    endDate = parsedEnd;
+    dispFrom = fromDate.trim();
+    dispTo = toDate.trim();
   } else if (m) {
     startDate = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
     endDate = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
@@ -97,6 +143,7 @@ async function fetchForm5Data({ provinceId, fromDate, toDate, year, month }) {
     const areaExec = allMeetings.filter(m => m.unitLevel === 'AREA' && (m.body === 'EXECUTIVE' || ['EXECUTIVE', 'EXC'].includes(m.type)) && attended(m)).length;
     const areaComm = allMeetings.filter(m => m.unitLevel === 'AREA' && (m.body === 'COMMITTEE' || ['COMMITTEE', 'CMP'].includes(m.type)) && attended(m)).length;
     const basicUnitsExec = allMeetings.filter(m => m.unitLevel === 'BASIC_UNIT' && (m.body === 'EXECUTIVE' || ['EXECUTIVE', 'EXC'].includes(m.type)) && attended(m)).length;
+    const basicUnitsGb = allMeetings.filter(m => m.unitLevel === 'BASIC_UNIT' && (m.body === 'GENERAL_BODY' || m.body === 'GENERAL' || ['GENERAL_BODY', 'GB'].includes(m.type) || !['EXECUTIVE', 'EXC'].includes(m.type)) && attended(m)).length;
     const ownBasicUnit = allMeetings.filter(m => ownBuId && (String(m.unitId) === ownBuId || String(m.basicUnitId) === ownBuId) && attended(m)).length;
     const psoMeetings = allMeetings.filter(m => /pso|student|پي ايس او/i.test(m.title || '') && attended(m)).length;
 
@@ -110,7 +157,7 @@ async function fetchForm5Data({ provinceId, fromDate, toDate, year, month }) {
     const pressConferences = allActivities.filter(a => (/press|پريس/i.test(a.title || '') || a.type === 'PRESS_CONFERENCE') && actAttended(a)).length;
     const alliedMeetings = allActivities.filter(a => (/allied|alliance|اتحادي/i.test(a.title || '') || /allied|alliance/i.test(a.description || '')) && actAttended(a)).length;
 
-    const totalMeetings = centralComm + provincialJirga + provincialExec + provincialComm + districtExec + districtComm + areaExec + areaComm + basicUnitsExec + psoMeetings;
+    const totalMeetings = centralComm + provincialJirga + provincialExec + provincialComm + districtExec + districtComm + areaExec + areaComm + basicUnitsExec + basicUnitsGb + ownBasicUnit + psoMeetings;
 
     const duesTotal = allDonations.filter(d => String(d.donorMemberId) === mId).reduce((s, d) => s + (d.amount || 0), 0);
     const tours = allActivities.filter(a => (/tour|دوره/i.test(a.title || '') || a.type === 'TASK') && actAttended(a)).length;
@@ -127,6 +174,7 @@ async function fetchForm5Data({ provinceId, fromDate, toDate, year, month }) {
       areaExec: areaExec > 0 ? String(areaExec) : '',
       areaComm: areaComm > 0 ? String(areaComm) : '',
       basicUnitsExec: basicUnitsExec > 0 ? String(basicUnitsExec) : '',
+      basicUnitsGb: basicUnitsGb > 0 ? String(basicUnitsGb) : '',
       ownBasicUnit: ownBasicUnit > 0 ? String(ownBasicUnit) : '',
       psoMeetings: psoMeetings > 0 ? String(psoMeetings) : '',
       partyConferences: partyConferences > 0 ? String(partyConferences) : '',
@@ -169,6 +217,7 @@ function generateForm5Html({ provinceName = '', fromDate = '', toDate = '', year
       areaExec: '',
       areaComm: '',
       basicUnitsExec: '',
+      basicUnitsGb: '',
       ownBasicUnit: '',
       psoMeetings: '',
       partyConferences: '',
@@ -220,34 +269,35 @@ function generateForm5Html({ provinceName = '', fromDate = '', toDate = '', year
       <thead>
         <tr>
           <th rowspan="2" style="width: 1.8%;">شمير</th>
-          <th rowspan="2" style="width: 7.5%;">ايګزيکټيو نوم</th>
-          <th rowspan="2" style="width: 3.5%;">مرکزي<br>کميټي<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">صوبايي<br>جرګي<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">صوبايي<br>ايګزيکټيو<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">صوبايي<br>کميټي<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">ضلع<br>ايګزيکټيو<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">ضلعي<br>کميټي<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">علاقائي<br>ايګزيکټيو<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">علاقائي<br>کميټي<br>غونډي</th>
-          <th rowspan="2" style="width: 4.0%;">ابتدائي يونټانو<br>ايګزيکټيو<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">خپل ابتدائي<br>يونټ<br>غونډي</th>
-          <th rowspan="2" style="width: 3.0%;">PSO<br>غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">پارټي<br>کانفرنسونه</th>
-          <th rowspan="2" style="width: 3.2%;">سيمينارونه</th>
-          <th rowspan="2" style="width: 3.0%;">سټډي<br>سرکل</th>
-          <th rowspan="2" style="width: 4.0%;">نوي شموليت<br>پروګرامونه</th>
+          <th rowspan="2" style="width: 7.2%;">ايګزيکټيو نوم</th>
+          <th rowspan="2" style="width: 3.4%;">مرکزي<br>کميټي<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">صوبائي<br>جرګے<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">صوبائي<br>ايګزيکټيو<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">صوبائي<br>کميټي<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">ضلع<br>ايګزيکټيو<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">ضلعي<br>کميټي<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">علاقائي<br>ايګزيکټيو<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">علاقائي<br>کميټي<br>غونډي</th>
+          <th rowspan="2" style="width: 3.8%;">ابتدائي يونټانو<br>ايګزيکټيو<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">ابتدائي يونټانو<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">خپل ابتدائي<br>يونټ<br>غونډي</th>
+          <th rowspan="2" style="width: 2.8%;">PSO<br>غونډي</th>
+          <th rowspan="2" style="width: 3.4%;">پارټي<br>کانفرنسونه</th>
+          <th rowspan="2" style="width: 3.0%;">سيمينارونه</th>
+          <th rowspan="2" style="width: 2.8%;">سټډي<br>سرکل</th>
+          <th rowspan="2" style="width: 3.8%;">نوي شموليت<br>پروګرامونه</th>
           <th colspan="2">اولسي غونډي</th>
-          <th rowspan="2" style="width: 3.5%;">پريس<br>کانفرنسونه</th>
-          <th rowspan="2" style="width: 4.5%;">اتحاديانو / سياسي<br>پارټيانو سره غونډي</th>
-          <th rowspan="2" style="width: 3.0%;">ټولي<br>غونډي</th>
-          <th rowspan="2" style="width: 3.0%;">چنده</th>
-          <th rowspan="2" style="width: 2.8%;">دوره</th>
-          <th rowspan="2" style="width: 3.8%;">لوستنه<br>(مطالعه)</th>
-          <th rowspan="2" style="width: 3.5%;">بلډ بينک<br>پوست</th>
+          <th rowspan="2" style="width: 3.4%;">پريس<br>کانفرنسونه</th>
+          <th rowspan="2" style="width: 4.2%;">اتحاديانو / سياسي<br>پارټيانو سره غونډي</th>
+          <th rowspan="2" style="width: 2.8%;">ټولي<br>غونډي</th>
+          <th rowspan="2" style="width: 2.8%;">چنده</th>
+          <th rowspan="2" style="width: 2.6%;">دوره</th>
+          <th rowspan="2" style="width: 3.4%;">لوستنه<br>(مطالعه)</th>
+          <th rowspan="2" style="width: 3.2%;">بلډ بينک<br>پوست</th>
         </tr>
         <tr>
-          <th style="width: 3.2%;">جلسے<br>مظاهرے</th>
-          <th style="width: 3.5%;">جرګے کارنر<br>ميټنګونه</th>
+          <th style="width: 3.0%;">جلسے<br>مظاهرے</th>
+          <th style="width: 3.4%;">جرګے کارنر<br>ميټنګونه</th>
         </tr>
       </thead>
       <tbody>
@@ -264,6 +314,7 @@ function generateForm5Html({ provinceName = '', fromDate = '', toDate = '', year
             <td>${r.areaExec || ''}</td>
             <td>${r.areaComm || ''}</td>
             <td>${r.basicUnitsExec || ''}</td>
+            <td>${r.basicUnitsGb || ''}</td>
             <td>${r.ownBasicUnit || ''}</td>
             <td>${r.psoMeetings || ''}</td>
             <td>${r.partyConferences || ''}</td>
@@ -303,21 +354,21 @@ async function generateForm5Excel({ provinceName = '', fromDate = '', toDate = '
   ws.getCell('A1').value = `صوبې نوم: ${provinceName}`;
   ws.getCell('A1').font = { name: 'Noto Naskh Arabic', size: 10, bold: true };
 
-  ws.mergeCells('H1:S1');
+  ws.mergeCells('H1:T1');
   ws.getCell('H1').value = 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ';
   ws.getCell('H1').font = FONT_TITLE;
   ws.getCell('H1').alignment = { horizontal: 'center' };
 
-  ws.mergeCells('U1:X1');
-  ws.getCell('U1').value = `کال: ${year}  د ${fromDate} څخه تر ${toDate} پورې`;
-  ws.getCell('U1').font = { name: 'Noto Naskh Arabic', size: 9, bold: true };
+  ws.mergeCells('V1:AA1');
+  ws.getCell('V1').value = `کال: ${year}  مياشت او نيټه څخه: ${fromDate}  تر مياشت او نيټه پوري: ${toDate}`;
+  ws.getCell('V1').font = { name: 'Noto Naskh Arabic', size: 9, bold: true };
 
   const headers = [
-    'شمير', 'ايګزيکټيو نوم', 'مرکزي کميټي غونډي', 'صوبايي جرګي غونډي', 'صوبايي ايګزيکټيو غونډي', 'صوبايي کميټي غونډي',
+    'شمير', 'ايګزيکټيو نوم', 'مرکزي کميټي غونډي', 'صوبائي جرګے غونډي', 'صوبائي ايګزيکټيو غونډي', 'صوبائي کميټي غونډي',
     'ضلع ايګزيکټيو غونډي', 'ضلعي کميټي غونډي', 'علاقائي ايګزيکټيو غونډي', 'علاقائي کميټي غونډي', 'ابتدائي يونټانو ايګزيکټيو غونډي',
-    'خپل ابتدائي يونټ غونډي', 'PSO غونډي', 'پارټي کانفرنسونه', 'سيمينارونه', 'سټډي سرکل', 'نوي شموليت پروګرامونه',
-    'جلسے مظاهرے', 'جرګے کارنر ميټنګونه', 'پريس کانفرنسونه', 'اتحاديانو سره غونډي', 'ټولي غونډي', 'چنده',
-    'دوره', 'لوستنه', 'بلډ بينک پوسټ'
+    'ابتدائي يونټانو غونډي', 'خپل ابتدائي يونټ غونډي', 'PSO غونډي', 'پارټي کانفرنسونه', 'سيمينارونه', 'سټډي سرکل', 'نوي شموليت پروګرامونه',
+    'جلسے مظاهرے', 'جرګے کارنر ميټنګونه', 'پريس کانفرنسونه', 'اتحاديانو / سياسي پارټيانو سره غونډي', 'ټولي غونډي', 'چنده',
+    'دوره', 'لوستنه (مطالعه)', 'بلډ بينک پوسټ'
   ];
 
   ws.getRow(3).values = headers;
@@ -327,7 +378,7 @@ async function generateForm5Excel({ provinceName = '', fromDate = '', toDate = '
     const rowNum = 4 + idx;
     ws.getRow(rowNum).values = [
       r.srNo || idx + 1, r.name || '', r.centralComm || '', r.provincialJirga || '', r.provincialExec || '', r.provincialComm || '',
-      r.districtExec || '', r.districtComm || '', r.areaExec || '', r.areaComm || '', r.basicUnitsExec || '',
+      r.districtExec || '', r.districtComm || '', r.areaExec || '', r.areaComm || '', r.basicUnitsExec || '', r.basicUnitsGb || '',
       r.ownBasicUnit || '', r.psoMeetings || '', r.partyConferences || '', r.seminars || '', r.studyCircles || '',
       r.inductions || '', r.ralliesAndProtests || '', r.jirgasAndCornerMeetings || '', r.pressConferences || '',
       r.alliedMeetings || '', r.totalMeetings || '', r.dues || '', r.tours || '', r.reading || '', r.bloodBankPosts || ''

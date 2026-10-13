@@ -235,6 +235,12 @@ async function fetchForm3Data({ areaId, month, year }) {
     ['SEMINAR', 'STUDY_CIRCLE', 'PARTY_CONFERENCE', 'SEM', 'STC'].includes(a.type || a.typeCode)
   );
 
+  const bloodDonations = allDonations.filter(d => /blood|بلډ/i.test(d.note || '') || /blood|بلډ/i.test(d.donorType || ''));
+  const zakatDonations = allDonations.filter(d => /zakat|زکات/i.test(d.note || '') || /zakat|زکات/i.test(d.donorType || ''));
+  const bloodCash = bloodDonations.reduce((sum, d) => sum + (d.amount || 0), 0);
+  const zakat = zakatDonations.reduce((sum, d) => sum + (d.amount || 0), 0);
+  const bloodPosts = allActivities.filter(a => /blood|بلډ/i.test(a.title || '') || /blood|بلډ/i.test(a.description || '')).length;
+
   return {
     areaName,
     month: getPashtoMonth(m),
@@ -289,6 +295,27 @@ async function fetchForm3Data({ areaId, month, year }) {
         memberCount: memCount,
       };
     }),
+    disciplinaryActions: [
+      { name: '', role: '', violation: '', action: '' },
+      { name: '', role: '', violation: '', action: '' },
+    ],
+    bloodBank: {
+      bloodPosts: bloodPosts > 0 ? bloodPosts : '',
+      bloodCash: bloodCash > 0 ? bloodCash : '',
+      bloodTotalCash: bloodCash > 0 ? bloodCash : '',
+      zakat: zakat > 0 ? zakat : '',
+    },
+    proposals: {
+      political: { exec: '', comm: '', ind: '' },
+      organizational: { exec: '', comm: '', ind: '' },
+      social: { exec: '', comm: '', ind: '' },
+      demands: '',
+    },
+    officeActivity: '',
+    socialReport: '',
+    misc: '',
+    secSignature: '',
+    seniorSecSignature: '',
   };
 }
 
@@ -300,15 +327,24 @@ function generateForm3Html({
   committeeMembers = [],
   publicActivities = [],
   educationalActivities = [],
+  disciplinaryActions = [],
+  bloodBank = {},
+  proposals = {},
+  officeActivity = '',
+  socialReport = '',
+  misc = '',
+  notes = '',
+  secSignature = '',
+  seniorSecSignature = '',
 } = {}) {
   // Pad inactive units table
-  const dispInactive = [...inactiveUnits];
+  const dispInactive = Array.isArray(inactiveUnits) ? [...inactiveUnits] : [];
   while (dispInactive.length < 3) {
     dispInactive.push({ srNo: dispInactive.length + 1, unitName: '', reason: '', suggestion: '' });
   }
 
   // Pad committee members table
-  const dispComm = [...committeeMembers];
+  const dispComm = Array.isArray(committeeMembers) ? [...committeeMembers] : [];
   while (dispComm.length < 5) {
     dispComm.push({
       srNo: dispComm.length + 1, name: '', role: '', date: '', areaExec: '', areaComm: '', unitExec: '', unitGb: '',
@@ -317,15 +353,30 @@ function generateForm3Html({
   }
 
   // Pad public activities
-  const dispPublic = [...publicActivities];
+  const dispPublic = Array.isArray(publicActivities) ? [...publicActivities] : [];
   while (dispPublic.length < 3) {
     dispPublic.push({ srNo: dispPublic.length + 1, orgName: '', date: '', location: '', topic: '', programType: '', speakers: '', memberCount: '', publicCount: '' });
   }
 
   // Pad educational activities
-  const dispEdu = [...educationalActivities];
+  const dispEdu = Array.isArray(educationalActivities) ? [...educationalActivities] : [];
   while (dispEdu.length < 3) {
     dispEdu.push({ srNo: dispEdu.length + 1, orgName: '', date: '', location: '', topic: '', programType: '', speakers: '', memberCount: '' });
+  }
+
+  // Pad disciplinary actions into paired rows
+  const dispDisc = Array.isArray(disciplinaryActions) && disciplinaryActions.length > 0
+    ? [...disciplinaryActions]
+    : [{ name: '', role: '', violation: '', action: '' }, { name: '', role: '', violation: '', action: '' }];
+  while (dispDisc.length < 2) {
+    dispDisc.push({ name: '', role: '', violation: '', action: '' });
+  }
+  const discRows = [];
+  for (let i = 0; i < dispDisc.length; i += 2) {
+    discRows.push({
+      left: dispDisc[i] || { name: '', role: '', violation: '', action: '' },
+      right: dispDisc[i + 1] || { name: '', role: '', violation: '', action: '' },
+    });
   }
 
   return `<!DOCTYPE html>
@@ -518,17 +569,27 @@ function generateForm3Html({
         <tr>
           <th style="width: 15%;">ملګري نوم</th>
           <th style="width: 10%;">عهده</th>
-          <th style="width: 15%;">څه خالف ورزي يے کړے وه</th>
+          <th style="width: 15%;">څه خلاف ورزي يے کړے وه</th>
           <th style="width: 10%;">تاديبي کاروئي</th>
           <th style="width: 15%;">ملګري نوم</th>
           <th style="width: 10%;">عهده</th>
-          <th style="width: 15%;">څه خالف ورزي يے کړے وه</th>
+          <th style="width: 15%;">څه خلاف ورزي يے کړے وه</th>
           <th style="width: 10%;">تاديبي کاروائي</th>
         </tr>
       </thead>
       <tbody>
-        <tr><td>&nbsp;</td><td></td><td></td><td></td><td>&nbsp;</td><td></td><td></td><td></td></tr>
-        <tr><td>&nbsp;</td><td></td><td></td><td></td><td>&nbsp;</td><td></td><td></td><td></td></tr>
+        ${discRows.map(r => `
+          <tr>
+            <td>${r.left.name || '&nbsp;'}</td>
+            <td>${r.left.role || ''}</td>
+            <td>${r.left.violation || ''}</td>
+            <td>${r.left.action || ''}</td>
+            <td>${r.right.name || '&nbsp;'}</td>
+            <td>${r.right.role || ''}</td>
+            <td>${r.right.violation || ''}</td>
+            <td>${r.right.action || ''}</td>
+          </tr>
+        `).join('')}
       </tbody>
     </table>
 
@@ -547,10 +608,10 @@ function generateForm3Html({
       </thead>
       <tbody>
         <tr>
-          <td>&nbsp;</td>
-          <td></td>
-          <td></td>
-          <td></td>
+          <td>${bloodBank?.bloodPosts ?? '&nbsp;'}</td>
+          <td>${bloodBank?.bloodCash ? (typeof bloodBank.bloodCash === 'number' ? bloodBank.bloodCash.toLocaleString() : bloodBank.bloodCash) : ''}</td>
+          <td>${bloodBank?.bloodTotalCash ? (typeof bloodBank.bloodTotalCash === 'number' ? bloodBank.bloodTotalCash.toLocaleString() : bloodBank.bloodTotalCash) : ''}</td>
+          <td>${bloodBank?.zakat ? (typeof bloodBank.zakat === 'number' ? bloodBank.zakat.toLocaleString() : bloodBank.zakat) : ''}</td>
         </tr>
       </tbody>
     </table>
@@ -574,41 +635,38 @@ function generateForm3Html({
       <tbody>
         <tr>
           <td style="font-weight: 700;">سياسي</td>
-          <td style="height: 32px;"></td>
-          <td></td>
-          <td></td>
+          <td style="height: 32px;">${proposals?.political?.exec || ''}</td>
+          <td>${proposals?.political?.comm || ''}</td>
+          <td>${proposals?.political?.ind || ''}</td>
         </tr>
         <tr>
           <td style="font-weight: 700;">تنظيمي</td>
-          <td style="height: 32px;"></td>
-          <td></td>
-          <td></td>
+          <td style="height: 32px;">${proposals?.organizational?.exec || ''}</td>
+          <td>${proposals?.organizational?.comm || ''}</td>
+          <td>${proposals?.organizational?.ind || ''}</td>
         </tr>
         <tr>
           <td style="font-weight: 700;">ټولنيزو کارو</td>
-          <td style="height: 32px;"></td>
-          <td></td>
-          <td></td>
+          <td style="height: 32px;">${proposals?.social?.exec || ''}</td>
+          <td>${proposals?.social?.comm || ''}</td>
+          <td>${proposals?.social?.ind || ''}</td>
         </tr>
       </tbody>
     </table>
 
     <!-- SECTION 8: Office Activity & Signatures -->
     <div style="margin-top: 14px; font-size: 8.5pt; line-height: 1.8;">
-      <div><strong>۱۔ علاقائي دوتر فعاليت:</strong> <span style="display: inline-block; width: 80%; border-bottom: 1px dotted #000;">&nbsp;</span></div>
-      <div><strong>۲۔ ټولنيزو کارو لنډ رپورټ:</strong> <span style="display: inline-block; width: 79%; border-bottom: 1px dotted #000;">&nbsp;</span></div>
-      <div style="margin-top: 4px; border-bottom: 1px dotted #000; width: 100%; height: 16px;"></div>
-      <div style="margin-top: 4px; border-bottom: 1px dotted #000; width: 100%; height: 16px;"></div>
-      <div style="margin-top: 8px;"><strong>۳۔ متفرق:</strong> <span style="display: inline-block; width: 88%; border-bottom: 1px dotted #000;">&nbsp;</span></div>
-      <div style="margin-top: 4px; border-bottom: 1px dotted #000; width: 100%; height: 16px;"></div>
+      <div><strong>۱۔ علاقائي دوتر فعاليت:</strong> <span style="display: inline-block; width: 80%; border-bottom: 1px dotted #000; padding: 0 4px;">${officeActivity || '&nbsp;'}</span></div>
+      <div><strong>۲۔ ټولنيزو کارو لنډ رپورټ:</strong> <span style="display: inline-block; width: 79%; border-bottom: 1px dotted #000; padding: 0 4px;">${socialReport || '&nbsp;'}</span></div>
+      <div style="margin-top: 8px;"><strong>۳۔ متفرق:</strong> <span style="display: inline-block; width: 88%; border-bottom: 1px dotted #000; padding: 0 4px;">${misc || notes || '&nbsp;'}</span></div>
     </div>
 
     <div style="display: flex; justify-content: space-between; margin-top: 24px; padding: 0 20px; font-size: 9pt; font-weight: 700;">
       <div>
-        علاقائي سيکرټري لاسليک: <span class="line" style="min-width: 200px;"></span>
+        علاقائي سيکرټري لاسليک: <span class="line" style="min-width: 200px;">${secSignature || ''}</span>
       </div>
       <div>
-        علاقائي سينئر معاون لاس ليک: <span class="line" style="min-width: 200px;"></span>
+        علاقائي سينئر معاون لاس ليک: <span class="line" style="min-width: 200px;">${seniorSecSignature || ''}</span>
       </div>
     </div>
   </div>
@@ -624,6 +682,15 @@ async function generateForm3Excel({
   committeeMembers = [],
   publicActivities = [],
   educationalActivities = [],
+  disciplinaryActions = [],
+  bloodBank = {},
+  proposals = {},
+  officeActivity = '',
+  socialReport = '',
+  misc = '',
+  notes = '',
+  secSignature = '',
+  seniorSecSignature = '',
 } = {}) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('تفصيلي راپور', {
@@ -740,6 +807,96 @@ async function generateForm3Excel({
     ];
     ws.getRow(r).font = FONT_DATA;
   });
+
+  // Section 5
+  r += 2;
+  ws.mergeCells(`A${r}:H${r}`);
+  ws.getCell(`A${r}`).value = 'علاقه کي تاديبي کاروائي';
+  ws.getCell(`A${r}`).font = FONT_SEC;
+
+  r += 1;
+  ws.getRow(r).values = [
+    'ملګري نوم', 'عهده', 'څه خلاف ورزي يې کړې وه', 'تاديبي کاروايي',
+    'ملګري نوم', 'عهده', 'څه خلاف ورزي يې کړې وه', 'تاديبي کاروايي'
+  ];
+  ws.getRow(r).font = FONT_HEADER;
+
+  const dispDisc = Array.isArray(disciplinaryActions) && disciplinaryActions.length > 0
+    ? [...disciplinaryActions]
+    : [{ name: '', role: '', violation: '', action: '' }];
+  for (let i = 0; i < dispDisc.length; i += 2) {
+    const left = dispDisc[i] || {};
+    const right = dispDisc[i + 1] || {};
+    r += 1;
+    ws.getRow(r).values = [
+      left.name || '', left.role || '', left.violation || '', left.action || '',
+      right.name || '', right.role || '', right.violation || '', right.action || ''
+    ];
+    ws.getRow(r).font = FONT_DATA;
+  }
+
+  // Section 6
+  r += 2;
+  ws.mergeCells(`A${r}:D${r}`);
+  ws.getCell(`A${r}`).value = 'علاقائي يونټ کښي بلډ بينک د پاره پوستونه، نغدي او زکات رپورټ';
+  ws.getCell(`A${r}`).font = FONT_SEC;
+
+  r += 1;
+  ws.getRow(r).values = ['پوستونه شمير', 'نغدي', 'ټولي نغدي', 'زکات'];
+  ws.getRow(r).font = FONT_HEADER;
+
+  r += 1;
+  ws.getRow(r).values = [
+    bloodBank?.bloodPosts || 0,
+    bloodBank?.bloodCash || 0,
+    bloodBank?.bloodTotalCash || 0,
+    bloodBank?.zakat || 0
+  ];
+  ws.getRow(r).font = FONT_DATA;
+
+  // Section 7
+  r += 2;
+  ws.mergeCells(`A${r}:D${r}`);
+  ws.getCell(`A${r}`).value = 'وړانديزونه (پيشنهادونه، تجاویز) او غوښتنې';
+  ws.getCell(`A${r}`).font = FONT_SEC;
+
+  r += 1;
+  ws.getRow(r).values = ['ډول', 'ايګزيکټيو لخوا', 'يونټ او علاقائي کميټي لخوا', 'فرد لخوا'];
+  ws.getRow(r).font = FONT_HEADER;
+
+  r += 1;
+  ws.getRow(r).values = ['سياسي', proposals?.political?.exec || '', proposals?.political?.comm || '', proposals?.political?.ind || ''];
+  ws.getRow(r).font = FONT_DATA;
+
+  r += 1;
+  ws.getRow(r).values = ['تنظيمي', proposals?.organizational?.exec || '', proposals?.organizational?.comm || '', proposals?.organizational?.ind || ''];
+  ws.getRow(r).font = FONT_DATA;
+
+  r += 1;
+  ws.getRow(r).values = ['ټولنيزو کارو', proposals?.social?.exec || '', proposals?.social?.comm || '', proposals?.social?.ind || ''];
+  ws.getRow(r).font = FONT_DATA;
+
+  // Section 8
+  r += 2;
+  ws.mergeCells(`A${r}:F${r}`);
+  ws.getCell(`A${r}`).value = 'علاقائي دفتر فعاليت، ټولنيز کارونه او لاسليکونه';
+  ws.getCell(`A${r}`).font = FONT_SEC;
+
+  r += 1;
+  ws.getRow(r).values = ['۱۔ علاقائي دفتر فعاليت:', officeActivity || ''];
+  ws.getRow(r).font = FONT_DATA;
+
+  r += 1;
+  ws.getRow(r).values = ['۲۔ ټولنيزو کارو لنډ رپورټ:', socialReport || ''];
+  ws.getRow(r).font = FONT_DATA;
+
+  r += 1;
+  ws.getRow(r).values = ['۳۔ متفرق:', misc || notes || ''];
+  ws.getRow(r).font = FONT_DATA;
+
+  r += 1;
+  ws.getRow(r).values = ['علاقائي سيکرټري لاسليک:', secSignature || '', '', 'علاقائي سينئر معاون لاس ليک:', seniorSecSignature || ''];
+  ws.getRow(r).font = FONT_DATA;
 
   return wb;
 }
