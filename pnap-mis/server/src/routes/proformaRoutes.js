@@ -6,6 +6,7 @@ router.use(authenticate);
 
 router.get('/entry', ctrl.getProformaEntry);
 router.post('/save', ctrl.saveProformaReport);
+router.post('/reset', ctrl.resetProformaReport);
 router.get('/history', ctrl.getProformaHistory);
 
 module.exports = router;
