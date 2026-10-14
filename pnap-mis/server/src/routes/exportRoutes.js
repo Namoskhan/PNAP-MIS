@@ -52,4 +52,8 @@ router.get('/proforma/form7/pdf', ctrl.proformaForm7Pdf);
 router.get('/proforma/form7/xlsx', ctrl.proformaForm7Xlsx);
 router.get('/proforma/form7/html', ctrl.proformaForm7Html);
 
+router.get('/proforma/form8/pdf', ctrl.proformaForm8Pdf);
+router.get('/proforma/form8/xlsx', ctrl.proformaForm8Xlsx);
+router.get('/proforma/form8/html', ctrl.proformaForm8Html);
+
 module.exports = router;

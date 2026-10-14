@@ -73,7 +73,7 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
     unitLevel = 'PROVINCE';
     const prov = await Province.findById(targetId).lean();
     unitName = prov?.name || '';
-  } else if (formType === 'form6' || formType === 'form7') {
+  } else if (['form6', 'form7', 'form8'].includes(formType)) {
     targetId = req.query.districtId || unitId;
     unitLevel = 'DISTRICT';
     const dist = await District.findById(targetId).lean();
@@ -111,6 +111,8 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
       baseline = await proformaService.fetchForm6Data({ districtId: targetId, month: m, year: y, m1: req.query.m1, m2: req.query.m2, m3: req.query.m3 });
     } else if (formType === 'form7') {
       baseline = await proformaService.fetchForm7Data({ districtId: targetId, month: m, year: y });
+    } else if (formType === 'form8') {
+      baseline = await proformaService.fetchForm8Data({ districtId: targetId, month: m, year: y });
     }
   } catch (err) {
     console.error('Error fetching proforma baseline:', err);
@@ -583,9 +585,55 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     }
   }
 
+  // Form 8: District Central & Provincial Committee Members validation
+  if (formType === 'form8') {
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const hasData = Object.entries(r).some(
+        ([k, v]) => !['srNo', 'activeStatus'].includes(k) && v !== '' && v !== null && v !== 0 && v !== '0'
+      );
+      if (!hasData) continue;
+
+      const label = (r.name || '').trim() || `Row #${i + 1}`;
+      if (!r.name || !r.name.trim()) {
+        throw new ApiError(400, 'BAD_REQUEST', `Comrade name is required for row #${i + 1}`);
+      }
+
+      const numericFields = [
+        'distCommMeeting', 'areaExecMeeting', 'areaCommMeeting', 'ownBuMeeting',
+        'buExecMeeting', 'buMeeting', 'psoMeeting', 'conferences', 'seminars',
+        'studyCircles', 'inductions', 'publicGatherings', 'totalMeetings',
+        'monthlyDues', 'tours', 'contacts', 'officeAttendance', 'bloodBank'
+      ];
+      for (const f of numericFields) {
+        const val = parseInt(r[f], 10);
+        if (!isNaN(val) && val < 0) {
+          throw new ApiError(400, 'BAD_REQUEST', `${label}: Value for '${f}' cannot be negative (${val})`);
+        }
+      }
+
+      // Auto-calculate / verify total meetings
+      const meetingsSum = (parseInt(r.distCommMeeting, 10) || 0) +
+        (parseInt(r.areaExecMeeting, 10) || 0) +
+        (parseInt(r.areaCommMeeting, 10) || 0) +
+        (parseInt(r.ownBuMeeting, 10) || 0) +
+        (parseInt(r.buExecMeeting, 10) || 0) +
+        (parseInt(r.buMeeting, 10) || 0) +
+        (parseInt(r.psoMeeting, 10) || 0) +
+        (parseInt(r.conferences, 10) || 0) +
+        (parseInt(r.seminars, 10) || 0) +
+        (parseInt(r.studyCircles, 10) || 0) +
+        (parseInt(r.inductions, 10) || 0) +
+        (parseInt(r.publicGatherings, 10) || 0);
+
+      r.totalMeetings = meetingsSum;
+    }
+  }
+
   const buRecord = formType === 'form4' ? await BasicUnit.findById(effectiveUnitId).lean() : null;
-  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : (['form5', 'form6', 'form7'].includes(formType) ? undefined : effectiveUnitId);
-  const resolvedDistrictId = ['form6', 'form7'].includes(formType) ? effectiveUnitId : (districtId || buRecord?.districtId || undefined);
+  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : (['form5', 'form6', 'form7', 'form8'].includes(formType) ? undefined : effectiveUnitId);
+  const resolvedDistrictId = ['form6', 'form7', 'form8'].includes(formType) ? effectiveUnitId : (districtId || buRecord?.districtId || undefined);
 
   const existingDoc = await ProformaReport.findOne({ formType, unitId: effectiveUnitId, year: y, month: m }).lean();
 
@@ -596,7 +644,7 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
 
   const updateFields = {
     formType,
-    unitLevel: unitLevel || (formType === 'form4' ? 'BASIC_UNIT' : (formType === 'form5' ? 'PROVINCE' : (['form6', 'form7'].includes(formType) ? 'DISTRICT' : 'AREA'))),
+    unitLevel: unitLevel || (formType === 'form4' ? 'BASIC_UNIT' : (formType === 'form5' ? 'PROVINCE' : (['form6', 'form7', 'form8'].includes(formType) ? 'DISTRICT' : 'AREA'))),
     unitId: effectiveUnitId,
     unitName: unitName || data.unitName || data.areaName || data.districtName || data.provinceName || buRecord?.name || '',
     areaId: resolvedAreaId,
@@ -688,7 +736,7 @@ exports.resetProformaReport = asyncHandler(async (req, res) => {
   } else if (formType === 'form5') {
     targetId = provinceId || unitId;
     unitLevel = 'PROVINCE';
-  } else if (formType === 'form6' || formType === 'form7') {
+  } else if (['form6', 'form7', 'form8'].includes(formType)) {
     targetId = req.body.districtId || unitId;
     unitLevel = 'DISTRICT';
   }
