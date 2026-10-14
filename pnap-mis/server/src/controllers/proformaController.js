@@ -78,6 +78,21 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
     unitLevel = 'DISTRICT';
     const dist = await District.findById(targetId).lean();
     unitName = dist?.name || '';
+  } else if (formType === 'form9') {
+    targetId = req.query.districtId || req.query.areaId || unitId;
+    const dist = await District.findById(targetId).lean();
+    if (dist) {
+      unitLevel = 'DISTRICT';
+      unitName = dist.name;
+    } else {
+      const area = await Area.findById(targetId).lean();
+      if (area) {
+        unitLevel = 'AREA';
+        unitName = area.name;
+      } else {
+        unitLevel = 'DISTRICT';
+      }
+    }
   }
 
   if (!targetId) {
@@ -113,6 +128,13 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
       baseline = await proformaService.fetchForm7Data({ districtId: targetId, month: m, year: y });
     } else if (formType === 'form8') {
       baseline = await proformaService.fetchForm8Data({ districtId: targetId, month: m, year: y });
+    } else if (formType === 'form9') {
+      baseline = await proformaService.fetchForm9Data({
+        districtId: unitLevel === 'DISTRICT' ? targetId : undefined,
+        areaId: unitLevel === 'AREA' ? targetId : undefined,
+        month: m,
+        year: y,
+      });
     }
   } catch (err) {
     console.error('Error fetching proforma baseline:', err);
@@ -120,6 +142,39 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
 
   // If a saved report already exists and prefill is not explicitly requested, return saved report merged with baseline
   if (savedReport && req.query.prefill !== 'true') {
+    if (formType === 'form9') {
+      const savedData = savedReport.data || {};
+      const mergedData = {
+        ...baseline,
+        ...savedData,
+        sec1Members: (savedData.sec1Members && savedData.sec1Members.length > 0) ? savedData.sec1Members : (baseline.sec1Members || []),
+        sec2PublicGatherings: savedData.sec2PublicGatherings || baseline.sec2PublicGatherings || [],
+        sec3Conferences: savedData.sec3Conferences || baseline.sec3Conferences || [],
+        sec4BloodBank: { ...(baseline.sec4BloodBank || {}), ...(savedData.sec4BloodBank || {}) },
+        sec5Discipline: savedData.sec5Discipline || baseline.sec5Discipline || [],
+        sec6Proposals: {
+          political: { ...(baseline.sec6Proposals?.political || {}), ...(savedData.sec6Proposals?.political || {}) },
+          organizational: { ...(baseline.sec6Proposals?.organizational || {}), ...(savedData.sec6Proposals?.organizational || {}) },
+          social: { ...(baseline.sec6Proposals?.social || {}), ...(savedData.sec6Proposals?.social || {}) },
+        },
+        sec7Notes: { ...(baseline.sec7Notes || {}), ...(savedData.sec7Notes || {}) },
+      };
+      const isSubmitted = savedReport.status === 'SUBMITTED' || savedReport.status === 'APPROVED';
+      return res.json({
+        success: true,
+        exists: isSubmitted,
+        isDraft: savedReport.status === 'DRAFT',
+        canEdit,
+        report: savedReport,
+        data: mergedData,
+        metadata: {
+          submittedByName: isSubmitted ? (savedReport.submittedByName || '') : '',
+          submittedByRole: isSubmitted ? (savedReport.submittedByRole || '') : '',
+          submittedAt: isSubmitted ? (savedReport.submittedAt || savedReport.updatedAt) : null,
+        },
+      });
+    }
+
     const savedData = savedReport.data || {};
     const baseRows = baseline.execRows || baseline.rows || [];
     const rawSavedRows = savedData.rows || savedData.execRows || [];
@@ -314,8 +369,17 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
       const bu = await BasicUnit.findById(effectiveUnitId).lean();
       if (bu?.areaId) effectiveUnitId = bu.areaId.toString();
     }
-  } else if (formType === 'form6' || formType === 'form7') {
+  } else if (['form6', 'form7', 'form8'].includes(formType)) {
     effectiveUnitId = districtId || unitId;
+  } else if (formType === 'form9') {
+    effectiveUnitId = districtId || areaId || unitId;
+    const dist = await District.findById(effectiveUnitId).lean();
+    if (dist) {
+      unitLevel = 'DISTRICT';
+    } else {
+      const a = await Area.findById(effectiveUnitId).lean();
+      if (a) unitLevel = 'AREA';
+    }
   }
 
   // Validate attendance sums against total slots if provided in data.upper
@@ -631,9 +695,57 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     }
   }
 
+  // Form 9: District Central & Provincial Organs Members validation
+  if (formType === 'form9') {
+    const sec1 = Array.isArray(data?.sec1Members) ? data.sec1Members : [];
+    for (let i = 0; i < sec1.length; i++) {
+      const r = sec1[i];
+      const hasData = Object.entries(r).some(
+        ([k, v]) => !['srNo', 'memberId'].includes(k) && v !== '' && v !== null && v !== 0 && v !== '0'
+      );
+      if (!hasData) continue;
+      const numFields = [
+        'distExecMeeting', 'distCommMeeting', 'areaExecMeeting', 'areaCommMeeting',
+        'buExecMeeting', 'buGbMeeting', 'psoMeeting', 'conferences', 'seminars',
+        'studyCircles', 'inductions', 'alliesMeeting', 'publicGatherings',
+        'totalMeetings', 'dues', 'tours'
+      ];
+      for (const f of numFields) {
+        const val = parseInt(r[f], 10);
+        if (!isNaN(val) && val < 0) {
+          throw new ApiError(400, 'BAD_REQUEST', `Section 1 Comrade #${i + 1} (${r.name || 'Unnamed'}): Negative value for '${f}' is not allowed`);
+        }
+      }
+      // Auto-sum meetings
+      r.totalMeetings = (parseInt(r.distExecMeeting, 10) || 0) +
+        (parseInt(r.distCommMeeting, 10) || 0) +
+        (parseInt(r.areaExecMeeting, 10) || 0) +
+        (parseInt(r.areaCommMeeting, 10) || 0) +
+        (parseInt(r.buExecMeeting, 10) || 0) +
+        (parseInt(r.buGbMeeting, 10) || 0) +
+        (parseInt(r.psoMeeting, 10) || 0) +
+        (parseInt(r.conferences, 10) || 0) +
+        (parseInt(r.seminars, 10) || 0) +
+        (parseInt(r.studyCircles, 10) || 0) +
+        (parseInt(r.inductions, 10) || 0) +
+        (parseInt(r.alliesMeeting, 10) || 0) +
+        (parseInt(r.publicGatherings, 10) || 0);
+    }
+
+    if (data?.sec4BloodBank) {
+      const b = data.sec4BloodBank;
+      ['eidHidesCount', 'cash', 'totalCash', 'zakat'].forEach((f) => {
+        const val = parseInt(b[f], 10);
+        if (!isNaN(val) && val < 0) {
+          throw new ApiError(400, 'BAD_REQUEST', `Section 4 Blood Bank: Value for '${f}' cannot be negative`);
+        }
+      });
+    }
+  }
+
   const buRecord = formType === 'form4' ? await BasicUnit.findById(effectiveUnitId).lean() : null;
-  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : (['form5', 'form6', 'form7', 'form8'].includes(formType) ? undefined : effectiveUnitId);
-  const resolvedDistrictId = ['form6', 'form7', 'form8'].includes(formType) ? effectiveUnitId : (districtId || buRecord?.districtId || undefined);
+  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : (['form5', 'form6', 'form7', 'form8'].includes(formType) ? undefined : (unitLevel === 'AREA' ? effectiveUnitId : (areaId || undefined)));
+  const resolvedDistrictId = ['form6', 'form7', 'form8'].includes(formType) ? effectiveUnitId : (unitLevel === 'DISTRICT' ? effectiveUnitId : (districtId || buRecord?.districtId || undefined));
 
   const existingDoc = await ProformaReport.findOne({ formType, unitId: effectiveUnitId, year: y, month: m }).lean();
 
@@ -739,6 +851,15 @@ exports.resetProformaReport = asyncHandler(async (req, res) => {
   } else if (['form6', 'form7', 'form8'].includes(formType)) {
     targetId = req.body.districtId || unitId;
     unitLevel = 'DISTRICT';
+  } else if (formType === 'form9') {
+    targetId = req.body.districtId || req.body.areaId || unitId;
+    const dist = await District.findById(targetId).lean();
+    if (dist) unitLevel = 'DISTRICT';
+    else {
+      const a = await Area.findById(targetId).lean();
+      if (a) unitLevel = 'AREA';
+      else unitLevel = 'DISTRICT';
+    }
   }
 
   if (!targetId) {

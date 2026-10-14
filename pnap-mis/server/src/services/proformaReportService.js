@@ -7,6 +7,7 @@ const form5 = require('./proforma/form5');
 const form6 = require('./proforma/form6');
 const form7 = require('./proforma/form7');
 const form8 = require('./proforma/form8');
+const form9 = require('./proforma/form9');
 
 module.exports = {
   // Common utilities
@@ -52,4 +53,9 @@ module.exports = {
   fetchForm8Data: form8.fetchForm8Data,
   generateForm8Html: form8.generateForm8Html,
   generateForm8Excel: form8.generateForm8Excel,
+
+  // Form 9: District Central & Provincial Organs Members Monthly Work & Activity Report
+  fetchForm9Data: form9.fetchForm9Data,
+  generateForm9Html: form9.generateForm9Html,
+  generateForm9Excel: form9.generateForm9Excel,
 };

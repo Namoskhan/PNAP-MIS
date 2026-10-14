@@ -3235,6 +3235,59 @@ exports.proformaForm8Xlsx = asyncHandler(async (req, res) => {
   res.end();
 });
 
+// Form 9: District Central & Provincial Organs Members Work & Activity Report
+exports.proformaForm9Html = asyncHandler(async (req, res) => {
+  let { districtId, areaId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const targetId = districtId || areaId;
+  const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
+  const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
+  const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
+  const html = proformaService.generateForm9Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm9Pdf = asyncHandler(async (req, res) => {
+  let { districtId, areaId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const targetId = districtId || areaId;
+  const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
+  const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
+  const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
+  const html = proformaService.generateForm9Html(data);
+  await _serveProformaPdf(res, html, `proforma-form9-central-provincial-organs-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm9Xlsx = asyncHandler(async (req, res) => {
+  let { districtId, areaId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const targetId = districtId || areaId;
+  const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
+  const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
+  const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
+  const wb = await proformaService.generateForm9Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-form9-central-provincial-organs-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
 // PR U7 — exposed so reportTemplateService can reuse the data
 // gathering layer without duplication. The existing controller
 // actions above keep using the local function reference; the new

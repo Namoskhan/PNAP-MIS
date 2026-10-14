@@ -7,6 +7,7 @@ import UnitSwitcher from '../../components/UnitSwitcher';
 import PashtoKeyboardHelper from '../../components/PashtoKeyboardHelper';
 import Form7Workspace from './proforma/Form7Workspace';
 import Form8Workspace from './proforma/Form8Workspace';
+import Form9Workspace from './proforma/Form9Workspace';
 
 function downloadAuthed(path, filename) {
   const token = localStorage.getItem('pnap_token');
@@ -168,6 +169,10 @@ export default function ProformaReportsPage() {
   // Form 8 View Mode: 'cards' or 'table'
   const [form8ViewMode, setForm8ViewMode] = useState('cards');
   const [form8Search, setForm8Search] = useState('');
+  // Form 9 View Mode: 'cards' or 'table' & activeSection
+  const [form9ActiveSection, setForm9ActiveSection] = useState('sec1');
+  const [form9ViewMode, setForm9ViewMode] = useState('cards');
+  const [form9Search, setForm9Search] = useState('');
   const [districtsList, setDistrictsList] = useState([]);
   const [selectedDistrictId, setSelectedDistrictId] = useState(() => (ctx?.districtId || user?.scope?.districtId || ''));
 
@@ -287,6 +292,9 @@ export default function ProformaReportsPage() {
     if (formType === 'form6' || formType === 'form7' || formType === 'form8') {
       return effectiveDistrictId;
     }
+    if (formType === 'form9') {
+      return effectiveDistrictId || effectiveAreaId;
+    }
     if (formType === 'form5') {
       return effectiveProvinceId;
     }
@@ -295,14 +303,16 @@ export default function ProformaReportsPage() {
       return selectedUnitId || (basicUnitsList[0]?._id) || '';
     }
     return effectiveAreaId;
-  }, [formType, effectiveDistrictId, effectiveProvinceId, ctx, selectedUnitId, basicUnitsList, effectiveAreaId]);
+  }, [formType, effectiveDistrictId, effectiveAreaId, effectiveProvinceId, ctx, selectedUnitId, basicUnitsList]);
 
   // Resolve active unit display name
   const activeUnitDisplayName = useMemo(() => {
-    if (formType === 'form6' || formType === 'form7' || formType === 'form8') {
+    if (formType === 'form6' || formType === 'form7' || formType === 'form8' || formType === 'form9') {
       if (ctx?.unitLevel === 'DISTRICT') return ctx.unitName;
       const found = districtsList.find((d) => String(d._id) === String(targetId));
-      return found?.name || formData.districtName || 'District';
+      if (found?.name) return found.name;
+      if (ctx?.unitLevel === 'AREA') return ctx.unitName;
+      return formData.districtName || formData.areaName || 'District';
     }
     if (formType === 'form5') {
       if (ctx?.unitLevel === 'PROVINCE') return ctx.unitName;
@@ -355,7 +365,10 @@ export default function ProformaReportsPage() {
     if (cleaned.committeeMembers) cleaned.committeeMembers = cleanRowsList(cleaned.committeeMembers);
     if (cleaned.publicActivities) cleaned.publicActivities = cleanRowsList(cleaned.publicActivities);
     if (cleaned.educationalActivities) cleaned.educationalActivities = cleanRowsList(cleaned.educationalActivities);
-    if (cleaned.disciplinaryActions) cleaned.disciplinaryActions = cleanRowsList(cleaned.disciplinaryActions);
+    if (cleaned.sec1Members) cleaned.sec1Members = cleanRowsList(cleaned.sec1Members);
+    if (cleaned.sec2PublicGatherings) cleaned.sec2PublicGatherings = cleanRowsList(cleaned.sec2PublicGatherings);
+    if (cleaned.sec3Conferences) cleaned.sec3Conferences = cleanRowsList(cleaned.sec3Conferences);
+    if (cleaned.sec5Discipline) cleaned.sec5Discipline = cleanRowsList(cleaned.sec5Discipline);
     return cleaned;
   }
 
@@ -376,7 +389,7 @@ export default function ProformaReportsPage() {
         unitId: targetId,
         areaId: (formType === 'form5' || formType === 'form6' || formType === 'form7' || formType === 'form8') ? undefined : effectiveAreaId,
         provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
-        districtId: (formType === 'form6' || formType === 'form7' || formType === 'form8') ? effectiveDistrictId : undefined,
+        districtId: (formType === 'form6' || formType === 'form7' || formType === 'form8' || formType === 'form9') ? effectiveDistrictId : undefined,
         prefill: prefillFromSystem ? 'true' : undefined,
       };
 
@@ -408,7 +421,7 @@ export default function ProformaReportsPage() {
         unitId: targetId,
         areaId: (formType === 'form5' || formType === 'form6' || formType === 'form7' || formType === 'form8') ? undefined : effectiveAreaId,
         provinceId: formType === 'form5' ? effectiveProvinceId : undefined,
-        districtId: (formType === 'form6' || formType === 'form7' || formType === 'form8') ? effectiveDistrictId : undefined,
+        districtId: (formType === 'form6' || formType === 'form7' || formType === 'form8' || formType === 'form9') ? effectiveDistrictId : undefined,
         prefill: 'true',
       };
       const res = await api.get('/proforma/entry', { params });
@@ -422,6 +435,25 @@ export default function ProformaReportsPage() {
       } else {
         // Smart merge: only populate missing or empty fields
         setFormData((prev) => {
+          if (formType === 'form9') {
+            return {
+              ...prev,
+              districtName: prev.districtName || sysData.districtName,
+              areaName: prev.areaName || sysData.areaName,
+              sec1Members: (prev.sec1Members && prev.sec1Members.length > 0) ? prev.sec1Members : sysData.sec1Members,
+              sec2PublicGatherings: (prev.sec2PublicGatherings && prev.sec2PublicGatherings.length > 0) ? prev.sec2PublicGatherings : sysData.sec2PublicGatherings,
+              sec3Conferences: (prev.sec3Conferences && prev.sec3Conferences.length > 0) ? prev.sec3Conferences : sysData.sec3Conferences,
+              sec4BloodBank: { ...(sysData.sec4BloodBank || {}), ...(prev.sec4BloodBank || {}) },
+              sec5Discipline: (prev.sec5Discipline && prev.sec5Discipline.length > 0) ? prev.sec5Discipline : sysData.sec5Discipline,
+              sec6Proposals: {
+                political: { ...(sysData.sec6Proposals?.political || {}), ...(prev.sec6Proposals?.political || {}) },
+                organizational: { ...(sysData.sec6Proposals?.organizational || {}), ...(prev.sec6Proposals?.organizational || {}) },
+                social: { ...(sysData.sec6Proposals?.social || {}), ...(prev.sec6Proposals?.social || {}) },
+              },
+              sec7Notes: { ...(sysData.sec7Notes || {}), ...(prev.sec7Notes || {}) },
+            };
+          }
+
           if (formType === 'form8') {
             let mergedRows = prev.rows || [];
             const sysRows = sysData.rows || [];
@@ -2470,6 +2502,270 @@ export default function ProformaReportsPage() {
     return { errors, rowErrors, isValid: errors.length === 0 };
   }
 
+  // Form 9: Section 1 Helpers
+  function updateForm9Sec1Row(idx, field, val) {
+    setFormData((prev) => {
+      const sec1Members = [...(prev.sec1Members || [])];
+      const r = { ...sec1Members[idx], [field]: val };
+
+      const meetingFields = [
+        'distExecMeeting', 'distCommMeeting', 'areaExecMeeting', 'areaCommMeeting',
+        'buExecMeeting', 'buGbMeeting', 'psoMeeting', 'conferences', 'seminars',
+        'studyCircles', 'inductions', 'alliesMeeting', 'publicGatherings'
+      ];
+
+      if (meetingFields.includes(field)) {
+        const sum = meetingFields.reduce((acc, f) => {
+          const v = f === field ? val : r[f];
+          return acc + (parseInt(v, 10) || 0);
+        }, 0);
+        r.totalMeetings = sum;
+      }
+
+      sec1Members[idx] = r;
+      return { ...prev, sec1Members };
+    });
+  }
+
+  function addForm9Sec1Row() {
+    setFormData((prev) => {
+      const sec1Members = [...(prev.sec1Members || [])];
+      sec1Members.push({
+        srNo: sec1Members.length + 1,
+        name: '',
+        designation: '',
+        date: '',
+        distExecMeeting: 0,
+        distCommMeeting: 0,
+        areaExecMeeting: 0,
+        areaCommMeeting: 0,
+        buExecMeeting: 0,
+        buGbMeeting: 0,
+        psoMeeting: 0,
+        conferences: 0,
+        seminars: 0,
+        studyCircles: 0,
+        inductions: 0,
+        alliesMeeting: 0,
+        publicGatherings: 0,
+        totalMeetings: 0,
+        ideologicalReading: '',
+        dues: 0,
+        tours: 0,
+      });
+      return { ...prev, sec1Members };
+    });
+  }
+
+  function removeForm9Sec1Row(idx) {
+    setFormData((prev) => {
+      const sec1Members = (prev.sec1Members || []).filter((_, i) => i !== idx).map((r, i) => ({ ...r, srNo: i + 1 }));
+      return { ...prev, sec1Members };
+    });
+  }
+
+  function handleAutoCalcForm9() {
+    setFormData((prev) => {
+      const meetingFields = [
+        'distExecMeeting', 'distCommMeeting', 'areaExecMeeting', 'areaCommMeeting',
+        'buExecMeeting', 'buGbMeeting', 'psoMeeting', 'conferences', 'seminars',
+        'studyCircles', 'inductions', 'alliesMeeting', 'publicGatherings'
+      ];
+      const sec1Members = (prev.sec1Members || []).map((r) => {
+        const sum = meetingFields.reduce((acc, f) => acc + (parseInt(r[f], 10) || 0), 0);
+        return { ...r, totalMeetings: sum };
+      });
+      return { ...prev, sec1Members };
+    });
+    setFeedback({
+      text: t('proforma.form9.autoCalcSuccess', 'Total meetings auto-calculated for all members successfully.'),
+      type: 'info',
+    });
+  }
+
+  // Form 9: Section 2 Helpers (Public Gatherings)
+  function updateForm9Sec2Row(idx, field, val) {
+    setFormData((prev) => {
+      const sec2PublicGatherings = [...(prev.sec2PublicGatherings || [])];
+      sec2PublicGatherings[idx] = { ...sec2PublicGatherings[idx], [field]: val };
+      return { ...prev, sec2PublicGatherings };
+    });
+  }
+
+  function addForm9Sec2Row() {
+    setFormData((prev) => {
+      const sec2PublicGatherings = [...(prev.sec2PublicGatherings || [])];
+      sec2PublicGatherings.push({
+        srNo: sec2PublicGatherings.length + 1,
+        organName: '',
+        date: '',
+        venue: '',
+        topic: '',
+        programType: '',
+        speakers: '',
+        comradesCount: 0,
+        peopleCount: 0,
+      });
+      return { ...prev, sec2PublicGatherings };
+    });
+  }
+
+  function removeForm9Sec2Row(idx) {
+    setFormData((prev) => {
+      const sec2PublicGatherings = (prev.sec2PublicGatherings || []).filter((_, i) => i !== idx).map((r, i) => ({ ...r, srNo: i + 1 }));
+      return { ...prev, sec2PublicGatherings };
+    });
+  }
+
+  // Form 9: Section 3 Helpers (Conferences & Seminars)
+  function updateForm9Sec3Row(idx, field, val) {
+    setFormData((prev) => {
+      const sec3Conferences = [...(prev.sec3Conferences || [])];
+      sec3Conferences[idx] = { ...sec3Conferences[idx], [field]: val };
+      return { ...prev, sec3Conferences };
+    });
+  }
+
+  function addForm9Sec3Row() {
+    setFormData((prev) => {
+      const sec3Conferences = [...(prev.sec3Conferences || [])];
+      sec3Conferences.push({
+        srNo: sec3Conferences.length + 1,
+        organName: '',
+        date: '',
+        venue: '',
+        topic: '',
+        programType: '',
+        speakers: '',
+        comradesCount: 0,
+      });
+      return { ...prev, sec3Conferences };
+    });
+  }
+
+  function removeForm9Sec3Row(idx) {
+    setFormData((prev) => {
+      const sec3Conferences = (prev.sec3Conferences || []).filter((_, i) => i !== idx).map((r, i) => ({ ...r, srNo: i + 1 }));
+      return { ...prev, sec3Conferences };
+    });
+  }
+
+  // Form 9: Section 4 Helpers (Blood Bank & Zakat)
+  function updateForm9Sec4(field, val) {
+    setFormData((prev) => ({
+      ...prev,
+      sec4BloodBank: { ...(prev.sec4BloodBank || {}), [field]: val },
+    }));
+  }
+
+  // Form 9: Section 5 Helpers (Disciplinary Actions)
+  function updateForm9Sec5Row(idx, field, val) {
+    setFormData((prev) => {
+      const sec5Discipline = [...(prev.sec5Discipline || [])];
+      sec5Discipline[idx] = { ...sec5Discipline[idx], [field]: val };
+      return { ...prev, sec5Discipline };
+    });
+  }
+
+  function addForm9Sec5Row() {
+    setFormData((prev) => {
+      const sec5Discipline = [...(prev.sec5Discipline || [])];
+      sec5Discipline.push({
+        comradeName: '',
+        designation: '',
+        violation: '',
+        actionTaken: '',
+      });
+      return { ...prev, sec5Discipline };
+    });
+  }
+
+  function removeForm9Sec5Row(idx) {
+    setFormData((prev) => {
+      const sec5Discipline = (prev.sec5Discipline || []).filter((_, i) => i !== idx);
+      return { ...prev, sec5Discipline };
+    });
+  }
+
+  // Form 9: Section 6 Helpers (Proposals & Demands Matrix)
+  function updateForm9Sec6(category, field, val) {
+    setFormData((prev) => ({
+      ...prev,
+      sec6Proposals: {
+        ...(prev.sec6Proposals || {}),
+        [category]: {
+          ...(prev.sec6Proposals?.[category] || {}),
+          [field]: val,
+        },
+      },
+    }));
+  }
+
+  // Form 9: Section 7 Helpers (Social Work, Misc & Signatures)
+  function updateForm9Sec7(field, val) {
+    setFormData((prev) => ({
+      ...prev,
+      sec7Notes: {
+        ...(prev.sec7Notes || {}),
+        [field]: val,
+      },
+    }));
+  }
+
+  // Form 9: Validation
+  function validateForm9Data(data = {}) {
+    const sec1 = data.sec1Members || [];
+    const errors = [];
+    const rowErrors = {};
+
+    sec1.forEach((r, i) => {
+      const rErr = {};
+      const label = `Row #${i + 1}`;
+
+      const meetingFields = [
+        'distExecMeeting', 'distCommMeeting', 'areaExecMeeting', 'areaCommMeeting',
+        'buExecMeeting', 'buGbMeeting', 'psoMeeting', 'conferences', 'seminars',
+        'studyCircles', 'inductions', 'alliesMeeting', 'publicGatherings'
+      ];
+      const numericFields = [...meetingFields, 'dues', 'tours'];
+
+      const hasAnyData = numericFields.some((f) => (parseInt(r[f], 10) || 0) > 0)
+        || (r.name && r.name.trim())
+        || (r.ideologicalReading && r.ideologicalReading.trim());
+
+      if (hasAnyData && (!r.name || !r.name.trim())) {
+        const msg = `${label}: Comrade name is required`;
+        rErr.name = msg;
+        errors.push(msg);
+      }
+
+      numericFields.forEach((f) => {
+        const val = parseInt(r[f], 10) || 0;
+        if (val < 0) {
+          const msg = `${label}: Negative values are not permitted for ${f}`;
+          rErr[f] = msg;
+          errors.push(msg);
+        }
+      });
+
+      if (Object.keys(rErr).length > 0) {
+        rowErrors[i] = rErr;
+      }
+    });
+
+    if (data.sec4BloodBank) {
+      const b = data.sec4BloodBank;
+      ['eidHidesCount', 'cash', 'totalCash', 'zakat'].forEach((f) => {
+        const val = parseInt(b[f], 10) || 0;
+        if (val < 0) {
+          errors.push(`Blood Bank: ${f} cannot be negative`);
+        }
+      });
+    }
+
+    return { errors, rowErrors, isValid: errors.length === 0 };
+  }
+
   const rows = formData.rows || formData.execRows || [];
   const form2Validation = useMemo(() => validateForm2Rows(formData.rows || []), [formData.rows]);
   const form3Validation = useMemo(() => validateForm3Data(formData), [formData]);
@@ -2477,6 +2773,7 @@ export default function ProformaReportsPage() {
   const form6Validation = useMemo(() => validateForm6Data(formData), [formData]);
   const form7Validation = useMemo(() => validateForm7Data(formData), [formData]);
   const form8Validation = useMemo(() => validateForm8Data(formData), [formData]);
+  const form9Validation = useMemo(() => validateForm9Data(formData), [formData]);
   const upper = formData.upper || formData;
 
   // Real-time calculations for Form 4
@@ -2621,7 +2918,39 @@ export default function ProformaReportsPage() {
 
   // Save silently and return the saved document
   async function saveReportData(targetStatus = 'DRAFT') {
-    if (!targetId) throw new Error((formType === 'form6' || formType === 'form7' || formType === 'form8') ? 'No district selected' : (formType === 'form5' ? 'No province selected' : (formType === 'form4' ? 'No basic unit selected' : 'No area context available')));
+    if (!targetId) throw new Error((formType === 'form6' || formType === 'form7' || formType === 'form8' || formType === 'form9') ? 'No district or unit selected' : (formType === 'form5' ? 'No province selected' : (formType === 'form4' ? 'No basic unit selected' : 'No area context available')));
+
+    if (formType === 'form9') {
+      const payload = {
+        formType: 'form9',
+        unitLevel: effectiveDistrictId ? 'DISTRICT' : 'AREA',
+        unitId: targetId,
+        districtId: effectiveDistrictId || undefined,
+        areaId: effectiveAreaId || undefined,
+        unitName: activeUnitDisplayName,
+        year: parseInt(year, 10),
+        month: parseInt(month, 10),
+        status: targetStatus,
+        data: sanitizeReportData({
+          ...formData,
+          districtName: formData.districtName || activeUnitDisplayName,
+          areaName: formData.areaName || '',
+          year: String(year),
+          month: String(month),
+          sec1Members: formData.sec1Members || [],
+          sec2PublicGatherings: formData.sec2PublicGatherings || [],
+          sec3Conferences: formData.sec3Conferences || [],
+          sec4BloodBank: formData.sec4BloodBank || {},
+          sec5Discipline: formData.sec5Discipline || [],
+          sec6Proposals: formData.sec6Proposals || {},
+          sec7Notes: formData.sec7Notes || {},
+        }),
+        notes: formData.sec7Notes?.miscellaneousNotes || '',
+      };
+      const res = await api.post('/proforma/save', payload);
+      setStatusDoc(res.data);
+      return res.data;
+    }
 
     if (formType === 'form7' || formType === 'form8') {
       const payload = {
@@ -2813,7 +3142,16 @@ export default function ProformaReportsPage() {
     setSaving(true);
     setFeedback({ text: '', type: '' });
 
-    if (formType === 'form8') {
+    if (formType === 'form9') {
+      if (!form9Validation.isValid) {
+        setFeedback({
+          text: `⚠️ ${form9Validation.errors[0]}`,
+          type: 'error',
+        });
+        setSaving(false);
+        return;
+      }
+    } else if (formType === 'form8') {
       if (!form8Validation.isValid) {
         setFeedback({
           text: `⚠️ ${form8Validation.errors[0]}`,
@@ -2968,7 +3306,9 @@ export default function ProformaReportsPage() {
       const q = new URLSearchParams({
         year: String(year),
         month: String(month),
-        ...(formType === 'form8' || formType === 'form7'
+        ...(formType === 'form9'
+          ? { districtId: effectiveDistrictId || undefined, areaId: effectiveAreaId || undefined }
+          : (formType === 'form8' || formType === 'form7')
           ? { districtId: effectiveDistrictId }
           : formType === 'form6'
           ? { districtId: effectiveDistrictId, m1: formData.m1 || '', m2: formData.m2 || '', m3: formData.m3 || '' }
@@ -2977,7 +3317,9 @@ export default function ProformaReportsPage() {
           : (formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId })),
       });
 
-      const endpoint = formType === 'form8'
+      const endpoint = formType === 'form9'
+        ? '/api/exports/proforma/form9/html'
+        : formType === 'form8'
         ? '/api/exports/proforma/form8/html'
         : formType === 'form7'
         ? '/api/exports/proforma/form7/html'
@@ -3037,7 +3379,9 @@ export default function ProformaReportsPage() {
       const q = new URLSearchParams({
         year: String(year),
         month: String(month),
-        ...(formType === 'form8' || formType === 'form7'
+        ...(formType === 'form9'
+          ? { districtId: effectiveDistrictId || undefined, areaId: effectiveAreaId || undefined }
+          : (formType === 'form8' || formType === 'form7')
           ? { districtId: effectiveDistrictId }
           : formType === 'form6'
           ? { districtId: effectiveDistrictId, m1: formData.m1 || '', m2: formData.m2 || '', m3: formData.m3 || '' }
@@ -3046,7 +3390,9 @@ export default function ProformaReportsPage() {
           : (formType === 'form4' ? { unitId: targetId } : { areaId: effectiveAreaId })),
       });
 
-      const endpoint = formType === 'form8'
+      const endpoint = formType === 'form9'
+        ? `/api/exports/proforma/form9/${format}`
+        : formType === 'form8'
         ? `/api/exports/proforma/form8/${format}`
         : formType === 'form7'
         ? `/api/exports/proforma/form7/${format}`
@@ -3256,9 +3602,11 @@ export default function ProformaReportsPage() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>{formType === 'form8' ? '📑' : (formType === 'form7' ? '📑' : (formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋'))))))}</span>
+            <span>{formType === 'form9' ? '📑' : (formType === 'form8' ? '📑' : (formType === 'form7' ? '📑' : (formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋')))))))}</span>
             <span>
-              {formType === 'form8'
+              {formType === 'form9'
+                ? t('proforma.form9Title', 'District Central & Provincial Organs Members Monthly Work & Activity Report (Form 9)')
+                : formType === 'form8'
                 ? t('proforma.form8Title', 'District Central & Provincial Committee Monthly Work & Activity Report (Form 8)')
                 : formType === 'form7'
                 ? t('proforma.form7Title', 'District Subordinate Area Units Monthly Work & Activity Report (Form 7)')
@@ -3276,7 +3624,9 @@ export default function ProformaReportsPage() {
             </span>
           </h2>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            {formType === 'form8'
+            {formType === 'form9'
+              ? `${t('proforma.form9Desc', 'Official monthly work & activity report for Central and Provincial Organs members in the District')} · `
+              : formType === 'form8'
               ? `${t('proforma.form8Desc', 'Monthly Work & Activity Report for Central and Provincial Committee Members in District')} · `
               : formType === 'form7'
               ? `${t('proforma.form7Desc', 'Official party monthly work & activity report for subordinate Area Units under District')} · `
@@ -3391,6 +3741,15 @@ export default function ProformaReportsPage() {
             <span>📑</span>
             <span>{t('proforma.form8Btn', 'Form 8: Central & Provincial Committee in District')}</span>
           </button>
+          <button
+            type="button"
+            onClick={() => { setFormType('form9'); setActiveTab('upper'); }}
+            className={`btn ${formType === 'form9' ? '' : 'secondary'}`}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
+          >
+            <span>📑</span>
+            <span>{t('proforma.form9Btn', 'Form 9: Central & Provincial Organs in District')}</span>
+          </button>
         </div>
 
         <div className="proforma-filter-row">
@@ -3427,7 +3786,7 @@ export default function ProformaReportsPage() {
             </div>
 
             {/* Target Unit Context Selector */}
-            {formType === 'form7' || formType === 'form8' ? (
+            {formType === 'form7' || formType === 'form8' || formType === 'form9' ? (
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
@@ -3845,7 +4204,9 @@ export default function ProformaReportsPage() {
               borderBottom: activeTab === 'upper' ? '2px solid var(--primary, #38bdf8)' : 'none',
             }}
           >
-            📊 {formType === 'form8'
+            📊 {formType === 'form9'
+              ? t('proforma.form9.tabSec1', '1. Members Activity Roster (غړو فعاليت)')
+              : formType === 'form8'
               ? t('proforma.form8.tabRoster', '1. Committee Members Activity Roster')
               : formType === 'form7'
               ? t('proforma.form7.tabUnits', '1. د علاقائي يونټانو کار او فعاليت (Area Units Performance & Activity)')
@@ -3859,7 +4220,7 @@ export default function ProformaReportsPage() {
               ? t('proforma.tabOverviewForm4', '1. د ابتدائي يونټ مياشتنئ لنډيز (Unit Summary)')
               : t('proforma.tabOverview', '1. Area Summary & Metrics')}
           </button>
-          {formType !== 'form2' && formType !== 'form5' && formType !== 'form7' && formType !== 'form8' && (
+          {formType !== 'form2' && formType !== 'form5' && formType !== 'form7' && formType !== 'form8' && formType !== 'form9' && (
             <button
               type="button"
               onClick={() => setActiveTab('roster')}
@@ -3889,16 +4250,52 @@ export default function ProformaReportsPage() {
               borderBottom: activeTab === 'notes' ? '2px solid var(--primary, #38bdf8)' : 'none',
             }}
           >
-            📝 {['form2', 'form5', 'form7', 'form8'].includes(formType) ? t('proforma.tabNotes2', '2. Remarks & Observations') : t('proforma.tabNotes', '3. Remarks & Observations')}
+            📝 {['form2', 'form5', 'form7', 'form8', 'form9'].includes(formType) ? t('proforma.tabNotes2', '2. Remarks & Observations') : t('proforma.tabNotes', '3. Remarks & Observations')}
           </button>
         </div>
       )}
 
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      {/* TAB 1: UPPER / SUMMARY METRICS & FORM 2 WORKSPACE */}
+      {/* TAB 1: UPPER / SUMMARY METRICS & FORM WORKSPACES */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'upper' && (
-        formType === 'form8' ? (
+        formType === 'form9' ? (
+          /* FORM 9 DISTRICT CENTRAL & PROVINCIAL ORGANS MEMBERS WORKSPACE */
+          <Form9Workspace
+            formData={formData}
+            sec1Members={formData.sec1Members || []}
+            sec2PublicGatherings={formData.sec2PublicGatherings || []}
+            sec3Conferences={formData.sec3Conferences || []}
+            sec4BloodBank={formData.sec4BloodBank || {}}
+            sec5Discipline={formData.sec5Discipline || []}
+            sec6Proposals={formData.sec6Proposals || {}}
+            sec7Notes={formData.sec7Notes || {}}
+            activeSection={form9ActiveSection}
+            setActiveSection={setForm9ActiveSection}
+            form9ViewMode={form9ViewMode}
+            setForm9ViewMode={setForm9ViewMode}
+            form9Search={form9Search}
+            setForm9Search={setForm9Search}
+            updateForm9Sec1Row={updateForm9Sec1Row}
+            addForm9Sec1Row={addForm9Sec1Row}
+            removeForm9Sec1Row={removeForm9Sec1Row}
+            handleAutoCalcForm9={handleAutoCalcForm9}
+            updateForm9Sec2Row={updateForm9Sec2Row}
+            addForm9Sec2Row={addForm9Sec2Row}
+            removeForm9Sec2Row={removeForm9Sec2Row}
+            updateForm9Sec3Row={updateForm9Sec3Row}
+            addForm9Sec3Row={addForm9Sec3Row}
+            removeForm9Sec3Row={removeForm9Sec3Row}
+            updateForm9Sec4={updateForm9Sec4}
+            updateForm9Sec5Row={updateForm9Sec5Row}
+            addForm9Sec5Row={addForm9Sec5Row}
+            removeForm9Sec5Row={removeForm9Sec5Row}
+            updateForm9Sec6={updateForm9Sec6}
+            updateForm9Sec7={updateForm9Sec7}
+            isRtl={isRtl}
+            t={t}
+          />
+        ) : formType === 'form8' ? (
           /* FORM 8 DISTRICT CENTRAL & PROVINCIAL COMMITTEE MEMBERS WORKSPACE */
           <Form8Workspace
             formData={formData}
@@ -7675,7 +8072,7 @@ export default function ProformaReportsPage() {
       {activeTab === 'notes' && (
         <div className="card">
           <h3 style={{ margin: '0 0 10px', color: 'var(--primary, #38bdf8)' }}>
-            {formType === 'form2' || formType === 'form5' || formType === 'form7' || formType === 'form8'
+            {formType === 'form2' || formType === 'form5' || formType === 'form7' || formType === 'form8' || formType === 'form9'
               ? t('proforma.tabNotes2', '2. Remarks & Observations')
               : t('proforma.tabNotes', '3. Remarks & Observations')}
           </h3>
@@ -7686,7 +8083,9 @@ export default function ProformaReportsPage() {
             rows={8}
             value={formData.notes || ''}
             onChange={(e) => updateField('notes', e.target.value)}
-            placeholder={formType === 'form8'
+            placeholder={formType === 'form9'
+              ? t('proforma.notesPlaceholderForm9', 'e.g., Central and provincial organ comrades carried out party assignments, rallies, and organizational visits...')
+              : formType === 'form8'
               ? t('proforma.form8.notesPlaceholder', 'e.g., During this month, central and provincial committee members in the district attended district and area meetings, conducted study circles, mobilized public rallies, and participated in party activities...')
               : formType === 'form7'
               ? t('proforma.form7.notesPlaceholder', 'e.g., During this month, subordinate area units held regular executive and general body meetings, basic units were supervised, ideological study circles were conducted, and dues were remitted to district leadership...')
@@ -8591,7 +8990,9 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 20 }}>🖨️</span>
                 <strong>
-                  {formType === 'form8'
+                  {formType === 'form9'
+                    ? t('proforma.previewModalTitleForm9', 'District Central & Provincial Organs Monthly Report (Form 9) - A4 Portrait Preview')
+                    : formType === 'form8'
                     ? t('proforma.previewModalTitleForm8', 'District Central & Provincial Committee Monthly Work & Activity Report (Form 8) - A4 Landscape Preview')
                     : formType === 'form7'
                     ? t('proforma.previewModalTitleForm7', 'District Subordinate Area Units Monthly Work & Activity Report (Form 7) - A4 Landscape Preview')
