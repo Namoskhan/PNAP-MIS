@@ -201,8 +201,12 @@ export default function Form7Workspace({
           <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>
             {t('proforma.form7.kpiExecHeld', 'Exec Mtgs Held')}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
-            🤝 {totals.execHeld}
+          <div style={{ fontSize: 20, fontWeight: 'bold', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>🤝 {totals.execHeld}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>/ {totals.execMeetings}</span>
+            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', fontWeight: 700 }}>
+              {totals.execPct}
+            </span>
           </div>
         </div>
 
@@ -219,8 +223,12 @@ export default function Form7Workspace({
           <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>
             {t('proforma.form7.kpiCommHeld', 'Committee Mtgs Held')}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
-            🏛️ {totals.commHeld}
+          <div style={{ fontSize: 20, fontWeight: 'bold', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>🏛️ {totals.commHeld}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>/ {totals.commMeetings}</span>
+            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1', fontWeight: 700 }}>
+              {totals.commPct}
+            </span>
           </div>
         </div>
 
@@ -237,8 +245,14 @@ export default function Form7Workspace({
           <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>
             {t('proforma.form7.kpiBasicUnits', 'Subordinate Basic Units')}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4 }}>
-            👥 {totals.buCount}
+          <div style={{ fontSize: 20, fontWeight: 'bold', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>👥 {totals.buCount}</span>
+            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(20, 184, 166, 0.15)', color: '#14b8a6', fontWeight: 700 }} title="BU Executive Attendance">
+              Exec: {totals.buExecPct}
+            </span>
+            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(14, 165, 233, 0.15)', color: '#0ea5e9', fontWeight: 700 }} title="BU General Body Attendance">
+              GB: {totals.buGbPct}
+            </span>
           </div>
         </div>
 
@@ -1330,11 +1344,20 @@ export default function Form7Workspace({
       {/* 6. OFFICIAL DISTRICT LEADERSHIP SIGNATURES BLOCK */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 18, marginTop: 10 }}>
-        <h4 style={{ margin: '0 0 14px', color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-          <span>✍️</span>
-          <span>{t('proforma.form7.signaturesTitle', 'Official District Leadership Signatures (د ضلعي مشرتابه رسمي لاسليکونه)')}</span>
-        </h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+        <div style={{ marginBottom: 14 }}>
+          <h4 style={{ margin: '0 0 6px', color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
+            <span>✍️</span>
+            <span>{t('proforma.form7.signaturesTitle', 'Official District Leadership Signatures (د ضلعي مشرتابه رسمي لاسليکونه)')}</span>
+          </h4>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.4 }}>
+            {t(
+              'proforma.form7.signaturesDesc',
+              'Official party proformas require authorization by the District President and District General Secretary. When filled, these digital signatures and signing date will appear directly on the official printed A4 report, PDF export, and archival records.'
+            )}
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
           <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
             <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-main)' }}>
               ✍️ {t('proforma.form7.distPresidentSignature', 'District President Signature (ضلعي صدر لاسليک)')}
@@ -1357,6 +1380,21 @@ export default function Form7Workspace({
               value={formData.distSecSignature || ''}
               onChange={(e) => updateField('distSecSignature', e.target.value)}
               placeholder={t('proforma.form7.signaturePlaceholder', 'Name / Digital signature / Date')}
+              style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600 }}
+            />
+          </div>
+
+          <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-main)' }}>
+              📅 {t('proforma.form7.signatureDate', 'Date of Signature (د دستخط نېټه)')}
+            </label>
+            <input
+              type="date"
+              value={formData.signatureDate || formData.distSignatureDate || ''}
+              onChange={(e) => {
+                updateField('signatureDate', e.target.value);
+                updateField('distSignatureDate', e.target.value);
+              }}
               style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600 }}
             />
           </div>

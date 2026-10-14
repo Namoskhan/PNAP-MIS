@@ -218,7 +218,18 @@ async function fetchForm7Data({ districtId, month, year }) {
 /**
  * Generate A4 Landscape HTML template for Form 7 matching printed paper sheet
  */
-function generateForm7Html({ districtName = '', month = '', year = '', rows = [] } = {}) {
+function generateForm7Html({
+  districtName = '',
+  month = '',
+  year = '',
+  rows = [],
+  distPresidentSignature = '',
+  distSecSignature = '',
+  signatureDate = '',
+  distSignatureDate = '',
+  submittedByName = '',
+  submittedAt = null,
+} = {}) {
   const displayRows = [...rows];
   while (displayRows.length < 15) {
     displayRows.push({
@@ -319,6 +330,32 @@ function generateForm7Html({ districtName = '', month = '', year = '', rows = []
     bloodCash: rows.reduce((s, r) => s + getNum(r.bloodCash), 0),
     bloodZakat: rows.reduce((s, r) => s + getNum(r.bloodZakat), 0),
   };
+
+  totals.execPct = totals.execTotalMembers > 0
+    ? `${Math.min(100, Math.round((totals.execPresent / totals.execTotalMembers) * 100))}%`
+    : (totals.execMeetings > 0 ? `${Math.min(100, Math.round((totals.execHeld / totals.execMeetings) * 100))}%` : '0%');
+
+  totals.commPct = totals.commTotalMembers > 0
+    ? `${Math.min(100, Math.round((totals.commPresent / totals.commTotalMembers) * 100))}%`
+    : (totals.commMeetings > 0 ? `${Math.min(100, Math.round((totals.commHeld / totals.commMeetings) * 100))}%` : '0%');
+
+  totals.buExecPct = totals.buExecMeetingsTotal > 0
+    ? `${Math.min(100, Math.round((totals.buExecMeetingsHeld / totals.buExecMeetingsTotal) * 100))}%`
+    : (totals.buExecUnitsTotal > 0 ? `${Math.min(100, Math.round((totals.buExecUnitsPresent / totals.buExecUnitsTotal) * 100))}%` : '0%');
+
+  totals.buGbPct = totals.buGbMeetingsTotal > 0
+    ? `${Math.min(100, Math.round((totals.buGbMeetingsHeld / totals.buGbMeetingsTotal) * 100))}%`
+    : '0%';
+
+  totals.membershipPct = totals.membershipTotal > 0
+    ? `${Math.min(100, Math.round((totals.membershipPresent / totals.membershipTotal) * 100))}%`
+    : '0%';
+
+  totals.studyPct = totals.studyUnitsComm > 0
+    ? `${Math.min(100, Math.round((totals.studyUnitsCount / totals.studyUnitsComm) * 100))}%`
+    : '0%';
+
+  const effectiveSigDate = signatureDate || distSignatureDate || (submittedAt ? new Date(submittedAt).toISOString().split('T')[0] : '');
 
   return `<!DOCTYPE html>
 <html lang="ps" dir="rtl">
@@ -598,30 +635,30 @@ function generateForm7Html({ districtName = '', month = '', year = '', rows = []
           <td>${totals.execTotalMembers || ''}</td>
           <td>${totals.execPresent || ''}</td>
           <td>${totals.execHeld || ''}</td>
-          <td></td>
+          <td class="pct-cell">${totals.execPct}</td>
           <td>${totals.commMeetings || ''}</td>
           <td>${totals.commTotalMembers || ''}</td>
           <td>${totals.commPresent || ''}</td>
           <td>${totals.commHeld || ''}</td>
-          <td></td>
+          <td class="pct-cell">${totals.commPct}</td>
           <td>${totals.buCount || ''}</td>
           <td>${totals.newBuCount || ''}</td>
           <td>${totals.buExecUnitsTotal || ''}</td>
           <td>${totals.buExecUnitsPresent || ''}</td>
           <td>${totals.buExecMeetingsTotal || ''}</td>
           <td>${totals.buExecMeetingsHeld || ''}</td>
-          <td></td>
+          <td class="pct-cell">${totals.buExecPct}</td>
           <td>${totals.buGbMeetingsTotal || ''}</td>
           <td>${totals.buGbMeetingsHeld || ''}</td>
-          <td></td>
+          <td class="pct-cell">${totals.buGbPct}</td>
           <td>${totals.inactiveBuCount || ''}</td>
           <td>${totals.membershipTotal || ''}</td>
           <td>${totals.membershipPresent || ''}</td>
-          <td></td>
+          <td class="pct-cell">${totals.membershipPct}</td>
           <td>${totals.studyAreaComm || ''}</td>
           <td>${totals.studyUnitsComm || ''}</td>
           <td>${totals.studyUnitsCount || ''}</td>
-          <td></td>
+          <td class="pct-cell">${totals.studyPct}</td>
           <td>${totals.programsCount || ''}</td>
           <td>${totals.inductionPrograms || ''}</td>
           <td>${totals.newInductions || ''}</td>
@@ -642,9 +679,24 @@ function generateForm7Html({ districtName = '', month = '', year = '', rows = []
     </table>
 
     <div class="footer-bar">
-      <div>ضلعي سکرټري جنرل: <span class="sig-line"></span></div>
-      <div>ضلعي صدر: <span class="sig-line"></span></div>
-      <div>د دستخط نيټه: <span class="sig-line" style="width: 100px;"></span></div>
+      <div>
+        ضلعي سکرټري جنرل:
+        <span class="sig-line" style="${distSecSignature ? 'border-bottom: 1.5px solid #0f172a; font-weight: bold; color: #0f172a; font-size: 8pt; display: inline-block; padding: 0 8px;' : ''}">
+          ${distSecSignature ? cleanVal(distSecSignature) : ''}
+        </span>
+      </div>
+      <div>
+        ضلعي صدر:
+        <span class="sig-line" style="${distPresidentSignature ? 'border-bottom: 1.5px solid #0f172a; font-weight: bold; color: #0f172a; font-size: 8pt; display: inline-block; padding: 0 8px;' : ''}">
+          ${distPresidentSignature ? cleanVal(distPresidentSignature) : ''}
+        </span>
+      </div>
+      <div>
+        د دستخط نيټه:
+        <span class="sig-line" style="width: 100px; ${effectiveSigDate ? 'border-bottom: 1.5px solid #0f172a; font-weight: bold; color: #0f172a; font-size: 8pt; display: inline-block; padding: 0 8px;' : ''}">
+          ${effectiveSigDate ? cleanVal(effectiveSigDate) : ''}
+        </span>
+      </div>
     </div>
   </div>
 </body>
@@ -654,7 +706,18 @@ function generateForm7Html({ districtName = '', month = '', year = '', rows = []
 /**
  * Generate Excel workbook for Form 7 matching printed proforma structure
  */
-async function generateForm7Excel({ districtName = '', month = '', year = '', rows = [] } = {}) {
+async function generateForm7Excel({
+  districtName = '',
+  month = '',
+  year = '',
+  rows = [],
+  distPresidentSignature = '',
+  distSecSignature = '',
+  signatureDate = '',
+  distSignatureDate = '',
+  submittedByName = '',
+  submittedAt = null,
+} = {}) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'PNAP-MIS';
   workbook.lastModifiedBy = 'PNAP-MIS';
@@ -884,6 +947,26 @@ async function generateForm7Excel({ districtName = '', month = '', year = '', ro
     }
   });
 
+  // Calculate Percentage Totals for Excel
+  if (rows.length > 0) {
+    // col 7: execPct = (execPresent / execTotalMembers) * 100
+    totalRow.getCell(7).value = { formula: `IF(D${totalRowNum}>0,ROUND(E${totalRowNum}/D${totalRowNum}*100,0)&"%","0%")` };
+    // col 12: commPct = (commPresent / commTotalMembers) * 100
+    totalRow.getCell(12).value = { formula: `IF(I${totalRowNum}>0,ROUND(J${totalRowNum}/I${totalRowNum}*100,0)&"%","0%")` };
+    // col 19: buExecPct = (buExecMeetingsHeld / buExecMeetingsTotal) * 100
+    totalRow.getCell(19).value = { formula: `IF(Q${totalRowNum}>0,ROUND(R${totalRowNum}/Q${totalRowNum}*100,0)&"%","0%")` };
+    // col 22: buGbPct = (buGbMeetingsHeld / buGbMeetingsTotal) * 100
+    totalRow.getCell(22).value = { formula: `IF(T${totalRowNum}>0,ROUND(U${totalRowNum}/T${totalRowNum}*100,0)&"%","0%")` };
+    // col 26: membershipPct = (membershipPresent / membershipTotal) * 100
+    totalRow.getCell(26).value = { formula: `IF(X${totalRowNum}>0,ROUND(Y${totalRowNum}/X${totalRowNum}*100,0)&"%","0%")` };
+    // col 30: studyPct = (studyUnitsCount / studyUnitsComm) * 100
+    totalRow.getCell(30).value = { formula: `IF(AB${totalRowNum}>0,ROUND(AC${totalRowNum}/AB${totalRowNum}*100,0)&"%","0%")` };
+  } else {
+    [7, 12, 19, 22, 26, 30].forEach((colIdx) => {
+      totalRow.getCell(colIdx).value = '0%';
+    });
+  }
+
   totalRow.eachCell((c) => {
     c.font = { bold: true, size: 9, name: 'Arial' };
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
@@ -894,6 +977,18 @@ async function generateForm7Excel({ districtName = '', month = '', year = '', ro
       right: { style: 'thin' },
     };
   });
+
+  // Leadership Signatures Row in Excel
+  const effectiveDate = signatureDate || distSignatureDate || (submittedAt ? new Date(submittedAt).toISOString().split('T')[0] : '');
+  const sigRowNum = totalRowNum + 2;
+  const sigRow = ws.getRow(sigRowNum);
+  sigRow.height = 24;
+  sigRow.getCell(2).value = `ضلعي سکرټري جنرل: ${distSecSignature || '________________'}`;
+  sigRow.getCell(2).font = { bold: true, size: 10, name: 'Arial' };
+  sigRow.getCell(15).value = `ضلعي صدر: ${distPresidentSignature || '________________'}`;
+  sigRow.getCell(15).font = { bold: true, size: 10, name: 'Arial' };
+  sigRow.getCell(30).value = `د دستخط نيټه: ${effectiveDate || '________________'}`;
+  sigRow.getCell(30).font = { bold: true, size: 10, name: 'Arial' };
 
   // Set explicit column widths
   ws.columns.forEach((col, idx) => {
