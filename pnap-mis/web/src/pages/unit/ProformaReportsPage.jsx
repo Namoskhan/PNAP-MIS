@@ -3040,7 +3040,7 @@ export default function ProformaReportsPage() {
             <span>{formType === 'form7' ? '📑' : (formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋')))))}</span>
             <span>
               {formType === 'form7'
-                ? t('proforma.form7Title', 'پښتونخوا ملي عوامي پارټي ضلع کښي علاقائي يونټانو د کار او فعاليت مياشتنئي رپورټ (Form 7)')
+                ? t('proforma.form7Title', 'District Subordinate Area Units Monthly Work & Activity Report (Form 7)')
                 : formType === 'form6'
                 ? t('proforma.form6Title', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (Form 6)')
                 : formType === 'form5'
@@ -8337,7 +8337,7 @@ export default function ProformaReportsPage() {
                 <span style={{ fontSize: 20 }}>🖨️</span>
                 <strong>
                   {formType === 'form7'
-                    ? t('proforma.previewModalTitleForm7', 'پښتونخوا ملي عوامي پارټي ضلع کښي علاقائي يونټانو د کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
+                    ? t('proforma.previewModalTitleForm7', 'District Subordinate Area Units Monthly Work & Activity Report (Form 7) - A4 Landscape Preview')
                     : formType === 'form6'
                     ? t('proforma.previewModalTitleForm6', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
                     : formType === 'form5'
