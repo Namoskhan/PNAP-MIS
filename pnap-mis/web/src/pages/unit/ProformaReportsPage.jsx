@@ -3259,7 +3259,7 @@ export default function ProformaReportsPage() {
             <span>{formType === 'form8' ? '📑' : (formType === 'form7' ? '📑' : (formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋'))))))}</span>
             <span>
               {formType === 'form8'
-                ? t('proforma.form8Title', 'ضلع کښي مرکزي، صوبائي کميټي د غړو د کار او فعاليت رپورټ (Form 8)')
+                ? t('proforma.form8Title', 'District Central & Provincial Committee Monthly Work & Activity Report (Form 8)')
                 : formType === 'form7'
                 ? t('proforma.form7Title', 'District Subordinate Area Units Monthly Work & Activity Report (Form 7)')
                 : formType === 'form6'
@@ -3389,7 +3389,7 @@ export default function ProformaReportsPage() {
             style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
           >
             <span>📑</span>
-            <span>{t('proforma.form8Btn', 'Form 8: Central & Provincial Committee in District (ضلع کښي مرکزي، صوبائي کميټي)')}</span>
+            <span>{t('proforma.form8Btn', 'Form 8: Central & Provincial Committee in District')}</span>
           </button>
         </div>
 
@@ -3846,7 +3846,7 @@ export default function ProformaReportsPage() {
             }}
           >
             📊 {formType === 'form8'
-              ? t('proforma.form8.tabRoster', '1. Committee Members Activity Roster (د ملګرو کار او فعاليت)')
+              ? t('proforma.form8.tabRoster', '1. Committee Members Activity Roster')
               : formType === 'form7'
               ? t('proforma.form7.tabUnits', '1. د علاقائي يونټانو کار او فعاليت (Area Units Performance & Activity)')
               : formType === 'form6'

@@ -6,13 +6,13 @@ import React, { useMemo } from 'react';
  * (ضلع کښي مرکزي، صوبائي کميټي د غړو د کار او فعاليت رپورټ)
  *
  * Implements 22-column interactive editing with:
- * - Dual view modes: Interactive Cards View & Official 22-column Table View
- * - Dynamic bilingual localization (English, Pashto, Urdu)
- * - Visual validation highlighting with tooltips & inline error indicators
- * - One-click Auto-Calculate and Auto-Correct tools
- * - Automatic calculation of Total Meetings
- * - Comrade addition/removal/filtering
- * - Official district leadership signature blocks
+ * - Full 3-Language Localization (English, Pashto, Urdu) with native terminology
+ * - Fully Responsive Design (Fluid desktop, tablet, and mobile layouts)
+ * - Direction-Aware Sticky Columns (RTL right-stick, LTR left-stick with depth shadow)
+ * - Dual View Modes: Touch-friendly Grouped Cards View & Official 22-Column Table View
+ * - One-click Auto-Calculate and Auto-Correct Tools
+ * - Visual Validation with Tooltips and Inconsistency Highlighting
+ * - District Leadership Signature Authorization Block
  */
 export default function Form8Workspace({
   formData = {},
@@ -31,14 +31,14 @@ export default function Form8Workspace({
   t,
   updateField,
 }) {
-  // Filtered rows for search
+  // Filtered rows for real-time search
   const filteredRows = useMemo(() => {
     return rows
       .map((r, originalIdx) => ({ r, originalIdx }))
       .filter(({ r }) => !form8Search || (r.name || '').toLowerCase().includes(form8Search.toLowerCase()));
   }, [rows, form8Search]);
 
-  // Aggregate calculations for KPI and Table Footer
+  // Aggregate calculations for KPI summary and Table Footer
   const totals = useMemo(() => {
     const sum = (field) => rows.reduce((acc, r) => acc + (parseInt(r[field], 10) || 0), 0);
 
@@ -59,13 +59,12 @@ export default function Form8Workspace({
     const tours = sum('tours');
     const contacts = sum('contacts');
     const officeAttendance = sum('officeAttendance');
-    const bloodBank = sum('bloodBank');
+    const bloodBank = rows.reduce((acc, r) => acc + (parseInt(r.bloodBank, 10) || 0), 0);
 
-    const activeCount = rows.filter((r) => r.activeStatus === 'فعاله').length;
-    const comradesCount = rows.filter((r) => r.name && r.name.trim()).length || rows.length;
+    const activeCount = rows.filter((r) => r.activeStatus !== 'غير فعاله' && r.activeStatus !== 'Inactive' && r.activeStatus !== 'غیر فعال').length;
 
     return {
-      comradesCount,
+      comradesCount: rows.length,
       activeCount,
       distCommMeeting,
       areaExecMeeting,
@@ -88,48 +87,261 @@ export default function Form8Workspace({
     };
   }, [rows]);
 
-  // Field validation helpers
+  // Validation helpers
   const getFieldError = (idx, field) => {
-    const rowErr = form8Validation.rowErrors?.[idx];
-    return rowErr?.[field] || null;
+    return form8Validation?.rowErrors?.[idx]?.[field] || null;
   };
 
   const getCardInputStyle = (idx, field) => {
     const isErr = Boolean(getFieldError(idx, field));
     return {
       width: '100%',
-      padding: '6px 10px',
+      padding: '7px 10px',
       fontSize: 13,
-      borderRadius: 5,
+      borderRadius: 6,
       border: isErr ? '1.5px solid #ef4444' : '1px solid var(--border)',
       background: isErr ? 'rgba(239, 68, 68, 0.08)' : 'var(--surface-alt)',
       color: isErr ? '#ef4444' : 'inherit',
       fontWeight: isErr ? 700 : 500,
+      boxSizing: 'border-box',
       transition: 'border-color 0.2s, background 0.2s',
     };
   };
 
-  const getTableInputStyle = (idx, field, customWidth = 50) => {
+  const getTableInputStyle = (idx, field, customWidth = 52) => {
     const isErr = Boolean(getFieldError(idx, field));
     return {
       width: customWidth,
       textAlign: 'center',
-      padding: '3px 2px',
-      fontSize: 11,
+      padding: '5px 3px',
+      fontSize: 12,
       borderRadius: 4,
       border: isErr ? '1.5px solid #ef4444' : '1px solid var(--border)',
       background: isErr ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface-alt)',
       color: isErr ? '#ef4444' : 'inherit',
       fontWeight: isErr ? 700 : 500,
+      boxSizing: 'border-box',
     };
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="form8-workspace" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      {/* EMBEDDED RESPONSIVE STYLESHEET */}
+      {/* ────────────────────────────────────────────────────────────────────────── */}
+      <style>{`
+        .form8-workspace {
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        /* Responsive KPI Grid */
+        .form8-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+          gap: 12px;
+        }
+
+        /* Responsive Toolbar */
+        .form8-toolbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .form8-toolbar-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          flex: 1;
+          min-width: 260px;
+        }
+        .form8-view-toggle {
+          display: inline-flex;
+          padding: 3px;
+          background: var(--surface-alt);
+          border-radius: 8px;
+          border: 1px solid var(--border);
+        }
+        .form8-view-toggle button {
+          white-space: nowrap !important;
+          display: inline-flex !important;
+          align-items: center;
+          gap: 6px;
+        }
+        .form8-search-input {
+          padding: 8px 12px;
+          font-size: 13px;
+          border-radius: 6px;
+          border: 1px solid var(--border);
+          min-width: 220px;
+          flex: 1;
+          background: var(--surface-alt);
+          box-sizing: border-box;
+        }
+        .form8-toolbar-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .form8-toolbar-actions button {
+          white-space: nowrap !important;
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+        }
+
+        /* Cards View Responsive Structure */
+        .form8-card {
+          padding: 16px;
+          border: 1px solid var(--border);
+          background: var(--surface);
+          border-radius: var(--radius, 8px);
+          box-sizing: border-box;
+        }
+        .form8-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 14px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--border);
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .form8-card-header-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex: 1;
+          min-width: 240px;
+        }
+        .form8-card-header-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .form8-card-subgrid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(270px, 100%), 1fr));
+          gap: 14px;
+        }
+        .form8-field-group {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+
+        /* Signatures Grid */
+        .form8-signatures-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+          gap: 14px;
+        }
+
+        /* Table Responsive Scroller */
+        .form8-table-scroller {
+          width: 100%;
+          overflow-x: auto;
+          max-height: 72vh;
+          -webkit-overflow-scrolling: touch;
+          border-radius: 6px;
+          border: 1px solid var(--border);
+        }
+
+        /* Tablet Breakpoints */
+        @media (max-width: 820px) {
+          .form8-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px;
+          }
+          .form8-toolbar-left {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          .form8-toolbar-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            width: 100% !important;
+            gap: 8px;
+          }
+          .form8-toolbar-actions button {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .form8-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        /* Mobile Phone Breakpoints */
+        @media (max-width: 580px) {
+          .form8-kpi-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+          .form8-toolbar-left {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .form8-view-toggle {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+          }
+          .form8-view-toggle button {
+            justify-content: center !important;
+            font-size: 11px !important;
+            padding: 8px 4px !important;
+          }
+          .form8-search-input {
+            width: 100% !important;
+            min-width: 0 !important;
+            font-size: 13px !important;
+          }
+          .form8-toolbar-actions {
+            grid-template-columns: 1fr !important;
+          }
+          .form8-card-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .form8-card-header-left {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          .form8-card-header-right {
+            justify-content: space-between !important;
+            width: 100% !important;
+          }
+          .form8-card-subgrid {
+            grid-template-columns: 1fr !important;
+          }
+          .form8-field-group {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+          .form8-signatures-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .form8-field-group {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 1. KPI SUMMARY CARDS */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+      <div className="form8-kpi-grid">
         <div
           className="card"
           style={{
@@ -143,10 +355,20 @@ export default function Form8Workspace({
           <div style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>
             {t('proforma.form8.kpiTotalComrades', 'Total Comrades')}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 22, fontWeight: 'bold', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span>👥 {totals.comradesCount}</span>
-            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', fontWeight: 600 }}>
-              {totals.activeCount} {t('proforma.form8.activeOption', 'فعاله (Active)')}
+            <span
+              style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                borderRadius: 4,
+                background: 'rgba(34, 197, 94, 0.15)',
+                color: '#22c55e',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {totals.activeCount} {t('proforma.form8.activeOption', 'Active')}
             </span>
           </div>
         </div>
@@ -265,6 +487,7 @@ export default function Form8Workspace({
                 fontWeight: 700,
                 padding: '6px 14px',
                 borderRadius: 6,
+                whiteSpace: 'nowrap',
               }}
             >
               {t('proforma.form8.autoFixAll', '⚡ Auto-Correct Mismatches')}
@@ -276,29 +499,10 @@ export default function Form8Workspace({
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {/* 3. TOOLBAR: SEARCH, VIEW TOGGLE, AUTO-CALCULATE, ADD COMRADE */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
-      <div
-        className="card"
-        style={{
-          padding: '12px 16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-          background: 'var(--surface)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1, minWidth: 260 }}>
+      <div className="card form8-toolbar" style={{ padding: '12px 16px', background: 'var(--surface)' }}>
+        <div className="form8-toolbar-left">
           {/* Dual View Toggle */}
-          <div
-            style={{
-              display: 'inline-flex',
-              padding: 3,
-              background: 'var(--surface-alt)',
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-            }}
-          >
+          <div className="form8-view-toggle">
             <button
               type="button"
               onClick={() => setForm8ViewMode('cards')}
@@ -306,14 +510,11 @@ export default function Form8Workspace({
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: form8ViewMode === 'cards' ? 'var(--primary, #38bdf8)' : 'transparent',
+                background: form8ViewMode === 'cards' ? 'var(--primary, #0ea5e9)' : 'transparent',
                 color: form8ViewMode === 'cards' ? '#fff' : 'var(--text-main)',
                 fontWeight: 700,
                 fontSize: 12,
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
               }}
             >
               <span>🗂️</span>
@@ -326,14 +527,11 @@ export default function Form8Workspace({
                 padding: '6px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: form8ViewMode === 'table' ? 'var(--primary, #38bdf8)' : 'transparent',
+                background: form8ViewMode === 'table' ? 'var(--primary, #0ea5e9)' : 'transparent',
                 color: form8ViewMode === 'table' ? '#fff' : 'var(--text-main)',
                 fontWeight: 700,
                 fontSize: 12,
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
               }}
             >
               <span>📊</span>
@@ -344,30 +542,20 @@ export default function Form8Workspace({
           {/* Search by Name */}
           <input
             type="text"
+            className="form8-search-input"
             value={form8Search}
             onChange={(e) => setForm8Search(e.target.value)}
             placeholder={t('proforma.form8.searchPlaceholder', 'Search comrade by name...')}
-            style={{
-              padding: '7px 12px',
-              fontSize: 13,
-              borderRadius: 6,
-              border: '1px solid var(--border)',
-              minWidth: 220,
-              background: 'var(--surface-alt)',
-            }}
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <div className="form8-toolbar-actions">
           {handleAutoFixForm8Inconsistencies && !form8Validation.isValid && (
             <button
               type="button"
               className="btn"
               onClick={handleAutoFixForm8Inconsistencies}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
                 fontSize: 12,
                 fontWeight: 700,
                 background: '#ef4444',
@@ -384,9 +572,6 @@ export default function Form8Workspace({
             className="btn secondary"
             onClick={handleAutoCalcAllForm8Rows}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
               fontSize: 12,
               fontWeight: 700,
               background: '#0ea5e9',
@@ -401,7 +586,7 @@ export default function Form8Workspace({
             type="button"
             className="btn primary"
             onClick={addForm8Row}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}
+            style={{ fontSize: 12, fontWeight: 700 }}
           >
             <span>➕</span>
             <span>{t('proforma.form8.addComrade', '+ Add Comrade')}</span>
@@ -425,29 +610,15 @@ export default function Form8Workspace({
               return (
                 <div
                   key={originalIdx}
-                  className="card"
+                  className="card form8-card"
                   style={{
-                    padding: 16,
-                    border: '1px solid var(--border)',
                     borderRight: isRtl ? '4px solid #0284c7' : '1px solid var(--border)',
                     borderLeft: !isRtl ? '4px solid #0284c7' : '1px solid var(--border)',
-                    background: 'var(--surface)',
                   }}
                 >
                   {/* Card Header */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 14,
-                      paddingBottom: 10,
-                      borderBottom: '1px solid var(--border)',
-                      flexWrap: 'wrap',
-                      gap: 8,
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 260 }}>
+                  <div className="form8-card-header">
+                    <div className="form8-card-header-left">
                       <span
                         style={{
                           width: 28,
@@ -460,16 +631,17 @@ export default function Form8Workspace({
                           justifyContent: 'center',
                           fontWeight: 'bold',
                           fontSize: 12,
+                          flexShrink: 0,
                         }}
                       >
                         {originalIdx + 1}
                       </span>
-                      <div style={{ flex: 1, maxWidth: 360 }}>
+                      <div style={{ flex: 1 }}>
                         <input
                           type="text"
                           value={r.name || ''}
                           onChange={(e) => updateForm8Row(originalIdx, 'name', e.target.value)}
-                          placeholder={t('proforma.form8.name', 'Comrade Name (ملګري نوم)')}
+                          placeholder={t('proforma.form8.namePlaceholder', 'Enter comrade full name')}
                           style={{
                             ...getCardInputStyle(originalIdx, 'name'),
                             fontWeight: 700,
@@ -484,7 +656,7 @@ export default function Form8Workspace({
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div className="form8-card-header-right">
                       <select
                         value={r.activeStatus || 'فعاله'}
                         onChange={(e) => updateForm8Row(originalIdx, 'activeStatus', e.target.value)}
@@ -493,13 +665,13 @@ export default function Form8Workspace({
                           borderRadius: 6,
                           fontSize: 12,
                           fontWeight: 700,
-                          background: r.activeStatus === 'فعاله' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                          color: r.activeStatus === 'فعاله' ? '#22c55e' : '#ef4444',
+                          background: (r.activeStatus === 'فعاله' || r.activeStatus === 'Active' || r.activeStatus === 'فعال') ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: (r.activeStatus === 'فعاله' || r.activeStatus === 'Active' || r.activeStatus === 'فعال') ? '#22c55e' : '#ef4444',
                           border: '1px solid var(--border)',
                         }}
                       >
-                        <option value="فعاله">{t('proforma.form8.activeOption', 'فعاله (Active)')}</option>
-                        <option value="غير فعاله">{t('proforma.form8.inactiveOption', 'غير فعاله (Inactive)')}</option>
+                        <option value="فعاله">{t('proforma.form8.activeOption', 'Active')}</option>
+                        <option value="غير فعاله">{t('proforma.form8.inactiveOption', 'Inactive')}</option>
                       </select>
 
                       <button
@@ -522,16 +694,16 @@ export default function Form8Workspace({
                   </div>
 
                   {/* Grouped Fields in Card */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+                  <div className="form8-card-subgrid">
                     {/* Group 1: Committee & Executive Meetings */}
                     <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
                       <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#0284c7' }}>
                         🤝 {t('proforma.form8.secMeetings', 'Committee & Executive Meetings')}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                      <div className="form8-field-group">
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.distCommMeeting', 'Dist Comm (ضلعي کميټي)')}
+                            {t('proforma.form8.distCommMeeting', 'District Committee Meetings')}
                           </label>
                           <input
                             type="number"
@@ -543,7 +715,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.areaExecMeeting', 'Area Exec (علاقائي ايګزيکټيو)')}
+                            {t('proforma.form8.areaExecMeeting', 'Area Executive Meetings')}
                           </label>
                           <input
                             type="number"
@@ -555,7 +727,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.areaCommMeeting', 'Area Comm (علاقائي کميټي)')}
+                            {t('proforma.form8.areaCommMeeting', 'Area Committee Meetings')}
                           </label>
                           <input
                             type="number"
@@ -567,7 +739,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.ownBuMeeting', 'Own Unit (خپل يونټ)')}
+                            {t('proforma.form8.ownBuMeeting', 'Own Unit Meetings')}
                           </label>
                           <input
                             type="number"
@@ -579,7 +751,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.buExecMeeting', 'BU Exec (يونټ ايګزيکټيو)')}
+                            {t('proforma.form8.buExecMeeting', 'BU Executive Meetings')}
                           </label>
                           <input
                             type="number"
@@ -591,7 +763,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.buMeeting', 'Basic Units (ابتدائي يونټانو)')}
+                            {t('proforma.form8.buMeeting', 'Basic Units Meetings')}
                           </label>
                           <input
                             type="number"
@@ -603,7 +775,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.psoMeeting', 'PSO Mtgs (PSO سره غونډي)')}
+                            {t('proforma.form8.psoMeeting', 'PSO Meetings')}
                           </label>
                           <input
                             type="number"
@@ -614,8 +786,8 @@ export default function Form8Workspace({
                           />
                         </div>
                         <div>
-                          <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2, fontWeight: 700 }}>
-                            {t('proforma.form8.totalMeetings', 'Total Mtgs (ټولي غونډي)')}
+                          <label style={{ fontSize: 11, color: '#0284c7', display: 'block', marginBottom: 2, fontWeight: 700 }}>
+                            {t('proforma.form8.totalMeetings', 'Total Meetings')}
                           </label>
                           <input
                             type="number"
@@ -624,6 +796,7 @@ export default function Form8Workspace({
                             style={{
                               ...getCardInputStyle(originalIdx, 'totalMeetings'),
                               background: '#e0f2fe',
+                              color: '#0284c7',
                               fontWeight: 700,
                             }}
                           />
@@ -631,15 +804,15 @@ export default function Form8Workspace({
                       </div>
                     </div>
 
-                    {/* Group 2: Conferences, Seminars, Study Circles & Inductions */}
+                    {/* Group 2: Programs, Circles & Inductions */}
                     <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#8b5cf6' }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#10b981' }}>
                         🎓 {t('proforma.form8.secPrograms', 'Programs, Circles & Inductions')}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                      <div className="form8-field-group">
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.conferences', 'Conferences (کانفرنسونه)')}
+                            {t('proforma.form8.conferences', 'Party Conferences')}
                           </label>
                           <input
                             type="number"
@@ -651,7 +824,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.seminars', 'Seminars (سيمينارونه)')}
+                            {t('proforma.form8.seminars', 'Seminars')}
                           </label>
                           <input
                             type="number"
@@ -663,7 +836,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.studyCircles', 'Study Circles (سټډي سرکل)')}
+                            {t('proforma.form8.studyCircles', 'Study Circles')}
                           </label>
                           <input
                             type="number"
@@ -675,7 +848,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.inductions', 'Inductions (شموليت)')}
+                            {t('proforma.form8.inductions', 'Induction Programs')}
                           </label>
                           <input
                             type="number"
@@ -687,7 +860,7 @@ export default function Form8Workspace({
                         </div>
                         <div style={{ gridColumn: 'span 2' }}>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.publicGatherings', 'Rallies & Jirgas (جلسے مظاهرے جرګے)')}
+                            {t('proforma.form8.publicGatherings', 'Rallies, Protests & Jirgas')}
                           </label>
                           <input
                             type="number"
@@ -700,15 +873,15 @@ export default function Form8Workspace({
                       </div>
                     </div>
 
-                    {/* Group 3: Dues, Tours, Contacts, Reading & Blood Bank */}
+                    {/* Group 3: Finances, Tours & Contacts */}
                     <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#10b981' }}>
-                        💰 {t('proforma.form8.secDuesAndVisits', 'Finances, Tours & Contacts')}
+                      <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: '#f59e0b' }}>
+                        💰 {t('proforma.form8.secFinances', 'Finances, Tours & Contacts')}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                      <div className="form8-field-group">
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.monthlyDues', 'Monthly Dues (چنده)')}
+                            {t('proforma.form8.monthlyDues', 'Monthly Dues')}
                           </label>
                           <input
                             type="number"
@@ -720,7 +893,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.tours', 'Tours (دوره)')}
+                            {t('proforma.form8.tours', 'Tours')}
                           </label>
                           <input
                             type="number"
@@ -732,7 +905,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.contacts', 'Contacts (رابطے)')}
+                            {t('proforma.form8.contacts', 'Contacts (Org & Public)')}
                           </label>
                           <input
                             type="number"
@@ -744,7 +917,7 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.officeAttendance', 'Office Att (دفتر حاضري)')}
+                            {t('proforma.form8.officeAttendance', 'Office Attendance')}
                           </label>
                           <input
                             type="number"
@@ -756,24 +929,25 @@ export default function Form8Workspace({
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.bloodBank', 'Blood Bank (بلډ بينک/زکات)')}
+                            {t('proforma.form8.bloodBank', 'Blood Bank, Post & Zakat')}
                           </label>
                           <input
                             type="text"
                             value={r.bloodBank || ''}
                             onChange={(e) => updateForm8Row(originalIdx, 'bloodBank', e.target.value)}
+                            placeholder={t('proforma.form8.bloodPlaceholder', 'Amount / Details')}
                             style={getCardInputStyle(originalIdx, 'bloodBank')}
                           />
                         </div>
                         <div>
                           <label style={{ fontSize: 11, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>
-                            {t('proforma.form8.ideologicalReading', 'Reading (لوستنه مطالعه)')}
+                            {t('proforma.form8.ideologicalReading', 'Ideological Study')}
                           </label>
                           <input
                             type="text"
                             value={r.ideologicalReading || ''}
                             onChange={(e) => updateForm8Row(originalIdx, 'ideologicalReading', e.target.value)}
-                            placeholder="Book name / topic"
+                            placeholder={t('proforma.form8.readingPlaceholder', 'Book title or topic')}
                             style={getCardInputStyle(originalIdx, 'ideologicalReading')}
                           />
                         </div>
@@ -791,8 +965,23 @@ export default function Form8Workspace({
       {/* 5. OFFICIAL 22-COLUMN TABLE VIEW */}
       {/* ────────────────────────────────────────────────────────────────────────── */}
       {form8ViewMode === 'table' && (
-        <div className="card" style={{ padding: 14, overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto', maxHeight: '72vh' }}>
+        <div className="card" style={{ padding: 14 }}>
+          {/* Scroll Hint */}
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--text-soft)',
+              marginBottom: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span>↔</span>
+            <span>{t('proforma.scrollHint', 'Scroll horizontally to view all columns (↔)')}</span>
+          </div>
+
+          <div className="form8-table-scroller">
             <table
               className="table"
               style={{
@@ -812,66 +1001,138 @@ export default function Form8Workspace({
                   boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
                 }}
               >
-                <tr style={{ background: '#f1f5f9', color: '#000', fontWeight: 'bold' }}>
-                  <th style={{ width: 36, padding: 4 }}>#</th>
+                <tr style={{ background: '#f1f5f9', color: '#0f172a', fontWeight: 'bold' }}>
                   <th
                     style={{
-                      width: 130,
-                      padding: 4,
+                      width: 36,
+                      minWidth: 36,
+                      padding: '6px 4px',
                       position: 'sticky',
-                      right: 0,
-                      zIndex: 22,
+                      right: isRtl ? 0 : 'auto',
+                      left: !isRtl ? 0 : 'auto',
+                      zIndex: 23,
                       background: '#f1f5f9',
-                      borderLeft: '2px solid var(--primary, #38bdf8)',
                     }}
                   >
-                    {t('proforma.form8.name', 'ملګري نوم')}
+                    #
                   </th>
-                  <th style={{ width: 48, padding: 4 }}>ضلعي کميټي</th>
-                  <th style={{ width: 50, padding: 4 }}>علاقائي ايګزيکټيو</th>
-                  <th style={{ width: 50, padding: 4 }}>علاقائي کميټي</th>
-                  <th style={{ width: 48, padding: 4 }}>خپل يونټ</th>
-                  <th style={{ width: 50, padding: 4 }}>يونټ ايګزيکټيو</th>
-                  <th style={{ width: 50, padding: 4 }}>ابتدائي يونټانو</th>
-                  <th style={{ width: 46, padding: 4 }}>PSO سره</th>
-                  <th style={{ width: 48, padding: 4 }}>کانفرنسونه</th>
-                  <th style={{ width: 46, padding: 4 }}>سيمينارونه</th>
-                  <th style={{ width: 46, padding: 4 }}>سټډي سرکل</th>
-                  <th style={{ width: 48, padding: 4 }}>شموليت</th>
-                  <th style={{ width: 64, padding: 4 }}>جلسے مظاهرے</th>
-                  <th style={{ width: 46, padding: 4, background: '#e0f2fe' }}>ټولي غونډي</th>
-                  <th style={{ width: 50, padding: 4 }}>مياشتني چنده</th>
-                  <th style={{ width: 42, padding: 4 }}>دوره</th>
-                  <th style={{ width: 52, padding: 4 }}>رابطے تنظيمي</th>
-                  <th style={{ width: 46, padding: 4 }}>دفتر حاضري</th>
-                  <th style={{ width: 62, padding: 4 }}>فعاله/غير</th>
-                  <th style={{ width: 85, padding: 4 }}>لوستنه (مطالعه)</th>
-                  <th style={{ width: 55, padding: 4 }}>بلډ بينک/زکات</th>
+                  <th
+                    style={{
+                      width: 140,
+                      minWidth: 140,
+                      padding: '6px 6px',
+                      position: 'sticky',
+                      right: isRtl ? 36 : 'auto',
+                      left: !isRtl ? 36 : 'auto',
+                      zIndex: 23,
+                      background: '#f1f5f9',
+                      borderLeft: isRtl ? '2px solid var(--primary, #0ea5e9)' : 'none',
+                      borderRight: !isRtl ? '2px solid var(--primary, #0ea5e9)' : 'none',
+                      boxShadow: isRtl ? '-3px 0 5px rgba(0,0,0,0.06)' : '3px 0 5px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    {t('proforma.form8.name', 'Comrade Name')}
+                  </th>
+                  <th style={{ width: 50, padding: 4 }} title={t('proforma.form8.distCommMeeting')}>
+                    {t('proforma.form8.tblDistComm', 'Dist Comm')}
+                  </th>
+                  <th style={{ width: 50, padding: 4 }} title={t('proforma.form8.areaExecMeeting')}>
+                    {t('proforma.form8.tblAreaExec', 'Area Exec')}
+                  </th>
+                  <th style={{ width: 50, padding: 4 }} title={t('proforma.form8.areaCommMeeting')}>
+                    {t('proforma.form8.tblAreaComm', 'Area Comm')}
+                  </th>
+                  <th style={{ width: 48, padding: 4 }} title={t('proforma.form8.ownBuMeeting')}>
+                    {t('proforma.form8.tblOwnBu', 'Own Unit')}
+                  </th>
+                  <th style={{ width: 50, padding: 4 }} title={t('proforma.form8.buExecMeeting')}>
+                    {t('proforma.form8.tblBuExec', 'BU Exec')}
+                  </th>
+                  <th style={{ width: 50, padding: 4 }} title={t('proforma.form8.buMeeting')}>
+                    {t('proforma.form8.tblBuMeeting', 'Basic Units')}
+                  </th>
+                  <th style={{ width: 46, padding: 4 }} title={t('proforma.form8.psoMeeting')}>
+                    {t('proforma.form8.tblPsoMeeting', 'With PSO')}
+                  </th>
+                  <th style={{ width: 48, padding: 4 }} title={t('proforma.form8.conferences')}>
+                    {t('proforma.form8.tblConferences', 'Conferences')}
+                  </th>
+                  <th style={{ width: 46, padding: 4 }} title={t('proforma.form8.seminars')}>
+                    {t('proforma.form8.tblSeminars', 'Seminars')}
+                  </th>
+                  <th style={{ width: 46, padding: 4 }} title={t('proforma.form8.studyCircles')}>
+                    {t('proforma.form8.tblStudyCircles', 'Study Circles')}
+                  </th>
+                  <th style={{ width: 48, padding: 4 }} title={t('proforma.form8.inductions')}>
+                    {t('proforma.form8.tblInductions', 'Inductions')}
+                  </th>
+                  <th style={{ width: 68, padding: 4 }} title={t('proforma.form8.publicGatherings')}>
+                    {t('proforma.form8.tblPublicGatherings', 'Rallies & Jirgas')}
+                  </th>
+                  <th style={{ width: 50, padding: 4, background: '#e0f2fe', color: '#0284c7' }} title={t('proforma.form8.totalMeetings')}>
+                    {t('proforma.form8.tblTotalMeetings', 'Total Mtgs')}
+                  </th>
+                  <th style={{ width: 52, padding: 4 }} title={t('proforma.form8.monthlyDues')}>
+                    {t('proforma.form8.tblMonthlyDues', 'Monthly Dues')}
+                  </th>
+                  <th style={{ width: 44, padding: 4 }} title={t('proforma.form8.tours')}>
+                    {t('proforma.form8.tblTours', 'Tours')}
+                  </th>
+                  <th style={{ width: 54, padding: 4 }} title={t('proforma.form8.contacts')}>
+                    {t('proforma.form8.tblContacts', 'Contacts')}
+                  </th>
+                  <th style={{ width: 48, padding: 4 }} title={t('proforma.form8.officeAttendance')}>
+                    {t('proforma.form8.tblOfficeAttendance', 'Office Attnd')}
+                  </th>
+                  <th style={{ width: 64, padding: 4 }} title={t('proforma.form8.activeStatus')}>
+                    {t('proforma.form8.tblActiveStatus', 'Status')}
+                  </th>
+                  <th style={{ width: 90, padding: 4 }} title={t('proforma.form8.ideologicalReading')}>
+                    {t('proforma.form8.tblIdeologicalReading', 'Study (Books)')}
+                  </th>
+                  <th style={{ width: 58, padding: 4 }} title={t('proforma.form8.bloodBank')}>
+                    {t('proforma.form8.tblBloodBank', 'Blood/Zakat')}
+                  </th>
                   <th style={{ width: 36, padding: 4 }}>🗑️</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.map(({ r, originalIdx }) => (
                   <tr key={originalIdx} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: 3, fontWeight: 700 }}>{originalIdx + 1}</td>
+                    <td
+                      style={{
+                        padding: '4px 3px',
+                        fontWeight: 700,
+                        position: 'sticky',
+                        right: isRtl ? 0 : 'auto',
+                        left: !isRtl ? 0 : 'auto',
+                        zIndex: 12,
+                        background: 'var(--surface)',
+                      }}
+                    >
+                      {originalIdx + 1}
+                    </td>
                     <td
                       style={{
                         padding: 3,
                         position: 'sticky',
-                        right: 0,
-                        zIndex: 10,
+                        right: isRtl ? 36 : 'auto',
+                        left: !isRtl ? 36 : 'auto',
+                        zIndex: 12,
                         background: 'var(--surface)',
-                        borderLeft: '2px solid var(--primary, #38bdf8)',
+                        borderLeft: isRtl ? '2px solid var(--primary, #0ea5e9)' : 'none',
+                        borderRight: !isRtl ? '2px solid var(--primary, #0ea5e9)' : 'none',
+                        boxShadow: isRtl ? '-3px 0 5px rgba(0,0,0,0.06)' : '3px 0 5px rgba(0,0,0,0.06)',
                       }}
                     >
                       <input
                         type="text"
                         value={r.name || ''}
                         onChange={(e) => updateForm8Row(originalIdx, 'name', e.target.value)}
-                        placeholder="Comrade name"
+                        placeholder={t('proforma.form8.namePlaceholder', 'Comrade name')}
                         style={{
-                          ...getTableInputStyle(originalIdx, 'name', 120),
-                          textAlign: 'right',
+                          ...getTableInputStyle(originalIdx, 'name', 130),
+                          textAlign: isRtl ? 'right' : 'left',
                           fontWeight: 600,
                         }}
                       />
@@ -993,6 +1254,7 @@ export default function Form8Workspace({
                           ...getTableInputStyle(originalIdx, 'totalMeetings'),
                           fontWeight: 700,
                           background: '#e0f2fe',
+                          color: '#0284c7',
                         }}
                       />
                     </td>
@@ -1011,7 +1273,7 @@ export default function Form8Workspace({
                         min="0"
                         value={r.tours ?? ''}
                         onChange={(e) => updateForm8Row(originalIdx, 'tours', e.target.value)}
-                        style={getTableInputStyle(originalIdx, 'tours', 42)}
+                        style={getTableInputStyle(originalIdx, 'tours', 44)}
                       />
                     </td>
                     <td style={{ padding: 2 }}>
@@ -1037,17 +1299,17 @@ export default function Form8Workspace({
                         value={r.activeStatus || 'فعاله'}
                         onChange={(e) => updateForm8Row(originalIdx, 'activeStatus', e.target.value)}
                         style={{
-                          fontSize: 10,
-                          padding: '2px 4px',
+                          fontSize: 11,
+                          padding: '3px 4px',
                           borderRadius: 4,
                           fontWeight: 600,
                           border: '1px solid var(--border)',
-                          background: r.activeStatus === 'فعاله' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                          color: r.activeStatus === 'فعاله' ? '#22c55e' : '#ef4444',
+                          background: (r.activeStatus === 'فعاله' || r.activeStatus === 'Active' || r.activeStatus === 'فعال') ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                          color: (r.activeStatus === 'فعاله' || r.activeStatus === 'Active' || r.activeStatus === 'فعال') ? '#22c55e' : '#ef4444',
                         }}
                       >
-                        <option value="فعاله">فعاله</option>
-                        <option value="غير فعاله">غير فعاله</option>
+                        <option value="فعاله">{t('proforma.form8.activeOption', 'Active')}</option>
+                        <option value="غير فعاله">{t('proforma.form8.inactiveOption', 'Inactive')}</option>
                       </select>
                     </td>
                     <td style={{ padding: 2 }}>
@@ -1055,10 +1317,10 @@ export default function Form8Workspace({
                         type="text"
                         value={r.ideologicalReading || ''}
                         onChange={(e) => updateForm8Row(originalIdx, 'ideologicalReading', e.target.value)}
-                        placeholder="Book/topic"
+                        placeholder={t('proforma.form8.readingPlaceholder', 'Book/topic')}
                         style={{
-                          ...getTableInputStyle(originalIdx, 'ideologicalReading', 80),
-                          textAlign: 'right',
+                          ...getTableInputStyle(originalIdx, 'ideologicalReading', 85),
+                          textAlign: isRtl ? 'right' : 'left',
                         }}
                       />
                     </td>
@@ -1067,7 +1329,8 @@ export default function Form8Workspace({
                         type="text"
                         value={r.bloodBank || ''}
                         onChange={(e) => updateForm8Row(originalIdx, 'bloodBank', e.target.value)}
-                        style={getTableInputStyle(originalIdx, 'bloodBank', 50)}
+                        placeholder={t('proforma.form8.bloodPlaceholder', 'Amount')}
+                        style={getTableInputStyle(originalIdx, 'bloodBank', 52)}
                       />
                     </td>
                     <td style={{ padding: 2 }}>
@@ -1079,7 +1342,7 @@ export default function Form8Workspace({
                           border: 'none',
                           cursor: 'pointer',
                           color: '#ef4444',
-                          fontSize: 12,
+                          fontSize: 13,
                         }}
                         title={t('proforma.form8.removeComrade', 'Remove Comrade')}
                       >
@@ -1100,9 +1363,24 @@ export default function Form8Workspace({
                   boxShadow: '0 -2px 4px rgba(0,0,0,0.06)',
                 }}
               >
-                <tr style={{ background: 'var(--surface-alt)', borderTop: '2px solid var(--border)' }}>
-                  <td colSpan={2} style={{ padding: 6, textAlign: 'center', fontWeight: 'bold' }}>
-                    {t('proforma.form8.totalSummary', 'مجموعه / ټول (Total Summary)')}
+                <tr style={{ background: '#f8fafc', borderTop: '2px solid var(--border)' }}>
+                  <td
+                    colSpan={2}
+                    style={{
+                      padding: 6,
+                      textAlign: 'center',
+                      fontWeight: 'bold',
+                      position: 'sticky',
+                      right: isRtl ? 0 : 'auto',
+                      left: !isRtl ? 0 : 'auto',
+                      zIndex: 23,
+                      background: '#f8fafc',
+                      borderLeft: isRtl ? '2px solid var(--primary, #0ea5e9)' : 'none',
+                      borderRight: !isRtl ? '2px solid var(--primary, #0ea5e9)' : 'none',
+                      boxShadow: isRtl ? '-3px 0 5px rgba(0,0,0,0.06)' : '3px 0 5px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    {t('proforma.form8.totalSummary', 'Total / Summary')}
                   </td>
                   <td style={{ padding: 3 }}>{totals.distCommMeeting}</td>
                   <td style={{ padding: 3 }}>{totals.areaExecMeeting}</td>
@@ -1121,7 +1399,7 @@ export default function Form8Workspace({
                   <td style={{ padding: 3 }}>{totals.tours}</td>
                   <td style={{ padding: 3 }}>{totals.contacts}</td>
                   <td style={{ padding: 3 }}>{totals.officeAttendance}</td>
-                  <td style={{ padding: 3, color: '#22c55e' }}>{totals.activeCount} فعاله</td>
+                  <td style={{ padding: 3, color: '#22c55e' }}>{totals.activeCount} {t('proforma.form8.activeOption', 'Active')}</td>
                   <td style={{ padding: 3 }}>—</td>
                   <td style={{ padding: 3 }}>{totals.bloodBank}</td>
                   <td style={{ padding: 3 }}>—</td>
@@ -1139,9 +1417,9 @@ export default function Form8Workspace({
         <div style={{ marginBottom: 14 }}>
           <h4 style={{ margin: '0 0 6px', color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
             <span>✍️</span>
-            <span>{t('proforma.form8.signaturesTitle', 'Official District Leadership Signatures (د ضلعي مشرتابه رسمي لاسليکونه)')}</span>
+            <span>{t('proforma.form8.signaturesTitle', 'Official District Leadership Signatures')}</span>
           </h4>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.4 }}>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.5 }}>
             {t(
               'proforma.form8.signaturesDesc',
               'Official party proformas require authorization by the District President and District General Secretary. When filled, these digital signatures and signing date will appear directly on the official printed A4 report, PDF export, and archival records.'
@@ -1149,36 +1427,36 @@ export default function Form8Workspace({
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+        <div className="form8-signatures-grid">
           <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
             <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-main)' }}>
-              ✍️ {t('proforma.form8.distPresidentSignature', 'District President Signature (ضلعي صدر لاسليک)')}
+              ✍️ {t('proforma.form8.distPresidentSignature', 'District President Signature')}
             </label>
             <input
               type="text"
               value={formData.distPresidentSignature || ''}
               onChange={(e) => updateField('distPresidentSignature', e.target.value)}
-              placeholder={t('proforma.form8.signaturePlaceholder', 'Name / Digital signature / Date')}
-              style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600 }}
+              placeholder={t('proforma.form8.signaturePlaceholder', 'Name / Digital signature')}
+              style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600, boxSizing: 'border-box' }}
             />
           </div>
 
           <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
             <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-main)' }}>
-              ✍️ {t('proforma.form8.distSecSignature', 'District General Secretary Signature (ضلعي جنرل سيکرټري لاسليک)')}
+              ✍️ {t('proforma.form8.distSecSignature', 'District General Secretary Signature')}
             </label>
             <input
               type="text"
               value={formData.distSecSignature || ''}
               onChange={(e) => updateField('distSecSignature', e.target.value)}
-              placeholder={t('proforma.form8.signaturePlaceholder', 'Name / Digital signature / Date')}
-              style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600 }}
+              placeholder={t('proforma.form8.signaturePlaceholder', 'Name / Digital signature')}
+              style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600, boxSizing: 'border-box' }}
             />
           </div>
 
           <div style={{ padding: 12, background: 'var(--surface-alt)', borderRadius: 8, border: '1px solid var(--border)' }}>
             <label style={{ display: 'block', fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-main)' }}>
-              📅 {t('proforma.form8.signatureDate', 'Date of Signature (د دستخط نېټه)')}
+              📅 {t('proforma.form8.signatureDate', 'Date of Signature')}
             </label>
             <input
               type="date"
@@ -1187,7 +1465,7 @@ export default function Form8Workspace({
                 updateField('signatureDate', e.target.value);
                 updateField('distSignatureDate', e.target.value);
               }}
-              style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600 }}
+              style={{ width: '100%', padding: '8px 12px', fontSize: 13, borderRadius: 6, fontWeight: 600, boxSizing: 'border-box' }}
             />
           </div>
         </div>
