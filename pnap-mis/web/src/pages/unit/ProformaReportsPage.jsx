@@ -1900,16 +1900,28 @@ export default function ProformaReportsPage() {
       const rows = [...(prev.rows || [])];
       const r = { ...rows[idx], [field]: val };
 
-      // Auto-compute percentages
-      if (field === 'execHeld' || field === 'execMeetings') {
-        const total = parseInt(field === 'execMeetings' ? val : r.execMeetings, 10) || 0;
-        const held = parseInt(field === 'execHeld' ? val : r.execHeld, 10) || 0;
-        if (total > 0) r.execPct = `${Math.min(100, Math.round((held / total) * 100))}%`;
+      // Auto-compute percentages accurately
+      if (['execHeld', 'execMeetings', 'execPresent', 'execTotalMembers'].includes(field)) {
+        const memTot = parseInt(field === 'execTotalMembers' ? val : r.execTotalMembers, 10) || 0;
+        const memPres = parseInt(field === 'execPresent' ? val : r.execPresent, 10) || 0;
+        const mtgTot = parseInt(field === 'execMeetings' ? val : r.execMeetings, 10) || 0;
+        const mtgHeld = parseInt(field === 'execHeld' ? val : r.execHeld, 10) || 0;
+        if (memTot > 0) {
+          r.execPct = `${Math.min(100, Math.round((memPres / memTot) * 100))}%`;
+        } else if (mtgTot > 0) {
+          r.execPct = `${Math.min(100, Math.round((mtgHeld / mtgTot) * 100))}%`;
+        }
       }
-      if (field === 'commHeld' || field === 'commMeetings') {
-        const total = parseInt(field === 'commMeetings' ? val : r.commMeetings, 10) || 0;
-        const held = parseInt(field === 'commHeld' ? val : r.commHeld, 10) || 0;
-        if (total > 0) r.commPct = `${Math.min(100, Math.round((held / total) * 100))}%`;
+      if (['commHeld', 'commMeetings', 'commPresent', 'commTotalMembers'].includes(field)) {
+        const memTot = parseInt(field === 'commTotalMembers' ? val : r.commTotalMembers, 10) || 0;
+        const memPres = parseInt(field === 'commPresent' ? val : r.commPresent, 10) || 0;
+        const mtgTot = parseInt(field === 'commMeetings' ? val : r.commMeetings, 10) || 0;
+        const mtgHeld = parseInt(field === 'commHeld' ? val : r.commHeld, 10) || 0;
+        if (memTot > 0) {
+          r.commPct = `${Math.min(100, Math.round((memPres / memTot) * 100))}%`;
+        } else if (mtgTot > 0) {
+          r.commPct = `${Math.min(100, Math.round((mtgHeld / mtgTot) * 100))}%`;
+        }
       }
       if (field === 'buExecMeetingsHeld' || field === 'buExecMeetingsTotal') {
         const total = parseInt(field === 'buExecMeetingsTotal' ? val : r.buExecMeetingsTotal, 10) || 0;
@@ -1975,13 +1987,25 @@ export default function ProformaReportsPage() {
     setFormData((prev) => {
       const rows = (prev.rows || []).map((r) => {
         const updated = { ...r };
+        const memTot = parseInt(r.execTotalMembers, 10) || 0;
+        const memPres = parseInt(r.execPresent, 10) || 0;
         const eTot = parseInt(r.execMeetings, 10) || 0;
         const eHeld = parseInt(r.execHeld, 10) || 0;
-        if (eTot > 0) updated.execPct = `${Math.min(100, Math.round((eHeld / eTot) * 100))}%`;
+        if (memTot > 0) {
+          updated.execPct = `${Math.min(100, Math.round((memPres / memTot) * 100))}%`;
+        } else if (eTot > 0) {
+          updated.execPct = `${Math.min(100, Math.round((eHeld / eTot) * 100))}%`;
+        }
 
+        const cMemTot = parseInt(r.commTotalMembers, 10) || 0;
+        const cMemPres = parseInt(r.commPresent, 10) || 0;
         const cTot = parseInt(r.commMeetings, 10) || 0;
         const cHeld = parseInt(r.commHeld, 10) || 0;
-        if (cTot > 0) updated.commPct = `${Math.min(100, Math.round((cHeld / cTot) * 100))}%`;
+        if (cMemTot > 0) {
+          updated.commPct = `${Math.min(100, Math.round((cMemPres / cMemTot) * 100))}%`;
+        } else if (cTot > 0) {
+          updated.commPct = `${Math.min(100, Math.round((cHeld / cTot) * 100))}%`;
+        }
 
         const beTot = parseInt(r.buExecMeetingsTotal, 10) || 0;
         const beHeld = parseInt(r.buExecMeetingsHeld, 10) || 0;
@@ -2006,17 +2030,239 @@ export default function ProformaReportsPage() {
     setFeedback({ text: t('proforma.form7.autoCalcSuccess', 'Percentages and metrics auto-calculated successfully!'), type: 'success' });
   }
 
+  // Form 7: Auto-Fix Inconsistencies & Balance Ratios
+  function handleAutoFixForm7Inconsistencies() {
+    setFormData((prev) => {
+      const rows = (prev.rows || []).map((r) => {
+        const u = { ...r };
+        // Exec
+        const eTotMem = parseInt(u.execTotalMembers, 10) || 0;
+        const ePres = parseInt(u.execPresent, 10) || 0;
+        const eMtgs = parseInt(u.execMeetings, 10) || 0;
+        const eHeld = parseInt(u.execHeld, 10) || 0;
+        if (eTotMem > 0 && ePres > eTotMem) u.execPresent = eTotMem;
+        if (eMtgs > 0 && eHeld > eMtgs) u.execHeld = eMtgs;
+        if (eTotMem > 0) u.execPct = `${Math.min(100, Math.round(((parseInt(u.execPresent, 10) || 0) / eTotMem) * 100))}%`;
+        else if (eMtgs > 0) u.execPct = `${Math.min(100, Math.round(((parseInt(u.execHeld, 10) || 0) / eMtgs) * 100))}%`;
+
+        // Comm
+        const cTotMem = parseInt(u.commTotalMembers, 10) || 0;
+        const cPres = parseInt(u.commPresent, 10) || 0;
+        const cMtgs = parseInt(u.commMeetings, 10) || 0;
+        const cHeld = parseInt(u.commHeld, 10) || 0;
+        if (cTotMem > 0 && cPres > cTotMem) u.commPresent = cTotMem;
+        if (cMtgs > 0 && cHeld > cMtgs) u.commHeld = cMtgs;
+        if (cTotMem > 0) u.commPct = `${Math.min(100, Math.round(((parseInt(u.commPresent, 10) || 0) / cTotMem) * 100))}%`;
+        else if (cMtgs > 0) u.commPct = `${Math.min(100, Math.round(((parseInt(u.commHeld, 10) || 0) / cMtgs) * 100))}%`;
+
+        // BU Count
+        const buTot = parseInt(u.buCount, 10) || 0;
+        if (buTot > 0) {
+          if ((parseInt(u.newBuCount, 10) || 0) > buTot) u.newBuCount = buTot;
+          if ((parseInt(u.inactiveBuCount, 10) || 0) > buTot) u.inactiveBuCount = buTot;
+        }
+
+        // BU Exec
+        const beTotMem = parseInt(u.buExecUnitsTotal, 10) || 0;
+        if (beTotMem > 0 && (parseInt(u.buExecUnitsPresent, 10) || 0) > beTotMem) u.buExecUnitsPresent = beTotMem;
+        const beMtgs = parseInt(u.buExecMeetingsTotal, 10) || 0;
+        if (beMtgs > 0 && (parseInt(u.buExecMeetingsHeld, 10) || 0) > beMtgs) u.buExecMeetingsHeld = beMtgs;
+        if (beMtgs > 0) u.buExecPct = `${Math.min(100, Math.round(((parseInt(u.buExecMeetingsHeld, 10) || 0) / beMtgs) * 100))}%`;
+
+        // BU GB
+        const bgMtgs = parseInt(u.buGbMeetingsTotal, 10) || 0;
+        if (bgMtgs > 0 && (parseInt(u.buGbMeetingsHeld, 10) || 0) > bgMtgs) u.buGbMeetingsHeld = bgMtgs;
+        if (bgMtgs > 0) u.buGbPct = `${Math.min(100, Math.round(((parseInt(u.buGbMeetingsHeld, 10) || 0) / bgMtgs) * 100))}%`;
+
+        // Membership
+        const memTot = parseInt(u.membershipTotal, 10) || 0;
+        if (memTot > 0 && (parseInt(u.membershipPresent, 10) || 0) > memTot) u.membershipPresent = memTot;
+        if (memTot > 0) u.membershipPct = `${Math.min(100, Math.round(((parseInt(u.membershipPresent, 10) || 0) / memTot) * 100))}%`;
+
+        // Study
+        const sTot = parseInt(u.studyUnitsComm, 10) || 0;
+        if (sTot > 0 && (parseInt(u.studyUnitsCount, 10) || 0) > sTot) u.studyUnitsCount = sTot;
+        if (sTot > 0) u.studyPct = `${Math.min(100, Math.round(((parseInt(u.studyUnitsCount, 10) || 0) / sTot) * 100))}%`;
+
+        // Non-negative sanitization
+        const numKeys = [
+          'execMeetings', 'execTotalMembers', 'execPresent', 'execHeld',
+          'commMeetings', 'commTotalMembers', 'commPresent', 'commHeld',
+          'buCount', 'newBuCount',
+          'buExecUnitsTotal', 'buExecUnitsPresent', 'buExecMeetingsTotal', 'buExecMeetingsHeld',
+          'buGbMeetingsTotal', 'buGbMeetingsHeld', 'inactiveBuCount',
+          'membershipTotal', 'membershipPresent',
+          'studyAreaComm', 'studyUnitsComm', 'studyUnitsCount',
+          'programsCount', 'inductionPrograms', 'newInductions',
+          'psoUnitsCount',
+          'ralliesCount', 'jirgasCount', 'unitGatherings',
+          'villagesWithoutUnit',
+          'duesMonthly', 'duesOrg', 'duesEmergency',
+          'bloodPosts', 'bloodCash', 'bloodZakat'
+        ];
+        numKeys.forEach((k) => {
+          const v = parseInt(u[k], 10);
+          if (!isNaN(v) && v < 0) u[k] = 0;
+        });
+
+        return u;
+      });
+      return { ...prev, rows };
+    });
+    setFeedback({ text: t('proforma.form7.autoFixSuccess', 'Inconsistencies auto-corrected and percentages synchronized successfully!'), type: 'success' });
+  }
+
   // Form 7 Validation
   function validateForm7Data(data = {}) {
     const errors = [];
+    const rowErrors = {};
     const rows = data.rows || [];
+
     rows.forEach((r, i) => {
-      const hasAnyData = Object.entries(r).some(([k, v]) => k !== 'srNo' && k !== 'unitName' && String(v || '').trim() !== '');
-      if (hasAnyData && !r.unitName?.trim()) {
-        errors.push(`Area Unit Row #${i + 1}: Area Unit Name (علاقائي يونټ نوم) is required`);
+      const rErr = {};
+      const uName = (r.unitName || '').trim();
+      const label = uName ? `'${uName}'` : `Row #${i + 1}`;
+
+      const hasAnyData = Object.entries(r).some(([k, v]) => k !== 'srNo' && k !== 'unitName' && String(v ?? '').trim() !== '');
+      if (hasAnyData && !uName) {
+        const msg = t('proforma.form7.validation.unitNameRequired', `Row #${i + 1}: Area Unit name is required`, { row: i + 1 });
+        rErr.unitName = msg;
+        errors.push(msg);
+      }
+
+      const checkNonNeg = (k, fName) => {
+        const v = parseInt(r[k], 10);
+        if (!isNaN(v) && v < 0) {
+          const msg = t('proforma.form7.validation.negativeValue', `${label}: Negative value for ${fName} is not allowed`, { unit: label, field: fName });
+          rErr[k] = msg;
+          errors.push(msg);
+        }
+      };
+
+      // 1. Exec
+      const eTot = parseInt(r.execTotalMembers, 10) || 0;
+      const ePres = parseInt(r.execPresent, 10) || 0;
+      const eMtgs = parseInt(r.execMeetings, 10) || 0;
+      const eHeld = parseInt(r.execHeld, 10) || 0;
+      checkNonNeg('execTotalMembers', 'Executive Members');
+      checkNonNeg('execPresent', 'Executive Present');
+      checkNonNeg('execMeetings', 'Executive Meetings');
+      checkNonNeg('execHeld', 'Executive Held');
+      if (eTot > 0 && ePres > eTot) {
+        const msg = t('proforma.form7.validation.execPresentExceeded', `${label}: Present executive members (${ePres}) cannot exceed total members (${eTot})`, { unit: label, present: ePres, total: eTot });
+        rErr.execPresent = msg;
+        errors.push(msg);
+      }
+      if (eMtgs > 0 && eHeld > eMtgs) {
+        const msg = t('proforma.form7.validation.execHeldExceeded', `${label}: Held executive meetings (${eHeld}) cannot exceed scheduled meetings (${eMtgs})`, { unit: label, held: eHeld, total: eMtgs });
+        rErr.execHeld = msg;
+        errors.push(msg);
+      }
+
+      // 2. Comm
+      const cTot = parseInt(r.commTotalMembers, 10) || 0;
+      const cPres = parseInt(r.commPresent, 10) || 0;
+      const cMtgs = parseInt(r.commMeetings, 10) || 0;
+      const cHeld = parseInt(r.commHeld, 10) || 0;
+      checkNonNeg('commTotalMembers', 'Committee Members');
+      checkNonNeg('commPresent', 'Committee Present');
+      checkNonNeg('commMeetings', 'Committee Meetings');
+      checkNonNeg('commHeld', 'Committee Held');
+      if (cTot > 0 && cPres > cTot) {
+        const msg = t('proforma.form7.validation.commPresentExceeded', `${label}: Present committee members (${cPres}) cannot exceed total members (${cTot})`, { unit: label, present: cPres, total: cTot });
+        rErr.commPresent = msg;
+        errors.push(msg);
+      }
+      if (cMtgs > 0 && cHeld > cMtgs) {
+        const msg = t('proforma.form7.validation.commHeldExceeded', `${label}: Held committee meetings (${cHeld}) cannot exceed scheduled meetings (${cMtgs})`, { unit: label, held: cHeld, total: cMtgs });
+        rErr.commHeld = msg;
+        errors.push(msg);
+      }
+
+      // 3. BU Count
+      const buTot = parseInt(r.buCount, 10) || 0;
+      const newBu = parseInt(r.newBuCount, 10) || 0;
+      const inactBu = parseInt(r.inactiveBuCount, 10) || 0;
+      checkNonNeg('buCount', 'Basic Units Total');
+      checkNonNeg('newBuCount', 'New Basic Units');
+      checkNonNeg('inactiveBuCount', 'Inactive Basic Units');
+      if (buTot > 0 && newBu > buTot) {
+        const msg = t('proforma.form7.validation.newBuExceeded', `${label}: New basic units (${newBu}) cannot exceed total basic units (${buTot})`, { unit: label, count: newBu, total: buTot });
+        rErr.newBuCount = msg;
+        errors.push(msg);
+      }
+      if (buTot > 0 && inactBu > buTot) {
+        const msg = t('proforma.form7.validation.inactiveBuExceeded', `${label}: Inactive basic units (${inactBu}) cannot exceed total basic units (${buTot})`, { unit: label, count: inactBu, total: buTot });
+        rErr.inactiveBuCount = msg;
+        errors.push(msg);
+      }
+
+      // 4. BU Exec
+      const beTotMem = parseInt(r.buExecUnitsTotal, 10) || 0;
+      const bePres = parseInt(r.buExecUnitsPresent, 10) || 0;
+      const beMtgs = parseInt(r.buExecMeetingsTotal, 10) || 0;
+      const beHeld = parseInt(r.buExecMeetingsHeld, 10) || 0;
+      checkNonNeg('buExecUnitsTotal', 'BU Exec Total Members');
+      checkNonNeg('buExecUnitsPresent', 'BU Exec Present Members');
+      checkNonNeg('buExecMeetingsTotal', 'BU Exec Meetings');
+      checkNonNeg('buExecMeetingsHeld', 'BU Exec Held');
+      if (beTotMem > 0 && bePres > beTotMem) {
+        const msg = t('proforma.form7.validation.buExecPresExceeded', `${label}: BU Exec present members (${bePres}) cannot exceed total (${beTotMem})`, { unit: label, present: bePres, total: beTotMem });
+        rErr.buExecUnitsPresent = msg;
+        errors.push(msg);
+      }
+      if (beMtgs > 0 && beHeld > beMtgs) {
+        const msg = t('proforma.form7.validation.buExecHeldExceeded', `${label}: BU Exec held meetings (${beHeld}) cannot exceed total scheduled (${beMtgs})`, { unit: label, held: beHeld, total: beMtgs });
+        rErr.buExecMeetingsHeld = msg;
+        errors.push(msg);
+      }
+
+      // 5. BU GB
+      const bgMtgs = parseInt(r.buGbMeetingsTotal, 10) || 0;
+      const bgHeld = parseInt(r.buGbMeetingsHeld, 10) || 0;
+      checkNonNeg('buGbMeetingsTotal', 'BU GB Meetings');
+      checkNonNeg('buGbMeetingsHeld', 'BU GB Held');
+      if (bgMtgs > 0 && bgHeld > bgMtgs) {
+        const msg = t('proforma.form7.validation.buGbHeldExceeded', `${label}: BU GB held meetings (${bgHeld}) cannot exceed total scheduled (${bgMtgs})`, { unit: label, held: bgHeld, total: bgMtgs });
+        rErr.buGbMeetingsHeld = msg;
+        errors.push(msg);
+      }
+
+      // 6. Membership
+      const memTot = parseInt(r.membershipTotal, 10) || 0;
+      const memPres = parseInt(r.membershipPresent, 10) || 0;
+      checkNonNeg('membershipTotal', 'Membership Total');
+      checkNonNeg('membershipPresent', 'Membership Present');
+      if (memTot > 0 && memPres > memTot) {
+        const msg = t('proforma.form7.validation.memPresExceeded', `${label}: Present members (${memPres}) cannot exceed total membership (${memTot})`, { unit: label, present: memPres, total: memTot });
+        rErr.membershipPresent = msg;
+        errors.push(msg);
+      }
+
+      // 7. Study
+      const sTot = parseInt(r.studyUnitsComm, 10) || 0;
+      const sCount = parseInt(r.studyUnitsCount, 10) || 0;
+      checkNonNeg('studyAreaComm', 'Area Comm Study');
+      checkNonNeg('studyUnitsComm', 'Units Comm Study');
+      checkNonNeg('studyUnitsCount', 'Units Study Count');
+      if (sTot > 0 && sCount > sTot) {
+        const msg = t('proforma.form7.validation.studyCountExceeded', `${label}: Units conducting study circles (${sCount}) cannot exceed total (${sTot})`, { unit: label, count: sCount, total: sTot });
+        rErr.studyUnitsCount = msg;
+        errors.push(msg);
+      }
+
+      // 8. Other numeric
+      ['programsCount', 'inductionPrograms', 'newInductions', 'psoUnitsCount',
+       'ralliesCount', 'jirgasCount', 'unitGatherings', 'villagesWithoutUnit',
+       'duesMonthly', 'duesOrg', 'duesEmergency', 'bloodPosts', 'bloodCash', 'bloodZakat'
+      ].forEach((k) => checkNonNeg(k, k));
+
+      if (Object.keys(rErr).length > 0) {
+        rowErrors[i] = rErr;
       }
     });
-    return { errors, isValid: errors.length === 0 };
+
+    return { errors, rowErrors, isValid: errors.length === 0 };
   }
 
   const rows = formData.rows || formData.execRows || [];
@@ -3431,6 +3677,7 @@ export default function ProformaReportsPage() {
             addForm7Row={addForm7Row}
             removeForm7Row={removeForm7Row}
             handleAutoCalcAllForm7Rows={handleAutoCalcAllForm7Rows}
+            handleAutoFixForm7Inconsistencies={handleAutoFixForm7Inconsistencies}
             form7Validation={form7Validation}
             isRtl={isRtl}
             t={t}
