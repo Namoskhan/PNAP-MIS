@@ -490,6 +490,13 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     for (let i = 0; i < data.rows.length; i++) {
       const r = data.rows[i];
       const unitName = (r.unitName || '').trim();
+      const label = unitName || `Row #${i + 1}`;
+
+      const hasData = Object.entries(r).some(([k, v]) => k !== 'srNo' && k !== 'unitName' && String(v ?? '').trim() !== '');
+      if (hasData && !unitName) {
+        throw new ApiError(400, 'BAD_REQUEST', `Area Unit row #${i + 1}: Unit name is required`);
+      }
+
       const numKeys = [
         'execMeetings', 'execTotalMembers', 'execPresent', 'execHeld',
         'commMeetings', 'commTotalMembers', 'commPresent', 'commHeld',
@@ -508,8 +515,70 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
       for (const k of numKeys) {
         const val = parseInt(r[k], 10);
         if (!isNaN(val) && val < 0) {
-          throw new ApiError(400, 'BAD_REQUEST', `Row #${i + 1} (${unitName || 'Unnamed'}): Negative value for ${k} is not allowed`);
+          throw new ApiError(400, 'BAD_REQUEST', `${label}: Negative value for ${k} is not allowed`);
         }
+      }
+
+      // Check attendance & meeting integrity
+      const execTot = parseInt(r.execTotalMembers, 10) || 0;
+      const execPres = parseInt(r.execPresent, 10) || 0;
+      const execMtgs = parseInt(r.execMeetings, 10) || 0;
+      const execHeld = parseInt(r.execHeld, 10) || 0;
+      if (execTot > 0 && execPres > execTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: Present executive members (${execPres}) cannot exceed total members (${execTot})`);
+      }
+      if (execMtgs > 0 && execHeld > execMtgs) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: Held executive meetings (${execHeld}) cannot exceed scheduled meetings (${execMtgs})`);
+      }
+
+      const commTot = parseInt(r.commTotalMembers, 10) || 0;
+      const commPres = parseInt(r.commPresent, 10) || 0;
+      const commMtgs = parseInt(r.commMeetings, 10) || 0;
+      const commHeld = parseInt(r.commHeld, 10) || 0;
+      if (commTot > 0 && commPres > commTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: Present committee members (${commPres}) cannot exceed total members (${commTot})`);
+      }
+      if (commMtgs > 0 && commHeld > commMtgs) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: Held committee meetings (${commHeld}) cannot exceed scheduled meetings (${commMtgs})`);
+      }
+
+      const buTot = parseInt(r.buCount, 10) || 0;
+      const newBu = parseInt(r.newBuCount, 10) || 0;
+      const inactBu = parseInt(r.inactiveBuCount, 10) || 0;
+      if (buTot > 0 && newBu > buTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: New basic units (${newBu}) cannot exceed total basic units (${buTot})`);
+      }
+      if (buTot > 0 && inactBu > buTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: Inactive basic units (${inactBu}) cannot exceed total basic units (${buTot})`);
+      }
+
+      const beTotMem = parseInt(r.buExecUnitsTotal, 10) || 0;
+      const bePres = parseInt(r.buExecUnitsPresent, 10) || 0;
+      const beMtgs = parseInt(r.buExecMeetingsTotal, 10) || 0;
+      const beHeld = parseInt(r.buExecMeetingsHeld, 10) || 0;
+      if (beTotMem > 0 && bePres > beTotMem) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: BU Exec present members (${bePres}) cannot exceed total (${beTotMem})`);
+      }
+      if (beMtgs > 0 && beHeld > beMtgs) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: BU Exec held meetings (${beHeld}) cannot exceed total scheduled (${beMtgs})`);
+      }
+
+      const bgMtgs = parseInt(r.buGbMeetingsTotal, 10) || 0;
+      const bgHeld = parseInt(r.buGbMeetingsHeld, 10) || 0;
+      if (bgMtgs > 0 && bgHeld > bgMtgs) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: BU GB held meetings (${bgHeld}) cannot exceed total scheduled (${bgMtgs})`);
+      }
+
+      const memTot = parseInt(r.membershipTotal, 10) || 0;
+      const memPres = parseInt(r.membershipPresent, 10) || 0;
+      if (memTot > 0 && memPres > memTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: Present members (${memPres}) cannot exceed total membership (${memTot})`);
+      }
+
+      const sTot = parseInt(r.studyUnitsComm, 10) || 0;
+      const sCount = parseInt(r.studyUnitsCount, 10) || 0;
+      if (sTot > 0 && sCount > sTot) {
+        throw new ApiError(400, 'BAD_REQUEST', `${label}: Units conducting study circles (${sCount}) cannot exceed total (${sTot})`);
       }
     }
   }
