@@ -371,11 +371,20 @@ function generateForm7Html({ districtName = '', month = '', year = '', rows = []
     }
     table.proforma-table th, table.proforma-table td {
       border: 1px solid #111;
-      padding: 1.5px 0.5px;
+      padding: 1px 0.5px;
       height: 15px;
       overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    table.proforma-table td.unit-name-cell {
+      text-overflow: ellipsis;
+      text-align: right;
+      padding: 0 3px;
+    }
+    table.proforma-table td.pct-cell {
+      font-size: 5.5pt;
+      font-weight: bold;
+      letter-spacing: -0.3px;
     }
     table.proforma-table th {
       background: #f1f5f9;
@@ -536,35 +545,35 @@ function generateForm7Html({ districtName = '', month = '', year = '', rows = []
         ${displayRows.map((r, i) => `
         <tr>
           <td>${r.srNo || (i + 1)}</td>
-          <td style="text-align: right; font-weight: 600; padding: 0 3px;">${cleanVal(r.unitName)}</td>
+          <td class="unit-name-cell" style="font-weight: 600;">${cleanVal(r.unitName)}</td>
           <td>${cleanVal(r.execMeetings)}</td>
           <td>${cleanVal(r.execTotalMembers)}</td>
           <td>${cleanVal(r.execPresent)}</td>
           <td>${cleanVal(r.execHeld)}</td>
-          <td>${cleanVal(r.execPct)}</td>
+          <td class="pct-cell">${cleanVal(r.execPct)}</td>
           <td>${cleanVal(r.commMeetings)}</td>
           <td>${cleanVal(r.commTotalMembers)}</td>
           <td>${cleanVal(r.commPresent)}</td>
           <td>${cleanVal(r.commHeld)}</td>
-          <td>${cleanVal(r.commPct)}</td>
+          <td class="pct-cell">${cleanVal(r.commPct)}</td>
           <td>${cleanVal(r.buCount)}</td>
           <td>${cleanVal(r.newBuCount)}</td>
           <td>${cleanVal(r.buExecUnitsTotal)}</td>
           <td>${cleanVal(r.buExecUnitsPresent)}</td>
           <td>${cleanVal(r.buExecMeetingsTotal)}</td>
           <td>${cleanVal(r.buExecMeetingsHeld)}</td>
-          <td>${cleanVal(r.buExecPct)}</td>
+          <td class="pct-cell">${cleanVal(r.buExecPct)}</td>
           <td>${cleanVal(r.buGbMeetingsTotal)}</td>
           <td>${cleanVal(r.buGbMeetingsHeld)}</td>
-          <td>${cleanVal(r.buGbPct)}</td>
+          <td class="pct-cell">${cleanVal(r.buGbPct)}</td>
           <td>${cleanVal(r.inactiveBuCount)}</td>
           <td>${cleanVal(r.membershipTotal)}</td>
           <td>${cleanVal(r.membershipPresent)}</td>
-          <td>${cleanVal(r.membershipPct)}</td>
+          <td class="pct-cell">${cleanVal(r.membershipPct)}</td>
           <td>${cleanVal(r.studyAreaComm)}</td>
           <td>${cleanVal(r.studyUnitsComm)}</td>
           <td>${cleanVal(r.studyUnitsCount)}</td>
-          <td>${cleanVal(r.studyPct)}</td>
+          <td class="pct-cell">${cleanVal(r.studyPct)}</td>
           <td>${cleanVal(r.programsCount)}</td>
           <td>${cleanVal(r.inductionPrograms)}</td>
           <td>${cleanVal(r.newInductions)}</td>
