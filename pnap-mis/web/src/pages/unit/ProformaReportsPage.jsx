@@ -2652,10 +2652,15 @@ export default function ProformaReportsPage() {
 
   // Form 9: Section 4 Helpers (Blood Bank & Zakat)
   function updateForm9Sec4(field, val) {
-    setFormData((prev) => ({
-      ...prev,
-      sec4BloodBank: { ...(prev.sec4BloodBank || {}), [field]: val },
-    }));
+    setFormData((prev) => {
+      const b = { ...(prev.sec4BloodBank || {}), [field]: val };
+      if (field === 'cash' || field === 'zakat') {
+        const c = parseInt(field === 'cash' ? val : (b.cash ?? 0), 10) || 0;
+        const z = parseInt(field === 'zakat' ? val : (b.zakat ?? 0), 10) || 0;
+        b.totalCash = c + z;
+      }
+      return { ...prev, sec4BloodBank: b };
+    });
   }
 
   // Form 9: Section 5 Helpers (Disciplinary Actions)

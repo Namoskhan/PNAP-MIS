@@ -353,17 +353,11 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'BAD_REQUEST', 'Valid year and month are required');
   }
 
-  const canEdit = checkCanEdit(req.user, formType, unitLevel);
-  if (!canEdit) {
-    throw new ApiError(403, 'FORBIDDEN', 'You do not have permission to enter or submit this proforma report. Only Senior Mawin, Vice President, or authorized executives may submit.');
-  }
-
-  const userRoles = req.user.roles || [];
-  const primaryRole = userRoles.find((r) => [...BU_AREA_ROLES, ...PROVINCE_ROLES].includes(r)) || userRoles[0] || 'MEMBER';
-
   let effectiveUnitId = unitId;
+  let effectiveUnitLevel = unitLevel || (formType === 'form4' ? 'BASIC_UNIT' : (formType === 'form5' ? 'PROVINCE' : (['form6', 'form7', 'form8'].includes(formType) ? 'DISTRICT' : 'AREA')));
   if (['form1', 'form2', 'form3'].includes(formType)) {
     effectiveUnitId = areaId || unitId;
+    effectiveUnitLevel = 'AREA';
     const a = await Area.findById(effectiveUnitId).lean();
     if (!a) {
       const bu = await BasicUnit.findById(effectiveUnitId).lean();
@@ -371,16 +365,26 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     }
   } else if (['form6', 'form7', 'form8'].includes(formType)) {
     effectiveUnitId = districtId || unitId;
+    effectiveUnitLevel = 'DISTRICT';
   } else if (formType === 'form9') {
     effectiveUnitId = districtId || areaId || unitId;
     const dist = await District.findById(effectiveUnitId).lean();
     if (dist) {
-      unitLevel = 'DISTRICT';
+      effectiveUnitLevel = 'DISTRICT';
     } else {
       const a = await Area.findById(effectiveUnitId).lean();
-      if (a) unitLevel = 'AREA';
+      if (a) effectiveUnitLevel = 'AREA';
+      else effectiveUnitLevel = 'DISTRICT';
     }
   }
+
+  const canEdit = checkCanEdit(req.user, formType, effectiveUnitLevel);
+  if (!canEdit) {
+    throw new ApiError(403, 'FORBIDDEN', 'You do not have permission to enter or submit this proforma report. Only Senior Mawin, Vice President, or authorized executives may submit.');
+  }
+
+  const userRoles = req.user.roles || [];
+  const primaryRole = userRoles.find((r) => [...BU_AREA_ROLES, ...PROVINCE_ROLES].includes(r)) || userRoles[0] || 'MEMBER';
 
   // Validate attendance sums against total slots if provided in data.upper
   if (data?.upper) {
@@ -744,8 +748,8 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
   }
 
   const buRecord = formType === 'form4' ? await BasicUnit.findById(effectiveUnitId).lean() : null;
-  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : (['form5', 'form6', 'form7', 'form8'].includes(formType) ? undefined : (unitLevel === 'AREA' ? effectiveUnitId : (areaId || undefined)));
-  const resolvedDistrictId = ['form6', 'form7', 'form8'].includes(formType) ? effectiveUnitId : (unitLevel === 'DISTRICT' ? effectiveUnitId : (districtId || buRecord?.districtId || undefined));
+  const resolvedAreaId = formType === 'form4' ? (areaId || buRecord?.areaId || effectiveUnitId) : (['form5', 'form6', 'form7', 'form8'].includes(formType) ? undefined : (effectiveUnitLevel === 'AREA' ? effectiveUnitId : (areaId || undefined)));
+  const resolvedDistrictId = ['form6', 'form7', 'form8'].includes(formType) ? effectiveUnitId : (effectiveUnitLevel === 'DISTRICT' ? effectiveUnitId : (districtId || buRecord?.districtId || undefined));
 
   const existingDoc = await ProformaReport.findOne({ formType, unitId: effectiveUnitId, year: y, month: m }).lean();
 
@@ -756,7 +760,7 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
 
   const updateFields = {
     formType,
-    unitLevel: unitLevel || (formType === 'form4' ? 'BASIC_UNIT' : (formType === 'form5' ? 'PROVINCE' : (['form6', 'form7', 'form8'].includes(formType) ? 'DISTRICT' : 'AREA'))),
+    unitLevel: effectiveUnitLevel,
     unitId: effectiveUnitId,
     unitName: unitName || data.unitName || data.areaName || data.districtName || data.provinceName || buRecord?.name || '',
     areaId: resolvedAreaId,

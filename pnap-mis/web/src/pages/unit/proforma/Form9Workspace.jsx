@@ -53,6 +53,20 @@ export default function Form9Workspace({
   const currentSection = activeSection || localActiveSec;
   const setSection = setActiveSection || setLocalActiveSec;
 
+  // Local card expand/collapse for Section 1
+  const [collapsedCards, setCollapsedCards] = useState({});
+  const toggleCardCollapse = (idx) => {
+    setCollapsedCards((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+  const collapseAllCards = () => {
+    const all = {};
+    (sec1Members || []).forEach((_, i) => { all[i] = true; });
+    setCollapsedCards(all);
+  };
+  const expandAllCards = () => {
+    setCollapsedCards({});
+  };
+
   // Filtered rows for Section 1 Search
   const filteredSec1 = useMemo(() => {
     return (sec1Members || [])
@@ -98,6 +112,32 @@ export default function Form9Workspace({
     };
   }, [sec1Members, sec2PublicGatherings, sec3Conferences, sec4BloodBank, sec5Discipline]);
 
+  // Real-time Badge Metrics for Sub-Navigation
+  const sec1Count = (sec1Members || []).length;
+  const sec2Count = (sec2PublicGatherings || []).length;
+  const sec3Count = (sec3Conferences || []).length;
+  const sec4Total = parseInt(sec4BloodBank?.totalCash, 10) || 0;
+  const sec5Count = (sec5Discipline || []).length;
+  const sec6FilledCount = ['political', 'organizational', 'social'].reduce((acc, cat) => {
+    const row = sec6Proposals?.[cat] || {};
+    return acc + ['byUnit', 'byArea', 'byDistrict', 'proposals', 'demands'].filter((col) => (row[col] || '').trim()).length;
+  }, 0);
+  const sec7Signed = Boolean(sec7Notes?.areaSecSignature?.trim() || sec7Notes?.areaSeniorDeputySignature?.trim());
+
+  const sectionsList = [
+    { key: 'sec1', icon: '👥', label: t('proforma.form9.tabSec1', '1. Members Activity Roster (غړو فعاليت)'), badge: sec1Count > 0 ? `${sec1Count}` : null, badgeColor: '#38bdf8' },
+    { key: 'sec2', icon: '📢', label: t('proforma.form9.tabSec2', '2. Public Gatherings & Rallies (اولسي غونډي او جلسې)'), badge: sec2Count > 0 ? `${sec2Count}` : null, badgeColor: '#f59e0b' },
+    { key: 'sec3', icon: '🎓', label: t('proforma.form9.tabSec3', '3. Conferences & Seminars (کانفرنسونه او سيمينارونه)'), badge: sec3Count > 0 ? `${sec3Count}` : null, badgeColor: '#8b5cf6' },
+    { key: 'sec4', icon: '🩸', label: t('proforma.form9.tabSec4', '4. Blood Bank & Zakat (بلډ بينک، پوستونه او زکات)'), badge: sec4Total > 0 ? `PKR ${sec4Total.toLocaleString()}` : null, badgeColor: '#06b6d4' },
+    { key: 'sec5', icon: '⚖️', label: t('proforma.form9.tabSec5', '5. Disciplinary Actions (تاديبي کاروايي)'), badge: sec5Count > 0 ? `${sec5Count}` : null, badgeColor: '#ef4444' },
+    { key: 'sec6', icon: '💡', label: t('proforma.form9.tabSec6', '6. Proposals & Demands (وړانديزونه او غوښتنې)'), badge: sec6FilledCount > 0 ? `${sec6FilledCount}/15` : null, badgeColor: '#10b981' },
+    { key: 'sec7', icon: '📝', label: t('proforma.form9.tabSec7', '7. Social Work & Notes (ټولنيز کار، متفرق او لاسليکونه)'), badge: sec7Signed ? '✍️' : null, badgeColor: '#10b981' },
+  ];
+
+  const currentSecIndex = sectionsList.findIndex((s) => s.key === currentSection);
+  const prevSec = currentSecIndex > 0 ? sectionsList[currentSecIndex - 1] : null;
+  const nextSec = currentSecIndex < sectionsList.length - 1 ? sectionsList[currentSecIndex + 1] : null;
+
   const cardInputStyle = {
     width: '100%',
     padding: '7px 10px',
@@ -122,6 +162,87 @@ export default function Form9Workspace({
     fontWeight: 600,
     boxSizing: 'border-box',
   });
+
+  const SectionNavFooter = () => (
+    <div
+      style={{
+        marginTop: 20,
+        padding: '12px 18px',
+        borderRadius: 10,
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {prevSec ? (
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => setSection(prevSec.key)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}
+          >
+            <span>{isRtl ? '➡️' : '⬅️'}</span>
+            <span>{t('proforma.form9.prevSection', 'Previous')}: {prevSec.label}</span>
+          </button>
+        ) : <div />}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>
+          {currentSecIndex + 1} / {sectionsList.length}
+        </span>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {sectionsList.map((s, idx) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setSection(s.key)}
+              title={s.label}
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                border: 'none',
+                background: currentSecIndex === idx ? 'var(--primary, #38bdf8)' : 'var(--border)',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'all 0.2s',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {nextSec ? (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setSection(nextSec.key)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}
+          >
+            <span>{t('proforma.form9.nextSection', 'Next')}: {nextSec.label}</span>
+            <span>{isRtl ? '⬅️' : '➡️'}</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn"
+            onClick={handleAutoCalcForm9}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, background: '#10b981' }}
+          >
+            <span>⚡</span>
+            <span>{t('proforma.form9.autoCalcAll', '⚡ Auto-Calculate All')}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -250,21 +371,14 @@ export default function Form9Workspace({
           display: 'flex',
           overflowX: 'auto',
           gap: 6,
-          padding: '6px 8px',
+          padding: '8px 10px',
           background: 'var(--surface)',
           borderRadius: 10,
           border: '1px solid var(--border)',
+          alignItems: 'center',
         }}
       >
-        {[
-          { key: 'sec1', icon: '👥', label: t('proforma.form9.tabSec1', '1. Members Activity Roster (غړو فعاليت)') },
-          { key: 'sec2', icon: '📢', label: t('proforma.form9.tabSec2', '2. Public Gatherings & Rallies (اولسي غونډي او جلسې)') },
-          { key: 'sec3', icon: '🎓', label: t('proforma.form9.tabSec3', '3. Conferences & Seminars (کانفرنسونه او سيمينارونه)') },
-          { key: 'sec4', icon: '🩸', label: t('proforma.form9.tabSec4', '4. Blood Bank & Zakat (بلډ بينک، پوستونه او زکات)') },
-          { key: 'sec5', icon: '⚖️', label: t('proforma.form9.tabSec5', '5. Disciplinary Actions (تاديبي کاروايي)') },
-          { key: 'sec6', icon: '💡', label: t('proforma.form9.tabSec6', '6. Proposals & Demands (وړانديزونه او غوښتنې)') },
-          { key: 'sec7', icon: '📝', label: t('proforma.form9.tabSec7', '7. Social Work & Notes (ټولنيز کار، متفرق او لاسليکونه)') },
-        ].map((tab) => {
+        {sectionsList.map((tab) => {
           const isActive = currentSection === tab.key;
           return (
             <button
@@ -273,9 +387,9 @@ export default function Form9Workspace({
               className={`btn ${isActive ? '' : 'secondary'}`}
               onClick={() => setSection(tab.key)}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 8,
                 padding: '8px 14px',
                 fontSize: 12,
                 fontWeight: isActive ? 800 : 600,
@@ -287,10 +401,28 @@ export default function Form9Workspace({
             >
               <span>{tab.icon}</span>
               <span>{tab.label}</span>
+              {tab.badge && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: 10,
+                    background: isActive ? 'var(--primary, #38bdf8)' : 'rgba(255,255,255,0.08)',
+                    color: isActive ? '#fff' : (tab.badgeColor || 'var(--text-soft)'),
+                    border: '1px solid currentColor',
+                  }}
+                >
+                  {tab.badge}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
+
+      {/* Reusable Section Step Navigation Footer */}
+      {/** SectionNavFooter is invoked inside each active section */}
 
       {/* ───────────────────────────────────────────────────────────── */}
       {/* 3. SECTION 1: MEMBERS WORK & ACTIVITY ROSTER (21 COLUMNS)     */}
@@ -358,6 +490,17 @@ export default function Form9Workspace({
                 </button>
               </div>
 
+              {form9ViewMode === 'cards' && filteredSec1.length > 0 && (
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={Object.keys(collapsedCards).length > 0 ? expandAllCards : collapseAllCards}
+                  style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6 }}
+                >
+                  {Object.keys(collapsedCards).length > 0 ? '📂 ' + t('proforma.form9.expandAll', 'Expand All') : '📁 ' + t('proforma.form9.collapseAll', 'Collapse All')}
+                </button>
+              )}
+
               <button
                 type="button"
                 className="btn"
@@ -396,205 +539,264 @@ export default function Form9Workspace({
                   {t('proforma.form9.noMembers', "No members recorded yet. Click '+ Add Member' to add an entry.")}
                 </div>
               ) : (
-                filteredSec1.map(({ r, originalIdx }) => (
-                  <div
-                    key={r.memberId || originalIdx}
-                    className="card"
-                    style={{
-                      padding: 16,
-                      borderRadius: 10,
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 12,
-                    }}
-                  >
-                    {/* Header: Comrade Name & Remove */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                        <span
+                filteredSec1.map(({ r, originalIdx }) => {
+                  const isCollapsed = !!collapsedCards[originalIdx];
+                  return (
+                    <div
+                      key={r.memberId || originalIdx}
+                      className="card"
+                      style={{
+                        padding: 16,
+                        borderRadius: 10,
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {/* Header: Comrade Name, Number, Expand/Collapse & Delete */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
+                          <span
+                            style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: '50%',
+                              background: 'var(--surface-alt)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: 12,
+                            }}
+                          >
+                            {originalIdx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={r.name || ''}
+                            onChange={(e) => updateForm9Sec1Row(originalIdx, 'name', e.target.value)}
+                            placeholder={t('proforma.form9.namePlaceholder', 'Enter comrade full name')}
+                            style={{
+                              ...cardInputStyle,
+                              fontWeight: 700,
+                              fontSize: 14,
+                              color: 'var(--primary, #38bdf8)',
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleCardCollapse(originalIdx)}
+                            style={{
+                              background: 'var(--surface-alt)',
+                              border: '1px solid var(--border)',
+                              borderRadius: 6,
+                              padding: '4px 10px',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              color: 'var(--text-soft)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            title={isCollapsed ? t('proforma.expandCard', 'Expand card') : t('proforma.collapseCard', 'Collapse card')}
+                          >
+                            <span>{isCollapsed ? '▼' : '▲'}</span>
+                            <span>{isCollapsed ? t('common.expand', 'Expand') : t('common.collapse', 'Collapse')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeForm9Sec1Row(originalIdx)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#ef4444',
+                              fontSize: 15,
+                              padding: 4,
+                            }}
+                            title={t('proforma.form9.removeMember', 'Remove')}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Collapsed Preview Summary */}
+                      {isCollapsed ? (
+                        <div
+                          onClick={() => toggleCardCollapse(originalIdx)}
                           style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: '50%',
+                            cursor: 'pointer',
+                            padding: '8px 12px',
+                            borderRadius: 6,
                             background: 'var(--surface-alt)',
                             display: 'flex',
+                            flexWrap: 'wrap',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 800,
+                            justifyContent: 'space-between',
+                            gap: 8,
                             fontSize: 12,
                           }}
                         >
-                          {originalIdx + 1}
-                        </span>
-                        <input
-                          type="text"
-                          value={r.name || ''}
-                          onChange={(e) => updateForm9Sec1Row(originalIdx, 'name', e.target.value)}
-                          placeholder={t('proforma.form9.namePlaceholder', 'Enter comrade full name')}
-                          style={{
-                            ...cardInputStyle,
-                            fontWeight: 700,
-                            fontSize: 14,
-                            color: 'var(--primary, #38bdf8)',
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeForm9Sec1Row(originalIdx)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: '#ef4444',
-                          fontSize: 15,
-                          padding: 4,
-                        }}
-                        title={t('proforma.form9.removeMember', 'Remove')}
-                      >
-                        🗑️
-                      </button>
-                    </div>
-
-                    {/* Role & Date */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 3 }}>
-                          {t('proforma.form9.designation', 'Designation / Role')}
-                        </label>
-                        <input
-                          type="text"
-                          value={r.designation || ''}
-                          onChange={(e) => updateForm9Sec1Row(originalIdx, 'designation', e.target.value)}
-                          placeholder={t('proforma.form9.designationPlaceholder', 'e.g., Central Committee Member')}
-                          style={cardInputStyle}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 3 }}>
-                          {t('proforma.form9.date', 'Meeting / Tour Date')}
-                        </label>
-                        <input
-                          type="date"
-                          value={r.date || ''}
-                          onChange={(e) => updateForm9Sec1Row(originalIdx, 'date', e.target.value)}
-                          style={cardInputStyle}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Committee Meetings Group */}
-                    <div style={{ padding: 10, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary, #38bdf8)', marginBottom: 8 }}>
-                        🤝 {t('proforma.form8.secMeetings', 'Committee & Executive Meetings')}
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                        {[
-                          { key: 'distExecMeeting', label: t('proforma.form9.distExecMeeting', 'Dist Exec') },
-                          { key: 'distCommMeeting', label: t('proforma.form9.distCommMeeting', 'Dist Comm') },
-                          { key: 'areaExecMeeting', label: t('proforma.form9.areaExecMeeting', 'Area Exec') },
-                          { key: 'areaCommMeeting', label: t('proforma.form9.areaCommMeeting', 'Area Comm') },
-                          { key: 'buExecMeeting', label: t('proforma.form9.buExecMeeting', 'BU Exec') },
-                          { key: 'buGbMeeting', label: t('proforma.form9.buGbMeeting', 'BU GB') },
-                          { key: 'psoMeeting', label: t('proforma.form9.psoMeeting', 'PSO') },
-                          { key: 'alliesMeeting', label: t('proforma.form9.alliesMeeting', 'Allies') },
-                        ].map((m) => (
-                          <div key={m.key}>
-                            <label style={{ fontSize: 10, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>{m.label}</label>
-                            <input
-                              type="number"
-                              min={0}
-                              value={r[m.key] ?? ''}
-                              onChange={(e) => updateForm9Sec1Row(originalIdx, m.key, e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
-                              style={{ ...cardInputStyle, textAlign: 'center', padding: '5px 2px' }}
-                            />
+                          <div style={{ color: 'var(--text-soft)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>💼 {r.designation || t('proforma.form9.noRole', 'No role specified')}</span>
+                            {r.date && <span>· 📅 {r.date}</span>}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Programs & Gatherings */}
-                    <div style={{ padding: 10, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 8 }}>
-                        🎓 {t('proforma.form8.secPrograms', 'Programs, Circles & Inductions')}
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-                        {[
-                          { key: 'conferences', label: t('proforma.form9.conferences', 'Conf') },
-                          { key: 'seminars', label: t('proforma.form9.seminars', 'Sem') },
-                          { key: 'studyCircles', label: t('proforma.form9.studyCircles', 'Study') },
-                          { key: 'inductions', label: t('proforma.form9.inductions', 'Induct') },
-                          { key: 'publicGatherings', label: t('proforma.form9.publicGatherings', 'Rallies') },
-                        ].map((p) => (
-                          <div key={p.key}>
-                            <label style={{ fontSize: 10, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>{p.label}</label>
-                            <input
-                              type="number"
-                              min={0}
-                              value={r[p.key] ?? ''}
-                              onChange={(e) => updateForm9Sec1Row(originalIdx, p.key, e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
-                              style={{ ...cardInputStyle, textAlign: 'center', padding: '5px 2px' }}
-                            />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontWeight: 700, color: '#10b981' }}>⚡ {r.totalMeetings || 0} Mtgs</span>
+                            <span style={{ color: '#06b6d4' }}>💵 {r.dues || 0} PKR</span>
+                            <span style={{ color: '#8b5cf6' }}>🚗 {r.tours || 0} Tours</span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Total Meetings KPI & Ideological Study */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>
-                      <div style={{ padding: 8, borderRadius: 6, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', textAlign: 'center' }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#10b981' }}>
-                          ⚡ {t('proforma.form9.totalMeetings', 'Total Mtgs')}
                         </div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981', marginTop: 2 }}>
-                          {r.totalMeetings || 0}
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 2 }}>
-                          📖 {t('proforma.form9.ideologicalReading', 'Ideological Study')}
-                        </label>
-                        <input
-                          type="text"
-                          value={r.ideologicalReading || ''}
-                          onChange={(e) => updateForm9Sec1Row(originalIdx, 'ideologicalReading', e.target.value)}
-                          placeholder={t('proforma.form9.readingPlaceholder', 'Books or topics studied')}
-                          style={cardInputStyle}
-                        />
-                      </div>
-                    </div>
+                      ) : (
+                        <>
+                          {/* Role & Date */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 3 }}>
+                                {t('proforma.form9.designation', 'Designation / Role')}
+                              </label>
+                              <input
+                                type="text"
+                                value={r.designation || ''}
+                                onChange={(e) => updateForm9Sec1Row(originalIdx, 'designation', e.target.value)}
+                                placeholder={t('proforma.form9.designationPlaceholder', 'e.g., Central Committee Member')}
+                                style={cardInputStyle}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 3 }}>
+                                {t('proforma.form9.date', 'Meeting / Tour Date')}
+                              </label>
+                              <input
+                                type="date"
+                                value={r.date || ''}
+                                onChange={(e) => updateForm9Sec1Row(originalIdx, 'date', e.target.value)}
+                                style={cardInputStyle}
+                              />
+                            </div>
+                          </div>
 
-                    {/* Dues & Tours */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 2 }}>
-                          💵 {t('proforma.form9.dues', 'Monthly Dues')}
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={r.dues ?? ''}
-                          onChange={(e) => updateForm9Sec1Row(originalIdx, 'dues', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
-                          style={cardInputStyle}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 2 }}>
-                          🚗 {t('proforma.form9.tours', 'Tours / Visits')}
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={r.tours ?? ''}
-                          onChange={(e) => updateForm9Sec1Row(originalIdx, 'tours', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
-                          style={cardInputStyle}
-                        />
-                      </div>
+                          {/* Committee Meetings Group */}
+                          <div style={{ padding: 10, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary, #38bdf8)', marginBottom: 8 }}>
+                              🤝 {t('proforma.form8.secMeetings', 'Committee & Executive Meetings')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                              {[
+                                { key: 'distExecMeeting', label: t('proforma.form9.distExecMeeting', 'Dist Exec') },
+                                { key: 'distCommMeeting', label: t('proforma.form9.distCommMeeting', 'Dist Comm') },
+                                { key: 'areaExecMeeting', label: t('proforma.form9.areaExecMeeting', 'Area Exec') },
+                                { key: 'areaCommMeeting', label: t('proforma.form9.areaCommMeeting', 'Area Comm') },
+                                { key: 'buExecMeeting', label: t('proforma.form9.buExecMeeting', 'BU Exec') },
+                                { key: 'buGbMeeting', label: t('proforma.form9.buGbMeeting', 'BU GB') },
+                                { key: 'psoMeeting', label: t('proforma.form9.psoMeeting', 'PSO') },
+                                { key: 'alliesMeeting', label: t('proforma.form9.alliesMeeting', 'Allies') },
+                              ].map((m) => (
+                                <div key={m.key}>
+                                  <label style={{ fontSize: 10, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>{m.label}</label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={r[m.key] ?? ''}
+                                    onChange={(e) => updateForm9Sec1Row(originalIdx, m.key, e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                                    style={{ ...cardInputStyle, textAlign: 'center', padding: '5px 2px' }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Programs & Gatherings */}
+                          <div style={{ padding: 10, borderRadius: 8, background: 'var(--surface-alt)', border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 8 }}>
+                              🎓 {t('proforma.form8.secPrograms', 'Programs, Circles & Inductions')}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+                              {[
+                                { key: 'conferences', label: t('proforma.form9.conferences', 'Conf') },
+                                { key: 'seminars', label: t('proforma.form9.seminars', 'Sem') },
+                                { key: 'studyCircles', label: t('proforma.form9.studyCircles', 'Study') },
+                                { key: 'inductions', label: t('proforma.form9.inductions', 'Induct') },
+                                { key: 'publicGatherings', label: t('proforma.form9.publicGatherings', 'Rallies') },
+                              ].map((p) => (
+                                <div key={p.key}>
+                                  <label style={{ fontSize: 10, color: 'var(--text-soft)', display: 'block', marginBottom: 2 }}>{p.label}</label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={r[p.key] ?? ''}
+                                    onChange={(e) => updateForm9Sec1Row(originalIdx, p.key, e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                                    style={{ ...cardInputStyle, textAlign: 'center', padding: '5px 2px' }}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Total Meetings KPI & Ideological Study */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>
+                            <div style={{ padding: 8, borderRadius: 6, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', textAlign: 'center' }}>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: '#10b981' }}>
+                                ⚡ {t('proforma.form9.totalMeetings', 'Total Mtgs')}
+                              </div>
+                              <div style={{ fontSize: 18, fontWeight: 800, color: '#10b981', marginTop: 2 }}>
+                                {r.totalMeetings || 0}
+                              </div>
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 2 }}>
+                                📖 {t('proforma.form9.ideologicalReading', 'Ideological Study')}
+                              </label>
+                              <input
+                                type="text"
+                                value={r.ideologicalReading || ''}
+                                onChange={(e) => updateForm9Sec1Row(originalIdx, 'ideologicalReading', e.target.value)}
+                                placeholder={t('proforma.form9.readingPlaceholder', 'Books or topics studied')}
+                                style={cardInputStyle}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Dues & Tours */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 2 }}>
+                                💵 {t('proforma.form9.dues', 'Monthly Dues')}
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                value={r.dues ?? ''}
+                                onChange={(e) => updateForm9Sec1Row(originalIdx, 'dues', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                                style={cardInputStyle}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 11, color: 'var(--text-soft)', fontWeight: 600, display: 'block', marginBottom: 2 }}>
+                                🚗 {t('proforma.form9.tours', 'Tours / Visits')}
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                value={r.tours ?? ''}
+                                onChange={(e) => updateForm9Sec1Row(originalIdx, 'tours', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+                                style={cardInputStyle}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
@@ -767,6 +969,9 @@ export default function Form9Workspace({
               </table>
             </div>
           )}
+
+          {/* Step Navigation Footer */}
+          <SectionNavFooter currentSection="sec1" />
         </div>
       )}
 
@@ -903,6 +1108,9 @@ export default function Form9Workspace({
               </tbody>
             </table>
           </div>
+
+          {/* Step Navigation Footer */}
+          <SectionNavFooter currentSection="sec2" />
         </div>
       )}
 
@@ -1029,6 +1237,9 @@ export default function Form9Workspace({
               </tbody>
             </table>
           </div>
+
+          {/* Step Navigation Footer */}
+          <SectionNavFooter currentSection="sec3" />
         </div>
       )}
 
@@ -1111,6 +1322,40 @@ export default function Form9Workspace({
               />
             </div>
           </div>
+
+          {/* Live Auto-Sum Sync Formula Box */}
+          <div
+            style={{
+              marginTop: 16,
+              padding: 12,
+              borderRadius: 8,
+              background: 'rgba(6, 182, 212, 0.08)',
+              border: '1px solid rgba(6, 182, 212, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 10,
+            }}
+          >
+            <div style={{ fontSize: 13, color: 'var(--text-soft)' }}>
+              <span>{t('proforma.form9.sec4Formula', 'Formula: Total Cash = Cash Collected + Zakat Funds')}</span>
+              <strong style={{ marginInlineStart: 8, color: '#06b6d4', fontSize: 14 }}>
+                ({sec4BloodBank.cash || 0} + {sec4BloodBank.zakat || 0} = {(sec4BloodBank.cash || 0) + (sec4BloodBank.zakat || 0)} PKR)
+              </strong>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => updateForm9Sec4('totalCash', (sec4BloodBank.cash || 0) + (sec4BloodBank.zakat || 0))}
+              style={{ fontSize: 12, padding: '5px 12px' }}
+            >
+              ⚡ {t('proforma.form9.syncTotalCash', 'Sync Total Cash')}
+            </button>
+          </div>
+
+          {/* Step Navigation Footer */}
+          <SectionNavFooter currentSection="sec4" />
         </div>
       )}
 
@@ -1206,6 +1451,9 @@ export default function Form9Workspace({
               </tbody>
             </table>
           </div>
+
+          {/* Step Navigation Footer */}
+          <SectionNavFooter currentSection="sec5" />
         </div>
       )}
 
@@ -1214,12 +1462,34 @@ export default function Form9Workspace({
       {/* ───────────────────────────────────────────────────────────── */}
       {currentSection === 'sec6' && (
         <div className="card" style={{ padding: 18, borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-          <div style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--primary, #38bdf8)' }}>
-              {t('proforma.form9.sec6Title', 'Proposals (Suggestions / Recommendations) & Demands')}
-            </h3>
-            <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>
-              {t('proforma.form9.sec6Desc', 'Multi-level matrix of political, organizational, and social proposals and demands.')}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--primary, #38bdf8)' }}>
+                {t('proforma.form9.sec6Title', 'Proposals (Suggestions / Recommendations) & Demands')}
+              </h3>
+              <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 2 }}>
+                {t('proforma.form9.sec6Desc', 'Multi-level matrix of political, organizational, and social proposals and demands.')}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 20,
+                background: sec6FilledCount > 0 ? 'rgba(56, 189, 248, 0.12)' : 'var(--surface-alt)',
+                border: '1px solid var(--border)',
+                fontSize: 12,
+                fontWeight: 700,
+                color: sec6FilledCount > 0 ? 'var(--primary, #38bdf8)' : 'var(--text-soft)',
+              }}
+            >
+              <span>💡 {t('proforma.form9.completedCells', 'Completed')}</span>
+              <span style={{ background: 'var(--primary, #38bdf8)', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 11 }}>
+                {sec6FilledCount} / 15
+              </span>
             </div>
           </div>
 
@@ -1266,6 +1536,9 @@ export default function Form9Workspace({
               </tbody>
             </table>
           </div>
+
+          {/* Step Navigation Footer */}
+          <SectionNavFooter currentSection="sec6" />
         </div>
       )}
 
@@ -1312,12 +1585,32 @@ export default function Form9Workspace({
               border: '1.5px solid var(--border)',
             }}
           >
-            <div style={{ marginBottom: 14 }}>
-              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--primary, #38bdf8)' }}>
-                ✍️ {t('proforma.form9.signaturesBlock', 'Official Area Leadership Signatures')}
-              </h4>
-              <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 4 }}>
-                {t('proforma.form8.signaturesDesc', 'Official party proformas require authorization by leadership. These digital signatures and signing date will appear directly on the official printed A4 report, PDF export, and archival records.')}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--primary, #38bdf8)' }}>
+                  ✍️ {t('proforma.form9.signaturesBlock', 'Official Area Leadership Signatures')}
+                </h4>
+                <div style={{ fontSize: 12, color: 'var(--text-soft)', marginTop: 4 }}>
+                  {t('proforma.form8.signaturesDesc', 'Official party proformas require authorization by leadership. These digital signatures and signing date will appear directly on the official printed A4 report, PDF export, and archival records.')}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 12px',
+                  borderRadius: 20,
+                  background: sec7Signed ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                  border: `1px solid ${sec7Signed ? '#10b981' : '#f59e0b'}`,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: sec7Signed ? '#10b981' : '#f59e0b',
+                }}
+              >
+                <span>{sec7Signed ? '✓' : '⚠️'}</span>
+                <span>{sec7Signed ? t('proforma.signaturesComplete', 'Signatures Completed') : t('proforma.signaturesPending', 'Pending Authorization')}</span>
               </div>
             </div>
 
@@ -1364,6 +1657,9 @@ export default function Form9Workspace({
               </div>
             </div>
           </div>
+
+          {/* Step Navigation Footer */}
+          <SectionNavFooter currentSection="sec7" />
         </div>
       )}
     </div>
