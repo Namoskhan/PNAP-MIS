@@ -118,6 +118,126 @@ function NumberStepper({ value, onChange, min = 0, max = Infinity, step = 1, pla
   );
 }
 
+export const PROFORMA_FORMS = [
+  {
+    id: 'form1',
+    icon: '📋',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form1Btn',
+    defaultBtnLabel: 'Form 1: Area Unit Report (علاقائي يونټ)',
+    titleKey: 'proforma.form1Title',
+    defaultTitle: 'Area Unit Monthly Work & Activity Report (Form 1)',
+    descKey: 'proforma.form1Desc',
+    defaultDesc: 'Official party monthly work and activity report for Area Executive and Subordinate Units',
+    previewTitleKey: 'proforma.previewModalTitleForm1',
+    defaultPreviewTitle: 'Area Unit Monthly Work & Activity Report (A4 Landscape Preview)',
+  },
+  {
+    id: 'form2',
+    icon: '📑',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form2Btn',
+    defaultBtnLabel: 'Form 2: Subordinate Basic Units Report (ماتحت بنسټيز يونټونه)',
+    titleKey: 'proforma.form2Title',
+    defaultTitle: 'Subordinate Basic Units Monthly Work & Activity Report (Form 2)',
+    descKey: 'proforma.form2Desc',
+    defaultDesc: 'Official monthly work and activity report for subordinate basic units under Area Unit',
+    previewTitleKey: 'proforma.previewModalTitleForm2',
+    defaultPreviewTitle: 'Subordinate Basic Units Monthly Work & Activity Report (A4 Landscape Preview)',
+  },
+  {
+    id: 'form3',
+    icon: '📑',
+    defaultTab: 'form3_tab1',
+    btnKey: 'proforma.form3Btn',
+    defaultBtnLabel: 'Form 3: Area Detailed Report (علاقائي يونټ تفصيلي)',
+    titleKey: 'proforma.form3Title',
+    defaultTitle: 'Area Unit Detailed Activity Proforma (Form 3)',
+    descKey: 'proforma.form3Desc',
+    defaultDesc: 'Official monthly detailed work and activity report for Area Unit',
+    previewTitleKey: 'proforma.previewModalTitleForm3',
+    defaultPreviewTitle: 'Area Unit Monthly Detailed Work & Activity Report (A4 Portrait Preview)',
+  },
+  {
+    id: 'form4',
+    icon: '📄',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form4Btn',
+    defaultBtnLabel: 'Form 4: Basic Unit Report (بنسټيز يونټ)',
+    titleKey: 'proforma.form4Title',
+    defaultTitle: 'Basic Unit Monthly Work & Activity Report (Form 4)',
+    descKey: 'proforma.form4Desc',
+    defaultDesc: 'Official party monthly work & activity report for Basic Unit Executive',
+    previewTitleKey: 'proforma.previewModalTitleForm4',
+    defaultPreviewTitle: 'Basic Unit Monthly Work & Activity Report (A4 Landscape Preview)',
+  },
+  {
+    id: 'form5',
+    icon: '🏛️',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form5Btn',
+    defaultBtnLabel: 'Form 5: Provincial Executive Report (صوبائي ايګزيکټيو)',
+    titleKey: 'proforma.form5Title',
+    defaultTitle: 'Provincial Executive Individual Work & Activity Report (Form 5)',
+    descKey: 'proforma.form5Desc',
+    defaultDesc: 'Official party individual work and activity report for Provincial Executive leadership',
+    previewTitleKey: 'proforma.previewModalTitleForm5',
+    defaultPreviewTitle: 'Provincial Executive Individual Work & Activity Report (Form 5) - A4 Landscape Preview',
+  },
+  {
+    id: 'form6',
+    icon: '🏛️',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form6Btn',
+    defaultBtnLabel: 'Form 6: District Report (ضلعي يونټ)',
+    titleKey: 'proforma.form6Title',
+    defaultTitle: 'District Work & Activity Monthly Report (Form 6)',
+    descKey: 'proforma.form6Desc',
+    defaultDesc: 'Official party monthly work & activity report for District Executive and Subordinate Units',
+    previewTitleKey: 'proforma.previewModalTitleForm6',
+    defaultPreviewTitle: 'District Monthly Work & Activity Report (Form 6) - A4 Landscape Preview',
+  },
+  {
+    id: 'form7',
+    icon: '📑',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form7Btn',
+    defaultBtnLabel: 'Form 7: District Subordinate Area Units (ضلع کښي علاقائي يونټونه)',
+    titleKey: 'proforma.form7Title',
+    defaultTitle: 'District Subordinate Area Units Monthly Work & Activity Report (Form 7)',
+    descKey: 'proforma.form7Desc',
+    defaultDesc: 'Official party monthly work & activity report for subordinate Area Units under District',
+    previewTitleKey: 'proforma.previewModalTitleForm7',
+    defaultPreviewTitle: 'District Subordinate Area Units Monthly Work & Activity Report (Form 7) - A4 Landscape Preview',
+  },
+  {
+    id: 'form8',
+    icon: '📑',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form8Btn',
+    defaultBtnLabel: 'Form 8: Central & Provincial Committee in District (ضلع کښي مرکزي، صوبائي کميټي)',
+    titleKey: 'proforma.form8Title',
+    defaultTitle: 'District Central & Provincial Committee Monthly Work & Activity Report (Form 8)',
+    descKey: 'proforma.form8Desc',
+    defaultDesc: 'Official party monthly work & activity report for Central and Provincial Committee Members residing/working in the District',
+    previewTitleKey: 'proforma.previewModalTitleForm8',
+    defaultPreviewTitle: 'District Central & Provincial Committee Monthly Work & Activity Report (Form 8) - A4 Landscape Preview',
+  },
+  {
+    id: 'form9',
+    icon: '📑',
+    defaultTab: 'upper',
+    btnKey: 'proforma.form9Btn',
+    defaultBtnLabel: 'Form 9: Central & Provincial Organs in District (ضلع کښي مرکزي، صوبائي ادارې)',
+    titleKey: 'proforma.form9Title',
+    defaultTitle: 'District Central & Provincial Organs Members Monthly Work & Activity Report (Form 9)',
+    descKey: 'proforma.form9Desc',
+    defaultDesc: 'Official party monthly work & activity report for Central and Provincial Organs members in the District',
+    previewTitleKey: 'proforma.previewModalTitleForm9',
+    defaultPreviewTitle: 'District Central & Provincial Organs Monthly Report (Form 9) - A4 Portrait Preview',
+  },
+];
+
 export default function ProformaReportsPage() {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
@@ -125,8 +245,9 @@ export default function ProformaReportsPage() {
 
   const isRtl = i18n.language === 'ps' || i18n.language === 'ur';
 
-  // Support Form 1 (Area Unit Report) and Form 4 (Basic Unit Report)
+  // Support Form 1 to Form 9 with uniform structure
   const [formType, setFormType] = useState(() => (ctx?.unitLevel === 'BASIC_UNIT' ? 'form4' : 'form1'));
+  const currentFormConfig = PROFORMA_FORMS.find((f) => f.id === formType) || PROFORMA_FORMS[0];
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
@@ -3458,25 +3579,67 @@ export default function ProformaReportsPage() {
         }
         .proforma-form-tabs {
           display: flex;
-          gap: 10px;
+          gap: 8px;
           overflow-x: auto;
           flex-wrap: nowrap;
           -webkit-overflow-scrolling: touch;
-          padding-bottom: 12px;
-          margin-bottom: 14px;
+          padding: 4px 2px 14px;
+          margin-bottom: 16px;
           border-bottom: 1px solid var(--border);
           scrollbar-width: thin;
         }
         .proforma-form-tabs::-webkit-scrollbar {
-          height: 4px;
+          height: 6px;
         }
-        .proforma-form-tabs::-webkit-scrollbar-thumb {
-          background: var(--border);
+        .proforma-form-tabs::-webkit-scrollbar-track {
+          background: var(--surface-alt, #f1f5f9);
           border-radius: 4px;
         }
-        .proforma-form-tabs button {
-          flex-shrink: 0;
+        .proforma-form-tabs::-webkit-scrollbar-thumb {
+          background: var(--border-strong, #cbd5e1);
+          border-radius: 4px;
+        }
+        .proforma-form-tab-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 14px;
+          border-radius: var(--radius, 10px);
+          font-size: 13px;
+          font-weight: 600;
           white-space: nowrap;
+          flex-shrink: 0;
+          transition: all var(--t, 0.2s ease);
+          cursor: pointer;
+          border: 1px solid var(--border, #e2e8f0);
+          background: var(--surface, #ffffff);
+          color: var(--text-soft, #334155);
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+        .proforma-form-tab-btn:hover {
+          background: var(--surface-alt, #f1f5f9);
+          color: var(--text, #0f172a);
+          border-color: var(--border-strong, #cbd5e1);
+          transform: translateY(-1px);
+        }
+        .proforma-form-tab-btn.active {
+          background: var(--primary, #1e40af);
+          color: #ffffff;
+          border-color: var(--primary, #1e40af);
+          box-shadow: 0 3px 8px rgba(30, 64, 175, 0.28);
+          font-weight: 700;
+        }
+        .proforma-tab-icon {
+          font-size: 15px;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .proforma-tab-label {
+          display: inline-flex;
+          align-items: center;
+          line-height: 1.4;
         }
         .proforma-subtabs-bar {
           display: flex;
@@ -3618,46 +3781,11 @@ export default function ProformaReportsPage() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>{formType === 'form9' ? '📑' : (formType === 'form8' ? '📑' : (formType === 'form7' ? '📑' : (formType === 'form6' ? '🏛️' : (formType === 'form5' ? '🏛️' : (formType === 'form4' ? '📄' : (formType === 'form2' ? '📑' : (formType === 'form3' ? '📑' : '📋')))))))}</span>
-            <span>
-              {formType === 'form9'
-                ? t('proforma.form9Title', 'District Central & Provincial Organs Members Monthly Work & Activity Report (Form 9)')
-                : formType === 'form8'
-                ? t('proforma.form8Title', 'District Central & Provincial Committee Monthly Work & Activity Report (Form 8)')
-                : formType === 'form7'
-                ? t('proforma.form7Title', 'District Subordinate Area Units Monthly Work & Activity Report (Form 7)')
-                : formType === 'form6'
-                ? t('proforma.form6Title', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (Form 6)')
-                : formType === 'form5'
-                ? t('proforma.form5Title', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (Form 5)')
-                : formType === 'form4'
-                ? t('proforma.form4Title', 'پښتونخوا ملي عوامي پارټي ابتدائي يونټ کار او فعاليت مياشتنئي رپورټ (Form 4)')
-                : formType === 'form2'
-                ? t('proforma.form2Title', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (Form 2)')
-                : formType === 'form3'
-                ? t('proforma.form3Title', 'پښتونخوا ملي عوامي پارټي علاقائي يونټ مياشتنۍ تفصيلي کار او فعاليت رپورټ (Form 3)')
-                : t('proforma.form1Title', 'Area Unit Monthly Work & Activity Report (Form 1)')}
-            </span>
+            <span>{currentFormConfig.icon}</span>
+            <span>{t(currentFormConfig.titleKey, currentFormConfig.defaultTitle)}</span>
           </h2>
           <p className="muted" style={{ margin: '4px 0 0' }}>
-            {formType === 'form9'
-              ? `${t('proforma.form9Desc', 'Official monthly work & activity report for Central and Provincial Organs members in the District')} · `
-              : formType === 'form8'
-              ? `${t('proforma.form8Desc', 'Monthly Work & Activity Report for Central and Provincial Committee Members in District')} · `
-              : formType === 'form7'
-              ? `${t('proforma.form7Desc', 'Official party monthly work & activity report for subordinate Area Units under District')} · `
-              : formType === 'form6'
-              ? `${t('proforma.form6Desc', 'Official party monthly work & activity report for District Executive and Subordinate Units')} · `
-              : formType === 'form5'
-              ? `${t('proforma.form5Desc', 'Official party monthly work & activity report for Provincial Executive Comrades')} · `
-              : formType === 'form4'
-              ? `${t('proforma.form4Desc', 'Official party monthly work & activity report for Primary / Basic Unit Executive')} · `
-              : formType === 'form2'
-              ? `${t('proforma.form2Desc', 'Official party monthly work and activity report for subordinate basic units under Area Unit')} · `
-              : formType === 'form3'
-              ? `${t('proforma.form3Desc', 'Official party monthly detailed work and activity report for Area Unit')} · `
-              : `${t('proforma.form1Desc', 'Official party monthly work and activity report for Area Executive and Subordinate Units')} · `}
-            <strong>{activeUnitDisplayName}</strong>
+            {t(currentFormConfig.descKey, currentFormConfig.defaultDesc)} · <strong>{activeUnitDisplayName}</strong>
           </p>
         </div>
 
@@ -3684,88 +3812,26 @@ export default function ProformaReportsPage() {
       {/* Scope, Month & Year Filter Card */}
       <div className="card" style={{ marginBottom: 16 }}>
         {/* Form Selector Tabs */}
-        <div className="proforma-form-tabs">
-          <button
-            type="button"
-            onClick={() => { setFormType('form1'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form1' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>📋</span>
-            <span>{t('proforma.form1Btn', 'Form 1: Area Unit Report (علاقائي يونټ)')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form2'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form2' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>📑</span>
-            <span>{t('proforma.form2Btn', 'Form 2: Subordinate Basic Units (ماتحت بنسټيز يونټونه)')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form3'); setActiveTab('form3_tab1'); }}
-            className={`btn ${formType === 'form3' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>📑</span>
-            <span>{t('proforma.form3Btn', 'Form 3: Area Detailed Report (علاقائي يونټ تفصيلي)')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form4'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form4' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>📄</span>
-            <span>{t('proforma.form4Btn', 'Form 4: Basic Unit Report (بنسټيز يونټ)')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form5'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form5' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>🏛️</span>
-            <span>{t('proforma.form5Btn', 'Form 5: Provincial Executive (صوبائي ايګزيکټيو)')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form6'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form6' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>🏛️</span>
-            <span>{t('proforma.form6Btn', 'Form 6: District Report (ضلعي کار او فعاليت)')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form7'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form7' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>📑</span>
-            <span>{t('proforma.form7Btn', 'Form 7: District Subordinate Area Units (ضلع کښي علاقائي يونټونه)')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form8'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form8' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>📑</span>
-            <span>{t('proforma.form8Btn', 'Form 8: Central & Provincial Committee in District')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setFormType('form9'); setActiveTab('upper'); }}
-            className={`btn ${formType === 'form9' ? '' : 'secondary'}`}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}
-          >
-            <span>📑</span>
-            <span>{t('proforma.form9Btn', 'Form 9: Central & Provincial Organs in District')}</span>
-          </button>
+        <div className="proforma-form-tabs" role="tablist">
+          {PROFORMA_FORMS.map((form) => {
+            const isActive = formType === form.id;
+            return (
+              <button
+                key={form.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => {
+                  setFormType(form.id);
+                  setActiveTab(form.defaultTab);
+                }}
+                className={`proforma-form-tab-btn ${isActive ? 'active' : ''}`}
+              >
+                <span className="proforma-tab-icon">{form.icon}</span>
+                <span className="proforma-tab-label">{t(form.btnKey, form.defaultBtnLabel)}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="proforma-filter-row">
@@ -3806,7 +3872,7 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                    {t('proforma.form7.district', 'ضلع (District)')}
+                    {t('proforma.district', 'District')}
                   </label>
                   {ctx?.unitLevel === 'DISTRICT' ? (
                     <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
@@ -3819,7 +3885,7 @@ export default function ProformaReportsPage() {
                       style={{ minWidth: 180, fontWeight: 600 }}
                     >
                       {districtsList.length === 0 ? (
-                        <option value="">(No Districts Found)</option>
+                        <option value="">{t('proforma.noDistrictsFound', '(No Districts Found)')}</option>
                       ) : (
                         districtsList.map((d) => (
                           <option key={d._id} value={d._id}>{d.name}</option>
@@ -3833,7 +3899,7 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                    {t('proforma.form6.district', 'ضلع (District)')}
+                    {t('proforma.district', 'District')}
                   </label>
                   {ctx?.unitLevel === 'DISTRICT' ? (
                     <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
@@ -3846,7 +3912,7 @@ export default function ProformaReportsPage() {
                       style={{ minWidth: 180, fontWeight: 600 }}
                     >
                       {districtsList.length === 0 ? (
-                        <option value="">(No Districts Found)</option>
+                        <option value="">{t('proforma.noDistrictsFound', '(No Districts Found)')}</option>
                       ) : (
                         districtsList.map((d) => (
                           <option key={d._id} value={d._id}>{d.name}</option>
@@ -3860,7 +3926,7 @@ export default function ProformaReportsPage() {
                     style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}
                     title="Official printed paper header: دريومياشتو رپورټ: ۱: [...] ۲: [...] ۳: [...]"
                   >
-                    📅 {t('proforma.form6.quarterlyCycle', 'د دريو مياشتو رپورټ (Quarterly Cycle)')}
+                    📅 {t('proforma.form6.quarterlyCycle', '3-Month Quarterly Report (د دريو مياشتو رپورټ)')}
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface-alt)', padding: '4px 8px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-soft)' }}>۱:</span>
@@ -3868,7 +3934,7 @@ export default function ProformaReportsPage() {
                       type="text"
                       value={formData.m1 !== undefined ? formData.m1 : ''}
                       onChange={(e) => updateField('m1', e.target.value)}
-                      placeholder={t('proforma.form6.month1Placeholder', 'مياشت ۱')}
+                      placeholder={t('proforma.form6.month1Placeholder', 'Month 1')}
                       title="Month 1 (د دريو مياشتو لومړۍ مياشت)"
                       style={{ width: 80, padding: '5px 8px', fontSize: 12, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
                     />
@@ -3877,7 +3943,7 @@ export default function ProformaReportsPage() {
                       type="text"
                       value={formData.m2 !== undefined ? formData.m2 : ''}
                       onChange={(e) => updateField('m2', e.target.value)}
-                      placeholder={t('proforma.form6.month2Placeholder', 'مياشت ۲')}
+                      placeholder={t('proforma.form6.month2Placeholder', 'Month 2')}
                       title="Month 2 (دويمه مياشت)"
                       style={{ width: 80, padding: '5px 8px', fontSize: 12, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
                     />
@@ -3886,7 +3952,7 @@ export default function ProformaReportsPage() {
                       type="text"
                       value={formData.m3 !== undefined ? formData.m3 : ''}
                       onChange={(e) => updateField('m3', e.target.value)}
-                      placeholder={t('proforma.form6.month3Placeholder', 'مياشت ۳')}
+                      placeholder={t('proforma.form6.month3Placeholder', 'Month 3')}
                       title="Month 3 (دريمه مياشت)"
                       style={{ width: 80, padding: '5px 8px', fontSize: 12, borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'center' }}
                     />
@@ -3897,7 +3963,7 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                    {t('proforma.form5.province', 'صوبه (Province)')}
+                    {t('proforma.province', 'Province')}
                   </label>
                   {ctx?.unitLevel === 'PROVINCE' ? (
                     <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
@@ -3910,7 +3976,7 @@ export default function ProformaReportsPage() {
                       style={{ minWidth: 180, fontWeight: 600 }}
                     >
                       {provincesList.length === 0 ? (
-                        <option value="">(No Provinces Found)</option>
+                        <option value="">{t('proforma.noProvincesFound', '(No Provinces Found)')}</option>
                       ) : (
                         provincesList.map((p) => (
                           <option key={p._id} value={p._id}>{p.name}</option>
@@ -3921,7 +3987,7 @@ export default function ProformaReportsPage() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                    {t('proforma.form5.fromDate', 'مياشت او نېټه څخه')}
+                    {t('proforma.form5.fromDate', 'From Date')}
                   </label>
                   <input
                     type="text"
@@ -3933,7 +3999,7 @@ export default function ProformaReportsPage() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                    {t('proforma.form5.toDate', 'تر مياشت او نېټه پورې')}
+                    {t('proforma.form5.toDate', 'To Date')}
                   </label>
                   <input
                     type="text"
@@ -3948,7 +4014,7 @@ export default function ProformaReportsPage() {
               ctx?.unitLevel === 'BASIC_UNIT' ? (
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                    {t('proforma.basicUnit', 'Basic Unit (بنسټيز يونټ)')}
+                    {t('proforma.basicUnit', 'Basic Unit')}
                   </label>
                   <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
                     🏢 {ctx?.unitName || 'Current Unit'}
@@ -3959,7 +4025,7 @@ export default function ProformaReportsPage() {
                   {ctx?.unitLevel !== 'AREA' && areasList.length > 0 && (
                     <div>
                       <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                        {t('proforma.areaUnit', 'Area Unit (علاقه)')}
+                        {t('proforma.areaUnit', 'Area Unit')}
                       </label>
                       <select
                         value={selectedAreaId}
@@ -3974,7 +4040,7 @@ export default function ProformaReportsPage() {
                   )}
                   <div>
                     <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                      {t('proforma.selectBasicUnit', 'Select Basic Unit (بنسټيز يونټ وټاکئ)')}
+                      {t('proforma.selectBasicUnit', 'Select Basic Unit')}
                     </label>
                     <select
                       value={selectedUnitId}
@@ -3982,7 +4048,7 @@ export default function ProformaReportsPage() {
                       style={{ minWidth: 190, fontWeight: 600 }}
                     >
                       {basicUnitsList.length === 0 ? (
-                        <option value="">(No Basic Units in Area)</option>
+                        <option value="">{t('proforma.noBasicUnitsFound', '(No Basic Units in Area)')}</option>
                       ) : (
                         basicUnitsList.map((bu) => (
                           <option key={bu._id} value={bu._id}>{bu.name}</option>
@@ -4123,17 +4189,7 @@ export default function ProformaReportsPage() {
                 )}
 
                 <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>
-                  {formType === 'form6'
-                    ? t('proforma.form6Title', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (Form 6)')
-                    : formType === 'form5'
-                    ? t('proforma.form5Title', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (Form 5)')
-                    : formType === 'form4'
-                    ? t('proforma.form4Title', 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنئي رپورټ (Form 4)')
-                    : formType === 'form2'
-                    ? t('proforma.form2Title', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (Form 2)')
-                    : formType === 'form3'
-                    ? t('proforma.form3Title', 'پښتونخوا ملي عوامي پارټي علاقائي يونټ مياشتنۍ تفصيلي کار او فعاليت رپورټ (Form 3)')
-                    : t('proforma.form1Title', 'پښتونخوا ملي عوامي پارټي علاقائي يونټ کار او فعاليت مياشتنئي رپورټ (Form 1)')}
+                  {t(currentFormConfig.titleKey, currentFormConfig.defaultTitle)}
                 </div>
               </div>
             </div>
@@ -4221,19 +4277,19 @@ export default function ProformaReportsPage() {
             }}
           >
             📊 {formType === 'form9'
-              ? t('proforma.form9.tabSec1', '1. Members Activity Roster (غړو فعاليت)')
+              ? t('proforma.form9.tabSec1', '1. Members Activity Roster')
               : formType === 'form8'
               ? t('proforma.form8.tabRoster', '1. Committee Members Activity Roster')
               : formType === 'form7'
-              ? t('proforma.form7.tabUnits', '1. د علاقائي يونټانو کار او فعاليت (Area Units Performance & Activity)')
+              ? t('proforma.form7.tabUnits', '1. Area Units Performance & Activity')
               : formType === 'form6'
-              ? t('proforma.form6.tabUpper', '1. د ضلعې او ماتحتو څانګو لنډيز (Summary & Subordinate Metrics)')
+              ? t('proforma.form6.tabUpper', '1. District Summary & Subordinate Metrics')
               : formType === 'form5'
-              ? t('proforma.form5.tabRoster', '1. د صوبائي ايګزيکټيو ملګرو ځانګړي فعاليت (Executive Activity)')
+              ? t('proforma.form5.tabRoster', '1. Provincial Executive Comrades Activity')
               : formType === 'form2'
-              ? t('proforma.tabUnitsForm2', '1. د ماتحتو بنسټيزو يونټونو کار او فعاليت (Subordinate Units Activity)')
+              ? t('proforma.tabUnitsForm2', '1. Subordinate Basic Units Work & Activity')
               : formType === 'form4'
-              ? t('proforma.tabOverviewForm4', '1. د ابتدائي يونټ مياشتنئ لنډيز (Unit Summary)')
+              ? t('proforma.tabOverviewForm4', '1. Basic Unit Summary & Metrics')
               : t('proforma.tabOverview', '1. Area Summary & Metrics')}
           </button>
           {formType !== 'form2' && formType !== 'form5' && formType !== 'form7' && formType !== 'form8' && formType !== 'form9' && (
@@ -4249,9 +4305,9 @@ export default function ProformaReportsPage() {
               }}
             >
               👥 {formType === 'form6'
-                ? t('proforma.form6.tabRoster', '2. ضلعي ايګزيکټيو ملګرو ځانګړي کار (Executive Comrades Activity)')
+                ? t('proforma.form6.tabRoster', '2. District Executive Comrades Activity')
                 : formType === 'form4'
-                ? t('proforma.tabRosterForm4', '2. ابتدائي يونټ ايګزيکټيو ځانګړي فعاليت')
+                ? t('proforma.tabRosterForm4', '2. Basic Unit Executive Activity')
                 : t('proforma.tabRoster', '2. Executive Members Activity')} ({rows.length})
             </button>
           )}
@@ -9006,23 +9062,7 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 20 }}>🖨️</span>
                 <strong>
-                  {formType === 'form9'
-                    ? t('proforma.previewModalTitleForm9', 'District Central & Provincial Organs Monthly Report (Form 9) - A4 Portrait Preview')
-                    : formType === 'form8'
-                    ? t('proforma.previewModalTitleForm8', 'District Central & Provincial Committee Monthly Work & Activity Report (Form 8) - A4 Landscape Preview')
-                    : formType === 'form7'
-                    ? t('proforma.previewModalTitleForm7', 'District Subordinate Area Units Monthly Work & Activity Report (Form 7) - A4 Landscape Preview')
-                    : formType === 'form6'
-                    ? t('proforma.previewModalTitleForm6', 'پښتونخوا ملي عوامي پارټي ضلع د کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
-                    : formType === 'form5'
-                    ? t('proforma.previewModalTitleForm5', 'پښتونخوا نېشنل عوامي پارټي صوبائي ايګزيکټيو ځانګړي (انفرادي) کار او فعاليت رپورټ (A4 Landscape Preview)')
-                    : formType === 'form4'
-                    ? t('proforma.previewModalTitleForm4', 'پښتونخوا ملي عوامي پارټي بنسټيز يونټ کار او فعاليت مياشتنئي رپورټ (A4 Landscape Preview)')
-                    : formType === 'form2'
-                    ? t('proforma.previewModalTitleForm2', 'پښتونخوا ملي عوامي پارټي د ماتحتو بنسټيزو يونټونو کار او فعاليت مياشتنۍ رپورټ (A4 Landscape Preview)')
-                    : formType === 'form3'
-                    ? t('proforma.previewModalTitleForm3', 'د علاقائي يونټ مياشتنی تفصيلي کار او فعاليت راپور (A4 Portrait Preview)')
-                    : t('proforma.previewModalTitle', 'Area Unit Monthly Work & Activity Report (A4 Landscape Preview)')}
+                  {t(currentFormConfig.previewTitleKey, currentFormConfig.defaultPreviewTitle)}
                 </strong>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
