@@ -10,22 +10,26 @@ async function fetchForm9Data({ districtId, areaId, month, year } = {}) {
   const District = require('../../models/District');
   const Area = require('../../models/Area');
   const Member = require('../../models/Member');
+  const CabinetSlot = require('../../models/CabinetSlot');
   const Meeting = require('../../models/Meeting');
   const Activity = require('../../models/Activity');
+  const mongoose = require('mongoose');
 
   let districtName = '';
   let areaName = '';
+  let resolvedDistrictId = districtId;
 
-  if (districtId) {
-    const d = await District.findById(districtId).lean();
+  if (resolvedDistrictId && mongoose.Types.ObjectId.isValid(resolvedDistrictId)) {
+    const d = await District.findById(resolvedDistrictId).lean();
     if (d) districtName = d.name;
   }
-  if (areaId) {
+  if (areaId && mongoose.Types.ObjectId.isValid(areaId)) {
     const a = await Area.findById(areaId).lean();
     if (a) {
       areaName = a.name;
-      if (!districtName && a.districtId) {
-        const d = await District.findById(a.districtId).lean();
+      if (!resolvedDistrictId && a.districtId) {
+        resolvedDistrictId = a.districtId;
+        const d = await District.findById(resolvedDistrictId).lean();
         if (d) districtName = d.name;
       }
     }
@@ -35,87 +39,248 @@ async function fetchForm9Data({ districtId, areaId, month, year } = {}) {
   const y = parseInt(year, 10) || new Date().getFullYear();
   const startDate = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
   const endDate = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+  const defaultDateStr = `${y}-${String(m).padStart(2, '0')}-15`;
 
-  // Query committee / organ members in district if available
-  const memberQuery = { isActive: true };
-  if (districtId) memberQuery.districtId = districtId;
-  else if (areaId) memberQuery.areaId = areaId;
+  // 1. Get subordinate Areas of this District to query all local activities & meetings
+  let areaIds = [];
+  if (resolvedDistrictId) {
+    const areas = await Area.find({ districtId: resolvedDistrictId }).select('_id').lean();
+    areaIds = areas.map((a) => a._id);
+  } else if (areaId) {
+    areaIds = [areaId];
+  }
 
-  const members = await Member.find(memberQuery)
-    .sort({ lastName: 1, firstName: 1 })
-    .limit(10)
-    .lean();
+  // 2. Identify Central, Provincial & District Organs Comrades for this District
+  const candidateComrades = [];
+  const seenMemberIds = new Set();
+  let districtSecretaryName = '';
+  let districtSeniorMawinName = '';
 
-  const sec1Members = (members.length > 0 ? members : []).map((mem, idx) => ({
-    srNo: idx + 1,
-    memberId: String(mem._id),
-    name: [mem.firstName, mem.lastName].filter(Boolean).join(' ') || mem.name || '',
-    designation: mem.designation || mem.role || '',
-    date: '',
-    distExecMeeting: 0,
-    distCommMeeting: 0,
-    areaExecMeeting: 0,
-    areaCommMeeting: 0,
-    buExecMeeting: 0,
-    buGbMeeting: 0,
-    psoMeeting: 0,
-    conferences: 0,
-    seminars: 0,
-    studyCircles: 0,
-    inductions: 0,
-    alliesMeeting: 0,
-    publicGatherings: 0,
-    totalMeetings: 0,
-    ideologicalReading: '',
-    dues: 0,
-    tours: 0,
-  }));
-
-  // Query public activities in period
-  const actQuery = {
-    startAt: { $gte: startDate, $lte: endDate },
+  const formatRoleTitle = (level, roleCode) => {
+    const roleLabels = {
+      PRESIDENT: 'President (صدر)',
+      SR_VICE_PRESIDENT: 'Senior Vice President (مشر نائب صدر)',
+      VICE_PRESIDENT: 'Vice President (نائب صدر)',
+      SECRETARY: 'Secretary (سیکرټري)',
+      GENERAL_SECRETARY: 'General Secretary (عمومي سیکرټري)',
+      SENIOR_MAWIN: 'Senior Mawin (مشر معاون)',
+      MAWIN: 'Mawin (معاون)',
+      FINANCE_SECRETARY: 'Finance Secretary (مالياتي سیکرټري)',
+      PRESS_SECRETARY: 'Press Secretary (اطلاعاتي / نشراتي سیکرټري)',
+      CULTURE_SECRETARY: 'Culture Secretary (کلتوري سیکرټري)',
+      SPORTS_SECRETARY: 'Sports Secretary (لوبو او ورزش سیکرټري)',
+      OFFICE_SECRETARY: 'Office Secretary (دفتري سیکرټري)',
+    };
+    const title = roleLabels[roleCode] || roleCode?.replace(/_/g, ' ') || 'Member';
+    if (level === 'CENTRAL' || level === 'NATIONAL') return `Central Committee · ${title}`;
+    if (level === 'PROVINCE') return `Provincial Organ · ${title}`;
+    if (level === 'DISTRICT') return `District Organ · ${title}`;
+    return title;
   };
-  if (districtId) actQuery.districtId = districtId;
-  else if (areaId) actQuery.areaId = areaId;
 
-  const activities = await Activity.find(actQuery).sort({ startAt: 1 }).limit(10).lean();
+  try {
+    const slots = await CabinetSlot.find({
+      unitLevel: { $in: ['CENTRAL', 'NATIONAL', 'PROVINCE', 'DISTRICT'] },
+      filledMemberId: { $exists: true, $ne: null },
+    })
+      .populate('filledMemberId')
+      .lean();
 
-  const sec2PublicGatherings = activities
-    .filter(a => ['RALLY', 'PROTEST', 'JIRGA', 'CORNER_MEETING', 'HARTAL', 'PUBLIC_GATHERING'].includes(a.type))
+    for (const slot of slots) {
+      const mem = slot.filledMemberId;
+      if (!mem || !mem._id) continue;
+
+      const memDist = mem.districtId ? String(mem.districtId) : '';
+      const slotDist = slot.unitId ? String(slot.unitId) : '';
+      const targetDistStr = resolvedDistrictId ? String(resolvedDistrictId) : '';
+
+      // Check if this slot belongs to this district or the member resides in this district
+      const isAffiliated = targetDistStr && (memDist === targetDistStr || slotDist === targetDistStr);
+      if (isAffiliated) {
+        if (slot.unitLevel === 'DISTRICT' && (slot.roleCode === 'SECRETARY' || slot.roleCode === 'GENERAL_SECRETARY') && !districtSecretaryName) {
+          districtSecretaryName = mem.fullName || '';
+        }
+        if (slot.unitLevel === 'DISTRICT' && slot.roleCode === 'SENIOR_MAWIN' && !districtSeniorMawinName) {
+          districtSeniorMawinName = mem.fullName || '';
+        }
+
+        const mId = String(mem._id);
+        if (!seenMemberIds.has(mId)) {
+          seenMemberIds.add(mId);
+          candidateComrades.push({
+            member: mem,
+            designation: formatRoleTitle(slot.unitLevel, slot.roleCode),
+            unitLevel: slot.unitLevel,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Error querying cabinet slots for Form 9:', err.message);
+  }
+
+  // If fewer than 5 comrades, also fetch active district members
+  if (candidateComrades.length < 5 && resolvedDistrictId) {
+    try {
+      const moreMembers = await Member.find({
+        districtId: resolvedDistrictId,
+        status: 'ACTIVE',
+        _id: { $nin: Array.from(seenMemberIds) },
+      })
+        .sort({ fullName: 1 })
+        .limit(10 - candidateComrades.length)
+        .lean();
+
+      for (const mDoc of moreMembers) {
+        seenMemberIds.add(String(mDoc._id));
+        candidateComrades.push({
+          member: mDoc,
+          designation: 'District Member',
+          unitLevel: 'DISTRICT',
+        });
+      }
+    } catch (err) {
+      console.warn('Error fetching additional members for Form 9:', err.message);
+    }
+  }
+
+  // 3. Query all meetings held in the district and subordinate areas during [startDate, endDate]
+  let meetingsInPeriod = [];
+  try {
+    const meetingQuery = {
+      startAt: { $gte: startDate, $lte: endDate },
+      $or: [
+        ...(resolvedDistrictId ? [{ districtId: resolvedDistrictId }, { unitId: resolvedDistrictId }] : []),
+        ...(areaIds.length > 0 ? [{ areaId: { $in: areaIds } }, { unitId: { $in: areaIds } }] : []),
+      ],
+    };
+    meetingsInPeriod = await Meeting.find(meetingQuery).lean();
+  } catch (err) {
+    console.warn('Error fetching meetings for Form 9:', err.message);
+  }
+
+  // 4. Query all activities held in the district during [startDate, endDate]
+  let activitiesInPeriod = [];
+  try {
+    const activityQuery = {
+      startAt: { $gte: startDate, $lte: endDate },
+      $or: [
+        ...(resolvedDistrictId ? [{ districtId: resolvedDistrictId }, { unitId: resolvedDistrictId }] : []),
+        ...(areaIds.length > 0 ? [{ areaId: { $in: areaIds } }, { unitId: { $in: areaIds } }] : []),
+      ],
+    };
+    activitiesInPeriod = await Activity.find(activityQuery).sort({ startAt: 1 }).lean();
+  } catch (err) {
+    console.warn('Error fetching activities for Form 9:', err.message);
+  }
+
+  // 5. Build Section 1 Comrades with actual calculated meetings attended
+  const sec1Members = candidateComrades.map((c, idx) => {
+    const memId = String(c.member._id);
+
+    const attended = (typeOrBodyCondition) => {
+      return meetingsInPeriod.filter((mDoc) => {
+        const hasAttended = (mDoc.attendance || []).some(
+          (a) => String(a.memberId) === memId && (a.status === 'PRESENT' || a.present === true)
+        );
+        return hasAttended && typeOrBodyCondition(mDoc);
+      }).length;
+    };
+
+    const distExecMeeting = attended((m) => m.unitLevel === 'DISTRICT' && (m.body === 'EXECUTIVE' || ['EXECUTIVE', 'EXC'].includes(m.type)));
+    const distCommMeeting = attended((m) => m.unitLevel === 'DISTRICT' && (m.body === 'COMMITTEE' || ['COMMITTEE', 'COMM'].includes(m.type)));
+    const areaExecMeeting = attended((m) => m.unitLevel === 'AREA' && (m.body === 'EXECUTIVE' || ['EXECUTIVE', 'EXC'].includes(m.type)));
+    const areaCommMeeting = attended((m) => m.unitLevel === 'AREA' && (m.body === 'COMMITTEE' || ['COMMITTEE', 'COMM'].includes(m.type)));
+    const buExecMeeting = attended((m) => m.unitLevel === 'BASIC_UNIT' && (m.body === 'EXECUTIVE' || ['EXECUTIVE', 'EXC'].includes(m.type)));
+    const buGbMeeting = attended((m) => m.unitLevel === 'BASIC_UNIT' && (m.body === 'GENERAL_BODY' || ['GENERAL_BODY', 'GB'].includes(m.type)));
+    const psoMeeting = attended((m) => m.type === 'PSO' || m.body === 'PSO');
+    const alliesMeeting = attended((m) => m.type === 'ALLIED' || m.body === 'ALLIED' || m.type === 'ALLIES');
+
+    const attendedActivity = (types) => {
+      return activitiesInPeriod.filter((a) => {
+        const isType = types.includes(a.type);
+        const hasAttended = (a.participants || []).some((p) => String(p.memberId || p) === memId);
+        const isLead = (a.speakers || []).some((s) => s.includes(c.member.fullName)) || (a.lead && a.lead.includes(c.member.fullName));
+        return isType && (hasAttended || isLead);
+      }).length;
+    };
+
+    const conferences = attendedActivity(['CONFERENCE', 'PARTY_CONFERENCE']);
+    const seminars = attendedActivity(['SEMINAR']);
+    const studyCircles = attendedActivity(['STUDY_CIRCLE']);
+    const inductions = attendedActivity(['INDUCTION', 'CAMPAIGN']);
+    const publicGatherings = attendedActivity(['RALLY', 'PROTEST', 'JIRGA', 'CORNER_MEETING', 'HARTAL', 'PUBLIC_GATHERING', 'JALSA']);
+
+    const totalMeetings = distExecMeeting + distCommMeeting + areaExecMeeting + areaCommMeeting +
+      buExecMeeting + buGbMeeting + psoMeeting + alliesMeeting +
+      conferences + seminars + studyCircles + inductions + publicGatherings;
+
+    return {
+      srNo: idx + 1,
+      memberId: memId,
+      name: c.member.fullName || '',
+      designation: c.designation || 'District Organ Member',
+      date: defaultDateStr,
+      distExecMeeting,
+      distCommMeeting,
+      areaExecMeeting,
+      areaCommMeeting,
+      buExecMeeting,
+      buGbMeeting,
+      psoMeeting,
+      conferences,
+      seminars,
+      studyCircles,
+      inductions,
+      alliesMeeting,
+      publicGatherings,
+      totalMeetings,
+      ideologicalReading: '',
+      dues: 0,
+      tours: 0,
+    };
+  });
+
+  // 6. Section 2: Public Gatherings, Rallies, Protests, Jirgas, Corner Meetings, Jalsas
+  const publicGatheringTypes = ['RALLY', 'PROTEST', 'JIRGA', 'CORNER_MEETING', 'HARTAL', 'PUBLIC_GATHERING', 'JALSA', 'CAMPAIGN'];
+  const sec2PublicGatherings = activitiesInPeriod
+    .filter((a) => publicGatheringTypes.includes(a.type))
     .map((a, idx) => ({
       srNo: idx + 1,
-      organName: a.arrangedBy || districtName || '',
-      date: a.startAt ? new Date(a.startAt).toISOString().split('T')[0] : '',
+      organName: a.arrangedBy || districtName || 'District Organ',
+      date: a.startAt ? new Date(a.startAt).toISOString().split('T')[0] : defaultDateStr,
       venue: a.venue || '',
       topic: a.title || a.topic || '',
-      programType: a.type || '',
+      programType: a.type || 'JALSA',
       speakers: (a.speakers || []).join(', ') || a.lead || '',
-      comradesCount: a.participantsCount || 0,
+      comradesCount: a.participantsCount || (a.participants?.length || 0),
       peopleCount: a.externalAttendance || 0,
     }));
 
-  const sec3Conferences = activities
-    .filter(a => ['CONFERENCE', 'SEMINAR', 'STUDY_CIRCLE'].includes(a.type))
+  // 7. Section 3: Conferences, Seminars & Study Circles
+  const studySessionTypes = ['CONFERENCE', 'PARTY_CONFERENCE', 'SEMINAR', 'STUDY_CIRCLE'];
+  const sec3Conferences = activitiesInPeriod
+    .filter((a) => studySessionTypes.includes(a.type))
     .map((a, idx) => ({
       srNo: idx + 1,
-      organName: a.arrangedBy || districtName || '',
-      date: a.startAt ? new Date(a.startAt).toISOString().split('T')[0] : '',
+      organName: a.arrangedBy || districtName || 'District Organ',
+      date: a.startAt ? new Date(a.startAt).toISOString().split('T')[0] : defaultDateStr,
       venue: a.venue || '',
       topic: a.title || a.topic || '',
-      programType: a.type || '',
+      programType: a.type || 'STUDY_CIRCLE',
       speakers: (a.speakers || []).join(', ') || a.lead || '',
-      comradesCount: a.participantsCount || 0,
+      comradesCount: a.participantsCount || (a.participants?.length || 0),
     }));
 
   return {
-    districtId,
+    districtId: resolvedDistrictId || districtId,
     areaId,
     districtName: districtName || 'District',
     areaName: areaName || '',
     month: m,
     year: y,
     sec1Members: sec1Members.length > 0 ? sec1Members : [
-      { srNo: 1, name: '', designation: '', date: '', distExecMeeting: 0, distCommMeeting: 0, areaExecMeeting: 0, areaCommMeeting: 0, buExecMeeting: 0, buGbMeeting: 0, psoMeeting: 0, conferences: 0, seminars: 0, studyCircles: 0, inductions: 0, alliesMeeting: 0, publicGatherings: 0, totalMeetings: 0, ideologicalReading: '', dues: 0, tours: 0 }
+      { srNo: 1, name: '', designation: '', date: defaultDateStr, distExecMeeting: 0, distCommMeeting: 0, areaExecMeeting: 0, areaCommMeeting: 0, buExecMeeting: 0, buGbMeeting: 0, psoMeeting: 0, conferences: 0, seminars: 0, studyCircles: 0, inductions: 0, alliesMeeting: 0, publicGatherings: 0, totalMeetings: 0, ideologicalReading: '', dues: 0, tours: 0 }
     ],
     sec2PublicGatherings: sec2PublicGatherings.length > 0 ? sec2PublicGatherings : [],
     sec3Conferences: sec3Conferences.length > 0 ? sec3Conferences : [],
@@ -134,9 +299,9 @@ async function fetchForm9Data({ districtId, areaId, month, year } = {}) {
     sec7Notes: {
       socialWorkReport: '',
       miscellaneousNotes: '',
-      areaSecSignature: '',
-      areaSeniorDeputySignature: '',
-      signatureDate: '',
+      areaSecSignature: districtSecretaryName || '',
+      areaSeniorDeputySignature: districtSeniorMawinName || '',
+      signatureDate: defaultDateStr,
     },
   };
 }

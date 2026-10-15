@@ -436,21 +436,32 @@ export default function ProformaReportsPage() {
         // Smart merge: only populate missing or empty fields
         setFormData((prev) => {
           if (formType === 'form9') {
+            const hasExistingMembers = Array.isArray(prev.sec1Members) && prev.sec1Members.some((r) => r.name && r.name.trim());
+            const hasExistingSec2 = Array.isArray(prev.sec2PublicGatherings) && prev.sec2PublicGatherings.some((r) => r.topic && r.topic.trim());
+            const hasExistingSec3 = Array.isArray(prev.sec3Conferences) && prev.sec3Conferences.some((r) => r.topic && r.topic.trim());
+            const hasExistingSec5 = Array.isArray(prev.sec5Discipline) && prev.sec5Discipline.some((r) => r.comradeName && r.comradeName.trim());
+
             return {
               ...prev,
               districtName: prev.districtName || sysData.districtName,
               areaName: prev.areaName || sysData.areaName,
-              sec1Members: (prev.sec1Members && prev.sec1Members.length > 0) ? prev.sec1Members : sysData.sec1Members,
-              sec2PublicGatherings: (prev.sec2PublicGatherings && prev.sec2PublicGatherings.length > 0) ? prev.sec2PublicGatherings : sysData.sec2PublicGatherings,
-              sec3Conferences: (prev.sec3Conferences && prev.sec3Conferences.length > 0) ? prev.sec3Conferences : sysData.sec3Conferences,
+              sec1Members: hasExistingMembers ? prev.sec1Members : (sysData.sec1Members || []),
+              sec2PublicGatherings: hasExistingSec2 ? prev.sec2PublicGatherings : (sysData.sec2PublicGatherings || []),
+              sec3Conferences: hasExistingSec3 ? prev.sec3Conferences : (sysData.sec3Conferences || []),
               sec4BloodBank: { ...(sysData.sec4BloodBank || {}), ...(prev.sec4BloodBank || {}) },
-              sec5Discipline: (prev.sec5Discipline && prev.sec5Discipline.length > 0) ? prev.sec5Discipline : sysData.sec5Discipline,
+              sec5Discipline: hasExistingSec5 ? prev.sec5Discipline : (sysData.sec5Discipline || []),
               sec6Proposals: {
                 political: { ...(sysData.sec6Proposals?.political || {}), ...(prev.sec6Proposals?.political || {}) },
                 organizational: { ...(sysData.sec6Proposals?.organizational || {}), ...(prev.sec6Proposals?.organizational || {}) },
                 social: { ...(sysData.sec6Proposals?.social || {}), ...(prev.sec6Proposals?.social || {}) },
               },
-              sec7Notes: { ...(sysData.sec7Notes || {}), ...(prev.sec7Notes || {}) },
+              sec7Notes: {
+                socialWorkReport: prev.sec7Notes?.socialWorkReport || sysData.sec7Notes?.socialWorkReport || '',
+                miscellaneousNotes: prev.sec7Notes?.miscellaneousNotes || sysData.sec7Notes?.miscellaneousNotes || '',
+                areaSecSignature: prev.sec7Notes?.areaSecSignature || sysData.sec7Notes?.areaSecSignature || '',
+                areaSeniorDeputySignature: prev.sec7Notes?.areaSeniorDeputySignature || sysData.sec7Notes?.areaSeniorDeputySignature || '',
+                signatureDate: prev.sec7Notes?.signatureDate || sysData.sec7Notes?.signatureDate || '',
+              },
             };
           }
 

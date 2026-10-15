@@ -125,13 +125,69 @@ export default function Form9Workspace({
   const sec7Signed = Boolean(sec7Notes?.areaSecSignature?.trim() || sec7Notes?.areaSeniorDeputySignature?.trim());
 
   const sectionsList = [
-    { key: 'sec1', icon: '👥', label: t('proforma.form9.tabSec1', '1. Members Activity Roster (غړو فعاليت)'), badge: sec1Count > 0 ? `${sec1Count}` : null, badgeColor: '#38bdf8' },
-    { key: 'sec2', icon: '📢', label: t('proforma.form9.tabSec2', '2. Public Gatherings & Rallies (اولسي غونډي او جلسې)'), badge: sec2Count > 0 ? `${sec2Count}` : null, badgeColor: '#f59e0b' },
-    { key: 'sec3', icon: '🎓', label: t('proforma.form9.tabSec3', '3. Conferences & Seminars (کانفرنسونه او سيمينارونه)'), badge: sec3Count > 0 ? `${sec3Count}` : null, badgeColor: '#8b5cf6' },
-    { key: 'sec4', icon: '🩸', label: t('proforma.form9.tabSec4', '4. Blood Bank & Zakat (بلډ بينک، پوستونه او زکات)'), badge: sec4Total > 0 ? `PKR ${sec4Total.toLocaleString()}` : null, badgeColor: '#06b6d4' },
-    { key: 'sec5', icon: '⚖️', label: t('proforma.form9.tabSec5', '5. Disciplinary Actions (تاديبي کاروايي)'), badge: sec5Count > 0 ? `${sec5Count}` : null, badgeColor: '#ef4444' },
-    { key: 'sec6', icon: '💡', label: t('proforma.form9.tabSec6', '6. Proposals & Demands (وړانديزونه او غوښتنې)'), badge: sec6FilledCount > 0 ? `${sec6FilledCount}/15` : null, badgeColor: '#10b981' },
-    { key: 'sec7', icon: '📝', label: t('proforma.form9.tabSec7', '7. Social Work & Notes (ټولنيز کار، متفرق او لاسليکونه)'), badge: sec7Signed ? '✍️' : null, badgeColor: '#10b981' },
+    {
+      key: 'sec1',
+      num: 1,
+      icon: '👥',
+      titleEn: t('proforma.form9.sec1Short', 'Members Roster'),
+      titlePs: 'د غړو فعاليت',
+      badge: sec1Count > 0 ? `${sec1Count}` : null,
+      badgeColor: '#38bdf8',
+    },
+    {
+      key: 'sec2',
+      num: 2,
+      icon: '📢',
+      titleEn: t('proforma.form9.sec2Short', 'Public Gatherings'),
+      titlePs: 'اولسي غونډې او جلسې',
+      badge: sec2Count > 0 ? `${sec2Count}` : null,
+      badgeColor: '#f59e0b',
+    },
+    {
+      key: 'sec3',
+      num: 3,
+      icon: '🎓',
+      titleEn: t('proforma.form9.sec3Short', 'Conferences & Seminars'),
+      titlePs: 'کانفرنسونه او سيمينارونه',
+      badge: sec3Count > 0 ? `${sec3Count}` : null,
+      badgeColor: '#8b5cf6',
+    },
+    {
+      key: 'sec4',
+      num: 4,
+      icon: '🩸',
+      titleEn: t('proforma.form9.sec4Short', 'Blood Bank & Zakat'),
+      titlePs: 'بلډ بينک او زکات',
+      badge: sec4Total > 0 ? `PKR ${sec4Total.toLocaleString()}` : null,
+      badgeColor: '#06b6d4',
+    },
+    {
+      key: 'sec5',
+      num: 5,
+      icon: '⚖️',
+      titleEn: t('proforma.form9.sec5Short', 'Disciplinary Actions'),
+      titlePs: 'تاديبي کاروايي',
+      badge: sec5Count > 0 ? `${sec5Count}` : null,
+      badgeColor: '#ef4444',
+    },
+    {
+      key: 'sec6',
+      num: 6,
+      icon: '💡',
+      titleEn: t('proforma.form9.sec6Short', 'Proposals & Demands'),
+      titlePs: 'وړانديزونه او غوښتنې',
+      badge: sec6FilledCount > 0 ? `${sec6FilledCount}/15` : null,
+      badgeColor: '#10b981',
+    },
+    {
+      key: 'sec7',
+      num: 7,
+      icon: '📝',
+      titleEn: t('proforma.form9.sec7Short', 'Social Work & Signatures'),
+      titlePs: 'ټولنيز کار او لاسليکونه',
+      badge: sec7Signed ? '✓ Signed' : 'Pending',
+      badgeColor: sec7Signed ? '#10b981' : '#f59e0b',
+    },
   ];
 
   const currentSecIndex = sectionsList.findIndex((s) => s.key === currentSection);
@@ -187,7 +243,7 @@ export default function Form9Workspace({
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}
           >
             <span>{isRtl ? '➡️' : '⬅️'}</span>
-            <span>{t('proforma.form9.prevSection', 'Previous')}: {prevSec.label}</span>
+            <span>{t('proforma.form9.prevSection', 'Previous')}: {prevSec.num}. {prevSec.titleEn}</span>
           </button>
         ) : <div />}
       </div>
@@ -196,17 +252,17 @@ export default function Form9Workspace({
         <span style={{ fontSize: 12, color: 'var(--text-soft)', fontWeight: 600 }}>
           {currentSecIndex + 1} / {sectionsList.length}
         </span>
-        <div style={{ display: 'flex', gap: 5 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
           {sectionsList.map((s, idx) => (
             <button
               key={s.key}
               type="button"
               onClick={() => setSection(s.key)}
-              title={s.label}
+              title={`${s.num}. ${s.titleEn} (${s.titlePs})`}
               style={{
-                width: 10,
+                width: currentSecIndex === idx ? 22 : 10,
                 height: 10,
-                borderRadius: '50%',
+                borderRadius: 5,
                 border: 'none',
                 background: currentSecIndex === idx ? 'var(--primary, #38bdf8)' : 'var(--border)',
                 cursor: 'pointer',
@@ -226,7 +282,7 @@ export default function Form9Workspace({
             onClick={() => setSection(nextSec.key)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}
           >
-            <span>{t('proforma.form9.nextSection', 'Next')}: {nextSec.label}</span>
+            <span>{t('proforma.form9.nextSection', 'Next')}: {nextSec.num}. {nextSec.titleEn}</span>
             <span>{isRtl ? '⬅️' : '➡️'}</span>
           </button>
         ) : (
@@ -368,55 +424,135 @@ export default function Form9Workspace({
       {/* ───────────────────────────────────────────────────────────── */}
       <div
         style={{
-          display: 'flex',
-          overflowX: 'auto',
-          gap: 6,
-          padding: '8px 10px',
-          background: 'var(--surface)',
-          borderRadius: 10,
-          border: '1px solid var(--border)',
-          alignItems: 'center',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(138px, 1fr))',
+          gap: 10,
         }}
       >
         {sectionsList.map((tab) => {
           const isActive = currentSection === tab.key;
           return (
-            <button
+            <div
               key={tab.key}
-              type="button"
-              className={`btn ${isActive ? '' : 'secondary'}`}
               onClick={() => setSection(tab.key)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSection(tab.key); }}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 14px',
-                fontSize: 12,
-                fontWeight: isActive ? 800 : 600,
-                whiteSpace: 'nowrap',
-                borderRadius: 8,
-                transition: 'all 0.2s',
-                border: isActive ? '1.5px solid var(--primary, #38bdf8)' : '1px solid transparent',
+                cursor: 'pointer',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                borderRadius: 10,
+                background: isActive
+                  ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, var(--surface) 100%)'
+                  : 'var(--surface)',
+                border: isActive
+                  ? '2px solid var(--primary, #38bdf8)'
+                  : '1px solid var(--border)',
+                boxShadow: isActive
+                  ? '0 4px 14px rgba(56, 189, 248, 0.18)'
+                  : 'none',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                minHeight: 76,
+                overflow: 'hidden',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.borderColor = 'var(--primary, #38bdf8)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.08)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.borderColor = 'var(--border)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
               }}
             >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span
+              {/* Top Row: Number badge + Icon + Counter pill */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      background: isActive ? 'var(--primary, #38bdf8)' : 'var(--surface-alt)',
+                      color: isActive ? '#fff' : 'var(--text-soft)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {tab.num}
+                  </span>
+                  <span style={{ fontSize: 16 }}>{tab.icon}</span>
+                </div>
+
+                {tab.badge && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: 12,
+                      background: isActive ? 'var(--primary, #38bdf8)' : 'rgba(255,255,255,0.06)',
+                      color: isActive ? '#fff' : (tab.badgeColor || 'var(--primary, #38bdf8)'),
+                      border: `1px solid ${tab.badgeColor || 'var(--border)'}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </div>
+
+              {/* Middle & Bottom: English title & Pashto subtitle */}
+              <div>
+                <div
                   style={{
-                    fontSize: 10,
-                    fontWeight: 800,
-                    padding: '2px 6px',
-                    borderRadius: 10,
-                    background: isActive ? 'var(--primary, #38bdf8)' : 'rgba(255,255,255,0.08)',
-                    color: isActive ? '#fff' : (tab.badgeColor || 'var(--text-soft)'),
-                    border: '1px solid currentColor',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: isActive ? 'var(--primary, #38bdf8)' : 'var(--text)',
+                    lineHeight: 1.3,
                   }}
                 >
-                  {tab.badge}
-                </span>
+                  {tab.titleEn}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text-soft)',
+                    marginTop: 2,
+                    direction: 'rtl',
+                    textAlign: isRtl ? 'right' : 'left',
+                  }}
+                >
+                  {tab.titlePs}
+                </div>
+              </div>
+
+              {/* Bottom active glowing accent bar */}
+              {isActive && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: 'var(--primary, #38bdf8)',
+                  }}
+                />
               )}
-            </button>
+            </div>
           );
         })}
       </div>
