@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Storage } from '../utils/storage';
 import { api } from '../api/client';
 import { useAuth } from './AuthContext';
-import { LEVEL_ORDER, homeTierOf, homeUnitIdOf } from '../utils/unitTier';
+import { LEVEL_ORDER, homeTierOf, homeUnitIdOf, isLevelAllowed } from '../utils/unitTier';
 import { syncUserScopeCache } from '../services/scopeDataCache';
 import { useNetwork } from './NetworkContext';
 
