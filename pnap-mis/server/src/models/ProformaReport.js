@@ -4,7 +4,7 @@ const proformaReportSchema = new mongoose.Schema(
   {
     formType: {
       type: String,
-      enum: ['form1', 'form2', 'form3', 'form4', 'form5', 'form6', 'form7'],
+      enum: ['form1', 'form2', 'form3', 'form4', 'form5', 'form6', 'form7', 'form8', 'form9'],
       required: true,
       index: true,
     },

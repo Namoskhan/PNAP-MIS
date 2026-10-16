@@ -10,8 +10,7 @@ function buildActions(user, nav, openRegisterMember) {
   const isAdmin = has('SUPER_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN');
 
   const items = [
-    { group: 'Navigate', icon: '⌂', title: 'Dashboard', sub: 'Home', action: () => nav('/') },
-    { group: 'Navigate', icon: 'U', title: 'Unit Dashboard', sub: 'Your unit overview', action: () => nav('/unit') },
+    { group: 'Navigate', icon: '⌂', title: 'Dashboard', sub: 'Unit overview', action: () => nav('/unit') },
     { group: 'Navigate', icon: 'M', title: 'Members', sub: 'Member directory', action: () => nav('/members') },
     { group: 'Navigate', icon: '#', title: 'Meetings', sub: 'Meeting log', action: () => nav('/unit/meetings') },
     { group: 'Navigate', icon: 'A', title: 'Activities', sub: 'Activities log', action: () => nav('/unit/activities') },

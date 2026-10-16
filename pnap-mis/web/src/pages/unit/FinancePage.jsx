@@ -521,7 +521,7 @@ export default function FinancePage() {
             {t('finance.viewMyDonations', 'View My Contributions & Receipts')}
           </Link>
         ) : (
-          <Link to="/" className="btn secondary">
+          <Link to="/unit" className="btn secondary">
             {t('common.goToDashboard', 'Go to Dashboard')}
           </Link>
         )}

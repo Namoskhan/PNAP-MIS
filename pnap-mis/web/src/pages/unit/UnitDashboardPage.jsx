@@ -366,10 +366,6 @@ export default function UnitDashboardPage() {
   );
 
   const firstName = user?.fullName?.split(' ')[0] || '';
-  // Central Cabinet officeholders without a selected unit use the Central Dashboard as their
-  // only dashboard. Keep this redirect so an old bookmark to /unit
-  // cannot reopen the previous unit dashboard.
-  if (user?.canViewExecutiveDashboard && !user?.dashboardScope && !ctx?.unitId) return <Navigate to="/" replace />;
 
   return (
     <div>

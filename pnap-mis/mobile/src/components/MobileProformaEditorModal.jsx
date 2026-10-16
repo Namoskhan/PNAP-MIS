@@ -43,7 +43,7 @@ export default function MobileProformaEditorModal({
   useEffect(() => {
     if (!visible) return;
     loadData();
-  }, [visible, formType, year, month, unitId, areaId, provinceId]);
+  }, [visible, formType, year, month, unitId, areaId, districtId, provinceId]);
 
   async function loadData() {
     setLoading(true);
@@ -57,10 +57,15 @@ export default function MobileProformaEditorModal({
           month,
           unitId,
           areaId,
+          districtId,
           provinceId,
         },
       });
-      setFormData(res.data?.data || {});
+      const d = res.data?.data || {};
+      if (formType === 'form9' && (!d.rows || d.rows.length === 0) && Array.isArray(d.sec1Members)) {
+        d.rows = d.sec1Members;
+      }
+      setFormData(d);
       setMetadata(res.data?.metadata || {});
     } catch (e) {
       setError(errorMessage(e));
@@ -74,17 +79,31 @@ export default function MobileProformaEditorModal({
     setError('');
     setSuccess('');
     try {
+      const resolvedTargetId =
+        formType === 'form5'
+          ? (provinceId || unitId)
+          : (['form6', 'form7', 'form8', 'form9'].includes(formType)
+            ? (districtId || unitId)
+            : (['form1', 'form2', 'form3'].includes(formType)
+              ? (areaId || unitId)
+              : unitId));
+
+      const payloadData = { ...formData };
+      if (formType === 'form9') {
+        payloadData.sec1Members = formData.rows || [];
+      }
+
       const payload = {
         formType,
         year: parseInt(year, 10),
         month: parseInt(month, 10),
-        unitId: (formType === 'form5' ? provinceId : (['form1', 'form2', 'form3'].includes(formType) ? areaId : unitId)),
+        unitId: resolvedTargetId,
         areaId,
-        districtId,
+        districtId: ['form6', 'form7', 'form8', 'form9'].includes(formType) ? (districtId || resolvedTargetId) : districtId,
         provinceId,
         unitLevel,
         unitName,
-        data: formData,
+        data: payloadData,
         notes: formData.notes || metadata.notes || '',
       };
       const res = await api.post('/proforma/save', payload);
@@ -106,8 +125,22 @@ export default function MobileProformaEditorModal({
     }
   }
 
+  function getFieldValue(key, defaultVal = '') {
+    if (formData[key] !== undefined && formData[key] !== null) return formData[key];
+    if (formData.upper && formData.upper[key] !== undefined && formData.upper[key] !== null) {
+      return formData.upper[key];
+    }
+    return defaultVal;
+  }
+
   function updateField(key, val) {
-    setFormData((prev) => ({ ...prev, [key]: val }));
+    setFormData((prev) => {
+      const next = { ...prev, [key]: val };
+      if (prev.upper) {
+        next.upper = { ...prev.upper, [key]: val };
+      }
+      return next;
+    });
   }
 
   function updateRowField(rowIndex, colKey, val) {
@@ -123,12 +156,86 @@ export default function MobileProformaEditorModal({
   function addRow() {
     setFormData((prev) => {
       const rows = [...(prev.rows || [])];
-      rows.push({
-        serial: rows.length + 1,
-        name: '',
-        role: '',
-        bloodGroup: '',
-      });
+      let newRow = { serial: rows.length + 1 };
+      if (formType === 'form6') {
+        newRow = {
+          ...newRow,
+          srNo: rows.length + 1,
+          name: '',
+          role: '',
+          distExec: 1,
+          distExecMeeting: 1,
+          distComm: 1,
+          distCommMeeting: 1,
+          ralliesAndProtests: 0,
+          jirgasAndCornerMeetings: 0,
+          dues: 0,
+          notes: '',
+        };
+      } else if (formType === 'form7') {
+        newRow = {
+          ...newRow,
+          srNo: rows.length + 1,
+          areaName: '',
+          execHeld: 1,
+          commHeld: 1,
+          buCount: 0,
+          membershipTotal: 0,
+          ralliesCount: 0,
+          duesMonthly: 0,
+          notes: '',
+        };
+      } else if (formType === 'form8') {
+        newRow = {
+          ...newRow,
+          srNo: rows.length + 1,
+          name: '',
+          distCommMeeting: 1,
+          areaExecMeeting: 0,
+          publicGatherings: 0,
+          totalMeetings: 1,
+          monthlyDues: 0,
+          activeStatus: 'فعاله',
+          notes: '',
+        };
+      } else if (formType === 'form9') {
+        newRow = {
+          ...newRow,
+          srNo: rows.length + 1,
+          name: '',
+          organRole: '',
+          totalMeetings: 1,
+          publicGatherings: 0,
+          conferences: 0,
+          monthlyDues: 0,
+          notes: '',
+        };
+      } else if (formType === 'form2') {
+        newRow = {
+          ...newRow,
+          unitName: '',
+          totalMembers: 0,
+          duesCollected: 0,
+          notes: '',
+        };
+      } else {
+        newRow = {
+          ...newRow,
+          name: '',
+          role: '',
+          bloodGroup: '',
+          notes: '',
+        };
+      }
+      rows.push(newRow);
+      return { ...prev, rows };
+    });
+  }
+
+  function removeRow(rowIndex) {
+    setFormData((prev) => {
+      const rows = [...(prev.rows || [])];
+      rows.splice(rowIndex, 1);
       return { ...prev, rows };
     });
   }
@@ -136,11 +243,11 @@ export default function MobileProformaEditorModal({
   function handleKeyboardInsert(text) {
     if (!activeInputKey) return;
     if (typeof activeInputKey === 'string') {
-      const cur = formData[activeInputKey] || '';
+      const cur = String(getFieldValue(activeInputKey) || '');
       updateField(activeInputKey, cur + text);
     } else if (typeof activeInputKey === 'object' && activeInputKey.rowIndex != null) {
       const { rowIndex, colKey } = activeInputKey;
-      const cur = formData.rows?.[rowIndex]?.[colKey] || '';
+      const cur = String(formData.rows?.[rowIndex]?.[colKey] || '');
       updateRowField(rowIndex, colKey, cur + text);
     }
   }
@@ -148,11 +255,11 @@ export default function MobileProformaEditorModal({
   function handleKeyboardBackspace() {
     if (!activeInputKey) return;
     if (typeof activeInputKey === 'string') {
-      const cur = formData[activeInputKey] || '';
+      const cur = String(getFieldValue(activeInputKey) || '');
       if (cur.length > 0) updateField(activeInputKey, cur.slice(0, -1));
     } else if (typeof activeInputKey === 'object' && activeInputKey.rowIndex != null) {
       const { rowIndex, colKey } = activeInputKey;
-      const cur = formData.rows?.[rowIndex]?.[colKey] || '';
+      const cur = String(formData.rows?.[rowIndex]?.[colKey] || '');
       if (cur.length > 0) updateRowField(rowIndex, colKey, cur.slice(0, -1));
     }
   }
@@ -213,7 +320,7 @@ export default function MobileProformaEditorModal({
             onPress={() => setActiveTab('rows')}
           >
             <Text style={[styles.tabBtnText, activeTab === 'rows' && styles.tabBtnTextActive]}>
-              د غړو جدول ({rows.length})
+              جدول / غړي ({rows.length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -242,7 +349,7 @@ export default function MobileProformaEditorModal({
                       <Text style={styles.fieldLabel}>د کاري کميټۍ د غونډې نېټه:</Text>
                       <TextInput
                         style={styles.input}
-                        value={formData.executiveMeetingDate || ''}
+                        value={String(getFieldValue('executiveMeetingDate') || '')}
                         onFocus={() => setActiveInputKey('executiveMeetingDate')}
                         onChangeText={(v) => updateField('executiveMeetingDate', v)}
                         placeholder="مثلا: 10 اکتوبر 2026"
@@ -253,7 +360,7 @@ export default function MobileProformaEditorModal({
                       <Text style={styles.fieldLabel}>د عمومي غونډې نېټه:</Text>
                       <TextInput
                         style={styles.input}
-                        value={formData.generalBodyMeetingDate || ''}
+                        value={String(getFieldValue('generalBodyMeetingDate') || '')}
                         onFocus={() => setActiveInputKey('generalBodyMeetingDate')}
                         onChangeText={(v) => updateField('generalBodyMeetingDate', v)}
                         placeholder="مثلا: 25 اکتوبر 2026"
@@ -265,7 +372,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.totalMembers ?? '')}
+                        value={String(getFieldValue('totalMembers', ''))}
                         onFocus={() => setActiveInputKey('totalMembers')}
                         onChangeText={(v) => updateField('totalMembers', parseInt(v, 10) || 0)}
                       />
@@ -275,7 +382,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.inactiveMembers ?? '')}
+                        value={String(getFieldValue('inactiveMembers', ''))}
                         onFocus={() => setActiveInputKey('inactiveMembers')}
                         onChangeText={(v) => updateField('inactiveMembers', parseInt(v, 10) || 0)}
                       />
@@ -284,7 +391,7 @@ export default function MobileProformaEditorModal({
                       <Text style={styles.fieldLabel}>حاضري سلنه % (Attendance %):</Text>
                       <TextInput
                         style={styles.input}
-                        value={formData.attendanceRate || ''}
+                        value={String(getFieldValue('attendanceRate') || '')}
                         onFocus={() => setActiveInputKey('attendanceRate')}
                         onChangeText={(v) => updateField('attendanceRate', v)}
                         placeholder="75%"
@@ -296,7 +403,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.monthlyTargetDues ?? '')}
+                        value={String(getFieldValue('monthlyTargetDues', ''))}
                         onFocus={() => setActiveInputKey('monthlyTargetDues')}
                         onChangeText={(v) => updateField('monthlyTargetDues', parseInt(v, 10) || 0)}
                       />
@@ -306,7 +413,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.totalDuesCollected ?? '')}
+                        value={String(getFieldValue('totalDuesCollected', ''))}
                         onFocus={() => setActiveInputKey('totalDuesCollected')}
                         onChangeText={(v) => updateField('totalDuesCollected', parseInt(v, 10) || 0)}
                       />
@@ -316,7 +423,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.studyCirclesCount ?? '')}
+                        value={String(getFieldValue('studyCirclesCount', ''))}
                         onFocus={() => setActiveInputKey('studyCirclesCount')}
                         onChangeText={(v) => updateField('studyCirclesCount', parseInt(v, 10) || 0)}
                       />
@@ -330,7 +437,7 @@ export default function MobileProformaEditorModal({
                       <Text style={styles.fieldLabel}>د علاقائي غونډې نېټه:</Text>
                       <TextInput
                         style={styles.input}
-                        value={formData.areaMeetingDate || ''}
+                        value={String(getFieldValue('areaMeetingDate') || '')}
                         onFocus={() => setActiveInputKey('areaMeetingDate')}
                         onChangeText={(v) => updateField('areaMeetingDate', v)}
                       />
@@ -340,7 +447,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.totalUnitsCount ?? '')}
+                        value={String(getFieldValue('totalUnitsCount', ''))}
                         onFocus={() => setActiveInputKey('totalUnitsCount')}
                         onChangeText={(v) => updateField('totalUnitsCount', parseInt(v, 10) || 0)}
                       />
@@ -350,7 +457,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.activeUnitsCount ?? '')}
+                        value={String(getFieldValue('activeUnitsCount', ''))}
                         onFocus={() => setActiveInputKey('activeUnitsCount')}
                         onChangeText={(v) => updateField('activeUnitsCount', parseInt(v, 10) || 0)}
                       />
@@ -360,7 +467,7 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.totalDuesCollected ?? '')}
+                        value={String(getFieldValue('totalDuesCollected', ''))}
                         onFocus={() => setActiveInputKey('totalDuesCollected')}
                         onChangeText={(v) => updateField('totalDuesCollected', parseInt(v, 10) || 0)}
                       />
@@ -374,7 +481,7 @@ export default function MobileProformaEditorModal({
                       <Text style={styles.fieldLabel}>د صوبائي غونډې نېټه:</Text>
                       <TextInput
                         style={styles.input}
-                        value={formData.meetingDate || ''}
+                        value={String(getFieldValue('meetingDate') || '')}
                         onFocus={() => setActiveInputKey('meetingDate')}
                         onChangeText={(v) => updateField('meetingDate', v)}
                       />
@@ -384,9 +491,242 @@ export default function MobileProformaEditorModal({
                       <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={String(formData.totalDuesCollected ?? '')}
+                        value={String(getFieldValue('totalDuesCollected', ''))}
                         onFocus={() => setActiveInputKey('totalDuesCollected')}
                         onChangeText={(v) => updateField('totalDuesCollected', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {formType === 'form6' && (
+                  <>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>د ضلعي ايګزيکټيو د غونډې نېټه:</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={String(getFieldValue('execDate') || '')}
+                        onFocus={() => setActiveInputKey('execDate')}
+                        onChangeText={(v) => updateField('execDate', v)}
+                        placeholder="مثلا: 14 اکتوبر 2026"
+                        placeholderTextColor="#64748b"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>د ايګزيکټيو د غونډې حاضري %:</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={String(getFieldValue('execPct') || '')}
+                        onFocus={() => setActiveInputKey('execPct')}
+                        onChangeText={(v) => updateField('execPct', v)}
+                        placeholder="85%"
+                        placeholderTextColor="#64748b"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>د ضلعي کميټۍ د غونډې نېټه:</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={String(getFieldValue('commDate') || '')}
+                        onFocus={() => setActiveInputKey('commDate')}
+                        onChangeText={(v) => updateField('commDate', v)}
+                        placeholder="مثلا: 20 اکتوبر 2026"
+                        placeholderTextColor="#64748b"
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>ماتحت علاقائي يونټونه (Area Units):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('areasCount', ''))}
+                        onFocus={() => setActiveInputKey('areasCount')}
+                        onChangeText={(v) => updateField('areasCount', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>ماتحت ابتدائي يونټونه (Basic Units):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('buCount', ''))}
+                        onFocus={() => setActiveInputKey('buCount')}
+                        onChangeText={(v) => updateField('buCount', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>جلسې او مظاهرې (Rallies & Protests):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('ralliesAndProtests', ''))}
+                        onFocus={() => setActiveInputKey('ralliesAndProtests')}
+                        onChangeText={(v) => updateField('ralliesAndProtests', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>جرګې او اولسي غونډې (Jirgas):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('jirgasAndCornerMeetings', ''))}
+                        onFocus={() => setActiveInputKey('jirgasAndCornerMeetings')}
+                        onChangeText={(v) => updateField('jirgasAndCornerMeetings', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>مياشتنۍ چندې / وصولي (Dues PKR):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('dues', ''))}
+                        onFocus={() => setActiveInputKey('dues')}
+                        onChangeText={(v) => updateField('dues', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>اخراجات (Expenses PKR):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('expenses', ''))}
+                        onFocus={() => setActiveInputKey('expenses')}
+                        onChangeText={(v) => updateField('expenses', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {formType === 'form7' && (
+                  <>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>په ضلع کښي ټول علاقائي يونټونه:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('areasCount', rows.length))}
+                        onFocus={() => setActiveInputKey('areasCount')}
+                        onChangeText={(v) => updateField('areasCount', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>ټول اولسي پروګرامونه او جلسې:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('ralliesCount', ''))}
+                        onFocus={() => setActiveInputKey('ralliesCount')}
+                        onChangeText={(v) => updateField('ralliesCount', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>ټولټال راټولې شوې چندې (PKR):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('duesMonthly', ''))}
+                        onFocus={() => setActiveInputKey('duesMonthly')}
+                        onChangeText={(v) => updateField('duesMonthly', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {formType === 'form8' && (
+                  <>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>په ضلع کښي د کميټۍ ټول ملګري:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('comradesCount', rows.length))}
+                        onFocus={() => setActiveInputKey('comradesCount')}
+                        onChangeText={(v) => updateField('comradesCount', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>ټولې تر سره شوې غونډې:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('totalMeetings', ''))}
+                        onFocus={() => setActiveInputKey('totalMeetings')}
+                        onChangeText={(v) => updateField('totalMeetings', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>اولسي جلسې او جرګې:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('publicGatherings', ''))}
+                        onFocus={() => setActiveInputKey('publicGatherings')}
+                        onChangeText={(v) => updateField('publicGatherings', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>ټولټال مياشتنۍ چنده (PKR):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('monthlyDues', ''))}
+                        onFocus={() => setActiveInputKey('monthlyDues')}
+                        onChangeText={(v) => updateField('monthlyDues', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                  </>
+                )}
+
+                {formType === 'form9' && (
+                  <>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>د مرکزي او صوبائي ادارو ټول غړي:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('membersCount', rows.length))}
+                        onFocus={() => setActiveInputKey('membersCount')}
+                        onChangeText={(v) => updateField('membersCount', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>تنظيمي غونډې:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('totalMeetings', ''))}
+                        onFocus={() => setActiveInputKey('totalMeetings')}
+                        onChangeText={(v) => updateField('totalMeetings', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>اولسي جلسې او فعاليتونه:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('publicGatherings', ''))}
+                        onFocus={() => setActiveInputKey('publicGatherings')}
+                        onChangeText={(v) => updateField('publicGatherings', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>کانفرنسونه او سيمينارونه:</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('conferences', ''))}
+                        onFocus={() => setActiveInputKey('conferences')}
+                        onChangeText={(v) => updateField('conferences', parseInt(v, 10) || 0)}
+                      />
+                    </View>
+                    <View style={styles.field}>
+                      <Text style={styles.fieldLabel}>بلډ بينک او زکات وصولي (PKR):</Text>
+                      <TextInput
+                        style={styles.input}
+                        keyboardType="numeric"
+                        value={String(getFieldValue('bloodCash', ''))}
+                        onFocus={() => setActiveInputKey('bloodCash')}
+                        onChangeText={(v) => updateField('bloodCash', parseInt(v, 10) || 0)}
                       />
                     </View>
                   </>
@@ -398,130 +738,446 @@ export default function MobileProformaEditorModal({
             {activeTab === 'rows' && (
               <View style={styles.section}>
                 <TouchableOpacity style={styles.addRowBtn} onPress={addRow}>
-                  <Text style={styles.addRowBtnText}>➕ غړی اضافه کول (Add Row)</Text>
+                  <Text style={styles.addRowBtnText}>➕ نوې کرښه اضافه کول (Add Row)</Text>
                 </TouchableOpacity>
 
                 {rows.map((r, i) => (
                   <View key={i} style={styles.rowCard}>
                     <View style={styles.rowCardHeader}>
                       <Text style={styles.rowNum}>#{i + 1}</Text>
-                      <Text style={styles.rowCardTitle}>{r.name || r.unitName || 'New Member'}</Text>
-                      <Text style={styles.rowCardRole}>({r.role || r.totalMembers || 'Role'})</Text>
+                      <Text style={styles.rowCardTitle}>
+                        {r.name || r.areaName || r.unitName || 'New Row'}
+                      </Text>
+                      <Text style={styles.rowCardRole}>
+                        ({r.role || r.organRole || r.activeStatus || 'Record'})
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => removeRow(i)}
+                        style={styles.removeRowBtn}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={styles.removeRowText}>✕</Text>
+                      </TouchableOpacity>
                     </View>
 
+                    {/* Standard Name / Title Field */}
                     <View style={styles.rowFieldGroup}>
-                      <Text style={styles.miniLabel}>نوم:</Text>
+                      <Text style={styles.miniLabel}>
+                        {formType === 'form7' ? 'د علاقائي يونټ نوم:' : 'نوم (Name):'}
+                      </Text>
                       <TextInput
                         style={styles.miniInput}
-                        value={r.name || r.unitName || ''}
-                        onFocus={() => setActiveInputKey({ rowIndex: i, colKey: formType === 'form2' ? 'unitName' : 'name' })}
-                        onChangeText={(v) => updateRowField(i, formType === 'form2' ? 'unitName' : 'name', v)}
+                        value={String(r.name || r.areaName || r.unitName || '')}
+                        onFocus={() =>
+                          setActiveInputKey({
+                            rowIndex: i,
+                            colKey: formType === 'form7' ? 'areaName' : (formType === 'form2' ? 'unitName' : 'name'),
+                          })
+                        }
+                        onChangeText={(v) =>
+                          updateRowField(
+                            i,
+                            formType === 'form7' ? 'areaName' : (formType === 'form2' ? 'unitName' : 'name'),
+                            v
+                          )
+                        }
                       />
                     </View>
 
-                    <View style={styles.rowFieldGroup}>
-                      <Text style={styles.miniLabel}>عهده:</Text>
-                      <TextInput
-                        style={styles.miniInput}
-                        value={r.role || r.totalMembers || ''}
-                        onFocus={() => setActiveInputKey({ rowIndex: i, colKey: formType === 'form2' ? 'totalMembers' : 'role' })}
-                        onChangeText={(v) => updateRowField(i, formType === 'form2' ? 'totalMembers' : 'role', v)}
-                      />
-                    </View>
-
+                    {/* Form 4: Basic Unit Comrade */}
                     {formType === 'form4' && (
+                      <>
+                        <View style={styles.rowFieldGroup}>
+                          <Text style={styles.miniLabel}>عهده (Role):</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            value={String(r.role || '')}
+                            onFocus={() => setActiveInputKey({ rowIndex: i, colKey: 'role' })}
+                            onChangeText={(v) => updateRowField(i, 'role', v)}
+                          />
+                        </View>
+                        <View style={styles.miniGrid}>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>کاري غونډه:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.executiveMeetingsAttended ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'executiveMeetingsAttended', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>عمومي غونډه:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.generalBodyMeetingsAttended ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'generalBodyMeetingsAttended', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>جلسې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.ralliesAttended ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'ralliesAttended', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>مظاهرې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.protestsAttended ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'protestsAttended', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>چنده وصولي:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.donationsCollected ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'donationsCollected', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>مطالعه:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              value={String(r.partyLiteratureRead ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'partyLiteratureRead', v)}
+                            />
+                          </View>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Form 5: Provincial Executive */}
+                    {formType === 'form5' && (
+                      <>
+                        <View style={styles.rowFieldGroup}>
+                          <Text style={styles.miniLabel}>عهده (Role):</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            value={String(r.role || '')}
+                            onFocus={() => setActiveInputKey({ rowIndex: i, colKey: 'role' })}
+                            onChangeText={(v) => updateRowField(i, 'role', v)}
+                          />
+                        </View>
+                        <View style={styles.miniGrid}>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>صوبائي غونډې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.provincialCabinetMeetings ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'provincialCabinetMeetings', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>جلسې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.ralliesRallies ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'ralliesRallies', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>مظاهرې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.protestsStrikes ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'protestsStrikes', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>دورې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.toursVisitsCount ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'toursVisitsCount', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>مياشتنۍ چنده:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.duesPaidMonthly ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'duesPaidMonthly', v)}
+                            />
+                          </View>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Form 6: District Executive Comrades */}
+                    {formType === 'form6' && (
+                      <>
+                        <View style={styles.rowFieldGroup}>
+                          <Text style={styles.miniLabel}>عهده (Role / Designation):</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            value={String(r.role || '')}
+                            onFocus={() => setActiveInputKey({ rowIndex: i, colKey: 'role' })}
+                            onChangeText={(v) => updateRowField(i, 'role', v)}
+                          />
+                        </View>
+                        <View style={styles.miniGrid}>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>ضلعي ايګزيکټيو:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.distExec ?? r.distExecMeeting ?? '')}
+                              onChangeText={(v) => {
+                                updateRowField(i, 'distExec', v);
+                                updateRowField(i, 'distExecMeeting', v);
+                              }}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>ضلعي کميټي:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.distComm ?? r.distCommMeeting ?? '')}
+                              onChangeText={(v) => {
+                                updateRowField(i, 'distComm', v);
+                                updateRowField(i, 'distCommMeeting', v);
+                              }}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>جلسې/مظاهرې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.ralliesAndProtests ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'ralliesAndProtests', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>جرګې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.jirgasAndCornerMeetings ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'jirgasAndCornerMeetings', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>چنده (PKR):</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.dues ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'dues', v)}
+                            />
+                          </View>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Form 7: District Subordinate Areas */}
+                    {formType === 'form7' && (
                       <View style={styles.miniGrid}>
                         <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>کاري غونډه:</Text>
+                          <Text style={styles.miniLabel}>ايګزيکټيو غونډې:</Text>
                           <TextInput
                             style={styles.miniInput}
-                            value={String(r.executiveMeetingsAttended ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'executiveMeetingsAttended', v)}
+                            keyboardType="numeric"
+                            value={String(r.execHeld ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'execHeld', v)}
                           />
                         </View>
                         <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>عمومي غونډه:</Text>
+                          <Text style={styles.miniLabel}>کميټۍ غونډې:</Text>
                           <TextInput
                             style={styles.miniInput}
-                            value={String(r.generalBodyMeetingsAttended ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'generalBodyMeetingsAttended', v)}
+                            keyboardType="numeric"
+                            value={String(r.commHeld ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'commHeld', v)}
                           />
                         </View>
                         <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>جلسې:</Text>
+                          <Text style={styles.miniLabel}>ابتدائي يونټونه:</Text>
                           <TextInput
                             style={styles.miniInput}
-                            value={String(r.ralliesAttended ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'ralliesAttended', v)}
+                            keyboardType="numeric"
+                            value={String(r.buCount ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'buCount', v)}
                           />
                         </View>
                         <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>مظاهرې:</Text>
+                          <Text style={styles.miniLabel}>ټول غړي:</Text>
                           <TextInput
                             style={styles.miniInput}
-                            value={String(r.protestsAttended ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'protestsAttended', v)}
+                            keyboardType="numeric"
+                            value={String(r.membershipTotal ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'membershipTotal', v)}
+                          />
+                        </View>
+                        <View style={styles.miniGridItem}>
+                          <Text style={styles.miniLabel}>جلسې/جرګې:</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            keyboardType="numeric"
+                            value={String(r.ralliesCount ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'ralliesCount', v)}
+                          />
+                        </View>
+                        <View style={styles.miniGridItem}>
+                          <Text style={styles.miniLabel}>چنده (PKR):</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            keyboardType="numeric"
+                            value={String(r.duesMonthly ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'duesMonthly', v)}
+                          />
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Form 8: Central & Provincial Committee in District */}
+                    {formType === 'form8' && (
+                      <>
+                        <View style={styles.rowFieldGroup}>
+                          <Text style={styles.miniLabel}>حيثيت (Status):</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            value={String(r.activeStatus || 'فعاله')}
+                            onFocus={() => setActiveInputKey({ rowIndex: i, colKey: 'activeStatus' })}
+                            onChangeText={(v) => updateRowField(i, 'activeStatus', v)}
+                          />
+                        </View>
+                        <View style={styles.miniGrid}>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>ضلعي کميټي:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.distCommMeeting ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'distCommMeeting', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>علاقائي ايګزيکټيو:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.areaExecMeeting ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'areaExecMeeting', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>اولسي غونډې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.publicGatherings ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'publicGatherings', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>ټولې غونډې:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.totalMeetings ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'totalMeetings', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>مياشتنۍ چنده:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.monthlyDues ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'monthlyDues', v)}
+                            />
+                          </View>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Form 9: Central & Provincial Organs */}
+                    {formType === 'form9' && (
+                      <>
+                        <View style={styles.rowFieldGroup}>
+                          <Text style={styles.miniLabel}>د ادارې عهده / څانګه (Organ Role):</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            value={String(r.organRole || r.role || '')}
+                            onFocus={() => setActiveInputKey({ rowIndex: i, colKey: 'organRole' })}
+                            onChangeText={(v) => updateRowField(i, 'organRole', v)}
+                          />
+                        </View>
+                        <View style={styles.miniGrid}>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>غونډې (Mtgs):</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.totalMeetings ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'totalMeetings', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>جلسې/اولسي:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.publicGatherings ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'publicGatherings', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>کانفرنسونه:</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.conferences ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'conferences', v)}
+                            />
+                          </View>
+                          <View style={styles.miniGridItem}>
+                            <Text style={styles.miniLabel}>چنده (PKR):</Text>
+                            <TextInput
+                              style={styles.miniInput}
+                              keyboardType="numeric"
+                              value={String(r.monthlyDues ?? '')}
+                              onChangeText={(v) => updateRowField(i, 'monthlyDues', v)}
+                            />
+                          </View>
+                        </View>
+                      </>
+                    )}
+
+                    {/* Form 2: Basic Units in Area */}
+                    {formType === 'form2' && (
+                      <View style={styles.miniGrid}>
+                        <View style={styles.miniGridItem}>
+                          <Text style={styles.miniLabel}>ټول غړي:</Text>
+                          <TextInput
+                            style={styles.miniInput}
+                            keyboardType="numeric"
+                            value={String(r.totalMembers ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'totalMembers', v)}
                           />
                         </View>
                         <View style={styles.miniGridItem}>
                           <Text style={styles.miniLabel}>چنده وصولي:</Text>
                           <TextInput
                             style={styles.miniInput}
-                            value={String(r.donationsCollected ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'donationsCollected', v)}
-                          />
-                        </View>
-                        <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>مطالعه:</Text>
-                          <TextInput
-                            style={styles.miniInput}
-                            value={String(r.partyLiteratureRead ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'partyLiteratureRead', v)}
-                          />
-                        </View>
-                      </View>
-                    )}
-
-                    {formType === 'form5' && (
-                      <View style={styles.miniGrid}>
-                        <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>صوبائي غونډې:</Text>
-                          <TextInput
-                            style={styles.miniInput}
-                            value={String(r.provincialCabinetMeetings ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'provincialCabinetMeetings', v)}
-                          />
-                        </View>
-                        <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>جلسې:</Text>
-                          <TextInput
-                            style={styles.miniInput}
-                            value={String(r.ralliesRallies ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'ralliesRallies', v)}
-                          />
-                        </View>
-                        <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>مظاهرې:</Text>
-                          <TextInput
-                            style={styles.miniInput}
-                            value={String(r.protestsStrikes ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'protestsStrikes', v)}
-                          />
-                        </View>
-                        <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>دورې:</Text>
-                          <TextInput
-                            style={styles.miniInput}
-                            value={String(r.toursVisitsCount ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'toursVisitsCount', v)}
-                          />
-                        </View>
-                        <View style={styles.miniGridItem}>
-                          <Text style={styles.miniLabel}>مياشتنۍ چنده:</Text>
-                          <TextInput
-                            style={styles.miniInput}
-                            value={String(r.duesPaidMonthly ?? '')}
-                            onChangeText={(v) => updateRowField(i, 'duesPaidMonthly', v)}
+                            keyboardType="numeric"
+                            value={String(r.duesCollected ?? '')}
+                            onChangeText={(v) => updateRowField(i, 'duesCollected', v)}
                           />
                         </View>
                       </View>
@@ -531,7 +1187,7 @@ export default function MobileProformaEditorModal({
                       <Text style={styles.miniLabel}>نوټ / تبصره:</Text>
                       <TextInput
                         style={styles.miniInput}
-                        value={r.notes || ''}
+                        value={String(r.notes || '')}
                         onFocus={() => setActiveInputKey({ rowIndex: i, colKey: 'notes' })}
                         onChangeText={(v) => updateRowField(i, 'notes', v)}
                       />
@@ -549,7 +1205,7 @@ export default function MobileProformaEditorModal({
                   style={[styles.input, { height: 120, textAlignVertical: 'top' }]}
                   multiline
                   numberOfLines={6}
-                  value={formData.notes || ''}
+                  value={String(formData.notes || '')}
                   onFocus={() => setActiveInputKey('notes')}
                   onChangeText={(v) => updateField('notes', v)}
                   placeholder="دلته خپل نوټونه وليکئ..."
@@ -719,10 +1375,22 @@ const styles = StyleSheet.create({
     color: '#f8fafc',
     fontWeight: '700',
     fontSize: FontSize.sm,
+    flex: 1,
   },
   rowCardRole: {
     color: '#94a3b8',
     fontSize: FontSize.xs,
+  },
+  removeRowBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#334155',
+    borderRadius: 4,
+  },
+  removeRowText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '700',
   },
   rowFieldGroup: {
     marginBottom: 6,

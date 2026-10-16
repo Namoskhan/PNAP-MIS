@@ -33,6 +33,27 @@ export function homeTierOf(user) {
       },
     };
   }
+  if (s.areaId) {
+    return {
+      level: 'AREA',
+      fixed: {
+        provinceId: s.provinceId, districtId: s.districtId,
+        areaId: s.areaId,
+      },
+    };
+  }
+  if (s.districtId) {
+    return {
+      level: 'DISTRICT',
+      fixed: { provinceId: s.provinceId, districtId: s.districtId },
+    };
+  }
+  if (s.provinceId) {
+    return {
+      level: 'PROVINCE',
+      fixed: { provinceId: s.provinceId },
+    };
+  }
   return { level: 'CENTRAL', fixed: {} };
 }
 
@@ -44,10 +65,10 @@ export function isLevelAllowed(user, level) {
 
 export function homeUnitIdOf(user) {
   const { level, fixed } = homeTierOf(user);
-  if (level === 'PROVINCE') return fixed.provinceId || null;
-  if (level === 'DISTRICT') return fixed.districtId || null;
-  if (level === 'AREA') return fixed.areaId || null;
-  if (level === 'BASIC_UNIT') return fixed.basicUnitId || null;
+  if (level === 'PROVINCE') return fixed.provinceId || user?.scope?.provinceId || null;
+  if (level === 'DISTRICT') return fixed.districtId || user?.scope?.districtId || null;
+  if (level === 'AREA') return fixed.areaId || user?.scope?.areaId || null;
+  if (level === 'BASIC_UNIT') return fixed.basicUnitId || user?.scope?.basicUnitId || null;
   return null;
 }
 

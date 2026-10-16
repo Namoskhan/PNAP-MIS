@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [registerOpen, setRegisterOpen] = useState(false);
 
   if (user) {
-    nav('/', { replace: true });
+    nav('/unit', { replace: true });
   }
 
   async function onSubmit(e) {
@@ -34,7 +34,7 @@ export default function LoginPage() {
     try {
       await login(identifier, password);
       toast.success(t('common.welcomeBack', 'Welcome back!'), { duration: 2500 });
-      nav('/', { replace: true });
+      nav('/unit', { replace: true });
     } catch (e) {
       const msg = errorMessage(e);
       setErr(msg);

@@ -151,6 +151,7 @@ export default function AppLayout() {
       <Tabs.Screen name="admin/pending-approvals" options={{ href: null, headerTitle: t('nav.pendingApprovals', 'Pending Approvals'), headerShown: true }} />
       <Tabs.Screen name="admin/performance" options={{ href: null, headerTitle: t('nav.memberPerformance', 'Member Performance'), headerShown: true }} />
       <Tabs.Screen name="admin/reports" options={{ href: null, headerTitle: t('nav.reportsCenter', 'Reports Center'), headerShown: true }} />
+      <Tabs.Screen name="admin/proforma" options={{ href: null, headerTitle: t('nav.proformaReports', 'Proforma Reports'), headerShown: true }} />
       <Tabs.Screen name="admin/responsibilities" options={{ href: null, headerTitle: t('nav.responsibilities', 'Responsibilities'), headerShown: true }} />
       <Tabs.Screen name="admin/settings" options={{ href: null, headerTitle: t('nav.systemSettings', 'System Settings'), headerShown: true }} />
 
