@@ -15,6 +15,7 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { useUnit } from '../../../src/context/UnitContext';
 import { useLanguage } from '../../../src/context/LanguageContext';
 import { isHigherAdmin, isAreaAdmin, hasRole } from '../../../src/utils/permissions';
+import { homeTierOf, isLevelAllowed } from '../../../src/utils/unitTier';
 import { api, errorMessage } from '../../../src/api/client';
 import { useNetwork } from '../../../src/context/NetworkContext';
 import { Colors, FontSize, Spacing, Radius } from '../../../src/constants/colors';
@@ -140,21 +141,33 @@ export default function ProformaScreen() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
 
-  // Default form based on role & context
+  const homeTier = useMemo(() => homeTierOf(user).level, [user]);
+
+  // Allowed forms strictly based on tier hierarchy:
+  // Lower level roles cannot access higher level forms.
+  const allowedForms = useMemo(() => {
+    return PROFORMA_FORMS.filter((f) => isLevelAllowed(user, f.targetLevel));
+  }, [user]);
+
+  // Default form based on role & context (ensuring it's in allowedForms)
   const defaultFormType = useMemo(() => {
-    if (params.formType && PROFORMA_FORMS.some((f) => f.id === params.formType)) {
+    if (params.formType && allowedForms.some((f) => f.id === params.formType)) {
       return params.formType;
     }
-    if (ctx?.unitLevel === 'BASIC_UNIT') return 'form4';
-    if (ctx?.unitLevel === 'DISTRICT') return 'form6';
-    if (ctx?.unitLevel === 'PROVINCE') return 'form5';
-    // For Area cabinet members or area admins, default to Form 2 (or Form 1)
-    if (ctx?.unitLevel === 'AREA' || user?.scope?.areaId) return 'form2';
-    return 'form2';
-  }, [params.formType, ctx?.unitLevel, user?.scope?.areaId]);
+    if (ctx?.unitLevel === 'BASIC_UNIT' && allowedForms.some((f) => f.id === 'form4')) return 'form4';
+    if (ctx?.unitLevel === 'DISTRICT' && allowedForms.some((f) => f.id === 'form6')) return 'form6';
+    if (ctx?.unitLevel === 'PROVINCE' && allowedForms.some((f) => f.id === 'form5')) return 'form5';
+    if (allowedForms.some((f) => f.id === 'form2')) return 'form2';
+    return allowedForms[0]?.id || 'form1';
+  }, [params.formType, ctx?.unitLevel, allowedForms]);
 
   const [formType, setFormType] = useState(defaultFormType);
-  const [formFilterMode, setFormFilterMode] = useState('ALL'); // 'ALL' | 'TIER'
+
+  useEffect(() => {
+    if (allowedForms.length > 0 && !allowedForms.some((f) => f.id === formType)) {
+      setFormType(allowedForms[0].id);
+    }
+  }, [allowedForms, formType]);
 
   // Lists for dropdown selections if user is at higher level
   const [areasList, setAreasList] = useState([]);
@@ -170,20 +183,58 @@ export default function ProformaScreen() {
   const [entryDoc, setEntryDoc] = useState(null);
   const [loadingEntry, setLoadingEntry] = useState(false);
 
+  // Resolve effective districtId
+  const effectiveDistrictId = useMemo(() => {
+    if (selectedDistrictId) return selectedDistrictId;
+    if (ctx?.unitLevel === 'DISTRICT' && ctx?.unitId) return ctx.unitId;
+    if (user?.scope?.districtId) return user.scope.districtId;
+    if (ctx?.districtId) return ctx.districtId;
+    return districtsList[0]?._id ? String(districtsList[0]._id) : '';
+  }, [selectedDistrictId, ctx, user, districtsList]);
+
+  // Resolve effective provinceId
+  const effectiveProvinceId = useMemo(() => {
+    if (selectedProvinceId) return selectedProvinceId;
+    if (ctx?.unitLevel === 'PROVINCE' && ctx?.unitId) return ctx.unitId;
+    if (user?.scope?.provinceId) return user.scope.provinceId;
+    if (ctx?.provinceId) return ctx.provinceId;
+    return provincesList[0]?._id ? String(provincesList[0]._id) : '';
+  }, [selectedProvinceId, ctx, user, provincesList]);
+
   // Load auxiliary lists for higher-level navigation
   useEffect(() => {
     if (!user) return;
-    if (ctx?.unitLevel === 'CENTRAL' || isHigherAdmin(user)) {
+    if (homeTier === 'CENTRAL' || isHigherAdmin(user)) {
       api.get('/org/provinces').then((r) => setProvincesList(r.data?.data || [])).catch(() => {});
       api.get('/org/districts').then((r) => setDistrictsList(r.data?.data || [])).catch(() => {});
-    } else if (ctx?.unitLevel === 'PROVINCE') {
-      const p = ctx.unitId ? { provinceId: ctx.unitId } : {};
+    } else if (homeTier === 'PROVINCE') {
+      const p = effectiveProvinceId ? { provinceId: effectiveProvinceId } : {};
       api.get('/org/districts', { params: p }).then((r) => setDistrictsList(r.data?.data || [])).catch(() => {});
     }
-    if (ctx?.unitLevel === 'CENTRAL' || ctx?.unitLevel === 'PROVINCE' || ctx?.unitLevel === 'DISTRICT' || isHigherAdmin(user)) {
-      api.get('/org/areas').then((r) => setAreasList(r.data?.data || [])).catch(() => {});
+  }, [user, homeTier, effectiveProvinceId]);
+
+  // Load subordinate areas for District, Province, and Central users
+  useEffect(() => {
+    if (!user) return;
+    if (homeTier === 'CENTRAL' || homeTier === 'PROVINCE' || homeTier === 'DISTRICT' || ctx?.unitLevel === 'DISTRICT') {
+      const p = {};
+      if (effectiveDistrictId) p.districtId = effectiveDistrictId;
+      api.get('/org/areas', { params: p })
+        .then((r) => {
+          const list = r.data?.data || [];
+          setAreasList(list);
+          if (list.length > 0) {
+            setSelectedAreaId((prev) => {
+              if (prev && list.some((a) => String(a._id) === String(prev))) return prev;
+              return String(list[0]._id);
+            });
+          } else {
+            setSelectedAreaId('');
+          }
+        })
+        .catch(() => {});
     }
-  }, [user, ctx?.unitLevel, ctx?.unitId]);
+  }, [user, homeTier, ctx?.unitLevel, effectiveDistrictId]);
 
   // Resolve effective areaId
   const effectiveAreaId = useMemo(() => {
@@ -207,24 +258,6 @@ export default function ProformaScreen() {
       })
       .catch(() => {});
   }, [effectiveAreaId]);
-
-  // Resolve effective districtId
-  const effectiveDistrictId = useMemo(() => {
-    if (selectedDistrictId) return selectedDistrictId;
-    if (ctx?.unitLevel === 'DISTRICT' && ctx?.unitId) return ctx.unitId;
-    if (user?.scope?.districtId) return user.scope.districtId;
-    if (ctx?.districtId) return ctx.districtId;
-    return districtsList[0]?._id ? String(districtsList[0]._id) : '';
-  }, [selectedDistrictId, ctx, user, districtsList]);
-
-  // Resolve effective provinceId
-  const effectiveProvinceId = useMemo(() => {
-    if (selectedProvinceId) return selectedProvinceId;
-    if (ctx?.unitLevel === 'PROVINCE' && ctx?.unitId) return ctx.unitId;
-    if (user?.scope?.provinceId) return user.scope.provinceId;
-    if (ctx?.provinceId) return ctx.provinceId;
-    return provincesList[0]?._id ? String(provincesList[0]._id) : '';
-  }, [selectedProvinceId, ctx, user, provincesList]);
 
   // Resolve effective targetId & unitLevel
   const { targetId, activeTargetLevel, displayUnitName } = useMemo(() => {
@@ -413,31 +446,13 @@ export default function ProformaScreen() {
             <Text style={[styles.cardTitle, isRTL && { textAlign: 'right' }]}>
               {t('proforma.selectForm', 'Select Proforma Form (د فارم انتخاب)')}
             </Text>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              <TouchableOpacity
-                style={[styles.filterPill, formFilterMode === 'ALL' && styles.filterPillActive]}
-                onPress={() => setFormFilterMode('ALL')}
-              >
-                <Text style={[styles.filterPillText, formFilterMode === 'ALL' && styles.filterPillTextActive]}>
-                  All (1–9)
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.filterPill, formFilterMode === 'TIER' && styles.filterPillActive]}
-                onPress={() => setFormFilterMode('TIER')}
-              >
-                <Text style={[styles.filterPillText, formFilterMode === 'TIER' && styles.filterPillTextActive]}>
-                  {ctx?.unitLevel || 'My Tier'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Badge variant="primary" size="sm">
+              {t('units.' + homeTier.toLowerCase(), homeTier)}
+            </Badge>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-            {(formFilterMode === 'ALL' || isHigherAdmin(user) || ctx?.unitLevel === 'CENTRAL'
-              ? PROFORMA_FORMS
-              : PROFORMA_FORMS.filter((f) => f.tiers.includes(ctx?.unitLevel || 'AREA'))
-            ).map((f) => {
+            {allowedForms.map((f) => {
               const isSelected = formType === f.id;
               return (
                 <TouchableOpacity
@@ -490,8 +505,28 @@ export default function ProformaScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Auxiliary Area Picker if viewing Forms 1-3 from Higher Level */}
-          {['form1', 'form2', 'form3'].includes(formType) && (ctx?.unitLevel === 'CENTRAL' || ctx?.unitLevel === 'PROVINCE' || ctx?.unitLevel === 'DISTRICT') && areasList.length > 0 && (
+          {/* Subordinate Area Picker if viewing Forms 1-3 from Higher Level (District, Province, Central) */}
+          {['form1', 'form2', 'form3'].includes(formType) && (homeTier === 'CENTRAL' || homeTier === 'PROVINCE' || homeTier === 'DISTRICT' || ctx?.unitLevel === 'DISTRICT') && areasList.length > 0 && (
+            <View style={{ marginTop: Spacing.sm }}>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>Select Subordinate Area Unit (ماتحت علاقائي يونټ):</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                {areasList.map((a) => (
+                  <TouchableOpacity
+                    key={a._id}
+                    style={[styles.pillBtn, String(effectiveAreaId) === String(a._id) && styles.pillBtnActive]}
+                    onPress={() => setSelectedAreaId(String(a._id))}
+                  >
+                    <Text style={[styles.pillBtnText, String(effectiveAreaId) === String(a._id) && styles.pillBtnTextActive]}>
+                      {a.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Subordinate Area Picker for Form 4 from Higher Level (District, Province, Central) */}
+          {formType === 'form4' && (homeTier === 'CENTRAL' || homeTier === 'PROVINCE' || homeTier === 'DISTRICT') && areasList.length > 0 && (
             <View style={{ marginTop: Spacing.sm }}>
               <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>Select Area Unit (علاقائي يونټ):</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
@@ -510,7 +545,7 @@ export default function ProformaScreen() {
             </View>
           )}
 
-          {/* Auxiliary Basic Unit Picker for Form 4 */}
+          {/* Basic Unit Picker for Form 4 */}
           {formType === 'form4' && basicUnitsList.length > 0 && (
             <View style={{ marginTop: Spacing.sm }}>
               <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>Select Basic Unit (بنسټيز يونټ):</Text>
@@ -530,8 +565,8 @@ export default function ProformaScreen() {
             </View>
           )}
 
-          {/* Auxiliary Province Picker for Form 5 */}
-          {formType === 'form5' && (ctx?.unitLevel === 'CENTRAL' || isHigherAdmin(user)) && provincesList.length > 0 && (
+          {/* Province Picker for Form 5 */}
+          {formType === 'form5' && (homeTier === 'CENTRAL' || isHigherAdmin(user)) && provincesList.length > 0 && (
             <View style={{ marginTop: Spacing.sm }}>
               <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>Select Province (صوبائي يونټ):</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
@@ -550,8 +585,8 @@ export default function ProformaScreen() {
             </View>
           )}
 
-          {/* Auxiliary District Picker for Forms 6-9 */}
-          {['form6', 'form7', 'form8', 'form9'].includes(formType) && (ctx?.unitLevel === 'CENTRAL' || ctx?.unitLevel === 'PROVINCE' || isHigherAdmin(user)) && districtsList.length > 0 && (
+          {/* District Picker for Forms 6-9 */}
+          {['form6', 'form7', 'form8', 'form9'].includes(formType) && (homeTier === 'CENTRAL' || homeTier === 'PROVINCE' || isHigherAdmin(user)) && districtsList.length > 0 && (
             <View style={{ marginTop: Spacing.sm }}>
               <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>Select District (ضلعي يونټ):</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>

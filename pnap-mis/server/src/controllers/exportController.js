@@ -21,6 +21,7 @@ const env = require('../config/env');
 const settingsService = require('../services/settingsService');
 const eventExportService = require('../services/eventExportService');
 const { formatUnitArrangedBy, getCommitteeTierLabel, getRegularTierLabel } = require('../utils/unitFormat');
+const { validateProformaAccess } = require('../utils/proformaScope');
 
 // Render a dynamicData value into a cell-friendly form. Numerics
 // stay numeric so XLSX can format them; everything else stringifies
@@ -2725,7 +2726,7 @@ exports.proformaForm1Html = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form1', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2739,7 +2740,7 @@ exports.proformaForm1Pdf = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form1', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2752,7 +2753,7 @@ exports.proformaForm1Xlsx = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form1', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2769,7 +2770,7 @@ exports.proformaForm2Html = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form2', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2783,7 +2784,7 @@ exports.proformaForm2Pdf = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form2', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2796,7 +2797,7 @@ exports.proformaForm2Xlsx = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form2', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2813,7 +2814,7 @@ exports.proformaForm3Html = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form3', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2827,7 +2828,7 @@ exports.proformaForm3Pdf = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form3', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2840,7 +2841,7 @@ exports.proformaForm3Xlsx = asyncHandler(async (req, res) => {
   let { areaId, month, year } = req.query;
   if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
   areaId = await _resolveAreaId(areaId);
-  _checkAreaScope(req, areaId);
+  await _checkAreaScope(req, areaId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const saved = await ProformaReport.findOne({ formType: 'form3', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
@@ -2918,85 +2919,16 @@ async function _resolveProvinceId(provinceId, req) {
   return null;
 }
 
-function _checkForm5Scope(req, provinceId) {
-  const roles = req.user?.roles || [];
-  const isSuper = roles.includes('SUPER_ADMIN') || roles.includes('ADMIN') || req.user?.isBootstrap;
-  const isCentral = isSuper || roles.includes('CENTRAL_ADMIN');
-  if (isCentral) return;
-
-  const canAccess = roles.some((r) => [
-    'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', 'UNIT_ADMIN',
-    'PRESIDENT', 'GENERAL_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
-    'SENIOR_MAWIN', 'DEPUTY_SECRETARY', 'OFFICE_SECRETARY', 'FINANCE_SECRETARY',
-    'INFORMATION_SECRETARY', 'ORGANIZING_SECRETARY', 'CULTURE_SECRETARY',
-    'ADMIN',
-  ].includes(r)) || roles.length > 0;
-
-  if (!canAccess) {
-    throw new ApiError(403, 'FORBIDDEN', 'Access to Provincial Executive reports is restricted to Province and Central leadership');
-  }
-
-  if (req.user?.scope?.provinceId && provinceId) {
-    const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'ADMIN'].includes(r)) || req.user?.isBootstrap;
-    if (!isHigher && req.user.scope.provinceId.toString() !== provinceId.toString()) {
-      const hasLeaderRole = roles.some((r) => [
-        'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
-        'PRESIDENT', 'GENERAL_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
-        'SENIOR_MAWIN'
-      ].includes(r));
-      if (!hasLeaderRole) {
-        throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned province');
-      }
-    }
-  }
+async function _checkForm5Scope(req, provinceId) {
+  await validateProformaAccess(req.user, 'form5', provinceId, 'PROVINCE');
 }
 
-function _checkAreaScope(req, areaId) {
-  const roles = req.user?.roles || [];
-  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN'].includes(r)) || req.user?.isBootstrap;
-  if (isHigher) return;
-  if (req.user?.scope?.provinceId && !req.user?.scope?.areaId) return;
-  if (req.user?.scope?.districtId && !req.user?.scope?.areaId) return;
-  if (req.user?.scope?.areaId && req.user.scope.areaId.toString() !== areaId.toString()) {
-    throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned area');
-  }
+async function _checkAreaScope(req, areaId) {
+  await validateProformaAccess(req.user, 'form1', areaId, 'AREA');
 }
 
 async function _checkUnitScope(req, unitId) {
-  const roles = req.user?.roles || [];
-  const isHigher = roles.some((r) => ['SUPER_ADMIN', 'ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN'].includes(r)) || req.user?.isBootstrap;
-  if (isHigher) return;
-
-  // If user has province scope, allow access to basic units within their province
-  if (req.user?.scope?.provinceId) {
-    const BasicUnit = require('../models/BasicUnit');
-    const targetUnit = await BasicUnit.findById(unitId).lean();
-    if (targetUnit && targetUnit.provinceId?.toString() === req.user.scope.provinceId.toString()) {
-      return;
-    }
-  }
-
-  // If user has areaId scope (e.g. Area officer like Senior Mawin or Secretary), allow access to any basic unit within their area
-  if (req.user?.scope?.areaId) {
-    const BasicUnit = require('../models/BasicUnit');
-    const targetUnit = await BasicUnit.findById(unitId).lean();
-    if (targetUnit && targetUnit.areaId?.toString() === req.user.scope.areaId.toString()) {
-      return;
-    }
-  }
-
-  // If user has districtId scope, allow access to basic units within their district
-  if (req.user?.scope?.districtId) {
-    const BasicUnit = require('../models/BasicUnit');
-    const targetUnit = await BasicUnit.findById(unitId).lean();
-    if (targetUnit && targetUnit.districtId?.toString() === req.user.scope.districtId.toString()) {
-      return;
-    }
-  }
-
-  if (req.user?.scope?.basicUnitId && req.user.scope.basicUnitId.toString() !== unitId.toString()) {
-    throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned basic unit');
-  }
+  await validateProformaAccess(req.user, 'form4', unitId, 'BASIC_UNIT');
 }
 
 // Form 5: Provincial Executive Individual Activity Report
@@ -3004,7 +2936,7 @@ exports.proformaForm5Html = asyncHandler(async (req, res) => {
   let { provinceId, fromDate, toDate, year, month } = req.query;
   provinceId = await _resolveProvinceId(provinceId, req);
   if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
-  _checkForm5Scope(req, provinceId);
+  await _checkForm5Scope(req, provinceId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3020,7 +2952,7 @@ exports.proformaForm5Pdf = asyncHandler(async (req, res) => {
   let { provinceId, fromDate, toDate, year, month } = req.query;
   provinceId = await _resolveProvinceId(provinceId, req);
   if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
-  _checkForm5Scope(req, provinceId);
+  await _checkForm5Scope(req, provinceId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3035,9 +2967,10 @@ exports.proformaForm5Xlsx = asyncHandler(async (req, res) => {
   let { provinceId, fromDate, toDate, year, month } = req.query;
   provinceId = await _resolveProvinceId(provinceId, req);
   if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
-  _checkForm5Scope(req, provinceId);
+  await _checkForm5Scope(req, provinceId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
+
   const y = parseInt(year, 10) || 2026;
   const m = parseInt(month, 10) || 10;
   const saved = await ProformaReport.findOne({ formType: 'form5', unitId: provinceId, year: y, month: m }).lean();
@@ -3060,38 +2993,17 @@ async function _resolveDistrictId(districtId, req) {
   return d ? d._id.toString() : '';
 }
 
-function _checkDistrictScope(req, districtId) {
-  const roles = req.user?.roles || [];
-  const isSuper = roles.includes('SUPER_ADMIN') || roles.includes('ADMIN') || req.user?.isBootstrap;
-  const isCentral = isSuper || roles.includes('CENTRAL_ADMIN');
-  if (isCentral) return;
-
-  const canAccess = roles.some((r) => [
-    'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', 'UNIT_ADMIN',
-    'PRESIDENT', 'GENERAL_SECRETARY', 'SR_VICE_PRESIDENT', 'VICE_PRESIDENT',
-    'SENIOR_MAWIN', 'DEPUTY_SECRETARY', 'OFFICE_SECRETARY', 'FINANCE_SECRETARY',
-    'INFORMATION_SECRETARY', 'ORGANIZING_SECRETARY', 'CULTURE_SECRETARY',
-    'ADMIN',
-  ].includes(r)) || roles.length > 0;
-
-  if (!canAccess) {
-    throw new ApiError(403, 'FORBIDDEN', 'Access to District reports is restricted to leadership');
-  }
-
-  if (req.user?.scope?.districtId && districtId) {
-    const isHigher = roles.some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'ADMIN'].includes(r)) || req.user?.isBootstrap;
-    if (!isHigher && req.user.scope.districtId.toString() !== districtId.toString()) {
-      throw new ApiError(403, 'FORBIDDEN', 'You may only access reports for your assigned district');
-    }
-  }
+async function _checkDistrictScope(req, districtId) {
+  await validateProformaAccess(req.user, 'form6', districtId, 'DISTRICT');
 }
+
 
 // Form 6: District Monthly Work & Activity Report
 exports.proformaForm6Html = asyncHandler(async (req, res) => {
   let { districtId, year, month, m1, m2, m3 } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3107,7 +3019,7 @@ exports.proformaForm6Pdf = asyncHandler(async (req, res) => {
   let { districtId, year, month, m1, m2, m3 } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3122,7 +3034,7 @@ exports.proformaForm6Xlsx = asyncHandler(async (req, res) => {
   let { districtId, year, month, m1, m2, m3 } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3140,7 +3052,7 @@ exports.proformaForm7Html = asyncHandler(async (req, res) => {
   let { districtId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3156,7 +3068,7 @@ exports.proformaForm7Pdf = asyncHandler(async (req, res) => {
   let { districtId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3171,7 +3083,7 @@ exports.proformaForm7Xlsx = asyncHandler(async (req, res) => {
   let { districtId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3190,7 +3102,7 @@ exports.proformaForm8Html = asyncHandler(async (req, res) => {
   let { districtId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3206,7 +3118,7 @@ exports.proformaForm8Pdf = asyncHandler(async (req, res) => {
   let { districtId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3221,7 +3133,7 @@ exports.proformaForm8Xlsx = asyncHandler(async (req, res) => {
   let { districtId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
-  _checkDistrictScope(req, districtId);
+  await _checkDistrictScope(req, districtId);
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
@@ -3240,11 +3152,13 @@ exports.proformaForm9Html = asyncHandler(async (req, res) => {
   let { districtId, areaId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const targetId = districtId || areaId;
+  if (!targetId) throw new ApiError(400, 'BAD_REQUEST', 'districtId or areaId is required');
+  await validateProformaAccess(req.user, 'form9', targetId, districtId ? 'DISTRICT' : 'AREA');
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
   const m = parseInt(month, 10) || 10;
-  const targetId = districtId || areaId;
   const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
   const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
   const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
@@ -3257,11 +3171,13 @@ exports.proformaForm9Pdf = asyncHandler(async (req, res) => {
   let { districtId, areaId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const targetId = districtId || areaId;
+  if (!targetId) throw new ApiError(400, 'BAD_REQUEST', 'districtId or areaId is required');
+  await validateProformaAccess(req.user, 'form9', targetId, districtId ? 'DISTRICT' : 'AREA');
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
   const m = parseInt(month, 10) || 10;
-  const targetId = districtId || areaId;
   const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
   const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
   const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
@@ -3273,11 +3189,13 @@ exports.proformaForm9Xlsx = asyncHandler(async (req, res) => {
   let { districtId, areaId, year, month } = req.query;
   districtId = await _resolveDistrictId(districtId, req);
   if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const targetId = districtId || areaId;
+  if (!targetId) throw new ApiError(400, 'BAD_REQUEST', 'districtId or areaId is required');
+  await validateProformaAccess(req.user, 'form9', targetId, districtId ? 'DISTRICT' : 'AREA');
   const ProformaReport = require('../models/ProformaReport');
   const proformaService = require('../services/proformaReportService');
   const y = parseInt(year, 10) || 2026;
   const m = parseInt(month, 10) || 10;
-  const targetId = districtId || areaId;
   const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
   const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
   const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
@@ -3287,6 +3205,7 @@ exports.proformaForm9Xlsx = asyncHandler(async (req, res) => {
   await wb.xlsx.write(res);
   res.end();
 });
+
 
 // PR U7 — exposed so reportTemplateService can reuse the data
 // gathering layer without duplication. The existing controller

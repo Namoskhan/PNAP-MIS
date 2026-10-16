@@ -5,7 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
 import UnitSwitcher from '../../components/UnitSwitcher';
 import PashtoKeyboardHelper from '../../components/PashtoKeyboardHelper';
+import { homeTierOf, isLevelAllowed } from '../../utils/unitTier';
 import Form7Workspace from './proforma/Form7Workspace';
+
 import Form8Workspace from './proforma/Form8Workspace';
 import Form9Workspace from './proforma/Form9Workspace';
 
@@ -121,6 +123,7 @@ function NumberStepper({ value, onChange, min = 0, max = Infinity, step = 1, pla
 export const PROFORMA_FORMS = [
   {
     id: 'form1',
+    targetLevel: 'AREA',
     icon: '📋',
     defaultTab: 'upper',
     btnKey: 'proforma.form1Btn',
@@ -134,6 +137,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form2',
+    targetLevel: 'AREA',
     icon: '📑',
     defaultTab: 'upper',
     btnKey: 'proforma.form2Btn',
@@ -147,6 +151,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form3',
+    targetLevel: 'AREA',
     icon: '📑',
     defaultTab: 'form3_tab1',
     btnKey: 'proforma.form3Btn',
@@ -160,6 +165,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form4',
+    targetLevel: 'BASIC_UNIT',
     icon: '📄',
     defaultTab: 'upper',
     btnKey: 'proforma.form4Btn',
@@ -173,6 +179,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form5',
+    targetLevel: 'PROVINCE',
     icon: '🏛️',
     defaultTab: 'upper',
     btnKey: 'proforma.form5Btn',
@@ -186,6 +193,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form6',
+    targetLevel: 'DISTRICT',
     icon: '🏛️',
     defaultTab: 'upper',
     btnKey: 'proforma.form6Btn',
@@ -199,6 +207,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form7',
+    targetLevel: 'DISTRICT',
     icon: '📑',
     defaultTab: 'upper',
     btnKey: 'proforma.form7Btn',
@@ -212,6 +221,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form8',
+    targetLevel: 'DISTRICT',
     icon: '📑',
     defaultTab: 'upper',
     btnKey: 'proforma.form8Btn',
@@ -225,6 +235,7 @@ export const PROFORMA_FORMS = [
   },
   {
     id: 'form9',
+    targetLevel: 'DISTRICT',
     icon: '📑',
     defaultTab: 'upper',
     btnKey: 'proforma.form9Btn',
@@ -245,8 +256,29 @@ export default function ProformaReportsPage() {
 
   const isRtl = i18n.language === 'ps' || i18n.language === 'ur';
 
-  // Support Form 1 to Form 9 with uniform structure
-  const [formType, setFormType] = useState(() => (ctx?.unitLevel === 'BASIC_UNIT' ? 'form4' : 'form1'));
+  const homeTier = useMemo(() => homeTierOf(user)?.level || 'CENTRAL', [user]);
+
+  // Compute allowed forms strictly according to the user's home tier (lower tier cannot access higher)
+  const allowedForms = useMemo(() => {
+    return PROFORMA_FORMS.filter((f) => isLevelAllowed(user, f.targetLevel));
+  }, [user]);
+
+  // Default to the first allowed form for user's tier
+  const [formType, setFormType] = useState(() => {
+    const allowed = PROFORMA_FORMS.filter((f) => isLevelAllowed(user, f.targetLevel));
+    if (ctx?.unitLevel === 'BASIC_UNIT' && allowed.some((f) => f.id === 'form4')) return 'form4';
+    if (ctx?.unitLevel === 'DISTRICT' && allowed.some((f) => f.id === 'form6')) return 'form6';
+    if (ctx?.unitLevel === 'PROVINCE' && allowed.some((f) => f.id === 'form5')) return 'form5';
+    return allowed[0]?.id || 'form1';
+  });
+
+  // Guard: if formType is somehow set to a disallowed higher-level form, reset to an allowed one
+  useEffect(() => {
+    if (allowedForms.length > 0 && !allowedForms.some((f) => f.id === formType)) {
+      setFormType(allowedForms[0].id);
+    }
+  }, [allowedForms, formType]);
+
   const currentFormConfig = PROFORMA_FORMS.find((f) => f.id === formType) || PROFORMA_FORMS[0];
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -309,21 +341,28 @@ export default function ProformaReportsPage() {
     return () => document.removeEventListener('focusin', handleFocus);
   }, []);
 
-  // Load districts list for Form 6
+  // Load districts list for Form 6-9
   useEffect(() => {
-    api.get('/org/districts')
+    const params = {};
+    if (effectiveProvinceId && homeTier === 'PROVINCE') {
+      params.provinceId = effectiveProvinceId;
+    }
+    api.get('/org/districts', { params })
       .then((res) => {
         const list = res.data?.data || [];
         setDistrictsList(list);
-        if (list.length > 0 && !selectedDistrictId) {
-          const defaultDist = (user?.scope?.districtId && list.some((d) => String(d._id) === String(user.scope.districtId)))
-            ? String(user.scope.districtId)
-            : String(list[0]._id);
-          setSelectedDistrictId(defaultDist);
+        if (list.length > 0) {
+          setSelectedDistrictId((prev) => {
+            if (prev && list.some((d) => String(d._id) === String(prev))) return prev;
+            const defaultDist = (user?.scope?.districtId && list.some((d) => String(d._id) === String(user.scope.districtId)))
+              ? String(user.scope.districtId)
+              : String(list[0]._id);
+            return defaultDist;
+          });
         }
       })
       .catch((err) => console.error('Failed to load districts:', err));
-  }, [user?.scope?.districtId]);
+  }, [user?.scope?.districtId, effectiveProvinceId, homeTier]);
 
   // Resolve effective districtId
   const effectiveDistrictId = useMemo(() => {
@@ -359,27 +398,36 @@ export default function ProformaReportsPage() {
     return provincesList[0]?._id ? String(provincesList[0]._id) : '';
   }, [selectedProvinceId, ctx, user, provincesList]);
 
-  // Resolve effective areaId
-  const effectiveAreaId = useMemo(() => {
-    if (ctx?.unitLevel === 'AREA') return ctx.unitId;
-    if (ctx?.areaId) return ctx.areaId;
-    if (user?.scope?.areaId) return user.scope.areaId;
-    return selectedAreaId || ctx?.unitId || '';
-  }, [ctx, user, selectedAreaId]);
-
-  // Load areas if user is at higher level
+  // Load areas if user is at higher level (District, Province, Central)
   useEffect(() => {
     if (ctx?.unitLevel === 'AREA' || ctx?.unitLevel === 'BASIC_UNIT') return;
-    api.get('/org/areas')
+    const params = {};
+    if (effectiveDistrictId) params.districtId = effectiveDistrictId;
+    api.get('/org/areas', { params })
       .then((res) => {
         const list = res.data?.data || [];
         setAreasList(list);
-        if (list.length > 0 && !selectedAreaId) {
-          setSelectedAreaId(String(list[0]._id));
+        if (list.length > 0) {
+          setSelectedAreaId((prev) => {
+            if (prev && list.some((a) => String(a._id) === String(prev))) return prev;
+            return String(list[0]._id);
+          });
+        } else {
+          setSelectedAreaId('');
         }
       })
       .catch((err) => console.error('Failed to load areas:', err));
-  }, [ctx?.unitLevel]);
+  }, [effectiveDistrictId, ctx?.unitLevel]);
+
+  // Resolve effective areaId
+  const effectiveAreaId = useMemo(() => {
+    if (selectedAreaId) return selectedAreaId;
+    if (ctx?.unitLevel === 'AREA') return ctx.unitId;
+    if (ctx?.areaId) return ctx.areaId;
+    if (user?.scope?.areaId) return user.scope.areaId;
+    return areasList[0]?._id ? String(areasList[0]._id) : '';
+  }, [selectedAreaId, ctx, user, areasList]);
+
 
   // Load basic units under the effective area for Form 4 selection
   useEffect(() => {
@@ -445,8 +493,10 @@ export default function ProformaReportsPage() {
       const found = basicUnitsList.find((b) => String(b._id) === String(targetId));
       return found?.name || formData.unitName || 'Basic Unit';
     }
+    const foundArea = areasList.find((a) => String(a._id) === String(targetId));
+    if (foundArea?.name) return foundArea.name;
     return ctx?.unitName || formData.areaName || 'Area Unit';
-  }, [formType, ctx, targetId, districtsList, provincesList, basicUnitsList, formData]);
+  }, [formType, ctx, targetId, districtsList, provincesList, basicUnitsList, areasList, formData]);
 
   // Sanitize data removing legacy dashes or placeholders
   function sanitizeReportData(raw) {
@@ -3813,7 +3863,7 @@ export default function ProformaReportsPage() {
       <div className="card" style={{ marginBottom: 16 }}>
         {/* Form Selector Tabs */}
         <div className="proforma-form-tabs" role="tablist">
-          {PROFORMA_FORMS.map((form) => {
+          {allowedForms.map((form) => {
             const isActive = formType === form.id;
             return (
               <button
@@ -4059,16 +4109,69 @@ export default function ProformaReportsPage() {
                 </div>
               )
             ) : (
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
-                  {t('proforma.areaUnit', 'Area Unit')}
-                </label>
-                <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
-                  🏢 {ctx?.unitName || 'Current Area'}
-                </div>
+              /* Forms 1, 2, 3 (Area Unit Reports) */
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                {ctx?.unitLevel !== 'AREA' && ctx?.unitLevel !== 'BASIC_UNIT' ? (
+                  <>
+                    {(homeTier === 'CENTRAL' || homeTier === 'PROVINCE') && (
+                      <div>
+                        <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                          {t('proforma.district', 'District')}
+                        </label>
+                        <select
+                          value={selectedDistrictId}
+                          onChange={(e) => setSelectedDistrictId(e.target.value)}
+                          style={{ minWidth: 160, fontWeight: 600 }}
+                        >
+                          {districtsList.map((d) => (
+                            <option key={d._id} value={d._id}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {(homeTier === 'DISTRICT' || ctx?.unitLevel === 'DISTRICT') && (
+                      <div>
+                        <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                          {t('proforma.district', 'District')}
+                        </label>
+                        <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
+                          🏛️ {ctx?.unitName || 'Current District'}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                        {t('proforma.areaUnit', 'Area Unit')}
+                      </label>
+                      <select
+                        value={selectedAreaId}
+                        onChange={(e) => setSelectedAreaId(e.target.value)}
+                        style={{ minWidth: 180, fontWeight: 600 }}
+                      >
+                        {areasList.length === 0 ? (
+                          <option value="">{t('proforma.noAreasFound', '(No Areas Found in District)')}</option>
+                        ) : (
+                          areasList.map((a) => (
+                            <option key={a._id} value={a._id}>{a.name}</option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
+                      {t('proforma.areaUnit', 'Area Unit')}
+                    </label>
+                    <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
+                      🏢 {ctx?.unitName || 'Current Area'}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
 
           {/* Action Buttons */}
           <div className="proforma-action-buttons">

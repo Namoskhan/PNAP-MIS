@@ -7,36 +7,21 @@ const proformaService = require('../services/proformaReportService');
 const asyncHandler = require('express-async-handler');
 const { ApiError, ok, fail } = require('../utils/response');
 
-// Roles authorized to edit/submit proforma reports across all tiers
-const PROFORMA_AUTHORIZED_ROLES = [
-  'SUPER_ADMIN',
-  'ADMIN',
-  'CENTRAL_ADMIN',
-  'PROVINCE_ADMIN',
-  'DISTRICT_ADMIN',
-  'AREA_ADMIN',
-  'PRESIDENT',
-  'SR_VICE_PRESIDENT',
-  'VICE_PRESIDENT',
-  'GENERAL_SECRETARY',
-  'DEPUTY_SECRETARY',
-  'OFFICE_SECRETARY',
-  'FINANCE_SECRETARY',
-  'INFORMATION_SECRETARY',
-  'SENIOR_MAWIN',
-];
+const {
+  PROFORMA_AUTHORIZED_ROLES,
+  validateProformaAccess,
+  canUserEditProforma,
+  getUserTier,
+} = require('../utils/proformaScope');
 
 const BU_AREA_ROLES = PROFORMA_AUTHORIZED_ROLES;
 const PROVINCE_ROLES = PROFORMA_AUTHORIZED_ROLES;
 
 function checkCanEdit(user, formType, targetLevel) {
-  if (!user) return false;
-  const roles = user.roles || [];
-  if (roles.includes('SUPER_ADMIN') || roles.includes('CENTRAL_ADMIN') || roles.includes('ADMIN') || user.isBootstrap) return true;
-
-  // Allow all authorized administrative and leadership roles
-  return roles.some((r) => PROFORMA_AUTHORIZED_ROLES.includes(r)) || roles.length > 0;
+  return canUserEditProforma(user, formType, targetLevel);
 }
+
+
 
 // 1. GET /api/proforma/entry
 // Retrieves saved report if exists, or initial baseline for entry
@@ -99,7 +84,11 @@ exports.getProformaEntry = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'BAD_REQUEST', `Target unit ID is required for ${formType}`);
   }
 
+  // Enforce role authorization, tier hierarchy (lower cannot access higher), and territorial boundaries
+  await validateProformaAccess(req.user, formType, targetId, unitLevel);
+
   const canEdit = checkCanEdit(req.user, formType, unitLevel);
+
 
   // Check if a saved report already exists in MongoDB
   const savedReport = await ProformaReport.findOne({
@@ -378,10 +367,14 @@ exports.saveProformaReport = asyncHandler(async (req, res) => {
     }
   }
 
+  // Enforce role authorization, tier hierarchy, and territorial boundaries
+  await validateProformaAccess(req.user, formType, effectiveUnitId, effectiveUnitLevel);
+
   const canEdit = checkCanEdit(req.user, formType, effectiveUnitLevel);
   if (!canEdit) {
     throw new ApiError(403, 'FORBIDDEN', 'You do not have permission to enter or submit this proforma report. Only Senior Mawin, Vice President, or authorized executives may submit.');
   }
+
 
   const userRoles = req.user.roles || [];
   const primaryRole = userRoles.find((r) => [...BU_AREA_ROLES, ...PROVINCE_ROLES].includes(r)) || userRoles[0] || 'MEMBER';
@@ -869,6 +862,9 @@ exports.resetProformaReport = asyncHandler(async (req, res) => {
   if (!targetId) {
     throw new ApiError(400, 'BAD_REQUEST', 'Target unit ID is required');
   }
+
+  // Enforce role authorization, tier hierarchy, and territorial boundaries
+  await validateProformaAccess(req.user, formType, targetId, unitLevel);
 
   const canEdit = checkCanEdit(req.user, formType, unitLevel);
   if (!canEdit) {
