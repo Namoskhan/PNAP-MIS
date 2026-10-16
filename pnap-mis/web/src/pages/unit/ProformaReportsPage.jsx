@@ -341,6 +341,31 @@ export default function ProformaReportsPage() {
     return () => document.removeEventListener('focusin', handleFocus);
   }, []);
 
+  // Resolve effective provinceId
+  const effectiveProvinceId = useMemo(() => {
+    if (selectedProvinceId) return selectedProvinceId;
+    if (ctx?.unitLevel === 'PROVINCE') return ctx.unitId;
+    if (ctx?.provinceId) return ctx.provinceId;
+    if (user?.scope?.provinceId) return user.scope.provinceId;
+    return provincesList[0]?._id ? String(provincesList[0]._id) : '';
+  }, [selectedProvinceId, ctx, user, provincesList]);
+
+  // Load provinces list for Form 5
+  useEffect(() => {
+    api.get('/org/provinces')
+      .then((res) => {
+        const list = res.data?.data || [];
+        setProvincesList(list);
+        if (list.length > 0 && !selectedProvinceId) {
+          const defaultProv = (user?.scope?.provinceId && list.some((p) => String(p._id) === String(user.scope.provinceId)))
+            ? String(user.scope.provinceId)
+            : String(list[0]._id);
+          setSelectedProvinceId(defaultProv);
+        }
+      })
+      .catch((err) => console.error('Failed to load provinces:', err));
+  }, [user?.scope?.provinceId]);
+
   // Load districts list for Form 6-9
   useEffect(() => {
     const params = {};
@@ -372,31 +397,6 @@ export default function ProformaReportsPage() {
     if (user?.scope?.districtId) return user.scope.districtId;
     return districtsList[0]?._id ? String(districtsList[0]._id) : '';
   }, [selectedDistrictId, ctx, user, districtsList]);
-
-  // Load provinces list for Form 5
-  useEffect(() => {
-    api.get('/org/provinces')
-      .then((res) => {
-        const list = res.data?.data || [];
-        setProvincesList(list);
-        if (list.length > 0 && !selectedProvinceId) {
-          const defaultProv = (user?.scope?.provinceId && list.some((p) => String(p._id) === String(user.scope.provinceId)))
-            ? String(user.scope.provinceId)
-            : String(list[0]._id);
-          setSelectedProvinceId(defaultProv);
-        }
-      })
-      .catch((err) => console.error('Failed to load provinces:', err));
-  }, [user?.scope?.provinceId]);
-
-  // Resolve effective provinceId
-  const effectiveProvinceId = useMemo(() => {
-    if (selectedProvinceId) return selectedProvinceId;
-    if (ctx?.unitLevel === 'PROVINCE') return ctx.unitId;
-    if (ctx?.provinceId) return ctx.provinceId;
-    if (user?.scope?.provinceId) return user.scope.provinceId;
-    return provincesList[0]?._id ? String(provincesList[0]._id) : '';
-  }, [selectedProvinceId, ctx, user, provincesList]);
 
   // Load areas if user is at higher level (District, Province, Central)
   useEffect(() => {
