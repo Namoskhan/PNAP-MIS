@@ -249,10 +249,14 @@ exports.decideDonation = asyncHandler(async (req, res) => {
     const recUserId = d.recordedBy?._id || d.recordedBy;
     const recUser = recUserId ? await User.findById(recUserId).select('roles permissions memberId').lean() : null;
     const canSeeFinance = recUser && (
-      (recUser.roles || []).some((r) => ['SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN', 'FINANCE_SECRETARY', 'SECRETARY', 'PRESIDENT', 'CHAIRMAN'].includes(r)) ||
+      (recUser.roles || []).some((r) => [
+        'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
+        'FINANCE_SECRETARY', 'SECRETARY', 'PRESIDENT', 'CHAIRMAN', 'CO_CHAIRMAN',
+        'SENIOR_MAWIN', 'SR_VICE_PRESIDENT', 'FIRST_SECRETARY', 'GENERAL_SECRETARY'
+      ].includes(r)) ||
       (recUser.permissions && recUser.permissions.includes('MANAGE_FINANCE'))
     );
-    const recLink = canSeeFinance ? '/unit/finance' : (d.donorMemberId ? `/members/${d.donorMemberId}` : undefined);
+    const recLink = '/unit/finance';
 
     if (recUserId) {
       notify(recUserId, {
