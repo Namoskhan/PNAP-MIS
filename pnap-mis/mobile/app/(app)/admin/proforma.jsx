@@ -176,11 +176,14 @@ export default function ProformaScreen() {
     if (ctx?.unitLevel === 'CENTRAL' || isHigherAdmin(user)) {
       api.get('/org/provinces').then((r) => setProvincesList(r.data?.data || [])).catch(() => {});
       api.get('/org/districts').then((r) => setDistrictsList(r.data?.data || [])).catch(() => {});
+    } else if (ctx?.unitLevel === 'PROVINCE') {
+      const p = ctx.unitId ? { provinceId: ctx.unitId } : {};
+      api.get('/org/districts', { params: p }).then((r) => setDistrictsList(r.data?.data || [])).catch(() => {});
     }
     if (ctx?.unitLevel === 'CENTRAL' || ctx?.unitLevel === 'PROVINCE' || ctx?.unitLevel === 'DISTRICT' || isHigherAdmin(user)) {
       api.get('/org/areas').then((r) => setAreasList(r.data?.data || [])).catch(() => {});
     }
-  }, [user, ctx?.unitLevel]);
+  }, [user, ctx?.unitLevel, ctx?.unitId]);
 
   // Resolve effective areaId
   const effectiveAreaId = useMemo(() => {
@@ -344,13 +347,21 @@ export default function ProformaScreen() {
         month: String(month),
       };
 
+      const docData = entryDoc?.data || {};
       if (['form1', 'form2', 'form3'].includes(formType)) {
         params.areaId = effectiveAreaId;
       } else if (formType === 'form4') {
         params.unitId = targetId;
       } else if (formType === 'form5') {
         params.provinceId = effectiveProvinceId;
-      } else if (['form6', 'form7', 'form8'].includes(formType)) {
+        if (docData.fromDate) params.fromDate = docData.fromDate;
+        if (docData.toDate) params.toDate = docData.toDate;
+      } else if (formType === 'form6') {
+        params.districtId = effectiveDistrictId;
+        if (docData.m1) params.m1 = docData.m1;
+        if (docData.m2) params.m2 = docData.m2;
+        if (docData.m3) params.m3 = docData.m3;
+      } else if (['form7', 'form8'].includes(formType)) {
         params.districtId = effectiveDistrictId;
       } else if (formType === 'form9') {
         if (effectiveDistrictId) params.districtId = effectiveDistrictId;
@@ -518,6 +529,46 @@ export default function ProformaScreen() {
               </ScrollView>
             </View>
           )}
+
+          {/* Auxiliary Province Picker for Form 5 */}
+          {formType === 'form5' && (ctx?.unitLevel === 'CENTRAL' || isHigherAdmin(user)) && provincesList.length > 0 && (
+            <View style={{ marginTop: Spacing.sm }}>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>Select Province (صوبائي يونټ):</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                {provincesList.map((p) => (
+                  <TouchableOpacity
+                    key={p._id}
+                    style={[styles.pillBtn, String(effectiveProvinceId) === String(p._id) && styles.pillBtnActive]}
+                    onPress={() => setSelectedProvinceId(String(p._id))}
+                  >
+                    <Text style={[styles.pillBtnText, String(effectiveProvinceId) === String(p._id) && styles.pillBtnTextActive]}>
+                      {p.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Auxiliary District Picker for Forms 6-9 */}
+          {['form6', 'form7', 'form8', 'form9'].includes(formType) && (ctx?.unitLevel === 'CENTRAL' || ctx?.unitLevel === 'PROVINCE' || isHigherAdmin(user)) && districtsList.length > 0 && (
+            <View style={{ marginTop: Spacing.sm }}>
+              <Text style={[styles.label, isRTL && { textAlign: 'right' }]}>Select District (ضلعي يونټ):</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
+                {districtsList.map((d) => (
+                  <TouchableOpacity
+                    key={d._id}
+                    style={[styles.pillBtn, String(effectiveDistrictId) === String(d._id) && styles.pillBtnActive]}
+                    onPress={() => setSelectedDistrictId(String(d._id))}
+                  >
+                    <Text style={[styles.pillBtnText, String(effectiveDistrictId) === String(d._id) && styles.pillBtnTextActive]}>
+                      {d.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </Card>
 
         {/* 3. Reporting Period (Month & Year) Card */}
@@ -621,51 +672,261 @@ export default function ProformaScreen() {
             </View>
           )}
 
-          {formType === 'form1' && formData.upper && (
+          {/* Form 1: Area Unit Overview */}
+          {formType === 'form1' && (
             <View style={styles.dataPreviewBox}>
               <Text style={styles.dataPreviewTitle}>📊 Area Overview Metrics:</Text>
               <View style={styles.metricGrid}>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{formData.upper.execPresent || 0} / {formData.upper.execSlots || 0}</Text>
+                  <Text style={styles.metricVal}>
+                    {(formData.upper?.execPresent ?? formData.execPresent ?? 0)} / {(formData.upper?.execSlots ?? formData.execSlots ?? 0)}
+                  </Text>
                   <Text style={styles.metricLabel}>Exec Attendance</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{formData.upper.commPresent || 0} / {formData.upper.commTotal || 0}</Text>
+                  <Text style={styles.metricVal}>
+                    {(formData.upper?.commPresent ?? formData.commPresent ?? 0)} / {(formData.upper?.commTotal ?? formData.commTotal ?? 0)}
+                  </Text>
                   <Text style={styles.metricLabel}>Comm Attendance</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{formData.upper.totalDonations || 0} Rs</Text>
+                  <Text style={styles.metricVal}>
+                    {(formData.upper?.totalDonations ?? formData.totalDuesCollected ?? 0)} Rs
+                  </Text>
                   <Text style={styles.metricLabel}>Total Donations</Text>
                 </View>
               </View>
+              <Text style={[styles.previewRowSub, { marginTop: 8 }]}>
+                👥 Area Executive Comrades in Roster: {Array.isArray(formData.rows) ? formData.rows.length : 0}
+              </Text>
             </View>
           )}
 
-          {formType === 'form4' && formData.upper && (
+          {/* Form 2: Subordinate Basic Units */}
+          {formType === 'form2' && (
+            <View style={styles.dataPreviewBox}>
+              <Text style={styles.dataPreviewTitle}>
+                🏛️ {t('proforma.subordinateUnitsList', 'Subordinate Basic Units (ماتحت بنسټيز يونټونه)')}:
+              </Text>
+              {Array.isArray(formData.rows) && formData.rows.length > 0 ? (
+                <View style={{ gap: 6, marginTop: 6 }}>
+                  {formData.rows.map((r, i) => (
+                    <View key={i} style={styles.previewRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.previewRowTitle}>
+                          {i + 1}. {r.unitName || `Unit #${i + 1}`}
+                        </Text>
+                        <Text style={styles.previewRowSub}>
+                          Exec Mtgs: {r.execMeetingsHeld || r.execMeetings || 0} • GB Present: {r.gbPresent || 0}/{r.totalMembers || r.gbTotalMembers || 0}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.previewRowVal}>
+                          Dues: {r.duesCollected || r.unitDonations || 0} Rs
+                        </Text>
+                        <Text style={styles.previewRowSub}>
+                          Emg: {r.emergencyDonations || 0} Rs
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>
+                  {loadingEntry ? 'Loading subordinate units...' : 'No unit rows found. Click "Enter & Edit Data" to auto-populate from system or add basic units.'}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Form 3: Area Detailed Activity Proforma */}
+          {formType === 'form3' && (
+            <View style={styles.dataPreviewBox}>
+              <Text style={styles.dataPreviewTitle}>📊 Area Detailed Proforma Metrics:</Text>
+              <View style={styles.metricGrid}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{formData.totalUnitsCount ?? formData.upper?.totalUnitsCount ?? 0}</Text>
+                  <Text style={styles.metricLabel}>Total Units</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{formData.inactiveUnitsCount ?? 0}</Text>
+                  <Text style={styles.metricLabel}>Inactive Units</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{formData.ralliesAndProtests ?? 0}</Text>
+                  <Text style={styles.metricLabel}>Rallies/Protests</Text>
+                </View>
+              </View>
+              <Text style={[styles.previewRowSub, { marginTop: 8 }]}>
+                👥 Area Committee / Executive Comrades: {Array.isArray(formData.rows) ? formData.rows.length : 0} • Dues: {formData.totalDuesCollected ?? formData.totalDonations ?? 0} Rs
+              </Text>
+            </View>
+          )}
+
+          {/* Form 4: Basic Unit */}
+          {formType === 'form4' && (
             <View style={styles.dataPreviewBox}>
               <Text style={styles.dataPreviewTitle}>📊 Basic Unit Metrics:</Text>
               <View style={styles.metricGrid}>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{formData.upper.execPresent || 0} / {formData.upper.execSlots || 0}</Text>
+                  <Text style={styles.metricVal}>
+                    {(formData.upper?.execPresent ?? formData.executivePresent ?? 0)} / {(formData.upper?.execSlots ?? formData.executiveSlots ?? 0)}
+                  </Text>
                   <Text style={styles.metricLabel}>Exec Present</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{formData.upper.gbPresent || 0} / {formData.upper.gbMembers || 0}</Text>
+                  <Text style={styles.metricVal}>
+                    {(formData.upper?.gbPresent ?? formData.generalBodyPresent ?? 0)} / {(formData.upper?.gbMembers ?? formData.totalMembers ?? 0)}
+                  </Text>
                   <Text style={styles.metricLabel}>GB Members</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Text style={styles.metricVal}>{formData.upper.unitDonations || 0} Rs</Text>
+                  <Text style={styles.metricVal}>
+                    {(formData.upper?.unitDonations ?? formData.totalDuesCollected ?? 0)} Rs
+                  </Text>
                   <Text style={styles.metricLabel}>Unit Dues</Text>
+                </View>
+              </View>
+              <Text style={[styles.previewRowSub, { marginTop: 8 }]}>
+                👥 Basic Unit Executive Comrades: {Array.isArray(formData.rows) ? formData.rows.length : 0}
+              </Text>
+            </View>
+          )}
+
+          {/* Form 5: Provincial Executive */}
+          {formType === 'form5' && (
+            <View style={styles.dataPreviewBox}>
+              <Text style={styles.dataPreviewTitle}>🏛️ Provincial Executive Overview:</Text>
+              <View style={styles.metricGrid}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{Array.isArray(formData.rows) ? formData.rows.length : 0}</Text>
+                  <Text style={styles.metricLabel}>Comrades</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>
+                    {Array.isArray(formData.rows) ? formData.rows.reduce((s, r) => s + (parseInt(r.provincialCabinetMeetings, 10) || 0), 0) : 0}
+                  </Text>
+                  <Text style={styles.metricLabel}>Exec Mtgs</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{formData.totalDuesCollected ?? 0} Rs</Text>
+                  <Text style={styles.metricLabel}>Dues Collected</Text>
+                </View>
+              </View>
+              <Text style={[styles.previewRowSub, { marginTop: 8 }]}>
+                📅 Reporting Range: {formData.fromDate || `01/${String(month).padStart(2, '0')}`} → {formData.toDate || `30/${String(month).padStart(2, '0')}`}
+              </Text>
+            </View>
+          )}
+
+          {/* Form 6: District Unit */}
+          {formType === 'form6' && (
+            <View style={styles.dataPreviewBox}>
+              <Text style={styles.dataPreviewTitle}>🏛️ District Unit Summary & Metrics:</Text>
+              <View style={styles.metricGrid}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{formData.areasCount ?? formData.upper?.areasCount ?? 0}</Text>
+                  <Text style={styles.metricLabel}>Area Units</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{formData.buCount ?? formData.upper?.buCount ?? 0}</Text>
+                  <Text style={styles.metricLabel}>Basic Units</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{formData.dues ?? formData.upper?.dues ?? 0} Rs</Text>
+                  <Text style={styles.metricLabel}>District Dues</Text>
+                </View>
+              </View>
+              <Text style={[styles.previewRowSub, { marginTop: 8 }]}>
+                👥 District Executive Comrades in Roster: {Array.isArray(formData.rows) ? formData.rows.length : 0} • Rallies: {formData.ralliesAndProtests ?? 0} • Jirgas: {formData.jirgasAndCornerMeetings ?? 0}
+              </Text>
+            </View>
+          )}
+
+          {/* Form 7: District Subordinate Areas */}
+          {formType === 'form7' && (
+            <View style={styles.dataPreviewBox}>
+              <Text style={styles.dataPreviewTitle}>📑 District Subordinate Area Units ({Array.isArray(formData.rows) ? formData.rows.length : 0}):</Text>
+              {Array.isArray(formData.rows) && formData.rows.length > 0 ? (
+                <View style={{ gap: 6, marginTop: 6 }}>
+                  {formData.rows.slice(0, 5).map((r, i) => (
+                    <View key={i} style={styles.previewRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.previewRowTitle}>
+                          {i + 1}. {r.areaName || `Area #${i + 1}`}
+                        </Text>
+                        <Text style={styles.previewRowSub}>
+                          BUs: {r.buCount || 0} • Members: {r.membershipTotal || 0} • Mtgs: {r.execHeld || 0}/{r.commHeld || 0}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.previewRowVal}>
+                          {r.duesMonthly || 0} Rs
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                  {formData.rows.length > 5 && (
+                    <Text style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic', textAlign: 'center' }}>
+                      + {formData.rows.length - 5} more area units in database...
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>No subordinate area units logged for this period.</Text>
+              )}
+            </View>
+          )}
+
+          {/* Form 8: District Committee Comrades */}
+          {formType === 'form8' && (
+            <View style={styles.dataPreviewBox}>
+              <Text style={styles.dataPreviewTitle}>📑 Central & Provincial Committee in District ({Array.isArray(formData.rows) ? formData.rows.length : 0}):</Text>
+              <View style={styles.metricGrid}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>{Array.isArray(formData.rows) ? formData.rows.length : 0}</Text>
+                  <Text style={styles.metricLabel}>Committee Members</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>
+                    {Array.isArray(formData.rows) ? formData.rows.reduce((s, r) => s + (parseInt(r.totalMeetings, 10) || 0), 0) : 0}
+                  </Text>
+                  <Text style={styles.metricLabel}>Total Mtgs</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>
+                    {formData.monthlyDues ?? (Array.isArray(formData.rows) ? formData.rows.reduce((s, r) => s + (parseInt(r.monthlyDues, 10) || 0), 0) : 0)} Rs
+                  </Text>
+                  <Text style={styles.metricLabel}>Total Dues</Text>
                 </View>
               </View>
             </View>
           )}
 
-          {['form5', 'form6', 'form7', 'form8', 'form9'].includes(formType) && (
+          {/* Form 9: Central & Provincial Organs */}
+          {formType === 'form9' && (
             <View style={styles.dataPreviewBox}>
-              <Text style={styles.dataPreviewTitle}>
-                👥 Total Comrades / Subordinate Rows: {Array.isArray(formData.rows || formData.sec1Members) ? (formData.rows || formData.sec1Members).length : 0}
-              </Text>
+              <Text style={styles.dataPreviewTitle}>📑 Central & Provincial Organs in District:</Text>
+              <View style={styles.metricGrid}>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>
+                    {Array.isArray(formData.rows || formData.sec1Members) ? (formData.rows || formData.sec1Members).length : 0}
+                  </Text>
+                  <Text style={styles.metricLabel}>Organ Members</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>
+                    {Array.isArray(formData.sec2PublicGatherings) ? formData.sec2PublicGatherings.length : (formData.publicGatherings ?? 0)}
+                  </Text>
+                  <Text style={styles.metricLabel}>Gatherings</Text>
+                </View>
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricVal}>
+                    {formData.sec4BloodBank?.totalCashDonations ?? formData.bloodCash ?? 0} Rs
+                  </Text>
+                  <Text style={styles.metricLabel}>Blood Bank Fund</Text>
+                </View>
+              </View>
             </View>
           )}
 
