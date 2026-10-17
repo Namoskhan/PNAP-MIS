@@ -791,7 +791,7 @@ export default function MeetingsPage() {
         <thead>
           <tr>
             <th>{t('common.date', 'When')}</th><th>{t('meetings.meetingType', 'Type')}</th><th>{t('meetings.venue', 'Venue')}</th><th>{t('meetings.chairperson', 'Chairperson')}</th>
-            <th>{t('meetings.attendees', 'Attendance')}</th><th>{t('common.status', 'State')}</th><th>{t('meetings.photos', 'Photos')}</th><th>{t('meetings.documents', 'Docs')}</th><th>{t('common.actions', 'Actions')}</th>
+            <th>{t('meetings.attendance', 'Attendance')}</th><th>{t('common.status', 'State')}</th><th>{t('meetings.photos', 'Photos')}</th><th>{t('meetings.docs', 'Docs')}</th><th>{t('common.actions', 'Actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -884,7 +884,7 @@ export default function MeetingsPage() {
                   {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
                     <>
                       <button className="btn ghost" onClick={() => setEditing(m)}>{t('common.edit', 'Edit')}</button>{' '}
-                      <button className="btn ghost" onClick={() => setDocFor(m)}>{t('meetings.documents', 'Docs')}</button>{' '}
+                      <button className="btn ghost" onClick={() => setDocFor(m)}>{t('meetings.docs', 'Docs')}</button>{' '}
                       <label className="btn secondary" style={{ cursor: 'pointer' }}>
                         {t('meetings.photos', 'Photos')}
                         <input
