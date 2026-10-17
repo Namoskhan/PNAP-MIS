@@ -128,6 +128,7 @@ export default function MeetingsPage() {
   const [editing, setEditing] = useState(null);
   const [docFor, setDocFor] = useState(null);
   const [photosFor, setPhotosFor] = useState(null);
+  const [viewingMeeting, setViewingMeeting] = useState(null);
   const [gpsHint, setGpsHint] = useState('');
   const [creating, setCreating] = useState(false);
   // Supervisor candidates are a different population from `members`
@@ -411,6 +412,7 @@ export default function MeetingsPage() {
           roleText: att.roleText,
           unitText: att.unitText,
           status: existing ? (existing.status === 'LATE' ? 'PRESENT' : existing.status) : 'ABSENT',
+          monthlyDonationStatus: att.monthlyDonationStatus,
         };
       });
       setFinalizing({
@@ -864,6 +866,11 @@ export default function MeetingsPage() {
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <button
                     className="btn ghost"
+                    onClick={() => setViewingMeeting(m)}
+                    title="View meeting details and attendees roster"
+                  >👁️ {t('common.view', 'View')}</button>{' '}
+                  <button
+                    className="btn ghost"
                     onClick={() => downloadAuthed(`/api/exports/meeting/${m._id}/pdf`, `meeting-${(m.title || m.type || 'minutes').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`).catch(() => toast.error('PDF download failed.', { title: 'Could not export' }))}
                     title="Download this meeting as PDF (with photos embedded)"
                   >📄 PDF</button>{' '}
@@ -930,6 +937,12 @@ export default function MeetingsPage() {
           onDone={() => { setDocFor(null); reload(); }}
         />
       )}
+      {viewingMeeting && (
+        <ViewMeetingDialog
+          meeting={viewingMeeting}
+          onClose={() => setViewingMeeting(null)}
+        />
+      )}
     </div>
   );
 }
@@ -970,6 +983,7 @@ function FinalizeDialog({
             memberCode: m.memberId,
             roleText: m.roleText,
             status: rawStatus === 'LATE' ? 'PRESENT' : (rawStatus || 'ABSENT'),
+            monthlyDonationStatus: m.monthlyDonationStatus,
           };
         });
         setAttendance(rows);
@@ -1153,24 +1167,43 @@ function FinalizeDialog({
           )}
         </div>
 
-        <h4 style={{ marginBottom: 6 }}>
-          Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} present / {attendance.length})
-        </h4>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-          <button type="button" className="btn ghost" onClick={() => markAll('PRESENT')}>Mark all present</button>
-          <button type="button" className="btn ghost" onClick={() => markAll('ABSENT')}>Mark all absent</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+          <h4 style={{ margin: 0 }}>
+            Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} present / {attendance.length})
+          </h4>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: 12 }}>100 Rs Dues:</span>
+            <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontSize: 11 }}>
+              ✓ {attendance.filter((r) => r.monthlyDonationStatus?.paid).length} Paid
+            </span>
+            <span className="badge" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontSize: 11 }}>
+              ⚠️ {attendance.filter((r) => !r.monthlyDonationStatus?.paid).length} Unpaid
+            </span>
+          </div>
         </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" className="btn ghost" onClick={() => markAll('PRESENT')}>Mark all present</button>
+            <button type="button" className="btn ghost" onClick={() => markAll('ABSENT')}>Mark all absent</button>
+          </div>
+        </div>
+
         <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table className="list" style={{ margin: 0 }}>
             <thead>
-              <tr><th>Attendee / Member</th><th style={{ width: 90, textAlign: 'center' }}>Present</th></tr>
+              <tr>
+                <th>Attendee / Member</th>
+                <th style={{ width: 140, textAlign: 'center' }}>Monthly Dues (100 Rs)</th>
+                <th style={{ width: 90, textAlign: 'center' }}>Present</th>
+              </tr>
             </thead>
             <tbody>
               {loadingAttendees && (
-                <tr><td colSpan="2" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
+                <tr><td colSpan="3" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
               )}
               {!loadingAttendees && attendance.length === 0 && (
-                <tr><td colSpan="2" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'JIRGA' ? 'jirga' : (meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive')} meeting.</td></tr>
+                <tr><td colSpan="3" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'JIRGA' ? 'jirga' : (meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive')} meeting.</td></tr>
               )}
               {!loadingAttendees && attendance.map((r) => (
                 <tr key={r.memberId}>
@@ -1178,6 +1211,17 @@ function FinalizeDialog({
                     <strong>{r.name}</strong>
                     {r.memberCode && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>· {r.memberCode}</span>}
                     {r.roleText && <div className="muted" style={{ fontSize: 11 }}>{r.roleText}</div>}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {r.monthlyDonationStatus?.paid ? (
+                      <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>
+                        ✓ Paid
+                      </span>
+                    ) : (
+                      <span className="badge" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>
+                        ⚠️ Unpaid (100 Rs)
+                      </span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <input
@@ -1661,6 +1705,197 @@ function DocumentsDialog({ meeting, onClose, onDone }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
           <button className="btn" onClick={onDone}>Done</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ViewMeetingDialog({ meeting, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
+  const [duesFilter, setDuesFilter] = useState('ALL');
+
+  useEffect(() => {
+    let active = true;
+    api.get(`/meetings/${meeting._id}`)
+      .then((r) => {
+        if (active) setData(r.data.data);
+      })
+      .catch(() => {
+        if (active) setErr('Failed to load meeting details.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [meeting._id]);
+
+  const m = data || meeting;
+  const att = m.attendance || [];
+
+  const filteredAtt = useMemo(() => {
+    if (duesFilter === 'PAID') return att.filter((a) => a.monthlyDonationStatus?.paid);
+    if (duesFilter === 'UNPAID') return att.filter((a) => !a.monthlyDonationStatus?.paid);
+    return att;
+  }, [att, duesFilter]);
+
+  const paidCount = att.filter((a) => a.monthlyDonationStatus?.paid).length;
+  const unpaidCount = att.filter((a) => !a.monthlyDonationStatus?.paid).length;
+  const presentCount = att.filter((a) => a.status === 'PRESENT').length;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 800, maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 14 }}>
+          <div>
+            <h3 style={{ margin: 0 }}>{m.title || m.type}</h3>
+            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+              {m.type} · {new Date(m.startAt).toLocaleString()} · {m.venue}
+            </div>
+          </div>
+          <button type="button" className="btn ghost" onClick={onClose} style={{ fontSize: 18, lineHeight: 1 }}>✕</button>
+        </div>
+
+        {err && <div className="alert error">{err}</div>}
+        {loading && <div className="muted" style={{ padding: 20, textAlign: 'center' }}>Loading meeting details…</div>}
+
+        {!loading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div className="muted" style={{ fontSize: 11, fontWeight: 600 }}>STATUS</div>
+                <div style={{ fontWeight: 700, marginTop: 2 }}><span className={`badge ${m.state}`}>{m.state}</span></div>
+              </div>
+              <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div className="muted" style={{ fontSize: 11, fontWeight: 600 }}>CHAIRPERSON</div>
+                <div style={{ fontWeight: 700, marginTop: 2 }}>{m.chairpersonId?.fullName || '—'}</div>
+              </div>
+              <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div className="muted" style={{ fontSize: 11, fontWeight: 600 }}>ATTENDANCE</div>
+                <div style={{ fontWeight: 700, marginTop: 2, color: 'var(--primary)' }}>
+                  {presentCount} Present / {att.length} Total
+                </div>
+              </div>
+              <div style={{ background: 'var(--surface-alt)', padding: 10, borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div className="muted" style={{ fontSize: 11, fontWeight: 600 }}>MONTHLY DUES (100 RS)</div>
+                <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                  <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontSize: 11 }}>
+                    ✓ {paidCount} Paid
+                  </span>
+                  <span className="badge" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontSize: 11 }}>
+                    ⚠️ {unpaidCount} Unpaid
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {m.agenda && (
+              <div>
+                <strong>Agenda:</strong>
+                <p style={{ margin: '4px 0', fontSize: 13, whiteSpace: 'pre-wrap' }}>{m.agenda}</p>
+              </div>
+            )}
+
+            {m.decisions && (
+              <div>
+                <strong>Decisions / Minutes:</strong>
+                <p style={{ margin: '4px 0', fontSize: 13, whiteSpace: 'pre-wrap' }}>{m.decisions}</p>
+              </div>
+            )}
+
+            {m.upcomingStrategy && (
+              <div>
+                <strong>Upcoming Strategy:</strong>
+                <p style={{ margin: '4px 0', fontSize: 13, whiteSpace: 'pre-wrap' }}>{m.upcomingStrategy}</p>
+              </div>
+            )}
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                <h4 style={{ margin: 0 }}>Attendance & Monthly Dues Roster</h4>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <span className="muted" style={{ fontSize: 11 }}>Filter:</span>
+                  <button
+                    type="button"
+                    className={`btn ${duesFilter === 'ALL' ? 'secondary' : 'ghost'}`}
+                    style={{ padding: '2px 8px', fontSize: 11 }}
+                    onClick={() => setDuesFilter('ALL')}
+                  >
+                    All ({att.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${duesFilter === 'PAID' ? 'secondary' : 'ghost'}`}
+                    style={{ padding: '2px 8px', fontSize: 11 }}
+                    onClick={() => setDuesFilter('PAID')}
+                  >
+                    Paid ({paidCount})
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${duesFilter === 'UNPAID' ? 'secondary' : 'ghost'}`}
+                    style={{ padding: '2px 8px', fontSize: 11 }}
+                    onClick={() => setDuesFilter('UNPAID')}
+                  >
+                    Unpaid ({unpaidCount})
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
+                <table className="list" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th>Attendee</th>
+                      <th style={{ width: 160, textAlign: 'center' }}>Monthly Dues (100 Rs)</th>
+                      <th style={{ width: 100, textAlign: 'center' }}>Attendance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAtt.length === 0 && (
+                      <tr><td colSpan="3" className="muted" style={{ padding: 12, textAlign: 'center' }}>No attendees match this filter.</td></tr>
+                    )}
+                    {filteredAtt.map((a, i) => {
+                      const name = a.memberId?.fullName || a.name || '—';
+                      const code = a.memberId?.memberId ? ` · ${a.memberId.memberId}` : '';
+                      const isPresent = a.status === 'PRESENT';
+                      const isPaid = a.monthlyDonationStatus?.paid;
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <strong>{name}</strong>
+                            <span className="muted" style={{ fontSize: 12 }}>{code}</span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {isPaid ? (
+                              <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>
+                                ✓ Paid
+                              </span>
+                            ) : (
+                              <span className="badge" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>
+                                ⚠️ Unpaid (100 Rs)
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`badge ${isPresent ? 'PRESENT' : 'ABSENT'}`} style={{ fontSize: 11 }}>
+                              {isPresent ? '✓ Present' : 'Absent'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              <button type="button" className="btn secondary" onClick={onClose}>Close</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

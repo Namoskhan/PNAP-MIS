@@ -2461,16 +2461,29 @@ exports.meetingPdf = asyncHandler(async (req, res) => {
   // ─── Attendance roster
   const att = m.attendance || [];
   if (att.length > 0) {
+    let donationMap = new Map();
+    try {
+      const attMemberIds = att.map((a) => a.memberId?._id || a.memberId).filter(Boolean);
+      const donationService = require('../services/donationReminderService');
+      donationMap = await donationService.getMembersDonationStatusMap(attMemberIds, {
+        date: m.startAt || m.createdAt,
+      });
+    } catch {}
+
     const present = att.filter((a) => a.status === 'PRESENT').length;
     const absent = att.filter((a) => a.status === 'ABSENT').length;
+    const paidCount = att.filter((a) => donationMap.get(String(a.memberId?._id || a.memberId))?.paid).length;
     doc.font('Helvetica-Bold').fontSize(11).fillColor(sectionColor)
-      .text(`Attendance (${present} present · ${absent} absent · ${att.length} on roster)`);
+      .text(`Attendance (${present} present · ${absent} absent · ${paidCount}/${att.length} dues paid)`);
     doc.moveDown(0.2);
     doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
     att.forEach((a) => {
       const name = a.memberId?.fullName || '(unknown)';
       const code = a.memberId?.memberId ? ` · ${a.memberId.memberId}` : '';
-      doc.text(`  • [${a.status || '—'}] ${name}${code}`);
+      const mId = String(a.memberId?._id || a.memberId);
+      const dues = donationMap.get(mId);
+      const duesText = dues ? (dues.paid ? '[100 Rs: Paid]' : '[100 Rs: Unpaid]') : '';
+      doc.text(`  • [${a.status || '—'}] ${duesText ? `${duesText} ` : ''}${name}${code}`);
     });
     doc.moveDown(0.6);
   }

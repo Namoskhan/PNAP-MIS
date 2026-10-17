@@ -148,6 +148,73 @@ async function getMonthlyDonationStatus({ unitLevel, unitId, month, year }) {
 }
 
 /**
+ * Resolves monthly donation status (PKR 100) for a given list of memberIds in a specific month/year.
+ * Returns a Map where key is string memberId and value is:
+ * { paid: boolean, totalDonated: number, feeAmount: 100, dueRemaining: number, month, year, monthName }
+ */
+async function getMembersDonationStatusMap(memberIds, { month, year, date } = {}) {
+  const mongoose = require('mongoose');
+  const resultMap = new Map();
+  if (!Array.isArray(memberIds) || memberIds.length === 0) return resultMap;
+
+  const validOids = [];
+  memberIds.forEach((id) => {
+    if (!id) return;
+    try {
+      const oid = new mongoose.Types.ObjectId(String(id));
+      validOids.push(oid);
+    } catch {}
+  });
+
+  if (validOids.length === 0) return resultMap;
+
+  let targetMonth = month;
+  let targetYear = year;
+  if (!targetMonth && !targetYear && date) {
+    const d = new Date(date);
+    if (!isNaN(d.getTime())) {
+      targetMonth = d.getUTCMonth() + 1;
+      targetYear = d.getUTCFullYear();
+    }
+  }
+
+  const { start, end, monthIndex, year: y, monthName } = getMonthDateRange(targetMonth, targetYear);
+
+  const donMatch = {
+    donorMemberId: { $in: validOids },
+    receivedAt: { $gte: start, $lte: end },
+    $or: [{ state: 'APPROVED' }, { state: { $exists: false } }, { state: null }],
+  };
+
+  const agg = await Donation.aggregate([
+    { $match: donMatch },
+    { $group: { _id: '$donorMemberId', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+  ]);
+
+  const donationsMap = new Map();
+  agg.forEach((r) => {
+    donationsMap.set(String(r._id), r.total || 0);
+  });
+
+  validOids.forEach((oid) => {
+    const strId = String(oid);
+    const donated = donationsMap.get(strId) || 0;
+    const paid = donated >= MONTHLY_CONTRIBUTION_FEE;
+    resultMap.set(strId, {
+      paid,
+      totalDonated: donated,
+      feeAmount: MONTHLY_CONTRIBUTION_FEE,
+      dueRemaining: Math.max(0, MONTHLY_CONTRIBUTION_FEE - donated),
+      month: monthIndex + 1,
+      year: y,
+      monthName,
+    });
+  });
+
+  return resultMap;
+}
+
+/**
  * Dispatch in-app reminders to unpaid active members
  */
 async function sendMonthlyReminders({ unitLevel, unitId, month, year, memberIds: selectedIds, req }) {
@@ -329,6 +396,7 @@ module.exports = {
   MONTHLY_CONTRIBUTION_FEE,
   MAJOR_DONATION_THRESHOLD,
   getMonthlyDonationStatus,
+  getMembersDonationStatusMap,
   sendMonthlyReminders,
   handleDonationApprovalNotification,
   runAutomatedMonthlyCheck,

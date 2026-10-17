@@ -197,11 +197,40 @@ exports.create = asyncHandler(async (req, res) => {
 exports.getOne = asyncHandler(async (req, res) => {
   const m = await Meeting.findById(req.params.id)
     .populate('chairpersonId', 'fullName memberId')
-    .populate('attendance.memberId', 'fullName memberId')
+    .populate('attendance.memberId', 'fullName memberId phone cnic')
     .populate('supervisorMemberId', 'fullName memberId')
     .populate('studyContributions.memberId', 'fullName memberId');
   if (!m) throw new ApiError(404, 'NOT_FOUND', 'Meeting not found');
-  ok(res, m);
+
+  const meetingObj = m.toObject();
+  const attMemberIds = (meetingObj.attendance || [])
+    .map((a) => a.memberId?._id || a.memberId)
+    .filter(Boolean);
+
+  if (attMemberIds.length > 0) {
+    try {
+      const donationService = require('../services/donationReminderService');
+      const donationMap = await donationService.getMembersDonationStatusMap(attMemberIds, {
+        date: m.startAt || m.createdAt,
+      });
+      meetingObj.attendance = (meetingObj.attendance || []).map((a) => {
+        const mId = String(a.memberId?._id || a.memberId);
+        return {
+          ...a,
+          monthlyDonationStatus: donationMap.get(mId) || {
+            paid: false,
+            totalDonated: 0,
+            feeAmount: 100,
+            dueRemaining: 100,
+          },
+        };
+      });
+    } catch (err) {
+      console.error('[meetingController.getOne] failed to attach donation status:', err.message);
+    }
+  }
+
+  ok(res, meetingObj);
 });
 
 // PATCH /meetings/:id — edit before finalize. Most fields are
@@ -358,13 +387,14 @@ exports.attendees = asyncHandler(async (req, res) => {
     unitId: m.unitId,
     body: m.body,
     typeCode: m.typeCode || m.type,
+    meetingDate: m.startAt || m.createdAt,
   });
   ok(res, attendees);
 });
 
 // GET /meetings/eligible-attendees?unitLevel=...&unitId=...&body=...&typeCode=...
 exports.eligibleAttendees = asyncHandler(async (req, res) => {
-  const { unitLevel, unitId, body, typeCode } = req.query;
+  const { unitLevel, unitId, body, typeCode, date, month, year } = req.query;
   if (!unitLevel || !unitId) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'unitLevel and unitId are required');
   }
@@ -373,6 +403,9 @@ exports.eligibleAttendees = asyncHandler(async (req, res) => {
     unitId,
     body,
     typeCode,
+    meetingDate: date,
+    month,
+    year,
   });
   ok(res, attendees);
 });
