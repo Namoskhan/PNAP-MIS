@@ -42,11 +42,6 @@ function formatMemberUnitText(m) {
   return parts.join(' · ') || '';
 }
 
-/**
- * Resolves eligible attendees & chairperson candidates based on meeting stream / type:
- * 1. Executive Meeting: ONLY office-holders / role holders of that unit level
- * 2. Committee Meeting: Committee composition (own cabinet + subordinate key roles + permanent members)
- * 3. General Body Meeting: All members (role holders or not) of that level and below (subordinates)
 async function finalizeAttendeesList(attendeesMap, { meetingDate, month, year } = {}) {
   const list = Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
   if (list.length === 0) return [];
