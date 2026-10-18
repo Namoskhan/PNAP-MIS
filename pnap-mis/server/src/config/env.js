@@ -41,12 +41,18 @@ const env = {
 
   // SMS configuration (SIM mobile message)
   SMS_ENABLED: process.env.SMS_ENABLED !== 'false',
-  SMS_PROVIDER: process.env.SMS_PROVIDER || (process.env.TWILIO_ACCOUNT_SID ? 'twilio' : (process.env.SMS_GATEWAY_URL ? 'generic_http' : 'console')),
+  SMS_PROVIDER: process.env.SMS_PROVIDER || (process.env.VEEVO_API_HASH ? 'veevotech' : (process.env.TWILIO_ACCOUNT_SID ? 'twilio' : (process.env.SMS_GATEWAY_URL ? 'generic_http' : 'console'))),
   SMS_GATEWAY_URL: process.env.SMS_GATEWAY_URL || '',
   SMS_API_KEY: process.env.SMS_API_KEY || '',
   SMS_SENDER_ID: process.env.SMS_SENDER_ID || 'PKNAP',
   SMS_USERNAME: process.env.SMS_USERNAME || '',
   SMS_PASSWORD: process.env.SMS_PASSWORD || '',
+
+  // Veevo Tech SMS configuration (v3 sendsms)
+  VEEVO_API_URL: process.env.VEEVO_API_URL || 'https://api.veevotech.com/v3/sendsms',
+  VEEVO_API_HASH: process.env.VEEVO_API_HASH || '',
+  VEEVO_SENDER_ID: process.env.VEEVO_SENDER_ID || '',
+  VEEVO_HEADER_ID: process.env.VEEVO_HEADER_ID || '',
 
   // WhatsApp configuration
   WHATSAPP_ENABLED: process.env.WHATSAPP_ENABLED !== 'false',

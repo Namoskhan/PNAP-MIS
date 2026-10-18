@@ -9,7 +9,9 @@ const env = require('../config/env');
 function normalizePhone(rawPhone) {
   if (!rawPhone) return '';
   let digits = String(rawPhone).replace(/\D/g, '');
-  if (digits.startsWith('0')) {
+  if (digits.startsWith('0092')) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith('0')) {
     digits = '92' + digits.slice(1);
   } else if (digits.length === 10 && digits.startsWith('3')) {
     digits = '92' + digits;
@@ -38,6 +40,98 @@ async function sendSms({ to, message }) {
   const normalized = normalizePhone(to);
 
   try {
+    // Veevo Tech SMS Gateway (POST https://api.veevotech.com/v3/sendsms)
+    if (env.SMS_PROVIDER === 'veevotech') {
+      const hash = env.VEEVO_API_HASH || env.SMS_API_KEY;
+      if (!hash) {
+        console.error('[sms:veevotech] missing VEEVO_API_HASH');
+        return { success: false, provider: 'veevotech', error: 'Missing VEEVO_API_HASH in configuration' };
+      }
+
+      if (!e164) {
+        return { success: false, provider: 'veevotech', error: `Invalid recipient phone number: ${to}` };
+      }
+
+      const payload = {
+        hash,
+        receivernum: e164,
+        textmessage: message,
+      };
+
+      // Optional Sender ID / Masking (sendernum)
+      if (env.VEEVO_SENDER_ID) {
+        payload.sendernum = env.VEEVO_SENDER_ID;
+      }
+      // Optional Header ID
+      if (env.VEEVO_HEADER_ID) {
+        payload.headerid = env.VEEVO_HEADER_ID;
+      }
+
+      const endpoint = env.VEEVO_API_URL || 'https://api.veevotech.com/v3/sendsms';
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await res.text();
+      let responseJson = null;
+      try {
+        responseJson = JSON.parse(responseText);
+      } catch (err) {
+        // Plain text fallback if non-JSON
+      }
+
+      if (!res.ok) {
+        const errDesc = responseJson?.ERROR_DESCRIPTION || responseJson?.ERROR_FILTER || responseText;
+        console.error('[sms:veevotech] HTTP error:', res.status, errDesc);
+        return {
+          success: false,
+          provider: 'veevotech',
+          status: res.status,
+          error: errDesc || `HTTP ${res.status}`,
+          raw: responseJson || responseText,
+        };
+      }
+
+      if (responseJson) {
+        const statusUpper = String(responseJson.STATUS || responseJson.status || '').toUpperCase();
+        const isSuccess =
+          (statusUpper === 'SUCCESSFUL' || statusUpper === 'SUCCESS') &&
+          !responseJson.ERROR_FILTER &&
+          !responseJson.ERROR_DESCRIPTION;
+
+        if (!isSuccess) {
+          const errDesc = responseJson.ERROR_DESCRIPTION || responseJson.ERROR_FILTER || 'Veevo Tech delivery failed';
+          console.error('[sms:veevotech] delivery failed:', errDesc, responseJson);
+          return {
+            success: false,
+            provider: 'veevotech',
+            error: errDesc,
+            errorCode: responseJson.ERROR_CODE,
+            errorFilter: responseJson.ERROR_FILTER,
+            raw: responseJson,
+          };
+        }
+
+        console.log(`[sms:veevotech] SMS sent to ${e164} (Message ID: ${responseJson.MESSAGE_ID || 'N/A'})`);
+        return {
+          success: true,
+          provider: 'veevotech',
+          messageId: responseJson.MESSAGE_ID || null,
+          receiver: responseJson.RECEIVER_NUMBER || e164,
+          data: responseJson,
+        };
+      }
+
+      console.log(`[sms:veevotech] SMS sent to ${e164} (raw response: ${responseText})`);
+      return { success: true, provider: 'veevotech', raw: responseText };
+    }
+
     if (env.SMS_PROVIDER === 'twilio' && env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_PHONE_NUMBER) {
       const url = `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`;
       const body = new URLSearchParams({
