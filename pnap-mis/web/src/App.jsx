@@ -21,6 +21,7 @@ const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage'));
 const ResendVerificationPage = lazy(() => import('./pages/auth/ResendVerificationPage'));
 
 // Core application pages - code split
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const MemberListPage = lazy(() => import('./pages/MemberListPage'));
 const MemberDetailPage = lazy(() => import('./pages/MemberDetailPage'));
 const PendingApprovalPage = lazy(() => import('./pages/PendingApprovalPage'));
@@ -153,13 +154,13 @@ export default function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route path="/" element={<Navigate to="/unit" replace />} />
-                <Route path="/dashboard" element={<Navigate to="/unit" replace />} />
+                <Route path="/" element={<Suspense fallback={<PageFallback />}><DashboardPage /></Suspense>} />
+                <Route path="/dashboard" element={<Navigate to="/" replace />} />
                 <Route path="/members" element={<Suspense fallback={<PageFallback />}><MemberListPage /></Suspense>} />
                 <Route path="/members/new" element={<Navigate to="/members" replace />} />
                 <Route path="/members/pending" element={<Suspense fallback={<PageFallback />}><PendingApprovalPage /></Suspense>} />
                 <Route path="/members/:id" element={<Suspense fallback={<PageFallback />}><MemberDetailPage /></Suspense>} />
-                <Route path="/unit" element={<Suspense fallback={<PageFallback />}><UnitDashboardPage /></Suspense>} />
+                <Route path="/unit" element={<Navigate to="/" replace />} />
                 <Route path="/unit/cabinet" element={<Suspense fallback={<PageFallback />}><CabinetPage /></Suspense>} />
                 <Route path="/unit/meetings" element={<Suspense fallback={<PageFallback />}><MeetingsPage /></Suspense>} />
                 <Route path="/unit/activities" element={<Suspense fallback={<PageFallback />}><ActivitiesPage /></Suspense>} />
@@ -207,7 +208,7 @@ export default function App() {
                 <Route path="/national" element={<Suspense fallback={<PageFallback />}><NationalPage /></Suspense>} />
                 <Route path="/notifications" element={<Suspense fallback={<PageFallback />}><NotificationsPage /></Suspense>} />
                 <Route path="/announcements" element={<Suspense fallback={<PageFallback />}><AnnouncementsPage /></Suspense>} />
-                <Route path="*" element={<Navigate to="/unit" replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
           </Suspense>

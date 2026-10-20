@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -22,11 +22,6 @@ export default function DashboardPage() {
   // member portal even though their role list includes 'MEMBER'.
   const isPureMember = isPureMemberFn(user);
 
-  // The system-wide overview is available to Super Admin and approved
-  // Central Cabinet officeholders. Every other signed-in officeholder
-  // operates within a unit domain and is sent to that unit dashboard.
-  const canViewExecutiveDashboard = !!user?.canViewExecutiveDashboard;
-  const redirectToUnit = !isPureMember && !canViewExecutiveDashboard;
 
   // Only the member portal loads anything here now. Executive viewers go
   // straight to ExecutiveAnalytics, which owns its own fetching and
@@ -79,9 +74,6 @@ export default function DashboardPage() {
     };
   }, [isPureMember, user?.memberId, user?.scope?.basicUnitId]);
 
-  if (redirectToUnit) {
-    return <Navigate to="/unit" replace />;
-  }
 
   if (isPureMember) {
     const firstName = user?.fullName?.split(' ')[0] || t('roles.MEMBER', 'Member');
