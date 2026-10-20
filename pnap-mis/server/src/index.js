@@ -7,6 +7,8 @@ const app = require('./app');
     await connectDB();
     app.listen(env.PORT, () => {
       console.log(`[server] listening on http://localhost:${env.PORT}`);
+      const { startReminderScheduler } = require('./services/reminderScheduler');
+      startReminderScheduler();
     });
   } catch (err) {
     console.error('\n[server] FAILED TO START');

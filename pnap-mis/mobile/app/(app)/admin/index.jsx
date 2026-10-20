@@ -153,6 +153,7 @@ export default function AdminHubScreen() {
         { key: 'ct-finance', icon: '💰', title: t('nav.centralFinance', 'Central Finance'), description: t('admin.descCentralFinance', 'Central funds, donations and expenses ledger'), route: '/finance?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'ct-transfers', icon: '💸', title: t('nav.centralTransfers', 'Central Fund Transfers'), description: t('admin.descCentralTransfers', 'Central fund transfers and approvals'), route: '/finance/transfers?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'ct-reports', icon: '📈', title: t('nav.centralReports', 'Central Reports'), description: t('admin.descCentralReports', 'Generate and download Central PDF and Excel reports'), route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'ct-proforma', icon: '📋', title: t('nav.proformaReports', 'Proforma Reports (فارمونه)'), description: t('admin.descProformaReports', 'Official party monthly work & activity proformas (Forms 1–9)'), route: '/admin/proforma' },
       ],
     },
 
@@ -170,6 +171,7 @@ export default function AdminHubScreen() {
         { key: 'c-resp', icon: '📋', title: t('nav.responsibilities', 'Responsibilities'), description: t('admin.descCentralTasks', 'Central task allocations and monitoring.'), route: '/admin/responsibilities?unitLevel=CENTRAL&unitId=CENTRAL' },
         { key: 'c-breakdown', icon: '📊', title: t('nav.provinceBreakdown', 'Province Breakdown'), description: t('admin.descProvinceBreakdown', 'Comparative provincial activity, membership & finance stats.'), route: '/admin/breakdown' },
         { key: 'c-reports', icon: '📈', title: t('nav.reports', 'Reports'), description: t('admin.descCentralPdfReports', 'Download PDF and Excel reports for Central.'), route: '/admin/reports?unitLevel=CENTRAL&unitId=CENTRAL' },
+        { key: 'c-proforma', icon: '📋', title: t('nav.proformaReports', 'Proforma Reports (فارمونه)'), description: t('admin.descProformaReports', 'Official party monthly work & activity proformas (Forms 1–9)'), route: '/admin/proforma' },
       ],
     },
 
@@ -187,6 +189,7 @@ export default function AdminHubScreen() {
         { key: 'p-resp', icon: '📋', title: t('nav.responsibilities', 'Responsibilities'), description: t('admin.descResponsibilities', 'Provincial task allocations and tracking.'), route: '/admin/responsibilities' },
         { key: 'p-breakdown', icon: '📊', title: t('nav.districtBreakdown', 'District Breakdown'), description: t('admin.descDistrictBreakdown', 'Comparative district activity, membership & finance stats.'), route: '/admin/breakdown' },
         { key: 'p-reports', icon: '📈', title: t('nav.reports', 'Reports'), description: t('admin.descReports', 'Generate and download PDF and Excel summary packages.'), route: '/admin/reports' },
+        { key: 'p-proforma', icon: '📋', title: t('nav.proformaReports', 'Proforma Reports (فارمونه)'), description: t('admin.descProformaReports', 'Official monthly work & activity proforma reports'), route: '/admin/proforma' },
       ],
     },
 
@@ -204,6 +207,7 @@ export default function AdminHubScreen() {
         { key: 'd-resp', icon: '📋', title: t('nav.responsibilities', 'Responsibilities'), description: t('admin.descResponsibilities', 'District task allocations and monitoring.'), route: '/admin/responsibilities' },
         { key: 'd-breakdown', icon: '📊', title: t('nav.areaBreakdown', 'Area Breakdown'), description: t('admin.descAreaBreakdown', 'Comparative area activity, membership & finance stats.'), route: '/admin/breakdown' },
         { key: 'd-reports', icon: '📈', title: t('nav.reports', 'Reports'), description: t('admin.descReports', 'Download PDF and Excel reports for the district.'), route: '/admin/reports' },
+        { key: 'd-proforma', icon: '📋', title: t('nav.proformaReports', 'Proforma Reports (فارمونه)'), description: t('admin.descProformaReports', 'District monthly work & activity proformas (Forms 6–9)'), route: '/admin/proforma' },
       ],
     },
 
@@ -222,6 +226,7 @@ export default function AdminHubScreen() {
         { key: 'a-resp', icon: '📋', title: t('nav.responsibilities', 'Responsibilities'), description: t('admin.descResponsibilities', 'Area task allocations and tracking.'), route: '/admin/responsibilities' },
         { key: 'a-breakdown', icon: '📊', title: t('nav.basicUnitBreakdown', 'Basic Unit Breakdown'), description: t('admin.descBasicUnitBreakdown', 'Comparative basic unit activity, membership & finance stats.'), route: '/admin/breakdown' },
         { key: 'a-reports', icon: '📈', title: t('nav.reports', 'Reports'), description: t('admin.descReports', 'Download PDF and Excel reports for the area.'), route: '/admin/reports' },
+        { key: 'a-proforma', icon: '📋', title: t('nav.proformaReports', 'Proforma Reports (فارمونه)'), description: t('admin.descProformaReports', 'Area monthly work & activity proformas (Forms 1–4)'), route: '/admin/proforma' },
       ],
     },
 
@@ -238,6 +243,7 @@ export default function AdminHubScreen() {
         { key: 'gen-resp', icon: '📋', title: t('nav.myResponsibilities', 'My Responsibilities'), description: t('admin.descMyResponsibilities', 'Assigned tasks and responsibilities'), route: '/admin/responsibilities' },
         ...(ctx?.unitLevel !== 'BASIC_UNIT' ? [{ key: 'gen-breakdown', icon: '📊', title: t('nav.subordinateBreakdown', 'Subordinate Breakdown'), description: t('admin.descSubordinateBreakdown', 'Comparative activity & stats'), route: '/admin/breakdown' }] : []),
         { key: 'gen-reports', icon: '📈', title: t('nav.reports', 'Exports & Reports'), description: t('admin.descExportsReports', 'Download PDF and Excel reports'), route: '/admin/reports' },
+        { key: 'gen-proforma', icon: '📋', title: t('nav.proformaReports', 'Proforma Reports (فارمونه)'), description: t('admin.descProformaReports', 'Official party monthly proforma reports & entry'), route: '/admin/proforma' },
       ] : [
         { key: 'gen-dash', icon: '🏠', title: t('nav.dashboard', 'Dashboard'), description: t('admin.descUnitDashboard', 'Unit Dashboard'), route: '/' },
         ...(!isSeniorMawin && (isSecretary || isPresident || hasPermission(user, 'MANAGE_MEMBERS')) ? [{ key: 'gen-members', icon: '👥', title: t('nav.members', 'Members'), description: t('admin.descBrowseUnitMembers', 'Browse members in your unit'), route: '/members' }] : []),
@@ -253,6 +259,7 @@ export default function AdminHubScreen() {
         { key: 'gen-perf', icon: '📈', title: t('nav.memberPerformance', 'Member Performance'), description: t('admin.descMemberPerfMetrics', 'Analyze member performance metrics'), route: '/admin/performance' },
         ...(!isSeniorMawin && ctx?.unitLevel !== 'BASIC_UNIT' && hasPermission(user, 'VIEW_UNIT_BREAKDOWN') ? [{ key: 'gen-breakdown', icon: '📊', title: t('nav.breakdown', 'Breakdown'), description: t('admin.descSubordinateBreakdown', 'Comparative activity & stats'), route: '/admin/breakdown' }] : []),
         { key: 'gen-reports', icon: '📈', title: t('nav.reports', 'Exports & Reports'), description: t('admin.descExportsReports', 'Download PDF and Excel reports'), route: '/admin/reports' },
+        { key: 'gen-proforma', icon: '📋', title: t('nav.proformaReports', 'Proforma Reports (فارمونه)'), description: t('admin.descProformaReports', 'Official party monthly proforma reports & entry'), route: '/admin/proforma' },
       ],
     },
 

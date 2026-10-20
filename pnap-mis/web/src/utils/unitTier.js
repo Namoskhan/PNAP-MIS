@@ -52,6 +52,27 @@ export function homeTierOf(user) {
       },
     };
   }
+  if (s.areaId) {
+    return {
+      level: 'AREA',
+      fixed: {
+        provinceId: s.provinceId, districtId: s.districtId,
+        areaId: s.areaId,
+      },
+    };
+  }
+  if (s.districtId) {
+    return {
+      level: 'DISTRICT',
+      fixed: { provinceId: s.provinceId, districtId: s.districtId },
+    };
+  }
+  if (s.provinceId) {
+    return {
+      level: 'PROVINCE',
+      fixed: { provinceId: s.provinceId },
+    };
+  }
   return { level: 'CENTRAL', fixed: {} };
 }
 

@@ -411,6 +411,7 @@ export default function MeetingsPage() {
           roleText: att.roleText,
           unitText: att.unitText,
           status: existing ? (existing.status === 'LATE' ? 'PRESENT' : existing.status) : 'ABSENT',
+          monthlyDonationStatus: att.monthlyDonationStatus,
         };
       });
       setFinalizing({
@@ -790,7 +791,7 @@ export default function MeetingsPage() {
         <thead>
           <tr>
             <th>{t('common.date', 'When')}</th><th>{t('meetings.meetingType', 'Type')}</th><th>{t('meetings.venue', 'Venue')}</th><th>{t('meetings.chairperson', 'Chairperson')}</th>
-            <th>{t('meetings.attendees', 'Attendance')}</th><th>{t('common.status', 'State')}</th><th>{t('meetings.photos', 'Photos')}</th><th>{t('meetings.documents', 'Docs')}</th><th>{t('common.actions', 'Actions')}</th>
+            <th>{t('meetings.attendance', 'Attendance')}</th><th>{t('common.status', 'State')}</th><th>{t('meetings.photos', 'Photos')}</th><th>{t('meetings.docs', 'Docs')}</th><th>{t('common.actions', 'Actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -853,14 +854,27 @@ export default function MeetingsPage() {
                     <button
                       className="btn ghost"
                       onClick={() => setPhotosFor(m)}
-                      style={{ padding: '2px 6px' }}
+                      style={{ padding: '2px 8px', fontSize: 12 }}
                       title="View photos with capture details"
                     >
                       📷 {(m.photos || []).length} · {t('common.view', 'View')}
                     </button>
                   )}
                 </td>
-                <td>{(m.documents || []).length}</td>
+                <td>
+                  {(m.documents || []).length === 0 ? (
+                    <span className="muted">0</span>
+                  ) : (
+                    <button
+                      className="btn ghost"
+                      onClick={() => setDocFor(m)}
+                      style={{ padding: '2px 8px', fontSize: 12 }}
+                      title="View documents"
+                    >
+                      📎 {(m.documents || []).length} · {t('common.view', 'View')}
+                    </button>
+                  )}
+                </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   <button
                     className="btn ghost"
@@ -870,7 +884,7 @@ export default function MeetingsPage() {
                   {canManage && m.state !== 'FINALIZED' && m.state !== 'CANCELLED' && (
                     <>
                       <button className="btn ghost" onClick={() => setEditing(m)}>{t('common.edit', 'Edit')}</button>{' '}
-                      <button className="btn ghost" onClick={() => setDocFor(m)}>{t('meetings.documents', 'Docs')}</button>{' '}
+                      <button className="btn ghost" onClick={() => setDocFor(m)}>{t('meetings.docs', 'Docs')}</button>{' '}
                       <label className="btn secondary" style={{ cursor: 'pointer' }}>
                         {t('meetings.photos', 'Photos')}
                         <input
@@ -970,6 +984,7 @@ function FinalizeDialog({
             memberCode: m.memberId,
             roleText: m.roleText,
             status: rawStatus === 'LATE' ? 'PRESENT' : (rawStatus || 'ABSENT'),
+            monthlyDonationStatus: m.monthlyDonationStatus,
           };
         });
         setAttendance(rows);
@@ -1153,24 +1168,43 @@ function FinalizeDialog({
           )}
         </div>
 
-        <h4 style={{ marginBottom: 6 }}>
-          Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} present / {attendance.length})
-        </h4>
-        <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-          <button type="button" className="btn ghost" onClick={() => markAll('PRESENT')}>Mark all present</button>
-          <button type="button" className="btn ghost" onClick={() => markAll('ABSENT')}>Mark all absent</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+          <h4 style={{ margin: 0 }}>
+            Attendance ({attendance.filter((r) => r.status === 'PRESENT').length} present / {attendance.length})
+          </h4>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span className="muted" style={{ fontSize: 12 }}>100 Rs Dues:</span>
+            <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontSize: 11 }}>
+              ✓ {attendance.filter((r) => r.monthlyDonationStatus?.paid).length} Paid
+            </span>
+            <span className="badge" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontSize: 11 }}>
+              ⚠️ {attendance.filter((r) => !r.monthlyDonationStatus?.paid).length} Unpaid
+            </span>
+          </div>
         </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" className="btn ghost" onClick={() => markAll('PRESENT')}>Mark all present</button>
+            <button type="button" className="btn ghost" onClick={() => markAll('ABSENT')}>Mark all absent</button>
+          </div>
+        </div>
+
         <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table className="list" style={{ margin: 0 }}>
             <thead>
-              <tr><th>Attendee / Member</th><th style={{ width: 90, textAlign: 'center' }}>Present</th></tr>
+              <tr>
+                <th>Attendee / Member</th>
+                <th style={{ width: 140, textAlign: 'center' }}>Monthly Dues (100 Rs)</th>
+                <th style={{ width: 90, textAlign: 'center' }}>Present</th>
+              </tr>
             </thead>
             <tbody>
               {loadingAttendees && (
-                <tr><td colSpan="2" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
+                <tr><td colSpan="3" className="muted" style={{ padding: 12 }}>Loading attendee roster…</td></tr>
               )}
               {!loadingAttendees && attendance.length === 0 && (
-                <tr><td colSpan="2" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'JIRGA' ? 'jirga' : (meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive')} meeting.</td></tr>
+                <tr><td colSpan="3" className="muted" style={{ padding: 12 }}>No eligible attendees found for this {meeting.body === 'JIRGA' ? 'jirga' : (meeting.body === 'COMMITTEE' ? 'committee' : meeting.body === 'GENERAL_BODY' ? 'general body' : 'executive')} meeting.</td></tr>
               )}
               {!loadingAttendees && attendance.map((r) => (
                 <tr key={r.memberId}>
@@ -1178,6 +1212,17 @@ function FinalizeDialog({
                     <strong>{r.name}</strong>
                     {r.memberCode && <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>· {r.memberCode}</span>}
                     {r.roleText && <div className="muted" style={{ fontSize: 11 }}>{r.roleText}</div>}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {r.monthlyDonationStatus?.paid ? (
+                      <span className="badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>
+                        ✓ Paid
+                      </span>
+                    ) : (
+                      <span className="badge" style={{ backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>
+                        ⚠️ Unpaid (100 Rs)
+                      </span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <input

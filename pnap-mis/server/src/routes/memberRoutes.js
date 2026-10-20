@@ -15,6 +15,7 @@ router.use(authenticate);
 router.get('/stats', ctrl.stats);
 router.get('/', validate(listQuerySchema, 'query'), ctrl.list);
 router.get('/:id', ctrl.getOne);
+router.get('/:id/donations', ctrl.getMemberDonations);
 
 router.post(
   '/',

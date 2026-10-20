@@ -21,6 +21,7 @@ const env = require('../config/env');
 const settingsService = require('../services/settingsService');
 const eventExportService = require('../services/eventExportService');
 const { formatUnitArrangedBy, getCommitteeTierLabel, getRegularTierLabel } = require('../utils/unitFormat');
+const { validateProformaAccess } = require('../utils/proformaScope');
 
 // Render a dynamicData value into a cell-friendly form. Numerics
 // stay numeric so XLSX can format them; everything else stringifies
@@ -2460,16 +2461,29 @@ exports.meetingPdf = asyncHandler(async (req, res) => {
   // ─── Attendance roster
   const att = m.attendance || [];
   if (att.length > 0) {
+    let donationMap = new Map();
+    try {
+      const attMemberIds = att.map((a) => a.memberId?._id || a.memberId).filter(Boolean);
+      const donationService = require('../services/donationReminderService');
+      donationMap = await donationService.getMembersDonationStatusMap(attMemberIds, {
+        date: m.startAt || m.createdAt,
+      });
+    } catch {}
+
     const present = att.filter((a) => a.status === 'PRESENT').length;
     const absent = att.filter((a) => a.status === 'ABSENT').length;
+    const paidCount = att.filter((a) => donationMap.get(String(a.memberId?._id || a.memberId))?.paid).length;
     doc.font('Helvetica-Bold').fontSize(11).fillColor(sectionColor)
-      .text(`Attendance (${present} present · ${absent} absent · ${att.length} on roster)`);
+      .text(`Attendance (${present} present · ${absent} absent · ${paidCount}/${att.length} dues paid)`);
     doc.moveDown(0.2);
     doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
     att.forEach((a) => {
       const name = a.memberId?.fullName || '(unknown)';
       const code = a.memberId?.memberId ? ` · ${a.memberId.memberId}` : '';
-      doc.text(`  • [${a.status || '—'}] ${name}${code}`);
+      const mId = String(a.memberId?._id || a.memberId);
+      const dues = donationMap.get(mId);
+      const duesText = dues ? (dues.paid ? '[100 Rs: Paid]' : '[100 Rs: Unpaid]') : '';
+      doc.text(`  • [${a.status || '—'}] ${duesText ? `${duesText} ` : ''}${name}${code}`);
     });
     doc.moveDown(0.6);
   }
@@ -2543,6 +2557,668 @@ exports.meetingPdf = asyncHandler(async (req, res) => {
 
   doc.end();
 });
+
+// ─── Proforma Reports (5 Forms) ─────────────────────────────────────────────
+async function _serveProformaPdf(res, html, filename) {
+  const proformaService = require('../services/proformaReportService');
+  const rand = Math.random().toString(36).substring(7);
+  const tmpHtml = path.resolve(process.cwd(), `scratch_proforma_${Date.now()}_${rand}.html`);
+  const tmpPdf = path.resolve(process.cwd(), `scratch_proforma_${Date.now()}_${rand}.pdf`);
+
+  try {
+    fs.writeFileSync(tmpHtml, html, 'utf8');
+    proformaService.renderHtmlToPdf(tmpHtml, tmpPdf);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    const stream = fs.createReadStream(tmpPdf);
+    stream.pipe(res);
+    stream.on('end', () => {
+      try { fs.unlinkSync(tmpHtml); fs.unlinkSync(tmpPdf); } catch (_) {}
+    });
+  } catch (err) {
+    try { fs.unlinkSync(tmpHtml); fs.unlinkSync(tmpPdf); } catch (_) {}
+    throw new ApiError(500, 'EXPORT_FAILED', `PDF generation failed: ${err.message}`);
+  }
+}
+
+function _formatProformaData(saved, fetchedData = {}) {
+  const savedData = saved?.data || {};
+  const mergedUpper = { ...(fetchedData.upper || {}) };
+
+  // Overlay saved upper values, but keep baseline if saved value is null/undefined/empty string
+  for (const [k, v] of Object.entries(savedData.upper || {})) {
+    if (v !== undefined && v !== null && v !== '') {
+      mergedUpper[k] = v;
+    }
+  }
+
+  // Also merge any top-level fields that might be saved flat
+  for (const [k, v] of Object.entries(savedData)) {
+    if (k !== 'upper' && k !== 'rows' && k !== 'execRows' && v !== undefined && v !== null && v !== '') {
+      if (mergedUpper[k] === undefined || mergedUpper[k] === '') {
+        mergedUpper[k] = v;
+      }
+    }
+  }
+
+  // Sync upper aliases between frontend form names and backend/PDF names
+  const upperAliasMap = {
+    areaUnitsCount: 'areasCount',
+    areasCount: 'areaUnitsCount',
+    newAreaUnitsCount: 'newAreasCount',
+    newAreasCount: 'newAreaUnitsCount',
+    newPsoUnitsCount: 'psoNewUnitsCount',
+    psoNewUnitsCount: 'newPsoUnitsCount',
+    conferencesCount: 'conferences',
+    conferences: 'conferencesCount',
+    studyCirclesCount: 'studyCircles',
+    studyCircles: 'studyCirclesCount',
+    inductionsCount: 'inductions',
+    inductions: 'inductionsCount',
+    ralliesCount: 'ralliesAndProtests',
+    ralliesAndProtests: 'ralliesCount',
+    jirgasCount: 'jirgasAndCornerMeetings',
+    jirgasAndCornerMeetings: 'jirgasCount',
+    alliedMeetingsCount: 'alliedMeetings',
+    alliedMeetings: 'alliedMeetingsCount',
+    districtOfficeActivity: 'officeActivity',
+    officeActivity: 'districtOfficeActivity',
+    duesMonthly: 'dues',
+    dues: 'duesMonthly',
+    duesEmergency: 'emergencyDues',
+    emergencyDues: 'duesEmergency',
+    duesExpenses: 'expenses',
+    expenses: 'duesExpenses',
+    villagesWithoutUnitCount: 'villagesWithoutUnit',
+    villagesWithoutUnit: 'villagesWithoutUnitCount',
+    disciplinaryActionsCount: 'disciplinaryActions',
+    disciplinaryActions: 'disciplinaryActionsCount',
+  };
+  for (const [a, b] of Object.entries(upperAliasMap)) {
+    if (mergedUpper[a] !== undefined && mergedUpper[a] !== null && mergedUpper[a] !== '' && (mergedUpper[b] === undefined || mergedUpper[b] === null || mergedUpper[b] === '' || mergedUpper[b] === 0)) {
+      mergedUpper[b] = mergedUpper[a];
+    }
+  }
+
+  const baseRows = fetchedData.execRows || fetchedData.rows || [];
+  const rawSavedRows = (savedData.rows && savedData.rows.length > 0)
+    ? savedData.rows
+    : ((savedData.execRows && savedData.execRows.length > 0) ? savedData.execRows : []);
+
+  const rowAliasMap = {
+    distExecMeeting: 'distExec',
+    distExec: 'distExecMeeting',
+    distCommMeeting: 'distComm',
+    distComm: 'distCommMeeting',
+    areaExecMeeting: 'areaExec',
+    areaExec: 'areaExecMeeting',
+    areaCommMeeting: 'areaComm',
+    areaComm: 'areaCommMeeting',
+    ownBuMeeting: 'ownBu',
+    ownBu: 'ownBuMeeting',
+    buExecMeeting: 'buExec',
+    buExec: 'buExecMeeting',
+    buGbMeeting: 'buGb',
+    buGb: 'buGbMeeting',
+    psoMeeting: 'pso',
+    pso: 'psoMeeting',
+    conferenceMeeting: 'conf',
+    conf: 'conferenceMeeting',
+    seminarMeeting: 'seminar',
+    seminar: 'seminarMeeting',
+    studyCircleMeeting: 'studyCircle',
+    studyCircle: 'studyCircleMeeting',
+    inductionMeeting: 'induction',
+    induction: 'inductionMeeting',
+    alliedMeeting: 'allied',
+    allied: 'alliedMeeting',
+    rallyMeeting: 'rallies',
+    rallies: 'rallyMeeting',
+    jirgaMeeting: 'jirgas',
+    jirgas: 'jirgaMeeting',
+    monthlyDues: 'dues',
+    dues: 'monthlyDues',
+    bloodBankPosts: 'bloodZakat',
+    bloodZakat: 'bloodBankPosts',
+    ideologicalReading: 'reading',
+    reading: 'ideologicalReading',
+  };
+
+  let mergedRows;
+  if (rawSavedRows.length === 0) {
+    mergedRows = baseRows;
+  } else {
+    mergedRows = rawSavedRows.map((sRow, idx) => {
+      const bRow = baseRows[idx] || {};
+      const row = { ...bRow, ...sRow };
+      for (const [k, v] of Object.entries(bRow)) {
+        if (sRow[k] === undefined || sRow[k] === null || sRow[k] === '') {
+          row[k] = v;
+        }
+      }
+      for (const [a, b] of Object.entries(rowAliasMap)) {
+        if (sRow[a] !== undefined && sRow[a] !== null && sRow[a] !== '' && (row[b] === undefined || row[b] === null || row[b] === '' || row[b] === 0)) {
+          row[b] = sRow[a];
+        }
+      }
+      if (!row.meetingDate || String(row.meetingDate).trim() === '') {
+        row.meetingDate = mergedUpper.execDate || savedData.execDate || savedData.executiveMeetingDate || bRow.meetingDate || '';
+      }
+      return row;
+    });
+  }
+
+  return {
+    ...fetchedData,
+    ...savedData,
+    upper: mergedUpper,
+    rows: mergedRows,
+    execRows: mergedRows,
+    isSubmitted: !!saved,
+    submittedByName: saved?.submittedByName,
+    submittedByRole: saved?.submittedByRole,
+    submittedAt: saved?.submittedAt,
+  };
+}
+
+async function _resolveAreaId(areaId) {
+  if (!areaId) return null;
+  const mongoose = require('mongoose');
+  if (!mongoose.Types.ObjectId.isValid(areaId)) return null;
+  const Area = require('../models/Area');
+  const BasicUnit = require('../models/BasicUnit');
+  const a = await Area.findById(areaId).lean();
+  if (a) return areaId.toString();
+  const bu = await BasicUnit.findById(areaId).lean();
+  if (bu?.areaId) return bu.areaId.toString();
+  return areaId.toString();
+}
+
+// Form 1: Area Unit Work & Activity Monthly Report
+exports.proformaForm1Html = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form1', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm1Data({ areaId, month, year }));
+  const html = proformaService.generateForm1Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm1Pdf = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form1', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm1Data({ areaId, month, year }));
+  const html = proformaService.generateForm1Html(data);
+  await _serveProformaPdf(res, html, `proforma-area-monthly-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm1Xlsx = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form1', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm1Data({ areaId, month, year }));
+  const wb = await proformaService.generateForm1Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-area-monthly-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 2: Basic Units Monthly Work & Activity Report
+exports.proformaForm2Html = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form2', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm2Data({ areaId, month, year }));
+  const html = proformaService.generateForm2Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm2Pdf = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form2', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm2Data({ areaId, month, year }));
+  const html = proformaService.generateForm2Html(data);
+  await _serveProformaPdf(res, html, `proforma-basic-units-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm2Xlsx = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form2', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm2Data({ areaId, month, year }));
+  const wb = await proformaService.generateForm2Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-basic-units-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 3: Area Detailed Activity Report (Multi-section)
+exports.proformaForm3Html = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form3', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm3Data({ areaId, month, year }));
+  const html = proformaService.generateForm3Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm3Pdf = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form3', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm3Data({ areaId, month, year }));
+  const html = proformaService.generateForm3Html(data);
+  await _serveProformaPdf(res, html, `proforma-area-detailed-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm3Xlsx = asyncHandler(async (req, res) => {
+  let { areaId, month, year } = req.query;
+  if (!areaId) throw new ApiError(400, 'BAD_REQUEST', 'areaId is required');
+  areaId = await _resolveAreaId(areaId);
+  await _checkAreaScope(req, areaId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form3', unitId: areaId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm3Data({ areaId, month, year }));
+  const wb = await proformaService.generateForm3Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-area-detailed-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 4: Basic Unit Work & Activity Monthly Report
+exports.proformaForm4Html = asyncHandler(async (req, res) => {
+  const { unitId, month, year } = req.query;
+  if (!unitId) throw new ApiError(400, 'BAD_REQUEST', 'unitId is required');
+  await _checkUnitScope(req, unitId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form4', unitId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm4Data({ unitId, month, year }));
+  const html = proformaService.generateForm4Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm4Pdf = asyncHandler(async (req, res) => {
+  const { unitId, month, year } = req.query;
+  if (!unitId) throw new ApiError(400, 'BAD_REQUEST', 'unitId is required');
+  await _checkUnitScope(req, unitId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form4', unitId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm4Data({ unitId, month, year }));
+  const html = proformaService.generateForm4Html(data);
+  await _serveProformaPdf(res, html, `proforma-unit-monthly-${year || '2026'}-${month || '09'}.pdf`);
+});
+
+exports.proformaForm4Xlsx = asyncHandler(async (req, res) => {
+  const { unitId, month, year } = req.query;
+  if (!unitId) throw new ApiError(400, 'BAD_REQUEST', 'unitId is required');
+  await _checkUnitScope(req, unitId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const saved = await ProformaReport.findOne({ formType: 'form4', unitId, year: parseInt(year, 10), month: parseInt(month, 10) }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm4Data({ unitId, month, year }));
+  const wb = await proformaService.generateForm4Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-unit-monthly-${year || '2026'}-${month || '09'}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+async function _resolveProvinceId(provinceId, req) {
+  const mongoose = require('mongoose');
+  const Province = require('../models/Province');
+  if (provinceId && mongoose.Types.ObjectId.isValid(provinceId)) {
+    const p = await Province.findById(provinceId).lean();
+    if (p) return provinceId.toString();
+    const District = require('../models/District');
+    const d = await District.findById(provinceId).lean();
+    if (d?.provinceId) return d.provinceId.toString();
+    const Area = require('../models/Area');
+    const a = await Area.findById(provinceId).lean();
+    if (a?.provinceId) return a.provinceId.toString();
+    const BasicUnit = require('../models/BasicUnit');
+    const bu = await BasicUnit.findById(provinceId).lean();
+    if (bu?.provinceId) return bu.provinceId.toString();
+    return provinceId.toString();
+  }
+  if (req?.user?.scope?.provinceId && mongoose.Types.ObjectId.isValid(req.user.scope.provinceId)) {
+    return req.user.scope.provinceId.toString();
+  }
+  const firstProv = await Province.findOne().lean();
+  if (firstProv) return firstProv._id.toString();
+  return null;
+}
+
+async function _checkForm5Scope(req, provinceId) {
+  await validateProformaAccess(req.user, 'form5', provinceId, 'PROVINCE');
+}
+
+async function _checkAreaScope(req, areaId) {
+  await validateProformaAccess(req.user, 'form1', areaId, 'AREA');
+}
+
+async function _checkUnitScope(req, unitId) {
+  await validateProformaAccess(req.user, 'form4', unitId, 'BASIC_UNIT');
+}
+
+// Form 5: Provincial Executive Individual Activity Report
+exports.proformaForm5Html = asyncHandler(async (req, res) => {
+  let { provinceId, fromDate, toDate, year, month } = req.query;
+  provinceId = await _resolveProvinceId(provinceId, req);
+  if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
+  await _checkForm5Scope(req, provinceId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form5', unitId: provinceId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm5Data({ provinceId, fromDate, toDate, year: y, month: m }));
+  const html = proformaService.generateForm5Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm5Pdf = asyncHandler(async (req, res) => {
+  let { provinceId, fromDate, toDate, year, month } = req.query;
+  provinceId = await _resolveProvinceId(provinceId, req);
+  if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
+  await _checkForm5Scope(req, provinceId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form5', unitId: provinceId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm5Data({ provinceId, fromDate, toDate, year: y, month: m }));
+  const html = proformaService.generateForm5Html(data);
+  await _serveProformaPdf(res, html, `proforma-province-executive-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm5Xlsx = asyncHandler(async (req, res) => {
+  let { provinceId, fromDate, toDate, year, month } = req.query;
+  provinceId = await _resolveProvinceId(provinceId, req);
+  if (!provinceId) throw new ApiError(400, 'BAD_REQUEST', 'provinceId is required');
+  await _checkForm5Scope(req, provinceId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form5', unitId: provinceId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm5Data({ provinceId, fromDate, toDate, year: y, month: m }));
+  const wb = await proformaService.generateForm5Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-province-executive-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+async function _resolveDistrictId(districtId, req) {
+  const mongoose = require('mongoose');
+  if (districtId && mongoose.Types.ObjectId.isValid(districtId)) return districtId;
+  if (req.user?.scope?.districtId && mongoose.Types.ObjectId.isValid(req.user.scope.districtId)) {
+    return req.user.scope.districtId.toString();
+  }
+  const District = require('../models/District');
+  const d = await District.findOne({ isActive: true }).sort({ name: 1 }).lean();
+  return d ? d._id.toString() : '';
+}
+
+async function _checkDistrictScope(req, districtId) {
+  await validateProformaAccess(req.user, 'form6', districtId, 'DISTRICT');
+}
+
+
+// Form 6: District Monthly Work & Activity Report
+exports.proformaForm6Html = asyncHandler(async (req, res) => {
+  let { districtId, year, month, m1, m2, m3 } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form6', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm6Data({ districtId, year: y, month: m, m1, m2, m3 }));
+  const html = proformaService.generateForm6Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm6Pdf = asyncHandler(async (req, res) => {
+  let { districtId, year, month, m1, m2, m3 } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form6', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm6Data({ districtId, year: y, month: m, m1, m2, m3 }));
+  const html = proformaService.generateForm6Html(data);
+  await _serveProformaPdf(res, html, `proforma-district-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm6Xlsx = asyncHandler(async (req, res) => {
+  let { districtId, year, month, m1, m2, m3 } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form6', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm6Data({ districtId, year: y, month: m, m1, m2, m3 }));
+  const wb = await proformaService.generateForm6Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-district-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+exports.proformaForm7Html = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form7', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm7Data({ districtId, year: y, month: m }));
+  const html = proformaService.generateForm7Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm7Pdf = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form7', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm7Data({ districtId, year: y, month: m }));
+  const html = proformaService.generateForm7Html(data);
+  await _serveProformaPdf(res, html, `proforma-form7-district-areas-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm7Xlsx = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form7', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm7Data({ districtId, year: y, month: m }));
+  const wb = await proformaService.generateForm7Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-form7-district-areas-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 8: District Central & Provincial Committee Members Work & Activity Report
+exports.proformaForm8Html = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form8', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm8Data({ districtId, year: y, month: m }));
+  const html = proformaService.generateForm8Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm8Pdf = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form8', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm8Data({ districtId, year: y, month: m }));
+  const html = proformaService.generateForm8Html(data);
+  await _serveProformaPdf(res, html, `proforma-form8-central-provincial-district-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm8Xlsx = asyncHandler(async (req, res) => {
+  let { districtId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId) throw new ApiError(400, 'BAD_REQUEST', 'districtId is required');
+  await _checkDistrictScope(req, districtId);
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form8', unitId: districtId, year: y, month: m }).lean();
+  const data = _formatProformaData(saved, await proformaService.fetchForm8Data({ districtId, year: y, month: m }));
+  const wb = await proformaService.generateForm8Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-form8-central-provincial-district-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
+// Form 9: District Central & Provincial Organs Members Work & Activity Report
+exports.proformaForm9Html = asyncHandler(async (req, res) => {
+  let { districtId, areaId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const targetId = districtId || areaId;
+  if (!targetId) throw new ApiError(400, 'BAD_REQUEST', 'districtId or areaId is required');
+  await validateProformaAccess(req.user, 'form9', targetId, districtId ? 'DISTRICT' : 'AREA');
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
+  const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
+  const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
+  const html = proformaService.generateForm9Html(data);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
+exports.proformaForm9Pdf = asyncHandler(async (req, res) => {
+  let { districtId, areaId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const targetId = districtId || areaId;
+  if (!targetId) throw new ApiError(400, 'BAD_REQUEST', 'districtId or areaId is required');
+  await validateProformaAccess(req.user, 'form9', targetId, districtId ? 'DISTRICT' : 'AREA');
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
+  const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
+  const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
+  const html = proformaService.generateForm9Html(data);
+  await _serveProformaPdf(res, html, `proforma-form9-central-provincial-organs-${y}-${String(m).padStart(2, '0')}.pdf`);
+});
+
+exports.proformaForm9Xlsx = asyncHandler(async (req, res) => {
+  let { districtId, areaId, year, month } = req.query;
+  districtId = await _resolveDistrictId(districtId, req);
+  if (!districtId && areaId) areaId = await _resolveAreaId(areaId);
+  const targetId = districtId || areaId;
+  if (!targetId) throw new ApiError(400, 'BAD_REQUEST', 'districtId or areaId is required');
+  await validateProformaAccess(req.user, 'form9', targetId, districtId ? 'DISTRICT' : 'AREA');
+  const ProformaReport = require('../models/ProformaReport');
+  const proformaService = require('../services/proformaReportService');
+  const y = parseInt(year, 10) || 2026;
+  const m = parseInt(month, 10) || 10;
+  const saved = await ProformaReport.findOne({ formType: 'form9', unitId: targetId, year: y, month: m }).lean();
+  const baseline = await proformaService.fetchForm9Data({ districtId, areaId, year: y, month: m });
+  const data = saved?.data ? { ...baseline, ...saved.data } : baseline;
+  const wb = await proformaService.generateForm9Excel(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="proforma-form9-central-provincial-organs-${y}-${String(m).padStart(2, '0')}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+});
+
 
 // PR U7 — exposed so reportTemplateService can reuse the data
 // gathering layer without duplication. The existing controller

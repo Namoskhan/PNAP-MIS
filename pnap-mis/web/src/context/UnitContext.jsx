@@ -86,11 +86,11 @@ export function UnitProvider({ children }) {
     // children. CENTRAL and PROVINCE are both legitimate for this
     // persona — the cabinet page drops them onto a province on
     // purpose — so only levels below province are reset.
-    const isCentralAdmin = user.roles?.includes('CENTRAL_ADMIN')
-      && !user.roles?.includes('SUPER_ADMIN');
-    if (isCentralAdmin) {
-      const inScope = ctx && (ctx.unitLevel === 'CENTRAL' || ctx.unitLevel === 'PROVINCE');
-      if (!inScope) {
+    const isCentralOrSuperAdmin = user.roles?.includes('CENTRAL_ADMIN')
+      || user.roles?.includes('SUPER_ADMIN')
+      || user.isBootstrap;
+    if (isCentralOrSuperAdmin) {
+      if (!ctx || !ctx.unitId) {
         api.get('/org/central')
           .then((r) => setCtx({
             unitLevel: 'CENTRAL',

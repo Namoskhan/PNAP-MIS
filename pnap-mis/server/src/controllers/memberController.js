@@ -570,3 +570,28 @@ exports.adminRemove = asyncHandler(async (req, res) => {
 
   ok(res, { ok: true, cascadedRoles: ended.modifiedCount, userDeactivated: !!userDeactivated.modifiedCount });
 });
+
+exports.getMemberDonations = asyncHandler(async (req, res) => {
+  const member = await Member.findById(req.params.id).select('_id fullName').lean();
+  if (!member) throw new ApiError(404, 'NOT_FOUND', 'Member not found');
+
+  const { hasPermission } = require('../utils/permissions');
+  const isOwner = req.user.memberId && String(req.user.memberId) === String(member._id);
+  const isAdmin = (req.user.roles || []).some((r) => [
+    'SUPER_ADMIN', 'CENTRAL_ADMIN', 'PROVINCE_ADMIN', 'DISTRICT_ADMIN', 'AREA_ADMIN',
+  ].includes(r));
+  const hasFin = hasPermission(req.user, 'MANAGE_FINANCE', 'APPROVE_EXPENSE');
+
+  if (!isOwner && !isAdmin && !hasFin) {
+    throw new ApiError(403, 'FORBIDDEN', 'Access denied to member donation records');
+  }
+
+  const Donation = require('../models/Donation');
+  const donations = await Donation.find({ donorMemberId: member._id })
+    .select('receiptNo amount currency paymentMode receivedAt state receiptImageUrl fiscalYear createdAt')
+    .sort({ receivedAt: -1 })
+    .limit(100)
+    .lean();
+
+  ok(res, donations);
+});

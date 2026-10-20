@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Storage } from '../utils/storage';
 import { api } from '../api/client';
 import { useAuth } from './AuthContext';
-import { LEVEL_ORDER, homeTierOf, homeUnitIdOf } from '../utils/unitTier';
+import { LEVEL_ORDER, homeTierOf, homeUnitIdOf, isLevelAllowed } from '../utils/unitTier';
 import { syncUserScopeCache } from '../services/scopeDataCache';
 import { useNetwork } from './NetworkContext';
 
@@ -109,7 +109,7 @@ export function UnitProvider({ children }) {
     let isCancelled = false;
 
     async function syncUnitContext() {
-      const targetRole = activeRole || (user.roles?.length === 1 ? user.roles[0] : null);
+      const targetRole = activeRole || (user.roles?.length === 1 ? user.roles[0] : (user.roles?.find((r) => r !== 'MEMBER') || null));
 
       // 1. If user switched to or is explicitly focused on a specific activeRole:
       if (targetRole) {
@@ -179,7 +179,7 @@ export function UnitProvider({ children }) {
             const r = await api.get('/roles', { params: { memberId: user.memberId, state: 'APPROVED' } });
             const list = r.data.data || [];
             // Match the specific target active role assignment!
-            const matchedAssignment = list.find((a) => a.roleCode === targetRole && !a.endedAt);
+            const matchedAssignment = list.find((a) => a.roleCode === targetRole && !a.endedAt) || list.find((a) => !a.endedAt);
             if (matchedAssignment) {
               const unitName = await resolveUnitName(matchedAssignment.unitLevel, matchedAssignment.unitId, user.scope);
               const next = {
@@ -197,7 +197,7 @@ export function UnitProvider({ children }) {
           } catch {
             // Offline fallback: check previously stored context for this user and role
             const stored = await readStored(user._id);
-            if (stored && (!stored.roleCode || stored.roleCode === targetRole)) {
+            if (stored && isLevelAllowed(user, stored.unitLevel) && (!stored.roleCode || stored.roleCode === targetRole)) {
               if (!isCancelled) {
                 setCtxRaw(stored);
                 setReady(true);
@@ -210,7 +210,7 @@ export function UnitProvider({ children }) {
 
       // 2. Default multi-role view (no specific activeRole selected):
       const stored = await readStored(user._id);
-      if (stored && !stored.roleCode) {
+      if (stored && !stored.roleCode && isLevelAllowed(user, stored.unitLevel)) {
         if (!isCancelled) { setCtxRaw(stored); setReady(true); }
         return;
       }

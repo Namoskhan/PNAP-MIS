@@ -199,6 +199,7 @@ export default function MeetingDetailScreen() {
           memberCode: m.memberId,
           roleText: m.roleText,
           status: rawStatus === 'LATE' ? 'PRESENT' : (rawStatus || 'ABSENT'),
+          monthlyDonationStatus: m.monthlyDonationStatus,
         };
       });
       setAttendance(rows);
@@ -216,6 +217,7 @@ export default function MeetingDetailScreen() {
           memberCode: m.memberId,
           roleText: m.roleText || m.roleCode,
           status: existingMap.get(String(m._id)) || 'ABSENT',
+          monthlyDonationStatus: m.monthlyDonationStatus,
         }));
         setAttendance(rows);
       } else {
@@ -772,24 +774,56 @@ export default function MeetingDetailScreen() {
         {/* Attendance Summary */}
         {attendees.length > 0 && (
           <Card>
-            <Text style={[styles.sectionTitle, isRTL && { textAlign: 'right' }]}>
-              {t('meetings.attendanceRatio', 'Attendance ({{present}} Present / {{total}} Total)', {
-                present: attendees.filter((a) => a.status === 'PRESENT' || a.present).length,
-                total: attendees.length,
-              })}
-            </Text>
+            <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm, flexWrap: 'wrap', gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
+              <Text style={styles.sectionTitle}>
+                {t('meetings.attendanceRatio', 'Attendance ({{present}} Present / {{total}} Total)', {
+                  present: attendees.filter((a) => a.status === 'PRESENT' || a.present).length,
+                  total: attendees.length,
+                })}
+              </Text>
+              <View style={[{ flexDirection: 'row', gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                <View style={{ backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#065F46' }}>
+                    ✓ {attendees.filter((a) => a.monthlyDonationStatus?.paid).length} Paid
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: '#991B1B' }}>
+                    ⚠️ {attendees.filter((a) => !a.monthlyDonationStatus?.paid).length} Unpaid
+                  </Text>
+                </View>
+              </View>
+            </View>
+
             {attendees.map((a, i) => {
               const safeName = a.memberId?.fullName || a.memberIdCode || a.name || '—';
               const isPresent = a.status === 'PRESENT' || a.present;
               const badgeLabel = isPresent ? t('status.present', 'Present') : t('status.absent', 'Absent');
               const badgeColor = isPresent ? Colors.success : Colors.error;
               const badgeBg = isPresent ? Colors.successBg : Colors.errorBg;
+              const duesPaid = a.monthlyDonationStatus?.paid;
+
               return (
                 <View key={i} style={[styles.attendeeRow, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Avatar name={safeName === '—' ? '?' : safeName} size={32} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.attendeeName, isRTL && { textAlign: 'right' }]} numberOfLines={1}>{safeName}</Text>
                     {a.memberId?.memberId && <Text style={[styles.attendeeCode, isRTL && { textAlign: 'right' }]}>{a.memberId.memberId}</Text>}
+                    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                      {duesPaid ? (
+                        <View style={{ backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#065F46' }}>
+                            ✓ 100 Rs Paid
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: '#991B1B' }}>
+                            ⚠️ 100 Rs Unpaid
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                   <Badge label={badgeLabel} color={badgeColor} bg={badgeBg} />
                 </View>
@@ -1096,13 +1130,25 @@ export default function MeetingDetailScreen() {
 
               {/* Attendance Checklist */}
               <View style={{ marginBottom: Spacing.md }}>
-                <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
                   <Text style={styles.sectionTitle}>
                     {t('meetings.attendanceRatio', 'Attendance ({{present}} Present / {{total}} Total)', {
                       present: attendance.filter((r) => r.status === 'PRESENT').length,
                       total: attendance.length,
                     })}
                   </Text>
+                  <View style={[{ flexDirection: 'row', gap: 6 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                    <View style={{ backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#065F46' }}>
+                        ✓ {attendance.filter((r) => r.monthlyDonationStatus?.paid).length} Paid
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: '#991B1B' }}>
+                        ⚠️ {attendance.filter((r) => !r.monthlyDonationStatus?.paid).length} Unpaid
+                      </Text>
+                    </View>
+                  </View>
                 </View>
                 <View style={[{ flexDirection: 'row', gap: 8, marginBottom: 12 }, isRTL && { flexDirection: 'row-reverse' }]}>
                   <TouchableOpacity style={styles.bulkAttBtn} onPress={() => markAllAttendance('PRESENT')}>
@@ -1118,6 +1164,7 @@ export default function MeetingDetailScreen() {
                 ) : (
                   attendance.map((r) => {
                     const isPresent = r.status === 'PRESENT';
+                    const duesPaid = r.monthlyDonationStatus?.paid;
                     return (
                       <View key={r.memberId} style={[styles.finalizeAttRow, isRTL && { flexDirection: 'row-reverse' }]}>
                         <View style={[{ flex: 1, marginRight: 8 }, isRTL && { marginRight: 0, marginLeft: 8, alignItems: 'flex-end' }]}>
@@ -1125,6 +1172,17 @@ export default function MeetingDetailScreen() {
                           <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
                             {r.roleText ? `${r.roleText} · ` : ''}{r.memberCode || ''}
                           </Text>
+                          <View style={[{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }, isRTL && { flexDirection: 'row-reverse' }]}>
+                            {duesPaid ? (
+                              <View style={{ backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#065F46' }}>✓ 100 Rs Paid</Text>
+                              </View>
+                            ) : (
+                              <View style={{ backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#991B1B' }}>⚠️ 100 Rs Unpaid</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                         <View style={[styles.attOptionsRow, isRTL && { flexDirection: 'row-reverse' }]}>
                           <TouchableOpacity

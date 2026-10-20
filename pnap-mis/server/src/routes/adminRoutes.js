@@ -83,4 +83,24 @@ router.delete('/roles/:id', SUPER_ONLY, roleCatalogCtrl.remove);
 router.get('/audit', SUPER_ONLY, auditCtrl.list);
 router.get('/finance-overview', SUPER_ONLY, financeCtrl.globalOverview);
 
+// Test outbound SMS gateway (Super Admin only)
+const messagingService = require('../services/messagingService');
+const env = require('../config/env');
+router.post('/test-sms', SUPER_ONLY, async (req, res) => {
+  const { to, message } = req.body || {};
+  if (!to || !message) {
+    return res.status(400).json({
+      success: false,
+      message: 'Both "to" (phone number) and "message" are required.',
+    });
+  }
+
+  const result = await messagingService.sendSms({ to, message });
+  return res.status(result.success ? 200 : 400).json({
+    success: result.success,
+    provider: env.SMS_PROVIDER,
+    result,
+  });
+});
+
 module.exports = router;

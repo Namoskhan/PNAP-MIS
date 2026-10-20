@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
 import { api, errorMessage } from '../../api/client';
@@ -59,6 +59,15 @@ export default function ReportsPage() {
   const [err, setErr] = useState('');
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+
+  // User scope and role tier checks
+  const rolesList = allRoles || user?.allRoles || user?.roles || [];
+  const isSuper = rolesList.includes('SUPER_ADMIN') || user?.isBootstrap;
+  const isCentral = isSuper || rolesList.includes('CENTRAL_ADMIN') || ctx?.unitLevel === 'CENTRAL';
+  const isProvince = isCentral || rolesList.includes('PROVINCE_ADMIN') || ctx?.unitLevel === 'PROVINCE';
+  const isDistrict = isProvince || rolesList.includes('DISTRICT_ADMIN') || ctx?.unitLevel === 'DISTRICT';
+  const isArea = isDistrict || rolesList.includes('AREA_ADMIN') || ctx?.unitLevel === 'AREA';
+  const isBasicUnit = ctx?.unitLevel === 'BASIC_UNIT';
 
   // Quick date presets
   function applyDatePreset(preset) {
@@ -369,6 +378,29 @@ export default function ReportsPage() {
             📊 <strong>{t('reports.reportMode', 'Report Mode:')}</strong> {scopeDescription}
           </div>
         )}
+      </div>
+
+      {/* Official Party Proforma Reports Gateway Card */}
+      <div className="card" style={{ marginBottom: 16, border: '1.5px solid var(--primary, #0284c7)', background: 'linear-gradient(135deg, rgba(2,132,199,0.05) 0%, rgba(14,165,233,0.02) 100%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h3 style={{ marginTop: 0, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--primary, #0284c7)' }}>
+              <span>📋</span> {t('reports.proformaReportsTitle', 'Official Party Proforma Reports (کار او فعاليت فارمونه)')}
+            </h3>
+            <p className="muted" style={{ margin: 0 }}>
+              {t('reports.proformaReportsGatewayDesc', 'Interactive monthly proformas: Area Unit Report (Form 1) and Basic Unit Report (Form 4). Enter metrics, auto-fill from system, save to database, print preview in A4 Landscape, and download in PDF or Excel.')}
+            </p>
+          </div>
+          <Link
+            to="/unit/proforma"
+            className="btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 700, padding: '8px 18px', background: '#0284c7', borderColor: '#0284c7', color: '#fff', textDecoration: 'none' }}
+          >
+            <span>📝</span>
+            <span>{t('reports.openProformaPage', 'Open Proforma Reports Page')}</span>
+            <span>→</span>
+          </Link>
+        </div>
       </div>
 
       {/* Meetings & Activities Report Card */}

@@ -44,4 +44,7 @@ router.post('/expenses/:id/decide', validate(expenseDecideSchema), ctrl.decideEx
 router.get('/summary', FIN_READ, IN_SCOPE, ctrl.summary);
 router.get('/monthly', FIN_READ, IN_SCOPE, ctrl.monthlyStatements);
 
+router.get('/reminders/monthly-status', FIN_READ, IN_SCOPE, ctrl.getMonthlyRemindersStatus);
+router.post('/reminders/send-monthly', IN_SCOPE, ctrl.sendMonthlyReminders);
+
 module.exports = router;

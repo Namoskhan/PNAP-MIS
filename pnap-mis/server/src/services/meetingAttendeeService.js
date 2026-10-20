@@ -42,6 +42,37 @@ function formatMemberUnitText(m) {
   return parts.join(' · ') || '';
 }
 
+async function finalizeAttendeesList(attendeesMap, { meetingDate, month, year } = {}) {
+  const list = Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+  if (list.length === 0) return [];
+
+  try {
+    const { getMembersDonationStatusMap } = require('./donationReminderService');
+    const memberIds = list.map((a) => a._id);
+    const donationMap = await getMembersDonationStatusMap(memberIds, {
+      date: meetingDate,
+      month,
+      year,
+    });
+
+    return list.map((att) => {
+      const dStatus = donationMap.get(String(att._id)) || {
+        paid: false,
+        totalDonated: 0,
+        feeAmount: 100,
+        dueRemaining: 100,
+      };
+      return {
+        ...att,
+        monthlyDonationStatus: dStatus,
+      };
+    });
+  } catch (err) {
+    console.error('[meetingAttendeeService] failed to attach donation status:', err.message);
+    return list;
+  }
+}
+
 /**
  * Resolves eligible attendees & chairperson candidates based on meeting stream / type:
  * 1. Executive Meeting: ONLY office-holders / role holders of that unit level
@@ -50,7 +81,7 @@ function formatMemberUnitText(m) {
  * 4. Jirga Meeting: Active Jirga assembly members of that Central / Province unit
  * 5. Congress Meeting: Active National Congress assembly members (Central level)
  */
-async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
+async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode, meetingDate, month, year }) {
   const normBody = body || (typeCode === 'GBM' || typeCode === 'GENERAL_BODY' ? 'GENERAL_BODY' : (typeCode === 'CMP' || typeCode === 'COMMITTEE' ? 'COMMITTEE' : (typeCode === 'JRG' || typeCode === 'JIRGA' ? 'JIRGA' : (typeCode === 'CNG' || typeCode === 'CONGRESS' ? 'CONGRESS' : 'EXECUTIVE'))));
 
   if (normBody === 'CONGRESS') {
@@ -95,7 +126,7 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       }
     }
 
-    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+    return finalizeAttendeesList(attendeesMap, { meetingDate, month, year });
   }
 
   if (normBody === 'JIRGA') {
@@ -142,7 +173,7 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       }
     }
 
-    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+    return finalizeAttendeesList(attendeesMap, { meetingDate, month, year });
   }
 
   if (normBody === 'EXECUTIVE') {
@@ -190,7 +221,7 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
         }
       }
     }
-    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+    return finalizeAttendeesList(attendeesMap, { meetingDate, month, year });
   }
 
   if (normBody === 'COMMITTEE') {
@@ -325,7 +356,7 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       }
     }
 
-    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+    return finalizeAttendeesList(attendeesMap, { meetingDate, month, year });
   }
 
   // General Body Meeting (GENERAL_BODY):
@@ -526,7 +557,7 @@ async function resolveEligibleAttendees({ unitLevel, unitId, body, typeCode }) {
       }
     }
 
-    return Array.from(attendeesMap.values()).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+    return finalizeAttendeesList(attendeesMap, { meetingDate, month, year });
   }
 
   return [];

@@ -25,8 +25,10 @@ router.use('/central', require('./centralRoutes'));
 router.use('/responsibilities', require('./responsibilityRoutes'));
 router.use('/performance', require('./performanceRoutes'));
 router.use('/exports', require('./exportRoutes'));
+router.use('/export', require('./exportRoutes'));
 router.use('/events', require('./eventsPublicRoutes'));
 router.use('/reports', require('./reportTemplateRoutes'));
+router.use('/proforma', require('./proformaRoutes'));
 // More-specific /admin/* mounts must come BEFORE the generic /admin
 // so Express matches the longest prefix first.
 router.use('/admin/events', require('./eventConfigRoutes'));

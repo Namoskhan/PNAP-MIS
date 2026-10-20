@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useUnit } from '../../context/UnitContext';
 import { useAuth } from '../../context/AuthContext';
@@ -10,7 +10,7 @@ import {
 } from '../../utils/permissions';
 import { api, errorMessage } from '../../api/client';
 import { useToast } from '../../components/Toast';
-import { formatCnic, isCompleteCnic } from '../../utils/formatters';
+import { formatCnic, isCompleteCnic, formatPhone } from '../../utils/formatters';
 
 import dialog from '../../components/dialog';
 import { XIcon, CongressIcon } from '../../components/icons';
@@ -25,11 +25,19 @@ const DONOR_TYPES = ['MEMBER','NON_MEMBER','CORPORATE','ANONYMOUS'];
 // form can state the limits up front instead of letting the officer
 // fill everything in and take a 400 on submit.
 const ANONYMOUS_CAP = 5000;
-const NON_MEMBER_CNIC_THRESHOLD = 50000;
+const NON_MEMBER_CNIC_THRESHOLD = 5000;
+const PHONE_RX = /^(\+92|0)?3\d{2}[- ]?\d{7}$/;
 
 function bodySupported(level) {
   return level === 'BASIC_UNIT' || level === 'AREA' || level === 'DISTRICT'
     || level === 'PROVINCE' || level === 'CENTRAL';
+}
+
+function getWhatsAppUrl(phone, message) {
+  if (!phone) return '#';
+  let clean = String(phone).replace(/[^0-9]/g, '');
+  if (clean.startsWith('0')) clean = '92' + clean.slice(1);
+  return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`;
 }
 
 // Shown next to every field the server actually requires.
@@ -131,7 +139,7 @@ export default function FinancePage() {
   const [expenses, setExpenses] = useState([]);
   const [tab, setTab] = useState('donations');
 
-  const [donForm, setDonForm] = useState({ amount: '', donorType: 'MEMBER', donorMemberId: '', donorName: '', donorCnic: '', paymentMode: 'CASH', receivedAt: '' });
+  const [donForm, setDonForm] = useState({ amount: '', donorType: 'MEMBER', donorMemberId: '', donorName: '', donorCnic: '', donorPhone: '', paymentMode: 'CASH', receivedAt: '' });
   const [donReceipt, setDonReceipt] = useState(null);
   const [donModalOpen, setDonModalOpen] = useState(false);
 
@@ -143,6 +151,12 @@ export default function FinancePage() {
   const [monthly, setMonthly] = useState([]);
   const [monthFrom, setMonthFrom] = useState('');
   const [monthTo, setMonthTo] = useState('');
+
+  const [duesMonth, setDuesMonth] = useState(() => new Date().getMonth() + 1);
+  const [duesYear, setDuesYear] = useState(() => new Date().getFullYear());
+  const [duesData, setDuesData] = useState(null);
+  const [duesLoading, setDuesLoading] = useState(false);
+  const [reminding, setReminding] = useState(false);
 
   const [err, setErr] = useState('');
 
@@ -251,6 +265,53 @@ export default function FinancePage() {
     if (tab === 'monthly') reloadMonthly();
   }, [ctx, tab, targetBody, monthFrom, monthTo]);
 
+  async function loadDues() {
+    if (!ctx) return;
+    setDuesLoading(true);
+    try {
+      const res = await api.get('/finance/reminders/monthly-status', {
+        params: {
+          unitLevel: ctx.unitLevel,
+          unitId: ctx.unitId,
+          month: duesMonth,
+          year: duesYear,
+        },
+      });
+      setDuesData(res.data.data);
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not load dues status' });
+    } finally {
+      setDuesLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (tab === 'dues') loadDues();
+  }, [ctx, tab, duesMonth, duesYear]);
+
+  async function handleSendReminders(memberIds = null) {
+    if (!ctx) return;
+    setReminding(true);
+    try {
+      const res = await api.post('/finance/reminders/send-monthly', {
+        unitLevel: ctx.unitLevel,
+        unitId: ctx.unitId,
+        month: duesMonth,
+        year: duesYear,
+        memberIds,
+      });
+      toast.success(
+        t('finance.remindersSentSuccess', `Sent ${res.data.data.notifiedCount} in-app reminder(s).`),
+        { title: t('finance.remindersSent', 'Reminders Sent') }
+      );
+      loadDues();
+    } catch (e) {
+      toast.error(errorMessage(e), { title: 'Could not send reminders' });
+    } finally {
+      setReminding(false);
+    }
+  }
+
   function applyQuickRange(kind) {
     const now = new Date();
     const y = now.getFullYear();
@@ -284,7 +345,8 @@ export default function FinancePage() {
   }
 
   const donAmount = parseFloat(donForm.amount) || 0;
-  const donCnicRequired = donForm.donorType === 'NON_MEMBER' && donAmount > NON_MEMBER_CNIC_THRESHOLD;
+  const donCnicRequired = donForm.donorType === 'NON_MEMBER' && donAmount >= NON_MEMBER_CNIC_THRESHOLD;
+  const donPhoneRequired = (donForm.donorType === 'NON_MEMBER' || donForm.donorType === 'CORPORATE') && donAmount >= 5000;
   const donErrors = useMemo(() => {
     const errs = {};
     if (donForm.amount !== '' && !(donAmount > 0)) {
@@ -293,8 +355,19 @@ export default function FinancePage() {
     if (donForm.donorType === 'ANONYMOUS' && donAmount > ANONYMOUS_CAP) {
       errs.amount = `Anonymous donations capped at PKR ${ANONYMOUS_CAP.toLocaleString()}`;
     }
+    if (donForm.donorType === 'MEMBER' && !donForm.donorMemberId) {
+      errs.donorMemberId = 'Please select a member';
+    }
+    if (donForm.donorType === 'NON_MEMBER' || donForm.donorType === 'CORPORATE') {
+      const p = (donForm.donorPhone || '').trim();
+      if (donPhoneRequired && !p) {
+        errs.donorPhone = 'Phone number is required for donations of PKR 5,000+';
+      } else if (p && !PHONE_RX.test(p)) {
+        errs.donorPhone = 'Use 03XX-XXXXXXX or +92 3XX XXXXXXX';
+      }
+    }
     if (donCnicRequired && !donForm.donorCnic) {
-      errs.donorCnic = `CNIC is required for non-member donations above PKR ${NON_MEMBER_CNIC_THRESHOLD.toLocaleString()}`;
+      errs.donorCnic = `CNIC is required for non-member donations of PKR ${NON_MEMBER_CNIC_THRESHOLD.toLocaleString()} and above`;
     } else if (donForm.donorCnic && !isCompleteCnic(donForm.donorCnic)) {
       errs.donorCnic = 'CNIC must be 13 digits (42101-1234567-1)';
     }
@@ -302,7 +375,7 @@ export default function FinancePage() {
       errs.receivedAt = 'Received date is required';
     }
     return errs;
-  }, [donForm.amount, donForm.donorType, donForm.donorCnic, donForm.receivedAt, donAmount, donCnicRequired]);
+  }, [donForm.amount, donForm.donorType, donForm.donorMemberId, donForm.donorPhone, donForm.donorCnic, donForm.receivedAt, donAmount, donCnicRequired, donPhoneRequired]);
 
   const expAmount = parseFloat(expForm.amount) || 0;
   const expErrors = useMemo(() => {
@@ -326,17 +399,20 @@ export default function FinancePage() {
       const fd = new FormData();
       let donorName = donForm.donorName;
       let donorCnic = donForm.donorCnic;
+      let donorPhone = donForm.donorPhone;
       if (donForm.donorType === 'MEMBER' && donForm.donorMemberId) {
         const found = members.find((m) => String(m._id) === String(donForm.donorMemberId));
         if (found) {
           if (!donorName) donorName = found.fullName;
           if (!donorCnic && found.cnic) donorCnic = found.cnic;
+          if (!donorPhone && found.phone) donorPhone = found.phone;
         }
       }
       const payload = {
         ...donForm,
         donorName,
         donorCnic,
+        donorPhone,
         unitLevel: ctx.unitLevel,
         unitId: ctx.unitId,
         body: targetBody,
@@ -349,7 +425,7 @@ export default function FinancePage() {
       }
       const amount = parseFloat(donForm.amount);
       await api.post('/finance/donations', fd);
-      setDonForm({ amount: '', donorType: 'MEMBER', donorMemberId: '', donorName: '', donorCnic: '', paymentMode: 'CASH', receivedAt: '' });
+      setDonForm({ amount: '', donorType: 'MEMBER', donorMemberId: '', donorName: '', donorCnic: '', donorPhone: '', paymentMode: 'CASH', receivedAt: '' });
       setDonReceipt(null);
       setDonModalOpen(false);
       reload();
@@ -434,8 +510,21 @@ export default function FinancePage() {
   if (!ctx) return <p>Select a unit context first.</p>;
   if (!hasPermission(user, 'MANAGE_FINANCE') && !hasPermission(user, 'APPROVE_EXPENSE') && !canApproveExpense(user)) {
     return (
-      <div className="alert error">
-        Your current role does not include finance permissions, so this page is unavailable.
+      <div className="card" style={{ maxWidth: 620, margin: '40px auto', textAlign: 'center', padding: '36px 24px' }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>🔒</div>
+        <h3 style={{ margin: '0 0 10px 0' }}>{t('finance.restrictedLedger', 'Financial Ledger is Restricted')}</h3>
+        <p className="muted" style={{ margin: '0 auto 20px auto', maxWidth: 480, fontSize: 14, lineHeight: 1.6 }}>
+          {t('finance.memberPortalHint', 'Unit financial management is restricted to leadership and Finance Secretaries. You can review your personal contributions, donation receipts, and membership status on your profile.')}
+        </p>
+        {user?.memberId ? (
+          <Link to={`/members/${user.memberId}`} className="btn">
+            {t('finance.viewMyDonations', 'View My Contributions & Receipts')}
+          </Link>
+        ) : (
+          <Link to="/unit" className="btn secondary">
+            {t('common.goToDashboard', 'Go to Dashboard')}
+          </Link>
+        )}
       </div>
     );
   }
@@ -510,6 +599,7 @@ export default function FinancePage() {
         <button className={`btn ${tab === 'donations' ? '' : 'secondary'}`} onClick={() => setTab('donations')}>{t('finance.donations', 'Donations')}</button>
         <button className={`btn ${tab === 'expenses' ? '' : 'secondary'}`} onClick={() => setTab('expenses')}>{t('finance.expenses', 'Expenses')}</button>
         <button className={`btn ${tab === 'monthly' ? '' : 'secondary'}`} onClick={() => setTab('monthly')}>{t('finance.monthlyStatements', 'Monthly Statements')}</button>
+        <button className={`btn ${tab === 'dues' ? '' : 'secondary'}`} onClick={() => setTab('dues')}>{t('finance.monthlyDues', 'Monthly Dues (PKR 100)')}</button>
       </div>
 
       {tab === 'donations' && (
@@ -557,6 +647,7 @@ export default function FinancePage() {
                           donorMemberId: nextType === 'MEMBER' ? donForm.donorMemberId : '',
                           donorName: nextType === 'MEMBER' ? (mem?.fullName || '') : (nextType === 'ANONYMOUS' ? '' : donForm.donorName),
                           donorCnic: nextType === 'MEMBER' ? (mem?.cnic || '') : (nextType === 'ANONYMOUS' ? '' : donForm.donorCnic),
+                          donorPhone: nextType === 'MEMBER' ? (mem?.phone || '') : (nextType === 'ANONYMOUS' ? '' : donForm.donorPhone),
                         });
                       }}
                     >
@@ -564,7 +655,7 @@ export default function FinancePage() {
                     </select></div>
                   {donForm.donorType === 'MEMBER' && (
                     <div className="field full">
-                      <label>{t('finance.donorMember', 'Donor (member)')}</label>
+                      <label>{t('finance.donorMember', 'Donor (member)')} <Req /></label>
                       <select
                         value={donForm.donorMemberId}
                         onChange={(e) => {
@@ -575,35 +666,65 @@ export default function FinancePage() {
                             donorMemberId: mId,
                             donorName: selected ? selected.fullName : '',
                             donorCnic: selected?.cnic || '',
+                            donorPhone: selected?.phone || '',
                           });
                         }}
                       >
                         <option value="">— {t('finance.pickMember', 'pick a member')} —</option>
-                        {members.map((m) => <option key={m._id} value={m._id}>{m.fullName} · {m.memberId || m.cnic}</option>)}
+                        {members.map((m) => (
+                          <option key={m._id} value={m._id}>
+                            {m.fullName} · {m.memberId || m.cnic}{m.phone ? ` (${m.phone})` : ''}
+                          </option>
+                        ))}
                       </select>
-                      <div className="hint">Linking to a member also reflects the donation on their performance report.</div>
+                      {donErrors.donorMemberId && <div className="error">{donErrors.donorMemberId}</div>}
+                      {(() => {
+                        const sel = members.find((m) => String(m._id) === String(donForm.donorMemberId));
+                        if (sel?.phone) {
+                          return (
+                            <div className="hint" style={{ color: 'var(--success-text, #166534)', marginTop: 4 }}>
+                              📱 Stored contact: <strong>{sel.phone}</strong> (automatic thank-you SMS &amp; WhatsApp will be sent to this number).
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="hint">{t('finance.memberPhoneNotice', "Member's stored phone number is automatically used for thank-you SMS & WhatsApp.")}</div>
+                        );
+                      })()}
                     </div>
                   )}
                   {(donForm.donorType === 'NON_MEMBER' || donForm.donorType === 'CORPORATE') && (
                     <>
-                      <div className="field"><label>{t('finance.donorName', 'Donor Name')}</label>
-                        <input value={donForm.donorName} onChange={(e) => setDonForm({ ...donForm, donorName: e.target.value })} /></div>
+                      <div className="field">
+                        <label>{t('finance.donorName', 'Donor Name')}</label>
+                        <input value={donForm.donorName} onChange={(e) => setDonForm({ ...donForm, donorName: e.target.value })} />
+                      </div>
+                      <div className="field">
+                        <label>{t('finance.donorPhone', 'Donor Phone Number')} {donPhoneRequired && <Req />}</label>
+                        <input
+                          type="tel"
+                          value={donForm.donorPhone}
+                          placeholder="0300-1234567"
+                          maxLength={12}
+                          inputMode="tel"
+                          aria-invalid={donErrors.donorPhone ? 'true' : undefined}
+                          onChange={(e) => setDonForm({ ...donForm, donorPhone: formatPhone(e.target.value) })}
+                        />
+                        {donErrors.donorPhone
+                          ? <div className="error">{donErrors.donorPhone}</div>
+                          : <div className="hint">{t('finance.phoneRequiredHint', 'Automatic thank-you SMS & WhatsApp will be sent to this number for donations of PKR 5,000+.')}</div>}
+                      </div>
                       <div className="field">
                         <label>{t('finance.donorCnic', 'Donor CNIC')} {donCnicRequired && <Req />}</label>
                         <input
                           value={donForm.donorCnic}
                           placeholder="42101-1234567-1"
+                          maxLength={15}
                           inputMode="numeric"
                           aria-invalid={donErrors.donorCnic ? 'true' : undefined}
                           onChange={(e) => setDonForm({ ...donForm, donorCnic: formatCnic(e.target.value) })}
                         />
-                        {donErrors.donorCnic
-                          ? <div className="error">{donErrors.donorCnic}</div>
-                          : <div className="hint">
-                              {donForm.donorType === 'NON_MEMBER'
-                                ? `Required above ${PKR.format(NON_MEMBER_CNIC_THRESHOLD)}; optional below.`
-                                : 'Optional.'}
-                            </div>}
+                        {donErrors.donorCnic && <div className="error">{donErrors.donorCnic}</div>}
                       </div>
                     </>
                   )}
@@ -692,7 +813,14 @@ export default function FinancePage() {
                       )}
                     </td>
                     <td>{new Date(d.receivedAt).toLocaleDateString()}</td>
-                    <td>{effectiveDonorName}</td>
+                    <td>
+                      <div>{effectiveDonorName}</div>
+                      {(d.donorPhone || d.donorMemberId?.phone) && (
+                        <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                          📞 {d.donorPhone || d.donorMemberId?.phone}
+                        </div>
+                      )}
+                    </td>
                     <td>
                       <div style={{ fontWeight: 500 }}>
                         {d.recordedBy?.fullName || d.recordedBy?.username || d.recordedByName || '—'}
@@ -704,14 +832,27 @@ export default function FinancePage() {
                       )}
                     </td>
                     <td>{d.paymentMode}</td>
-                    <td style={{ textAlign: 'right' }}>{PKR.format(d.amount)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 600 }}>{PKR.format(d.amount)}</div>
+                      {d.amount >= 5000 && (
+                        <div style={{ fontSize: 10, color: 'var(--success, #16a34a)', fontWeight: 700, marginTop: 2 }}>
+                          ★ {t('finance.majorContribution', '5,000+ Major')}
+                        </div>
+                      )}
+                    </td>
                     <td><span className={`badge ${d.state || 'APPROVED'}`}>{d.state || 'APPROVED'}</span></td>
-                    <td>{d.state === 'PENDING' && canApprove && (
-                      <>
-                        <button className="btn" onClick={() => decideDonation(d._id, 'APPROVED')}>{t('finance.approve', 'Approve')}</button>{' '}
-                        <button className="btn danger" onClick={() => decideDonation(d._id, 'REJECTED')}>{t('finance.reject', 'Reject')}</button>
-                      </>
-                    )}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {d.state === 'PENDING' && canApprove ? (
+                          <>
+                            <button className="btn" onClick={() => decideDonation(d._id, 'APPROVED')}>{t('finance.approve', 'Approve')}</button>{' '}
+                            <button className="btn danger" onClick={() => decideDonation(d._id, 'REJECTED')}>{t('finance.reject', 'Reject')}</button>
+                          </>
+                        ) : (
+                          <span className="muted" style={{ fontSize: 12 }}>—</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -944,6 +1085,153 @@ export default function FinancePage() {
           </table>
           </div>
         </>
+      )}
+
+      {tab === 'dues' && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+            <div>
+              <h3 style={{ margin: 0 }}>
+                {t('finance.monthlyDuesTitle', 'Monthly Membership Contributions (PKR 100)')}
+              </h3>
+              <p className="muted" style={{ margin: '4px 0 0 0', fontSize: 13 }}>
+                {t('finance.monthlyDuesDesc', 'Track active members who have contributed the monthly PKR 100 donation and send reminders.')}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={duesMonth} onChange={(e) => setDuesMonth(Number(e.target.value))} style={{ padding: '6px 10px', borderRadius: 6 }}>
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                  <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('default', { month: 'long' })}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                value={duesYear}
+                onChange={(e) => setDuesYear(Number(e.target.value))}
+                style={{ width: 80, padding: '6px 10px', borderRadius: 6 }}
+              />
+              <button className="btn secondary" onClick={loadDues} disabled={duesLoading}>
+                {t('common.refresh', 'Refresh')}
+              </button>
+            </div>
+          </div>
+
+          {duesData && (
+            <>
+              <div className="kpis" style={{ marginBottom: 20 }}>
+                <div className="kpi">
+                  <div className="label">{t('finance.activeMembers', 'Active Members')}</div>
+                  <div className="value">{duesData.totalMembers}</div>
+                  <div className="hint">{t('finance.expectedDues', `Expected: ${PKR.format(duesData.totalMembers * 100)}`)}</div>
+                </div>
+                <div className="kpi kpi-good">
+                  <div className="label">{t('finance.paidMembers', 'Paid (≥ PKR 100)')}</div>
+                  <div className="value">{duesData.paidCount}</div>
+                  <div className="hint">{duesData.totalMembers ? `${Math.round((duesData.paidCount / duesData.totalMembers) * 100)}% compliance` : '—'}</div>
+                </div>
+                <div className={`kpi ${duesData.unpaidCount > 0 ? 'kpi-danger' : 'kpi-good'}`}>
+                  <div className="label">{t('finance.unpaidMembers', 'Pending / Unpaid')}</div>
+                  <div className="value">{duesData.unpaidCount}</div>
+                  <div className="hint">{t('finance.dueRemaining', `Due: ${PKR.format(duesData.unpaidCount * 100)}`)}</div>
+                </div>
+                <div className="kpi">
+                  <div className="label">{t('finance.totalCollected', 'Total Collected')}</div>
+                  <div className="value">{PKR.format(duesData.totalCollected)}</div>
+                  <div className="hint">{duesData.monthName} {duesData.year}</div>
+                </div>
+              </div>
+
+              {canRecord && duesData.unpaidCount > 0 && (
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    className="btn"
+                    onClick={() => handleSendReminders()}
+                    disabled={reminding}
+                  >
+                    {reminding ? t('common.sending', 'Sending...') : t('finance.sendAllReminders', `🔔 Send In-App Reminders to All ${duesData.unpaidCount} Unpaid Members`)}
+                  </button>
+                </div>
+              )}
+
+              {duesData.unpaidCount === 0 ? (
+                <div className="alert success" style={{ padding: '24px 16px', textAlign: 'center' }}>
+                  🎉 {t('finance.allPaidNotice', `All active members have contributed their monthly PKR 100 donation for ${duesData.monthName} ${duesData.year}!`)}
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <table className="list">
+                    <thead>
+                      <tr>
+                        <th>{t('finance.member', 'Member')}</th>
+                        <th>{t('finance.contact', 'Contact')}</th>
+                        <th>{t('finance.cnic', 'CNIC')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('finance.contributed', 'Contributed')}</th>
+                        <th style={{ textAlign: 'right' }}>{t('finance.remaining', 'Remaining')}</th>
+                        <th>{t('finance.lastReminder', 'Last In-App Reminder')}</th>
+                        <th>{t('finance.actions', 'Actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {duesData.unpaidMembers.map((m) => {
+                        const waUrl = getWhatsAppUrl(
+                          m.phone,
+                          `Assalam-o-Alaikum ${m.fullName}, this is a gentle reminder regarding your monthly membership contribution of PKR 100 for ${duesData.monthName} ${duesData.year} to PKNAP. Please submit your contribution at your earliest convenience. JazakAllah Khair!`
+                        );
+                        return (
+                          <tr key={m._id}>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{m.fullName}</div>
+                              <div className="muted" style={{ fontSize: 11 }}>{m.memberId || '—'}</div>
+                            </td>
+                            <td>{m.phone || '—'}</td>
+                            <td>{m.cnic || '—'}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 500 }}>{PKR.format(m.totalDonated)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger, #dc2626)' }}>{PKR.format(m.dueRemaining)}</td>
+                            <td>
+                              {m.lastNotifiedAt ? (
+                                <span className="muted" style={{ fontSize: 12 }}>
+                                  {new Date(m.lastNotifiedAt).toLocaleDateString()}
+                                </span>
+                              ) : (
+                                <span className="muted" style={{ fontSize: 12 }}>{t('common.never', 'Never')}</span>
+                              )}
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                {canRecord && (
+                                  <button
+                                    className="btn btn-sm secondary"
+                                    onClick={() => handleSendReminders([m._id])}
+                                    disabled={reminding}
+                                    title={t('finance.sendInAppReminder', 'Send In-App Reminder')}
+                                  >
+                                    🔔 {t('finance.remind', 'Remind')}
+                                  </button>
+                                )}
+                                {m.phone && (
+                                  <a
+                                    href={waUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm secondary"
+                                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                    title={t('finance.sendWhatsAppReminder', 'Send WhatsApp Reminder')}
+                                  >
+                                    💬 WhatsApp
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
     </div>
   );
