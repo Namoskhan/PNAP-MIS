@@ -305,26 +305,26 @@ export default function ProformaReportsPage() {
 
   // Active Tab: 'upper' (Overview & Upper Table), 'roster' (Executive Members), 'notes' (Remarks)
   const [activeTab, setActiveTab] = useState('upper');
-  // Roster View Mode: 'cards' (interactive cards) or 'table' (dense spreadsheet table)
-  const [rosterViewMode, setRosterViewMode] = useState('cards');
+  // Roster View Mode: 'cards' (interactive cards) or 'table' (dense spreadsheet/data grid)
+  const [rosterViewMode, setRosterViewMode] = useState('table');
   // Form 2 View Mode: 'cards' or 'table'
-  const [form2ViewMode, setForm2ViewMode] = useState('cards');
+  const [form2ViewMode, setForm2ViewMode] = useState('table');
   const [form2Search, setForm2Search] = useState('');
   // Form 5 View Mode: 'cards' or 'table'
-  const [form5ViewMode, setForm5ViewMode] = useState('cards');
+  const [form5ViewMode, setForm5ViewMode] = useState('table');
   const [form5Search, setForm5Search] = useState('');
   // Form 6 View Mode: 'cards' or 'table'
-  const [form6ViewMode, setForm6ViewMode] = useState('cards');
+  const [form6ViewMode, setForm6ViewMode] = useState('table');
   const [form6Search, setForm6Search] = useState('');
   // Form 7 View Mode: 'cards' or 'table'
-  const [form7ViewMode, setForm7ViewMode] = useState('cards');
+  const [form7ViewMode, setForm7ViewMode] = useState('table');
   const [form7Search, setForm7Search] = useState('');
   // Form 8 View Mode: 'cards' or 'table'
-  const [form8ViewMode, setForm8ViewMode] = useState('cards');
+  const [form8ViewMode, setForm8ViewMode] = useState('table');
   const [form8Search, setForm8Search] = useState('');
   // Form 9 View Mode: 'cards' or 'table' & activeSection
   const [form9ActiveSection, setForm9ActiveSection] = useState('sec1');
-  const [form9ViewMode, setForm9ViewMode] = useState('cards');
+  const [form9ViewMode, setForm9ViewMode] = useState('table');
   const [form9Search, setForm9Search] = useState('');
   const [districtsList, setDistrictsList] = useState([]);
   const [selectedDistrictId, setSelectedDistrictId] = useState(() => (ctx?.districtId || user?.scope?.districtId || ''));
@@ -4577,475 +4577,173 @@ export default function ProformaReportsPage() {
               </div>
             )}
 
-            {/* Row 1: District Executive & District Committee Meetings */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
-              {/* District Executive Meeting */}
-              <div className="card" style={{ padding: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: 14 }}>🏛️ {t('proforma.form6.distExecTitle', 'ضلعي ايګزيکټيو غونډي (District Executive)')}</strong>
-                    {form6DistExecSlots > 0 && (
-                      form6DistExecSum === form6DistExecSlots ? (
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid #22c55e', fontWeight: 600 }}>
-                          ✓ {t('proforma.balanced', 'Balanced')}: {form6DistExecSum}/{form6DistExecSlots}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', fontWeight: 600 }}>
-                          ⚠️ {form6DistExecSum}/{form6DistExecSlots}
-                        </span>
-                      )
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={handleAutoBalanceDistrictExec}
-                      className="btn secondary"
-                      style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, borderColor: '#0284c7', color: '#38bdf8' }}
-                      title={t('proforma.autoBalance', 'Auto-Balance attendance to match Total Slots')}
-                    >
-                      ⚡ {t('proforma.autoBalance', 'Auto-Balance')}
-                    </button>
-                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                      {upper.distExecPct || '0%'}
-                    </span>
-                  </div>
+            {/* FORM 6 DATA GRIDS */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* 1. District Executive & Committee Meetings Data Grid */}
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 13 }}>🏛️ {t('proforma.form6.distMeetingsTitle', 'ضلعي غونډي (District Meetings) – Data Grid')}</strong>
+                  <button
+                    type="button"
+                    onClick={handleAutoBalanceDistrictExec}
+                    className="btn secondary"
+                    style={{ marginInlineStart: 'auto', padding: '3px 8px', fontSize: 11, borderColor: '#0284c7', color: '#38bdf8', fontWeight: 600 }}
+                  >
+                    ⚡ {t('proforma.autoBalance', 'Auto-Balance Exec')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAutoBalanceDistrictComm}
+                    className="btn secondary"
+                    style={{ padding: '3px 8px', fontSize: 11, borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}
+                  >
+                    ⚡ {t('proforma.autoBalance', 'Auto-Balance Comm')}
+                  </button>
                 </div>
-
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.meetingDate', 'نيټه (Date)')}</label>
-                    <input
-                      type="text"
-                      value={upper.distExecDate || ''}
-                      onChange={(e) => updateForm6Upper('distExecDate', e.target.value)}
-                      placeholder="DD/MM"
-                      style={{ padding: '5px 8px', fontSize: 13, textAlign: 'center' }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.totalMembers', 'غړو شمير (Total)')}</label>
-                    <NumberStepper
-                      value={upper.distExecSlots ?? ''}
-                      onChange={(val) => updateForm6Upper('distExecSlots', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'حاضر (Present)')}</label>
-                    <NumberStepper
-                      value={upper.distExecPresent ?? ''}
-                      max={form6DistExecSlots > 0 ? form6DistExecSlots : Infinity}
-                      onChange={(val) => updateForm6Upper('distExecPresent', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'غير حاضر (Absent)')}</label>
-                    <NumberStepper
-                      value={upper.distExecAbsent ?? ''}
-                      onChange={(val) => updateForm6Upper('distExecAbsent', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'رخصت (Leave)')}</label>
-                    <NumberStepper
-                      value={upper.distExecLeave ?? ''}
-                      onChange={(val) => updateForm6Upper('distExecLeave', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'حاضري فيصدي (%)')}</label>
-                    <input
-                      type="text"
-                      value={upper.distExecPct || '0%'}
-                      onChange={(e) => updateForm6Upper('distExecPct', e.target.value)}
-                      style={{ textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 720, textAlign: 'center' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '6px 10px', textAlign: isRtl ? 'right' : 'left', minWidth: 160 }}>{t('proforma.meetingType', 'Meeting Type')}</th>
+                        <th style={{ padding: '6px 8px', width: 100 }}>{t('proforma.meetingDate', 'نيټه (Date)')}</th>
+                        <th style={{ padding: '6px 8px', width: 80 }}>{t('proforma.totalMembers', 'Total')}</th>
+                        <th style={{ padding: '6px 8px', width: 80, color: '#22c55e' }}>{t('proforma.present', 'حاضر')}</th>
+                        <th style={{ padding: '6px 8px', width: 80, color: '#ef4444' }}>{t('proforma.absent', 'غير حاضر')}</th>
+                        <th style={{ padding: '6px 8px', width: 80, color: '#eab308' }}>{t('proforma.leave', 'رخصت')}</th>
+                        <th style={{ padding: '6px 8px', width: 80 }}>{t('proforma.attendancePct', '%')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '6px 10px', textAlign: isRtl ? 'right' : 'left', fontWeight: 600, color: '#0284c7' }}>🏛️ {t('proforma.form6.distExecTitle', 'ضلعي ايګزيکټيو')}</td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.distExecDate || ''} onChange={(e) => updateForm6Upper('distExecDate', e.target.value)} placeholder="DD/MM" style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distExecSlots ?? ''} onChange={(e) => updateForm6Upper('distExecSlots', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distExecPresent ?? ''} onChange={(e) => updateForm6Upper('distExecPresent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distExecAbsent ?? ''} onChange={(e) => updateForm6Upper('distExecAbsent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#ef4444' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distExecLeave ?? ''} onChange={(e) => updateForm6Upper('distExecLeave', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#eab308' }} /></td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.distExecPct || '0%'} onChange={(e) => updateForm6Upper('distExecPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '6px 10px', textAlign: isRtl ? 'right' : 'left', fontWeight: 600, color: '#10b981' }}>👥 {t('proforma.form6.distCommTitle', 'ضلعي کميټي')}</td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.distCommDate || ''} onChange={(e) => updateForm6Upper('distCommDate', e.target.value)} placeholder="DD/MM" style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distCommTotal ?? ''} onChange={(e) => updateForm6Upper('distCommTotal', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distCommPresent ?? ''} onChange={(e) => updateForm6Upper('distCommPresent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distCommAbsent ?? ''} onChange={(e) => updateForm6Upper('distCommAbsent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#ef4444' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.distCommLeave ?? ''} onChange={(e) => updateForm6Upper('distCommLeave', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#eab308' }} /></td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.distCommPct || '0%'} onChange={(e) => updateForm6Upper('distCommPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              {/* District Committee Meeting */}
-              <div className="card" style={{ padding: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: 14 }}>👥 {t('proforma.form6.distCommTitle', 'ضلعي کميټي غونډي (District Committee)')}</strong>
-                    {form6DistCommTotal > 0 && (
-                      form6DistCommSum === form6DistCommTotal ? (
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid #22c55e', fontWeight: 600 }}>
-                          ✓ {t('proforma.balanced', 'Balanced')}: {form6DistCommSum}/{form6DistCommTotal}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', fontWeight: 600 }}>
-                          ⚠️ {form6DistCommSum}/{form6DistCommTotal}
-                        </span>
-                      )
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={handleAutoBalanceDistrictComm}
-                      className="btn secondary"
-                      style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, borderColor: '#0284c7', color: '#38bdf8' }}
-                      title={t('proforma.autoBalance', 'Auto-Balance attendance to match Total Members')}
-                    >
-                      ⚡ {t('proforma.autoBalance', 'Auto-Balance')}
-                    </button>
-                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                      {upper.distCommPct || '0%'}
-                    </span>
-                  </div>
+              {/* 2. Subordinate Units Metrics Data Grid */}
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                  <strong style={{ fontSize: 13 }}>🏢 {t('proforma.form6.subUnitsMetricsTitle', 'ماتحت يونټونو فعاليت (Subordinate Units Metrics) – Data Grid')}</strong>
                 </div>
-
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.meetingDate', 'نيټه (Date)')}</label>
-                    <input
-                      type="text"
-                      value={upper.distCommDate || ''}
-                      onChange={(e) => updateForm6Upper('distCommDate', e.target.value)}
-                      placeholder="DD/MM"
-                      style={{ padding: '5px 8px', fontSize: 13, textAlign: 'center' }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.totalMembers', 'غړو شمير (Total)')}</label>
-                    <NumberStepper
-                      value={upper.distCommTotal ?? ''}
-                      onChange={(val) => updateForm6Upper('distCommTotal', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'حاضر (Present)')}</label>
-                    <NumberStepper
-                      value={upper.distCommPresent ?? ''}
-                      max={form6DistCommTotal > 0 ? form6DistCommTotal : Infinity}
-                      onChange={(val) => updateForm6Upper('distCommPresent', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'غير حاضر (Absent)')}</label>
-                    <NumberStepper
-                      value={upper.distCommAbsent ?? ''}
-                      onChange={(val) => updateForm6Upper('distCommAbsent', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'رخصت (Leave)')}</label>
-                    <NumberStepper
-                      value={upper.distCommLeave ?? ''}
-                      onChange={(val) => updateForm6Upper('distCommLeave', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'حاضري فيصدي (%)')}</label>
-                    <input
-                      type="text"
-                      value={upper.distCommPct || '0%'}
-                      onChange={(e) => updateForm6Upper('distCommPct', e.target.value)}
-                      style={{ textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 2: Subordinate Area Units & Basic Units Metrics */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
-              {/* Subordinate Area Units */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🏢 {t('proforma.form6.areaUnitsSec', 'علاقائي يونټونه (Area Units Metrics)')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaUnitsCount', 'علاقائي يونټانو شمير (Total)')}</label>
-                    <NumberStepper
-                      value={upper.areaUnitsCount ?? ''}
-                      onChange={(val) => updateForm6Upper('areaUnitsCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.newAreaUnitsCount', 'نوي علاقائي يونټانو شمير (New)')}</label>
-                    <NumberStepper
-                      value={upper.newAreaUnitsCount ?? ''}
-                      onChange={(val) => updateForm6Upper('newAreaUnitsCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaExecCount', 'علاقائي ايګزيکټيو غونډو شمير')}</label>
-                    <NumberStepper
-                      value={upper.areaExecCount ?? ''}
-                      onChange={(val) => updateForm6Upper('areaExecCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaExecPct', 'غونډو فيصدي (%)')}</label>
-                    <input
-                      type="text"
-                      value={upper.areaExecPct || '0%'}
-                      onChange={(e) => updateForm6Upper('areaExecPct', e.target.value)}
-                      style={{ textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaCommCount', 'علاقائي کميټي غونډو شمير')}</label>
-                    <NumberStepper
-                      value={upper.areaCommCount ?? ''}
-                      onChange={(val) => updateForm6Upper('areaCommCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.areaCommPct', 'غونډو فيصدي (%)')}</label>
-                    <input
-                      type="text"
-                      value={upper.areaCommPct || '0%'}
-                      onChange={(e) => updateForm6Upper('areaCommPct', e.target.value)}
-                      style={{ textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 760, textAlign: 'center' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '6px 10px', textAlign: isRtl ? 'right' : 'left', minWidth: 160 }}>{t('proforma.unitTier', 'Unit Tier')}</th>
+                        <th style={{ padding: '6px 8px', width: 90 }}>{t('proforma.form6.totalUnits', 'ټول يونټونه')}</th>
+                        <th style={{ padding: '6px 8px', width: 90, color: '#a855f7' }}>{t('proforma.form6.newUnits', '+نوي يونټونه')}</th>
+                        <th style={{ padding: '6px 8px', width: 100 }}>{t('proforma.form6.execMeetings', 'ايګزيکټيو غونډي')}</th>
+                        <th style={{ padding: '6px 8px', width: 75 }}>{t('proforma.form6.execPct', 'ايګزيکټيو %')}</th>
+                        <th style={{ padding: '6px 8px', width: 110 }}>{t('proforma.form6.commGbMeetings', 'کميټي / GB غونډي')}</th>
+                        <th style={{ padding: '6px 8px', width: 75 }}>{t('proforma.form6.commGbPct', 'کميټي %')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '6px 10px', textAlign: isRtl ? 'right' : 'left', fontWeight: 600, color: '#8b5cf6' }}>🏢 {t('proforma.form6.areaUnitsSec', 'علاقائي يونټونه (Area Units)')}</td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.areaUnitsCount ?? ''} onChange={(e) => updateForm6Upper('areaUnitsCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.newAreaUnitsCount ?? ''} onChange={(e) => updateForm6Upper('newAreaUnitsCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#a855f7' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.areaExecCount ?? ''} onChange={(e) => updateForm6Upper('areaExecCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.areaExecPct || '0%'} onChange={(e) => updateForm6Upper('areaExecPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.areaCommCount ?? ''} onChange={(e) => updateForm6Upper('areaCommCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.areaCommPct || '0%'} onChange={(e) => updateForm6Upper('areaCommPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '6px 10px', textAlign: isRtl ? 'right' : 'left', fontWeight: 600, color: '#f59e0b' }}>🏘️ {t('proforma.form6.basicUnitsSec', 'ابتدائي يونټونه (Basic Units)')}</td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.buCount ?? ''} onChange={(e) => updateForm6Upper('buCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.newBuCount ?? ''} onChange={(e) => updateForm6Upper('newBuCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#a855f7' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.buExecCount ?? ''} onChange={(e) => updateForm6Upper('buExecCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.buExecPct || '0%'} onChange={(e) => updateForm6Upper('buExecPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="number" min={0} value={upper.buGbCount ?? ''} onChange={(e) => updateForm6Upper('buGbCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                        <td style={{ padding: 3 }}><input type="text" value={upper.buGbPct || '0%'} onChange={(e) => updateForm6Upper('buGbPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              {/* Subordinate Basic Units */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🏘️ {t('proforma.form6.basicUnitsSec', 'ابتدائي يونټونه (Basic Units Metrics)')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buCount', 'ابتدائي يونټانو شمير (Total)')}</label>
-                    <NumberStepper
-                      value={upper.buCount ?? ''}
-                      onChange={(val) => updateForm6Upper('buCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.newBuCount', 'نوي يونټانو شمير (New)')}</label>
-                    <NumberStepper
-                      value={upper.newBuCount ?? ''}
-                      onChange={(val) => updateForm6Upper('newBuCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buExecCount', 'يونټانو ايګزيکټيو غونډو شمير')}</label>
-                    <NumberStepper
-                      value={upper.buExecCount ?? ''}
-                      onChange={(val) => updateForm6Upper('buExecCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buExecPct', 'غونډو فيصدي (%)')}</label>
-                    <input
-                      type="text"
-                      value={upper.buExecPct || '0%'}
-                      onChange={(e) => updateForm6Upper('buExecPct', e.target.value)}
-                      style={{ textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buGbCount', 'يونټانو General Body غونډي')}</label>
-                    <NumberStepper
-                      value={upper.buGbCount ?? ''}
-                      onChange={(val) => updateForm6Upper('buGbCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.buGbPct', 'غونډو فيصدي (%)')}</label>
-                    <input
-                      type="text"
-                      value={upper.buGbPct || '0%'}
-                      onChange={(e) => updateForm6Upper('buGbPct', e.target.value)}
-                      style={{ textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
+              {/* 3. Activities, Public Events & Blood Bank Data Grid */}
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                  <strong style={{ fontSize: 13 }}>📢 {t('proforma.form6.activitiesAndEvents', 'تنظيمي فعاليتونه، وينې بينک او عامه پروګرامونه – Data Grid')}</strong>
                 </div>
-              </div>
-            </div>
-
-            {/* Row 3: Political Reading & Student Wing (PSO) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
-              {/* Political Reading */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>📖 {t('proforma.form6.studySec', 'لوستنه / مطالعه (Ideological Political Study)')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyDistComm', 'ضلعي کميټي')}</label>
-                    <NumberStepper
-                      value={upper.studyDistComm ?? ''}
-                      onChange={(val) => updateForm6Upper('studyDistComm', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyAreaComm', 'علاقائي کميټي')}</label>
-                    <NumberStepper
-                      value={upper.studyAreaComm ?? ''}
-                      onChange={(val) => updateForm6Upper('studyAreaComm', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyUnitsCount', 'يونټانو شمير')}</label>
-                    <NumberStepper
-                      value={upper.studyUnitsCount ?? ''}
-                      onChange={(val) => updateForm6Upper('studyUnitsCount', val)}
-                    />
-                  </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 860, textAlign: 'center' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '6px 8px', width: 95, color: '#ef4444' }}>🩸 {t('proforma.form6.bloodDonationsCount', 'وینه عطیه (بوتل)')}</th>
+                        <th style={{ padding: '6px 8px', width: 105, color: '#10b981' }}>💵 {t('proforma.form6.bloodCashAmount', 'وینه نغد روپۍ')}</th>
+                        <th style={{ padding: '6px 8px', width: 100 }}>{t('proforma.form6.conferencesCount', 'کانفرنس/سيمينار')}</th>
+                        <th style={{ padding: '6px 8px', width: 95 }}>{t('proforma.form6.studyCirclesCount', 'سټډي سرکل')}</th>
+                        <th style={{ padding: '6px 8px', width: 95, color: '#a855f7' }}>{t('proforma.form6.inductionsCount', '+نوي شموليت')}</th>
+                        <th style={{ padding: '6px 8px', width: 100 }}>{t('proforma.form6.ralliesCount', 'جلسے مظاهرے')}</th>
+                        <th style={{ padding: '6px 8px', width: 110 }}>{t('proforma.form6.jirgasCount', 'جرګے/اولسي')}</th>
+                        <th style={{ padding: '6px 8px', width: 110 }}>{t('proforma.form6.alliedMeetingsCount', 'اتحاديان رابطے')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.bloodDonationsCount ?? ''} onChange={(e) => updateForm6Upper('bloodDonationsCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', color: '#ef4444', fontWeight: 600 }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.bloodCashAmount ?? ''} onChange={(e) => updateForm6Upper('bloodCashAmount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', color: '#10b981', fontWeight: 600 }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.conferencesCount ?? ''} onChange={(e) => updateForm6Upper('conferencesCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.studyCirclesCount ?? ''} onChange={(e) => updateForm6Upper('studyCirclesCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.inductionsCount ?? ''} onChange={(e) => updateForm6Upper('inductionsCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', color: '#a855f7', fontWeight: 600 }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.ralliesCount ?? ''} onChange={(e) => updateForm6Upper('ralliesCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.jirgasCount ?? ''} onChange={(e) => updateForm6Upper('jirgasCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.alliedMeetingsCount ?? ''} onChange={(e) => updateForm6Upper('alliedMeetingsCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              {/* Student Wing (PSO) */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🎓 {t('proforma.form6.psoSec', 'پي ايس او - PSO (Pashtun Students Org)')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.psoUnitsCount', 'يونټانو شمير (PSO Units)')}</label>
-                    <NumberStepper
-                      value={upper.psoUnitsCount ?? ''}
-                      onChange={(val) => updateForm6Upper('psoUnitsCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.newPsoUnitsCount', 'نوي يونټانو شمير (New PSO Units)')}</label>
-                    <NumberStepper
-                      value={upper.newPsoUnitsCount ?? ''}
-                      onChange={(val) => updateForm6Upper('newPsoUnitsCount', val)}
-                    />
-                  </div>
+              {/* 4. Operations, Villages w/o Unit & Finances Data Grid */}
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                  <strong style={{ fontSize: 13 }}>💰 {t('proforma.form6.operationsAndFinances', 'دفتر، کلي بې يونټه، تاديب او مالي چارې – Data Grid')}</strong>
                 </div>
-              </div>
-            </div>
-
-            {/* Row 4: Programs, Inductions & Public Gatherings */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
-              {/* Programs & Seminars */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>📚 {t('proforma.form6.programsSec', 'پروګرامونه، سټډي سرکل او شموليت')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.conferencesCount', 'کانفرنس / سيمينار')}</label>
-                    <NumberStepper
-                      value={upper.conferencesCount ?? ''}
-                      onChange={(val) => updateForm6Upper('conferencesCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.studyCirclesCount', 'سټډي سرکل')}</label>
-                    <NumberStepper
-                      value={upper.studyCirclesCount ?? ''}
-                      onChange={(val) => updateForm6Upper('studyCirclesCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.inductionsCount', 'نوي شموليت')}</label>
-                    <NumberStepper
-                      value={upper.inductionsCount ?? ''}
-                      onChange={(val) => updateForm6Upper('inductionsCount', val)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Public Gatherings & Allied Parties */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>📢 {t('proforma.form6.gatheringsSec', 'اولسي غونډي او اتحاديانو سره رابطے')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.ralliesCount', 'جلسے مظاهرے')}</label>
-                    <NumberStepper
-                      value={upper.ralliesCount ?? ''}
-                      onChange={(val) => updateForm6Upper('ralliesCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.jirgasCount', 'جرګے / اولسي غونډي')}</label>
-                    <NumberStepper
-                      value={upper.jirgasCount ?? ''}
-                      onChange={(val) => updateForm6Upper('jirgasCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.alliedMeetingsCount', 'اتحاديانو پارټيانو سره غونډي')}</label>
-                    <NumberStepper
-                      value={upper.alliedMeetingsCount ?? ''}
-                      onChange={(val) => updateForm6Upper('alliedMeetingsCount', val)}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 5: Operations, Villages Without Unit & Disciplinary Actions */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
-              {/* Operations & Villages */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>🏢 {t('proforma.form6.operationsSec', 'دفتر، کلي او تاديبي کاروائي')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.districtOfficeActivity', 'ضلعي دفتر ته فعاليت')}</label>
-                    <input
-                      type="text"
-                      value={upper.districtOfficeActivity || ''}
-                      onChange={(e) => updateForm6Upper('districtOfficeActivity', e.target.value)}
-                      placeholder="e.g. منظم فعاليت / Weekly hours"
-                      style={{ padding: '6px 10px', fontSize: 13 }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.villagesWithoutUnitCount', 'هغه کليو شمير چي يونټ نسته')}</label>
-                    <NumberStepper
-                      value={upper.villagesWithoutUnitCount ?? ''}
-                      onChange={(val) => updateForm6Upper('villagesWithoutUnitCount', val)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.disciplinaryActionsCount', 'تاديبي کاروائي (Disciplinary)')}</label>
-                    <input
-                      type="text"
-                      value={upper.disciplinaryActionsCount ?? ''}
-                      onChange={(e) => updateForm6Upper('disciplinaryActionsCount', e.target.value)}
-                      placeholder="0 or details"
-                      style={{ padding: '6px 10px', fontSize: 13 }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dues & Finances */}
-              <div className="card" style={{ padding: 16 }}>
-                <strong style={{ fontSize: 14, display: 'block', marginBottom: 12 }}>💰 {t('proforma.form6.financesSec', 'چنده او مالي چارې (Dues & Expenses)')}</strong>
-                <div className="form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.duesMonthly', 'مياشتنۍ چنده (PKR)')}</label>
-                    <input
-                      type="number"
-                      value={upper.duesMonthly ?? ''}
-                      onChange={(e) => updateForm6Upper('duesMonthly', e.target.value)}
-                      placeholder="0"
-                      style={{ padding: '6px 8px', fontSize: 13, textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12 }}>{t('proforma.form6.duesEmergency', 'هنګامي چنده (PKR)')}</label>
-                    <input
-                      type="number"
-                      value={upper.duesEmergency ?? ''}
-                      onChange={(e) => updateForm6Upper('duesEmergency', e.target.value)}
-                      placeholder="0"
-                      style={{ padding: '6px 8px', fontSize: 13, textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.form6.duesExpenses', 'خرڅ (Expenses)')}</label>
-                    <input
-                      type="number"
-                      value={upper.duesExpenses ?? ''}
-                      onChange={(e) => updateForm6Upper('duesExpenses', e.target.value)}
-                      placeholder="0"
-                      style={{ padding: '6px 8px', fontSize: 13, textAlign: 'center', fontWeight: 'bold' }}
-                    />
-                  </div>
-                  <div className="field">
-                    <label style={{ fontSize: 12, color: form6NetFinance >= 0 ? '#10b981' : '#ef4444' }}>{t('proforma.netBalance', 'Net Balance')}</label>
-                    <div style={{ padding: '7px 10px', fontWeight: 'bold', fontSize: 14, color: form6NetFinance >= 0 ? '#10b981' : '#ef4444', textAlign: 'center' }}>
-                      PKR {form6NetFinance.toLocaleString()}
-                    </div>
-                  </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 880, textAlign: 'center' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ padding: '6px 8px', minWidth: 160 }}>{t('proforma.form6.districtOfficeActivity', 'ضلعي دفتر فعاليت')}</th>
+                        <th style={{ padding: '6px 8px', width: 100 }}>{t('proforma.form6.villagesWithoutUnitCount', 'کلي بې يونټه')}</th>
+                        <th style={{ padding: '6px 8px', minWidth: 140 }}>{t('proforma.form6.disciplinaryActionsCount', 'تاديبي کاروائي')}</th>
+                        <th style={{ padding: '6px 8px', width: 105, borderLeft: '2px solid var(--border)' }}>{t('proforma.form6.duesMonthly', 'مياشتنۍ چنده')}</th>
+                        <th style={{ padding: '6px 8px', width: 105 }}>{t('proforma.form6.duesEmergency', 'هنګامي چنده')}</th>
+                        <th style={{ padding: '6px 8px', width: 105, color: '#ef4444' }}>{t('proforma.form6.duesExpenses', 'خرڅ (Expenses)')}</th>
+                        <th style={{ padding: '6px 8px', width: 110, color: form6NetFinance >= 0 ? '#10b981' : '#ef4444', borderRight: '2px solid var(--border)' }}>Net PKR</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style={{ padding: 4 }}><input type="text" value={upper.districtOfficeActivity || ''} onChange={(e) => updateForm6Upper('districtOfficeActivity', e.target.value)} placeholder="e.g. منظم فعاليت / Weekly hours" style={{ width: '100%', fontSize: 12, padding: '4px 6px' }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.villagesWithoutUnitCount ?? ''} onChange={(e) => updateForm6Upper('villagesWithoutUnitCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                        <td style={{ padding: 4 }}><input type="text" value={upper.disciplinaryActionsCount ?? ''} onChange={(e) => updateForm6Upper('disciplinaryActionsCount', e.target.value)} placeholder="0 or details" style={{ width: '100%', fontSize: 12, padding: '4px 6px' }} /></td>
+                        <td style={{ padding: 4, borderLeft: '2px solid var(--border)' }}><input type="number" min={0} value={upper.duesMonthly ?? ''} onChange={(e) => updateForm6Upper('duesMonthly', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', fontWeight: 600 }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.duesEmergency ?? ''} onChange={(e) => updateForm6Upper('duesEmergency', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', fontWeight: 600 }} /></td>
+                        <td style={{ padding: 4 }}><input type="number" min={0} value={upper.duesExpenses ?? ''} onChange={(e) => updateForm6Upper('duesExpenses', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', color: '#ef4444', fontWeight: 600 }} /></td>
+                        <td style={{ padding: '5px 8px', fontWeight: 'bold', color: form6NetFinance >= 0 ? '#10b981' : '#ef4444', fontSize: 13, borderRight: '2px solid var(--border)' }}>PKR {form6NetFinance.toLocaleString()}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -6316,741 +6014,246 @@ export default function ProformaReportsPage() {
             )}
           </div>
         ) : formType === 'form4' ? (
-          /* FORM 4 UPPER DASHBOARD CARDS */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Card 1: Executive & General Body Meetings */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>🤝</span> {t('proforma.form4MeetingsTitle', 'يونټ ايګزيکټيو او جنرل باډي غونډي (Unit Meetings)')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-                {/* Unit Executive Meeting */}
-                <div style={{ background: 'var(--surface-alt)', padding: 14, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <strong style={{ fontSize: 14 }}>{t('proforma.form4ExecMeeting', 'يونټ ايګزيکټيو غونډي (Executive Meeting)')}</strong>
-                      {form4ExecSlots > 0 && (
-                        form4ExecSum === form4ExecSlots ? (
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid #22c55e', fontWeight: 600 }}>
-                            ✓ {t('proforma.balanceCorrect', 'Balanced')}: {form4ExecPres + form4ExecAbs + form4ExecLeave}/{form4ExecSlots}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', fontWeight: 600 }}>
-                            ⚠️ {form4ExecSum}/{form4ExecSlots} ({form4ExecSlots - form4ExecSum > 0 ? `+${form4ExecSlots - form4ExecSum} left` : `${form4ExecSum - form4ExecSlots} over`})
-                          </span>
-                        )
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={handleAutoBalanceExec}
-                        className="btn secondary"
-                        style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, borderColor: '#0284c7', color: '#38bdf8' }}
-                        title={t('proforma.autoBalance', 'Auto-Balance attendance to match Total Slots')}
-                      >
-                        ⚡ {t('proforma.autoBalance', 'Auto-Balance')}
-                      </button>
-                      <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                        {calcForm4ExecPct}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.meetingDate', 'غونډي نيټه (Meeting Date)')}</label>
-                      <input
-                        type="text"
-                        value={upper.execDate || ''}
-                        onChange={(e) => updateUpper('execDate', e.target.value)}
-                        placeholder="12/10"
-                        style={{ padding: '5px 8px', fontSize: 13 }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.totalMembers', 'ايګزيکټيو شمير (Total Slots)')}</label>
-                      <NumberStepper
-                        value={upper.execSlots ?? ''}
-                        onChange={(val) => updateUpper('execSlots', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'حاضر (Present)')}</label>
-                      <NumberStepper
-                        value={upper.execPresent ?? ''}
-                        max={form4ExecSlots > 0 ? form4ExecSlots : Infinity}
-                        onChange={(val) => updateUpper('execPresent', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'غيرحاضر (Absent)')}</label>
-                      <NumberStepper
-                        value={upper.execAbsent ?? ''}
-                        onChange={(val) => updateUpper('execAbsent', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'رخصت (Leave)')}</label>
-                      <NumberStepper
-                        value={upper.execLeave ?? ''}
-                        onChange={(val) => updateUpper('execLeave', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'حاضري فيصدي (%)')}</label>
-                      <input
-                        type="text"
-                        value={upper.execPct || calcForm4ExecPct}
-                        onChange={(e) => updateUpper('execPct', e.target.value)}
-                        style={{ textAlign: 'center', fontWeight: 'bold' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Unit General Body Meeting */}
-                <div style={{ background: 'var(--surface-alt)', padding: 14, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <strong style={{ fontSize: 14 }}>{t('proforma.form4GbMeeting', 'يونټ جنرل باډي غونډي (General Body Meeting)')}</strong>
-                      {form4GbMembers > 0 && (
-                        form4GbSum === form4GbMembers ? (
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid #22c55e', fontWeight: 600 }}>
-                            ✓ {t('proforma.balanceCorrect', 'Balanced')}: {form4GbPres + form4GbAbs + form4GbLeave}/{form4GbMembers}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid #eab308', fontWeight: 600 }}>
-                            ⚠️ {form4GbSum}/{form4GbMembers} ({form4GbMembers - form4GbSum > 0 ? `+${form4GbMembers - form4GbSum} left` : `${form4GbSum - form4GbMembers} over`})
-                          </span>
-                        )
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={handleAutoBalanceGb}
-                        className="btn secondary"
-                        style={{ padding: '3px 8px', fontSize: 11, fontWeight: 600, borderColor: '#0284c7', color: '#38bdf8' }}
-                        title={t('proforma.autoBalance', 'Auto-Balance attendance to match Total Members')}
-                      >
-                        ⚡ {t('proforma.autoBalance', 'Auto-Balance')}
-                      </button>
-                      <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                        {calcForm4GbPct}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.meetingDate', 'غونډي نيټه (Meeting Date)')}</label>
-                      <input
-                        type="text"
-                        value={upper.gbDate || ''}
-                        onChange={(e) => updateUpper('gbDate', e.target.value)}
-                        placeholder="14/10"
-                        style={{ padding: '5px 8px', fontSize: 13 }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.totalMembers', 'يونټ ممبر شپ (Total Members)')}</label>
-                      <NumberStepper
-                        value={upper.gbMembers ?? ''}
-                        onChange={(val) => updateUpper('gbMembers', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'حاضر (Present)')}</label>
-                      <NumberStepper
-                        value={upper.gbPresent ?? ''}
-                        max={form4GbMembers > 0 ? form4GbMembers : Infinity}
-                        onChange={(val) => updateUpper('gbPresent', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'غيرحاضر (Absent)')}</label>
-                      <NumberStepper
-                        value={upper.gbAbsent ?? ''}
-                        onChange={(val) => updateUpper('gbAbsent', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'رخصت (Leave)')}</label>
-                      <NumberStepper
-                        value={upper.gbLeave ?? ''}
-                        onChange={(val) => updateUpper('gbLeave', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'حاضري فيصدي (%)')}</label>
-                      <input
-                        type="text"
-                        value={upper.gbPct || calcForm4GbPct}
-                        onChange={(e) => updateUpper('gbPct', e.target.value)}
-                        style={{ textAlign: 'center', fontWeight: 'bold' }}
-                      />
-                    </div>
-                  </div>
-                </div>
+          /* FORM 4 UPPER DATA GRID */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Meetings Data Grid */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <strong style={{ fontSize: 13 }}>🤝 {t('proforma.form4MeetingsTitle', 'يونټ غونډي (Unit Meetings) – Data Grid')}</strong>
+                <button type="button" onClick={handleAutoBalanceExec} className="btn secondary" style={{ marginInlineStart: 'auto', padding: '3px 8px', fontSize: 11, borderColor: '#0284c7', color: '#38bdf8', fontWeight: 600 }}>⚡ {t('proforma.autoBalance', 'Auto-Balance Exec')}</button>
+                <button type="button" onClick={handleAutoBalanceGb} className="btn secondary" style={{ padding: '3px 8px', fontSize: 11, borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}>⚡ {t('proforma.autoBalance', 'Auto-Balance GB')}</button>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 720, textAlign: 'center' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '6px 10px', textAlign: 'left', minWidth: 140 }}>{t('proforma.meetingType', 'Meeting Type')}</th>
+                      <th style={{ padding: '6px 8px', width: 100 }}>{t('proforma.meetingDate', 'نيټه (Date)')}</th>
+                      <th style={{ padding: '6px 8px', width: 80 }}>{t('proforma.totalMembers', 'Total')}</th>
+                      <th style={{ padding: '6px 8px', width: 80, color: '#22c55e' }}>{t('proforma.present', 'حاضر')}</th>
+                      <th style={{ padding: '6px 8px', width: 80, color: '#ef4444' }}>{t('proforma.absent', 'غير حاضر')}</th>
+                      <th style={{ padding: '6px 8px', width: 80, color: '#eab308' }}>{t('proforma.leave', 'رخصت')}</th>
+                      <th style={{ padding: '6px 8px', width: 80 }}>{t('proforma.attendancePct', '%')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: '#0284c7' }}>🏛️ {t('proforma.form4ExecMeeting', 'ايګزيکټيو غونډي')}</td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.execDate || ''} onChange={(e) => updateUpper('execDate', e.target.value)} placeholder="DD/MM" style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execSlots ?? ''} onChange={(e) => updateUpper('execSlots', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execPresent ?? ''} onChange={(e) => updateUpper('execPresent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execAbsent ?? ''} onChange={(e) => updateUpper('execAbsent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#ef4444' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execLeave ?? ''} onChange={(e) => updateUpper('execLeave', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#eab308' }} /></td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.execPct || calcForm4ExecPct} onChange={(e) => updateUpper('execPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: '#10b981' }}>👥 {t('proforma.form4GbMeeting', 'جنرل باډي غونډي')}</td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.gbDate || ''} onChange={(e) => updateUpper('gbDate', e.target.value)} placeholder="DD/MM" style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.gbMembers ?? ''} onChange={(e) => updateUpper('gbMembers', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.gbPresent ?? ''} onChange={(e) => updateUpper('gbPresent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.gbAbsent ?? ''} onChange={(e) => updateUpper('gbAbsent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#ef4444' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.gbLeave ?? ''} onChange={(e) => updateUpper('gbLeave', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#eab308' }} /></td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.gbPct || calcForm4GbPct} onChange={(e) => updateUpper('gbPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Card 2: PSO (Student Wing) & Ideological Education */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>🎓</span> {t('proforma.form4PsoTitle', 'پي ايس او يونټ او لوستنه (PSO Wing & Reading)')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4PsoMembers', 'پي ايس او غړو شمير (PSO Members)')}</label>
-                  <NumberStepper
-                    value={upper.psoMembers ?? ''}
-                    onChange={(val) => updateUpper('psoMembers', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#22c55e' }}>{t('proforma.form4PsoPresent', 'غونډه کي حاضر شمير (Present)')}</label>
-                  <NumberStepper
-                    value={upper.psoPresent ?? ''}
-                    max={form4PsoMembers > 0 ? form4PsoMembers : Infinity}
-                    onChange={(val) => updateUpper('psoPresent', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#38bdf8' }}>{t('proforma.form4PsoAttendancePct', 'حاضر فيصدي (PSO Attendance %)')}</label>
-                  <input
-                    type="text"
-                    value={upper.psoPct || calcForm4PsoPct}
-                    onChange={(e) => updateUpper('psoPct', e.target.value)}
-                    style={{ width: '100%', textAlign: 'center', fontWeight: 'bold', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#a855f7' }}>{t('proforma.form4Reading', 'لوستنه / مطالعه (Reading)')}</label>
-                  <NumberStepper
-                    value={upper.reading ?? ''}
-                    onChange={(val) => updateUpper('reading', val)}
-                  />
-                </div>
+            {/* PSO, Activities, Finance, Blood Bank Data Grid */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                <strong style={{ fontSize: 13 }}>📊 {t('proforma.form4OtherMetrics', 'PSO, فعاليتونه، مالي چارې او بلډ بينک – Data Grid')}</strong>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 900, textAlign: 'center' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '6px 10px', textAlign: 'left', minWidth: 160, borderRight: '1px solid var(--border)' }}>{t('proforma.metric', 'Metric')}</th>
+                      <th colSpan={3} style={{ padding: '5px', borderRight: '1px solid var(--border)', background: 'rgba(139,92,246,0.07)' }}>🎓 {t('proforma.form4PsoTitle', 'PSO Wing')}</th>
+                      <th colSpan={3} style={{ padding: '5px', borderRight: '1px solid var(--border)', background: 'rgba(56,189,248,0.07)' }}>📢 {t('proforma.form4ActivitiesTitle', 'Activities')}</th>
+                      <th colSpan={4} style={{ padding: '5px', borderRight: '1px solid var(--border)', background: 'rgba(16,185,129,0.07)' }}>💰 {t('proforma.form4FinancesTitle', 'Finance (PKR)')}</th>
+                      <th colSpan={4} style={{ padding: '5px', background: 'rgba(236,72,153,0.07)' }}>🩸 {t('proforma.form4BloodBankTitle', 'Blood Bank')}</th>
+                    </tr>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '2px solid var(--border)', fontSize: 11 }}>
+                      <th style={{ padding: '4px 8px', textAlign: 'left', borderRight: '1px solid var(--border)' }}></th>
+                      {/* PSO */}
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(139,92,246,0.05)' }}>{t('proforma.form4PsoMembers', 'Members')}</th>
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(139,92,246,0.05)', color: '#22c55e' }}>{t('proforma.present', 'Present')}</th>
+                      <th style={{ padding: '4px 4px', width: 60, background: 'rgba(139,92,246,0.05)', borderRight: '1px solid var(--border)' }}>%</th>
+                      {/* Activities */}
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(56,189,248,0.05)' }}>{t('proforma.form4Seminar', 'Seminar')}</th>
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(56,189,248,0.05)' }}>{t('proforma.form4StudyCircle', 'Study ⊙')}</th>
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(56,189,248,0.05)', borderRight: '1px solid var(--border)' }}>{t('proforma.form4NewMembers', '+Members')}</th>
+                      {/* Finance */}
+                      <th style={{ padding: '4px 4px', width: 75, background: 'rgba(16,185,129,0.05)' }}>{t('proforma.form4OrgDues', 'Org Dues')}</th>
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(16,185,129,0.05)' }}>{t('proforma.form4EmergencyDues', 'Emergency')}</th>
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(16,185,129,0.05)', color: '#ef4444' }}>{t('proforma.form4Expenses', 'Expenses')}</th>
+                      <th style={{ padding: '4px 4px', width: 75, background: 'rgba(16,185,129,0.05)', borderRight: '1px solid var(--border)', color: calcForm4NetFinance >= 0 ? '#22c55e' : '#ef4444' }}>Net</th>
+                      {/* Blood */}
+                      <th style={{ padding: '4px 4px', width: 60, background: 'rgba(236,72,153,0.05)' }}>{t('proforma.form4BloodPosts', 'Posts')}</th>
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(236,72,153,0.05)' }}>{t('proforma.form4BloodCash', 'Cash')}</th>
+                      <th style={{ padding: '4px 4px', width: 65, background: 'rgba(236,72,153,0.05)' }}>{t('proforma.form4Zakat', 'Zakat')}</th>
+                      <th style={{ padding: '4px 4px', width: 70, background: 'rgba(236,72,153,0.05)' }}>{t('proforma.form4Disciplinary', 'Disciplinary')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: '5px 8px', textAlign: 'left', fontWeight: 600, fontSize: 12, borderRight: '1px solid var(--border)', color: 'var(--text-soft)' }}>{t('proforma.values', 'Values')}</td>
+                      {/* PSO */}
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.psoMembers ?? ''} onChange={(e) => updateUpper('psoMembers', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.psoPresent ?? ''} onChange={(e) => updateUpper('psoPresent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e' }} /></td>
+                      <td style={{ padding: 3, borderRight: '1px solid var(--border)' }}><input type="text" value={upper.psoPct || calcForm4PsoPct} onChange={(e) => updateUpper('psoPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                      {/* Activities */}
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.seminar ?? ''} onChange={(e) => updateUpper('seminar', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.studyCircle ?? ''} onChange={(e) => updateUpper('studyCircle', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3, borderRight: '1px solid var(--border)' }}><input type="number" min={0} value={upper.newMembers ?? ''} onChange={(e) => updateUpper('newMembers', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e' }} /></td>
+                      {/* Finance */}
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.orgDonations ?? ''} onChange={(e) => updateUpper('orgDonations', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.emergencyDonations ?? ''} onChange={(e) => updateUpper('emergencyDonations', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.expenses ?? ''} onChange={(e) => updateUpper('expenses', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#ef4444' }} /></td>
+                      <td style={{ padding: '5px 6px', fontWeight: 'bold', fontSize: 12, color: calcForm4NetFinance >= 0 ? '#22c55e' : '#ef4444', borderRight: '1px solid var(--border)' }}>PKR {calcForm4NetFinance.toLocaleString()}</td>
+                      {/* Blood Bank */}
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.bloodPosts ?? ''} onChange={(e) => updateUpper('bloodPosts', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.bloodCash ?? ''} onChange={(e) => updateUpper('bloodCash', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.zakat ?? ''} onChange={(e) => updateUpper('zakat', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.disciplinary ?? ''} onChange={(e) => updateUpper('disciplinary', e.target.value)} placeholder="-" style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Card 3: Activities, Programs & Outreach */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>📢</span> {t('proforma.form4ActivitiesTitle', 'فعاليتونه، پروګرامونه او اولسي رابطه (Activities & Outreach)')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4Seminar', 'سيمينار (Seminar)')}</label>
-                  <NumberStepper
-                    value={upper.seminar ?? ''}
-                    onChange={(val) => updateUpper('seminar', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4StudyCircle', 'سټډي سرکل (Study Circle)')}</label>
-                  <NumberStepper
-                    value={upper.studyCircle ?? ''}
-                    onChange={(val) => updateUpper('studyCircle', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#22c55e' }}>{t('proforma.form4NewMembers', 'نوي شموليت (New Joinees)')}</label>
-                  <NumberStepper
-                    value={upper.newMembers ?? ''}
-                    onChange={(val) => updateUpper('newMembers', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#38bdf8' }}>{t('proforma.form4PublicEvents', 'اولسي غونډي / پروګرام')}</label>
-                  <NumberStepper
-                    value={upper.publicEvents ?? ''}
-                    onChange={(val) => updateUpper('publicEvents', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#eab308' }}>{t('proforma.form4InactiveContact', 'غير فعاله ملګرو سره رابطه')}</label>
-                  <NumberStepper
-                    value={upper.inactiveContact ?? ''}
-                    onChange={(val) => updateUpper('inactiveContact', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4PublicOutreach', 'اولس سره رابطه (Public Outreach)')}</label>
-                  <NumberStepper
-                    value={upper.publicOutreach ?? ''}
-                    onChange={(val) => updateUpper('publicOutreach', val)}
-                  />
-                </div>
+            {/* Outreach & Households */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                <strong style={{ fontSize: 13 }}>🌐 {t('proforma.form4OutreachGrid', 'اولسي رابطه، کورونه او لوستنه')}</strong>
               </div>
-            </div>
-
-            {/* Card 4: Finances & Dues */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>💰</span> {t('proforma.form4FinancesTitle', 'چنده او مالي چارې (Finances & Dues - PKR)')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4OrgDues', 'تنظيمي چنده (Org Dues)')}</label>
-                  <input
-                    type="number"
-                    value={upper.orgDonations ?? ''}
-                    onChange={(e) => updateUpper('orgDonations', e.target.value)}
-                    placeholder="8000"
-                    style={{ width: '100%', padding: '6px', fontWeight: 600 }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4EmergencyDues', 'هنګامي چنده (Emergency Dues)')}</label>
-                  <input
-                    type="number"
-                    value={upper.emergencyDonations ?? ''}
-                    onChange={(e) => updateUpper('emergencyDonations', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px', fontWeight: 600 }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#ef4444' }}>{t('proforma.form4Expenses', 'خرڅ (Expenses)')}</label>
-                  <input
-                    type="number"
-                    value={upper.expenses ?? ''}
-                    onChange={(e) => updateUpper('expenses', e.target.value)}
-                    placeholder="2250"
-                    style={{ width: '100%', padding: '6px', fontWeight: 600 }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: calcForm4NetFinance >= 0 ? '#22c55e' : '#ef4444' }}>
-                    {t('proforma.form4NetBalance', 'خالص پاتې / بيلانس (Net Balance)')}
-                  </label>
-                  <div style={{ padding: '6px 10px', fontWeight: 'bold', fontSize: 15, color: calcForm4NetFinance >= 0 ? '#22c55e' : '#ef4444' }}>
-                    PKR {calcForm4NetFinance.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 5: Discipline, Blood Bank & Households */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>🩸</span> {t('proforma.form4BloodBankTitle', 'تاديبي کاروائي، بلډ بينک او کورونه (Discipline, Blood Bank & Households)')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4Disciplinary', 'تاديبي کاروائي (Disciplinary)')}</label>
-                  <input
-                    type="text"
-                    value={upper.disciplinary ?? ''}
-                    onChange={(e) => updateUpper('disciplinary', e.target.value)}
-                    placeholder="-"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4Households', 'ټولو کورو شمير (Households)')}</label>
-                  <NumberStepper
-                    value={upper.totalHouseholds ?? ''}
-                    onChange={(val) => updateUpper('totalHouseholds', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4BloodPosts', 'بلډ بينک پوستونه (Appeals)')}</label>
-                  <NumberStepper
-                    value={upper.bloodPosts ?? ''}
-                    onChange={(val) => updateUpper('bloodPosts', val)}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4BloodCash', 'بلډ بينک نغدي (Cash PKR)')}</label>
-                  <input
-                    type="text"
-                    value={upper.bloodCash ?? ''}
-                    onChange={(e) => updateUpper('bloodCash', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4BloodTotalCash', 'ټولي نغدي (Total Cash)')}</label>
-                  <input
-                    type="text"
-                    value={upper.bloodTotalCash ?? ''}
-                    onChange={(e) => updateUpper('bloodTotalCash', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.form4Zakat', 'زکات (Zakat PKR)')}</label>
-                  <input
-                    type="text"
-                    value={upper.zakat ?? ''}
-                    onChange={(e) => updateUpper('zakat', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'center' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '6px 8px', width: 120 }}>{t('proforma.form4PublicEvents', 'اولسي غونډي')}</th>
+                      <th style={{ padding: '6px 8px', width: 120 }}>{t('proforma.form4InactiveContact', 'غير فعاله رابطه')}</th>
+                      <th style={{ padding: '6px 8px', width: 120 }}>{t('proforma.form4PublicOutreach', 'اولس رابطه')}</th>
+                      <th style={{ padding: '6px 8px', width: 120 }}>{t('proforma.form4Households', 'کورونه')}</th>
+                      <th style={{ padding: '6px 8px', width: 120 }}>{t('proforma.form4Reading', 'لوستنه (مطالعه)')}</th>
+                      <th style={{ padding: '6px 8px', width: 120 }}>{t('proforma.form4BloodTotalCash', 'بلډ ټولي نغدي')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.publicEvents ?? ''} onChange={(e) => updateUpper('publicEvents', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.inactiveContact ?? ''} onChange={(e) => updateUpper('inactiveContact', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.publicOutreach ?? ''} onChange={(e) => updateUpper('publicOutreach', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.totalHouseholds ?? ''} onChange={(e) => updateUpper('totalHouseholds', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.reading ?? ''} onChange={(e) => updateUpper('reading', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="text" value={upper.bloodTotalCash ?? ''} onChange={(e) => updateUpper('bloodTotalCash', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         ) : (
-          /* FORM 1 UPPER DASHBOARD CARDS */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Card 1: Executive & Committee Meetings */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>🤝</span> {t('proforma.meetingsSummary', 'Area Executive & Committee Meetings Summary')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-                {/* Area Executive Meeting */}
-                <div style={{ background: 'var(--surface-alt)', padding: 14, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <strong style={{ fontSize: 14 }}>{t('proforma.execMeetingTitle', 'Area Executive Meeting')}</strong>
-                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                      {calcExecPct}
-                    </span>
-                  </div>
-
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.meetingDate', 'Meeting Date')}</label>
-                      <input
-                        type="text"
-                        value={upper.execDate || formData.executiveMeetingDate || ''}
-                        onChange={(e) => {
-                          updateUpper('execDate', e.target.value);
-                          updateField('executiveMeetingDate', e.target.value);
-                        }}
-                        placeholder="24 Oct 2026"
-                        style={{ padding: '5px 8px', fontSize: 13 }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.totalMembers', 'Total Slots')}</label>
-                      <NumberStepper
-                        value={upper.execSlots ?? formData.executiveSlots}
-                        onChange={(val) => { updateUpper('execSlots', val); updateField('executiveSlots', val); }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'Present')}</label>
-                      <NumberStepper
-                        value={upper.execPresent ?? formData.executivePresent}
-                        max={execTotal > 0 ? execTotal : Infinity}
-                        onChange={(val) => { updateUpper('execPresent', val); updateField('executivePresent', val); }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'Absent')}</label>
-                      <NumberStepper
-                        value={upper.execAbsent ?? formData.executiveAbsent}
-                        onChange={(val) => { updateUpper('execAbsent', val); updateField('executiveAbsent', val); }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'Leave')}</label>
-                      <NumberStepper
-                        value={upper.execLeave ?? formData.executiveLeave}
-                        onChange={(val) => { updateUpper('execLeave', val); updateField('executiveLeave', val); }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'Attendance %')}</label>
-                      <input
-                        type="text"
-                        value={upper.execPct || calcExecPct}
-                        onChange={(e) => updateUpper('execPct', e.target.value)}
-                        style={{ textAlign: 'center', fontWeight: 'bold' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Area Committee Meeting */}
-                <div style={{ background: 'var(--surface-alt)', padding: 14, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <strong style={{ fontSize: 14 }}>{t('proforma.commMeetingTitle', 'Area Committee Meeting')}</strong>
-                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                      {calcCommPct}
-                    </span>
-                  </div>
-
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.commTotal', 'Committee Members')}</label>
-                      <NumberStepper
-                        value={upper.commTotal ?? formData.committeeTotal}
-                        onChange={(val) => { updateUpper('commTotal', val); updateField('committeeTotal', val); }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.present', 'Present')}</label>
-                      <NumberStepper
-                        value={upper.commPresent ?? formData.committeePresent}
-                        max={commTotal > 0 ? commTotal : Infinity}
-                        onChange={(val) => { updateUpper('commPresent', val); updateField('committeePresent', val); }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#ef4444' }}>{t('proforma.absent', 'Absent')}</label>
-                      <NumberStepper
-                        value={upper.commAbsent ?? formData.committeeAbsent}
-                        onChange={(val) => { updateUpper('commAbsent', val); updateField('committeeAbsent', val); }}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#eab308' }}>{t('proforma.leave', 'Leave')}</label>
-                      <NumberStepper
-                        value={upper.commLeave ?? formData.committeeLeave}
-                        onChange={(val) => { updateUpper('commLeave', val); updateField('committeeLeave', val); }}
-                      />
-                    </div>
-
-                    <div className="field" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: 12 }}>{t('proforma.attendancePct', 'Attendance %')}</label>
-                      <input
-                        type="text"
-                        value={upper.commPct || calcCommPct}
-                        onChange={(e) => updateUpper('commPct', e.target.value)}
-                        style={{ textAlign: 'center', fontWeight: 'bold' }}
-                      />
-                    </div>
-                  </div>
-                </div>
+          /* FORM 1 UPPER DATA GRID */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Meetings Data Grid */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <strong style={{ fontSize: 13 }}>🤝 {t('proforma.meetingsSummary', 'Area Executive & Committee Meetings – Data Grid')}</strong>
+                <button type="button" onClick={handleAutoBalanceAreaExec} className="btn secondary" style={{ marginInlineStart: 'auto', padding: '3px 8px', fontSize: 11, borderColor: '#0284c7', color: '#38bdf8', fontWeight: 600 }}>⚡ {t('proforma.autoBalance', 'Auto-Balance Exec')}</button>
+                <button type="button" onClick={handleAutoBalanceAreaComm} className="btn secondary" style={{ padding: '3px 8px', fontSize: 11, borderColor: '#10b981', color: '#10b981', fontWeight: 600 }}>⚡ {t('proforma.autoBalance', 'Auto-Balance Comm')}</button>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 720, textAlign: 'center' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '6px 10px', textAlign: 'left', minWidth: 160 }}>{t('proforma.meetingType', 'Meeting Type')}</th>
+                      <th style={{ padding: '6px 8px', width: 100 }}>{t('proforma.meetingDate', 'نيټه (Date)')}</th>
+                      <th style={{ padding: '6px 8px', width: 80 }}>{t('proforma.totalMembers', 'Total')}</th>
+                      <th style={{ padding: '6px 8px', width: 80, color: '#22c55e' }}>{t('proforma.present', 'حاضر')}</th>
+                      <th style={{ padding: '6px 8px', width: 80, color: '#ef4444' }}>{t('proforma.absent', 'غير حاضر')}</th>
+                      <th style={{ padding: '6px 8px', width: 80, color: '#eab308' }}>{t('proforma.leave', 'رخصت')}</th>
+                      <th style={{ padding: '6px 8px', width: 80 }}>{t('proforma.attendancePct', '%')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: '#0284c7' }}>🏛️ {t('proforma.execMeetingTitle', 'Area Executive Meeting')}</td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.execDate || formData.executiveMeetingDate || ''} onChange={(e) => { updateUpper('execDate', e.target.value); updateField('executiveMeetingDate', e.target.value); }} placeholder="DD/MM" style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execSlots ?? formData.executiveSlots ?? ''} onChange={(e) => { updateUpper('execSlots', e.target.value); updateField('executiveSlots', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execPresent ?? formData.executivePresent ?? ''} onChange={(e) => { updateUpper('execPresent', e.target.value); updateField('executivePresent', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execAbsent ?? formData.executiveAbsent ?? ''} onChange={(e) => { updateUpper('execAbsent', e.target.value); updateField('executiveAbsent', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#ef4444' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.execLeave ?? formData.executiveLeave ?? ''} onChange={(e) => { updateUpper('execLeave', e.target.value); updateField('executiveLeave', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#eab308' }} /></td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.execPct || calcExecPct} onChange={(e) => updateUpper('execPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: '#10b981' }}>👥 {t('proforma.commMeetingTitle', 'Area Committee Meeting')}</td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.commDate || ''} onChange={(e) => updateUpper('commDate', e.target.value)} placeholder="DD/MM" style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.commTotal ?? formData.committeeTotal ?? ''} onChange={(e) => { updateUpper('commTotal', e.target.value); updateField('committeeTotal', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.commPresent ?? formData.committeePresent ?? ''} onChange={(e) => { updateUpper('commPresent', e.target.value); updateField('committeePresent', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.commAbsent ?? formData.committeeAbsent ?? ''} onChange={(e) => { updateUpper('commAbsent', e.target.value); updateField('committeeAbsent', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#ef4444' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.commLeave ?? formData.committeeLeave ?? ''} onChange={(e) => { updateUpper('commLeave', e.target.value); updateField('committeeLeave', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#eab308' }} /></td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.commPct || calcCommPct} onChange={(e) => updateUpper('commPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(56,189,248,0.04)' }}>
+                      <td style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: '#8b5cf6' }}>🏢 {t('proforma.buExecMeetingsTitle', 'Basic Units Exec Meetings')}</td>
+                      <td style={{ padding: '5px', color: 'var(--text-soft)', fontSize: 11 }}>—</td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.buExecCount ?? ''} onChange={(e) => updateUpper('buExecCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.buExecPresent ?? ''} onChange={(e) => updateUpper('buExecPresent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                      <td style={{ padding: '5px', color: 'var(--text-soft)', fontSize: 11 }}>—</td>
+                      <td style={{ padding: '5px', color: 'var(--text-soft)', fontSize: 11 }}>—</td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.buExecPct || calcBuExecPct} onChange={(e) => updateUpper('buExecPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 600, color: '#f59e0b' }}>📋 {t('proforma.buGbMeetingsTitle', 'Basic Units GB Meetings')}</td>
+                      <td style={{ padding: '5px', color: 'var(--text-soft)', fontSize: 11 }}>—</td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.buGbCount ?? ''} onChange={(e) => updateUpper('buGbCount', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px' }} /></td>
+                      <td style={{ padding: 3 }}><input type="number" min={0} value={upper.buGbPresent ?? ''} onChange={(e) => updateUpper('buGbPresent', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '3px 4px', color: '#22c55e', fontWeight: 600 }} /></td>
+                      <td style={{ padding: '5px', color: 'var(--text-soft)', fontSize: 11 }}>—</td>
+                      <td style={{ padding: '5px', color: 'var(--text-soft)', fontSize: 11 }}>—</td>
+                      <td style={{ padding: 3 }}><input type="text" value={upper.buGbPct || calcBuGbPct} onChange={(e) => updateUpper('buGbPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '3px 4px' }} /></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Card 2: Subordinate Basic Units Meetings */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>🏢</span> {t('proforma.subordinateUnits', 'Subordinate Basic Units Activity Summary')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-                {/* BU Executive Meetings */}
-                <div style={{ background: 'var(--surface-alt)', padding: 14, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <strong style={{ fontSize: 14 }}>{t('proforma.buExecMeetingsTitle', 'Basic Units Executive Meetings')}</strong>
-                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                      {calcBuExecPct}
-                    </span>
-                  </div>
-
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.buExecMeetingsTotal', 'Exec Meetings Total')}</label>
-                      <NumberStepper
-                        value={upper.buExecCount ?? ''}
-                        onChange={(val) => updateUpper('buExecCount', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.buExecMeetingsPresent', 'Attended/Held Meetings')}</label>
-                      <NumberStepper
-                        value={upper.buExecPresent ?? ''}
-                        onChange={(val) => updateUpper('buExecPresent', val)}
-                      />
-                    </div>
-
-                    <div className="field" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: 12 }}>{t('proforma.buExecMeetingsPct', 'Attendance %')}</label>
-                      <input
-                        type="text"
-                        value={upper.buExecPct || calcBuExecPct}
-                        onChange={(e) => updateUpper('buExecPct', e.target.value)}
-                        style={{ textAlign: 'center', fontWeight: 'bold' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* BU General Body Meetings */}
-                <div style={{ background: 'var(--surface-alt)', padding: 14, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <strong style={{ fontSize: 14 }}>{t('proforma.buGbMeetingsTitle', 'Basic Units General Body Meetings')}</strong>
-                    <span className="badge ACTIVE" style={{ fontSize: 13, fontWeight: 'bold' }}>
-                      {calcBuGbPct}
-                    </span>
-                  </div>
-
-                  <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div className="field">
-                      <label style={{ fontSize: 12 }}>{t('proforma.buGbMeetingsTotal', 'GB Meetings Total')}</label>
-                      <NumberStepper
-                        value={upper.buGbCount ?? ''}
-                        onChange={(val) => updateUpper('buGbCount', val)}
-                      />
-                    </div>
-
-                    <div className="field">
-                      <label style={{ fontSize: 12, color: '#22c55e' }}>{t('proforma.buGbMeetingsPresent', 'Attended/Held Meetings')}</label>
-                      <NumberStepper
-                        value={upper.buGbPresent ?? ''}
-                        onChange={(val) => updateUpper('buGbPresent', val)}
-                      />
-                    </div>
-
-                    <div className="field" style={{ gridColumn: 'span 2' }}>
-                      <label style={{ fontSize: 12 }}>{t('proforma.buGbMeetingsPct', 'Attendance %')}</label>
-                      <input
-                        type="text"
-                        value={upper.buGbPct || calcBuGbPct}
-                        onChange={(e) => updateUpper('buGbPct', e.target.value)}
-                        style={{ textAlign: 'center', fontWeight: 'bold' }}
-                      />
-                    </div>
-                  </div>
-                </div>
+            {/* Membership, Finance & Other Metrics Grid */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                <strong style={{ fontSize: 13 }}>📊 {t('proforma.form1OtherMetrics', 'ممبر شپ، مالي چارې او نور شاخصونه – Data Grid')}</strong>
               </div>
-            </div>
-
-            {/* Card 3: Membership Status */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>👥</span> {t('proforma.unitsAndMembership', 'Basic Units & Membership')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.totalMembers', 'Total Members')}</label>
-                  <NumberStepper
-                    value={upper.totalMembers ?? formData.totalMembers}
-                    onChange={(val) => { updateUpper('totalMembers', val); updateField('totalMembers', val); }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#22c55e' }}>{t('proforma.activeMembers', 'Active Members')}</label>
-                  <NumberStepper
-                    value={upper.activeMembers ?? formData.activeMembers}
-                    onChange={(val) => { updateUpper('activeMembers', val); updateField('activeMembers', val); }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#38bdf8' }}>{t('proforma.memberPct', 'Active Membership %')}</label>
-                  <input
-                    type="text"
-                    value={upper.memberPct || calcMemberPct}
-                    onChange={(e) => updateUpper('memberPct', e.target.value)}
-                    style={{ width: '100%', textAlign: 'center', fontWeight: 'bold', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#a855f7' }}>{t('proforma.newInductions', 'New Inductions')}</label>
-                  <NumberStepper
-                    value={upper.newMembersCount ?? formData.newInductions}
-                    onChange={(val) => { updateUpper('newMembersCount', val); updateField('newInductions', val); }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: Finances & Dues */}
-            <div className="card">
-              <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--primary, #38bdf8)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>💰</span> {t('proforma.finances', 'Monthly Financials & Dues Summary (PKR)')}
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.unitDonations', 'Basic Units Dues')}</label>
-                  <input
-                    type="number"
-                    value={upper.unitDonations ?? ''}
-                    onChange={(e) => updateUpper('unitDonations', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.areaDonations', 'Area Executive Dues')}</label>
-                  <input
-                    type="number"
-                    value={upper.areaDonations ?? ''}
-                    onChange={(e) => updateUpper('areaDonations', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{t('proforma.emergencyDonations', 'Emergency Dues')}</label>
-                  <input
-                    type="number"
-                    value={upper.emergencyDonations ?? ''}
-                    onChange={(e) => updateUpper('emergencyDonations', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: '#ef4444' }}>{t('proforma.totalExpenses', 'Total Expenses')}</label>
-                  <input
-                    type="number"
-                    value={upper.totalExpenses ?? ''}
-                    onChange={(e) => updateUpper('totalExpenses', e.target.value)}
-                    placeholder="0"
-                    style={{ width: '100%', padding: '6px' }}
-                  />
-                </div>
-
-                <div style={{ background: 'var(--surface-alt)', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                  <label style={{ display: 'block', fontSize: 12, marginBottom: 6, fontWeight: 600, color: calcNetFinance >= 0 ? '#22c55e' : '#ef4444' }}>
-                    {t('proforma.netBalance', 'Net Balance (PKR)')}
-                  </label>
-                  <div style={{ padding: '6px 10px', fontWeight: 'bold', fontSize: 15, color: calcNetFinance >= 0 ? '#22c55e' : '#ef4444' }}>
-                    PKR {calcNetFinance.toLocaleString()}
-                  </div>
-                </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 900, textAlign: 'center' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface-alt)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '5px 8px', width: 80 }}>{t('proforma.totalMembers', 'ټول غړي')}</th>
+                      <th style={{ padding: '5px 8px', width: 80, color: '#22c55e' }}>{t('proforma.activeMembers', 'فعاله')}</th>
+                      <th style={{ padding: '5px 8px', width: 60 }}>%</th>
+                      <th style={{ padding: '5px 8px', width: 80, color: '#a855f7' }}>{t('proforma.newInductions', '+نوي')}</th>
+                      <th style={{ padding: '5px 8px', width: 90, borderLeft: '2px solid var(--border)' }}>{t('proforma.unitDonations', 'يونټ چنده')}</th>
+                      <th style={{ padding: '5px 8px', width: 90 }}>{t('proforma.areaDonations', 'Area چنده')}</th>
+                      <th style={{ padding: '5px 8px', width: 90 }}>{t('proforma.emergencyDonations', 'هنګامي چنده')}</th>
+                      <th style={{ padding: '5px 8px', width: 90, color: '#ef4444' }}>{t('proforma.totalExpenses', 'خرڅ')}</th>
+                      <th style={{ padding: '5px 8px', width: 90, color: calcNetFinance >= 0 ? '#22c55e' : '#ef4444', borderRight: '2px solid var(--border)' }}>Net PKR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.totalMembers ?? formData.totalMembers ?? ''} onChange={(e) => { updateUpper('totalMembers', e.target.value); updateField('totalMembers', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.activeMembers ?? formData.activeMembers ?? ''} onChange={(e) => { updateUpper('activeMembers', e.target.value); updateField('activeMembers', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', color: '#22c55e' }} /></td>
+                      <td style={{ padding: 4 }}><input type="text" value={upper.memberPct || calcMemberPct} onChange={(e) => updateUpper('memberPct', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, fontWeight: 'bold', padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.newMembersCount ?? formData.newInductions ?? ''} onChange={(e) => { updateUpper('newMembersCount', e.target.value); updateField('newInductions', e.target.value); }} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', color: '#a855f7' }} /></td>
+                      <td style={{ padding: 4, borderLeft: '2px solid var(--border)' }}><input type="number" min={0} value={upper.unitDonations ?? ''} onChange={(e) => updateUpper('unitDonations', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.areaDonations ?? ''} onChange={(e) => updateUpper('areaDonations', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.emergencyDonations ?? ''} onChange={(e) => updateUpper('emergencyDonations', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px' }} /></td>
+                      <td style={{ padding: 4 }}><input type="number" min={0} value={upper.totalExpenses ?? ''} onChange={(e) => updateUpper('totalExpenses', e.target.value)} style={{ width: '100%', textAlign: 'center', fontSize: 12, padding: '4px', color: '#ef4444' }} /></td>
+                      <td style={{ padding: '5px 8px', fontWeight: 'bold', color: calcNetFinance >= 0 ? '#22c55e' : '#ef4444', fontSize: 13, borderRight: '2px solid var(--border)' }}>PKR {calcNetFinance.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
