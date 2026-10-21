@@ -258,6 +258,15 @@ export default function ProformaReportsPage() {
 
   const homeTier = useMemo(() => homeTierOf(user)?.level || 'CENTRAL', [user]);
 
+  const isSuperOrCentral = useMemo(() => {
+    const roles = user?.allRoles || user?.roles || [];
+    return roles.includes('SUPER_ADMIN') || roles.includes('CENTRAL_ADMIN') || Boolean(user?.isBootstrap) || homeTier === 'CENTRAL';
+  }, [user, homeTier]);
+
+  const isProvinceOrHigher = useMemo(() => {
+    return isSuperOrCentral || homeTier === 'PROVINCE';
+  }, [isSuperOrCentral, homeTier]);
+
   // Compute allowed forms strictly according to the user's home tier (lower tier cannot access higher)
   const allowedForms = useMemo(() => {
     return PROFORMA_FORMS.filter((f) => isLevelAllowed(user, f.targetLevel));
@@ -301,7 +310,9 @@ export default function ProformaReportsPage() {
   const [areasList, setAreasList] = useState([]);
   const [selectedAreaId, setSelectedAreaId] = useState('');
   const [provincesList, setProvincesList] = useState([]);
-  const [selectedProvinceId, setSelectedProvinceId] = useState(() => (ctx?.provinceId || user?.scope?.provinceId || ''));
+  const [selectedProvinceId, setSelectedProvinceId] = useState(() => (
+    (ctx?.unitLevel === 'PROVINCE' && ctx?.unitId) || ctx?.provinceId || user?.scope?.provinceId || ''
+  ));
 
   // Active Tab: 'upper' (Overview & Upper Table), 'roster' (Executive Members), 'notes' (Remarks)
   const [activeTab, setActiveTab] = useState('upper');
@@ -344,9 +355,9 @@ export default function ProformaReportsPage() {
   // Resolve effective provinceId
   const effectiveProvinceId = useMemo(() => {
     if (selectedProvinceId) return selectedProvinceId;
-    if (ctx?.unitLevel === 'PROVINCE') return ctx.unitId;
-    if (ctx?.provinceId) return ctx.provinceId;
-    if (user?.scope?.provinceId) return user.scope.provinceId;
+    if (ctx?.unitLevel === 'PROVINCE' && ctx?.unitId) return String(ctx.unitId);
+    if (ctx?.provinceId) return String(ctx.provinceId);
+    if (user?.scope?.provinceId) return String(user.scope.provinceId);
     return provincesList[0]?._id ? String(provincesList[0]._id) : '';
   }, [selectedProvinceId, ctx, user, provincesList]);
 
@@ -356,15 +367,21 @@ export default function ProformaReportsPage() {
       .then((res) => {
         const list = res.data?.data || [];
         setProvincesList(list);
-        if (list.length > 0 && !selectedProvinceId) {
-          const defaultProv = (user?.scope?.provinceId && list.some((p) => String(p._id) === String(user.scope.provinceId)))
-            ? String(user.scope.provinceId)
-            : String(list[0]._id);
-          setSelectedProvinceId(defaultProv);
+        if (list.length > 0) {
+          setSelectedProvinceId((prev) => {
+            if (prev && list.some((p) => String(p._id) === String(prev))) return prev;
+            const provFromScope = (user?.scope?.provinceId && list.some((p) => String(p._id) === String(user.scope.provinceId)))
+              ? String(user.scope.provinceId)
+              : null;
+            const provFromCtx = (ctx?.unitLevel === 'PROVINCE' && ctx?.unitId && list.some((p) => String(p._id) === String(ctx.unitId)))
+              ? String(ctx.unitId)
+              : null;
+            return provFromScope || provFromCtx || String(list[0]._id);
+          });
         }
       })
       .catch((err) => console.error('Failed to load provinces:', err));
-  }, [user?.scope?.provinceId]);
+  }, [user?.scope?.provinceId, ctx?.unitLevel, ctx?.unitId]);
 
   // Load districts list for Form 6-9
   useEffect(() => {
@@ -477,21 +494,23 @@ export default function ProformaReportsPage() {
   // Resolve active unit display name
   const activeUnitDisplayName = useMemo(() => {
     if (formType === 'form6' || formType === 'form7' || formType === 'form8' || formType === 'form9') {
-      if (ctx?.unitLevel === 'DISTRICT') return ctx.unitName;
       const found = districtsList.find((d) => String(d._id) === String(targetId));
       if (found?.name) return found.name;
+      if (ctx?.unitLevel === 'DISTRICT') return ctx.unitName;
       if (ctx?.unitLevel === 'AREA') return ctx.unitName;
       return formData.districtName || formData.areaName || 'District';
     }
     if (formType === 'form5') {
-      if (ctx?.unitLevel === 'PROVINCE') return ctx.unitName;
       const found = provincesList.find((p) => String(p._id) === String(targetId));
-      return found?.name || formData.provinceName || 'Province';
+      if (found?.name) return found.name;
+      if (ctx?.unitLevel === 'PROVINCE') return ctx.unitName;
+      return formData.provinceName || 'Province';
     }
     if (formType === 'form4') {
-      if (ctx?.unitLevel === 'BASIC_UNIT') return ctx.unitName;
       const found = basicUnitsList.find((b) => String(b._id) === String(targetId));
-      return found?.name || formData.unitName || 'Basic Unit';
+      if (found?.name) return found.name;
+      if (ctx?.unitLevel === 'BASIC_UNIT') return ctx.unitName;
+      return formData.unitName || 'Basic Unit';
     }
     const foundArea = areasList.find((a) => String(a._id) === String(targetId));
     if (foundArea?.name) return foundArea.name;
@@ -3924,13 +3943,13 @@ export default function ProformaReportsPage() {
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
                     {t('proforma.district', 'District')}
                   </label>
-                  {ctx?.unitLevel === 'DISTRICT' ? (
+                  {(!isProvinceOrHigher && ctx?.unitLevel === 'DISTRICT') ? (
                     <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
                       🏛️ {ctx?.unitName || 'Current District'}
                     </div>
                   ) : (
                     <select
-                      value={selectedDistrictId}
+                      value={selectedDistrictId || effectiveDistrictId}
                       onChange={(e) => setSelectedDistrictId(e.target.value)}
                       style={{ minWidth: 180, fontWeight: 600 }}
                     >
@@ -3951,13 +3970,13 @@ export default function ProformaReportsPage() {
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
                     {t('proforma.district', 'District')}
                   </label>
-                  {ctx?.unitLevel === 'DISTRICT' ? (
+                  {(!isProvinceOrHigher && ctx?.unitLevel === 'DISTRICT') ? (
                     <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
                       🏛️ {ctx?.unitName || 'Current District'}
                     </div>
                   ) : (
                     <select
-                      value={selectedDistrictId}
+                      value={selectedDistrictId || effectiveDistrictId}
                       onChange={(e) => setSelectedDistrictId(e.target.value)}
                       style={{ minWidth: 180, fontWeight: 600 }}
                     >
@@ -4015,15 +4034,15 @@ export default function ProformaReportsPage() {
                   <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
                     {t('proforma.province', 'Province')}
                   </label>
-                  {ctx?.unitLevel === 'PROVINCE' ? (
+                  {(!isSuperOrCentral && ctx?.unitLevel === 'PROVINCE') ? (
                     <div style={{ padding: '7px 14px', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, fontSize: 13 }}>
-                      🏛️ {ctx?.unitName || 'Current Province'}
+                      🏛️ {ctx?.unitName || user?.scope?.provinceName || 'Current Province'}
                     </div>
                   ) : (
                     <select
-                      value={selectedProvinceId}
+                      value={selectedProvinceId || effectiveProvinceId}
                       onChange={(e) => setSelectedProvinceId(e.target.value)}
-                      style={{ minWidth: 180, fontWeight: 600 }}
+                      style={{ minWidth: 200, fontWeight: 600 }}
                     >
                       {provincesList.length === 0 ? (
                         <option value="">{t('proforma.noProvincesFound', '(No Provinces Found)')}</option>
@@ -4113,13 +4132,13 @@ export default function ProformaReportsPage() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 {ctx?.unitLevel !== 'AREA' && ctx?.unitLevel !== 'BASIC_UNIT' ? (
                   <>
-                    {(homeTier === 'CENTRAL' || homeTier === 'PROVINCE') && (
+                    {(homeTier === 'CENTRAL' || homeTier === 'PROVINCE') ? (
                       <div>
                         <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
                           {t('proforma.district', 'District')}
                         </label>
                         <select
-                          value={selectedDistrictId}
+                          value={selectedDistrictId || effectiveDistrictId}
                           onChange={(e) => setSelectedDistrictId(e.target.value)}
                           style={{ minWidth: 160, fontWeight: 600 }}
                         >
@@ -4128,8 +4147,7 @@ export default function ProformaReportsPage() {
                           ))}
                         </select>
                       </div>
-                    )}
-                    {(homeTier === 'DISTRICT' || ctx?.unitLevel === 'DISTRICT') && (
+                    ) : (
                       <div>
                         <label style={{ display: 'block', fontWeight: 600, marginBottom: 4, fontSize: 13 }}>
                           {t('proforma.district', 'District')}
