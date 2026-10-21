@@ -24,20 +24,25 @@ const SCOPE_KEY = {
 
 function accessFromAssignments(user, assignments) {
   if (!user) return null;
-  if (user.roles?.includes('SUPER_ADMIN') || user.roles?.includes('CENTRAL_ADMIN')) return { level: 'CENTRAL', unitId: null };
+  const rawUser = typeof user.toObject === 'function' ? user.toObject() : (user._doc || user);
+  const roles = rawUser.roles || user.roles || [];
+  const scope = rawUser.scope || user.scope || {};
+  const memberId = rawUser.memberId || user.memberId;
+
+  if (roles.includes('SUPER_ADMIN') || roles.includes('CENTRAL_ADMIN')) return { level: 'CENTRAL', unitId: null };
 
   // Administrative scope from user document (for admin roles without RoleAssignment records)
-  if (user.roles?.includes('PROVINCE_ADMIN') && user.scope?.provinceId) {
-    return { level: 'PROVINCE', unitId: String(user.scope.provinceId) };
+  if (roles.includes('PROVINCE_ADMIN') && scope.provinceId) {
+    return { level: 'PROVINCE', unitId: String(scope.provinceId) };
   }
-  if (user.roles?.includes('DISTRICT_ADMIN') && user.scope?.districtId) {
-    return { level: 'DISTRICT', unitId: String(user.scope.districtId) };
+  if (roles.includes('DISTRICT_ADMIN') && scope.districtId) {
+    return { level: 'DISTRICT', unitId: String(scope.districtId) };
   }
-  if (user.roles?.includes('AREA_ADMIN') && user.scope?.areaId) {
-    return { level: 'AREA', unitId: String(user.scope.areaId) };
+  if (roles.includes('AREA_ADMIN') && scope.areaId) {
+    return { level: 'AREA', unitId: String(scope.areaId) };
   }
 
-  if (!user.memberId) return null;
+  if (!memberId) return null;
 
   const central = assignments.find((a) => a.unitLevel === 'CENTRAL'
     && (CENTRAL_CABINET_DASHBOARD_ROLES.includes(a.roleCode) || a.roleCode !== 'MEMBER'));
@@ -52,18 +57,19 @@ function accessFromAssignments(user, assignments) {
 
 async function dashboardAccessByRole(user) {
   if (!user) return {};
-  const assignments = user.memberId ? await RoleAssignment.find({
-    memberId: user.memberId, state: 'APPROVED', endedAt: { $exists: false },
+  const rawUser = typeof user.toObject === 'function' ? user.toObject() : (user._doc || user);
+  const assignments = rawUser.memberId ? await RoleAssignment.find({
+    memberId: rawUser.memberId, state: 'APPROVED', endedAt: { $exists: false },
   }).select('unitLevel unitId roleCode').lean() : [];
-  return Object.fromEntries((user.roles || []).map((role) => [role,
-    accessFromAssignments({ ...user, roles: [role], memberId: user.memberId },
+  return Object.fromEntries((rawUser.roles || []).map((role) => [role,
+    accessFromAssignments({ ...rawUser, roles: [role], memberId: rawUser.memberId },
       assignments.filter((a) => a.roleCode === role)),
   ]));
 }
 
 async function dashboardAccess(user, activeRole) {
   const byRole = await dashboardAccessByRole(user);
-  if (activeRole) return Object.hasOwn(byRole, activeRole) ? byRole[activeRole] : null;
+  if (activeRole && byRole[activeRole]) return byRole[activeRole];
   for (const level of ['CENTRAL', 'PROVINCE', 'DISTRICT', 'AREA', 'BASIC_UNIT']) {
     const access = Object.values(byRole).find((a) => a?.level === level);
     if (access) return access;
