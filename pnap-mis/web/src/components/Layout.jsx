@@ -272,7 +272,7 @@ export default function Layout() {
       />
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-top-row">
-          <Link to="/unit" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <Link to="/" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
             <img
               src={branding?.logos?.sidebar?.url || '/logo.png'}
               alt="PNAP Logo"
@@ -315,7 +315,7 @@ export default function Layout() {
               storageKey="pnap_nav_super_admin"
               defaultOpen
             >
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               {/* Lands on the user directory pre-filtered to the tier
                   Super Admin is responsible for; the create action for
                   this role lives there too, since a Central Admin has
@@ -391,7 +391,7 @@ export default function Layout() {
           <>
             <div className="nav-group">{t('nav.myArea', 'My Area')}</div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               <NavLink to="/admin/manage-org">{t('nav.manageBasicUnits', 'Manage Basic Units')}</NavLink>
               <NavLink to="/members/pending" end>{t('nav.memberApprovals', 'Member Approvals')}</NavLink>
               <NavLink
@@ -413,7 +413,7 @@ export default function Layout() {
           <>
             <div className="nav-group">{t('nav.myOrganization', 'My Organization')}</div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               <NavLink to="/admin/manage-org">{t('nav.manageProvinces', 'Manage Provinces')}</NavLink>
               <NavLink to="/members">{t('nav.provinceMembers', 'Province Members')}</NavLink>
               <NavLink to="/unit/cabinet">{t('nav.assignCabinetRoles', 'Assign Province Cabinet Roles')}</NavLink>
@@ -429,7 +429,7 @@ export default function Layout() {
           <>
             <div className="nav-group">{t('nav.myDistrict', 'My District')}</div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               <NavLink to="/admin/manage-org">{t('nav.manageAreas', 'Manage Areas')}</NavLink>
               <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
               <NavLink to="/unit/cabinet">{t('nav.assignCabinetRoles', 'Assign Area Cabinet Roles')}</NavLink>
@@ -445,7 +445,7 @@ export default function Layout() {
           <>
             <div className="nav-group">{t('nav.myProvince', 'My Province')}</div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               <NavLink to="/admin/manage-org">{t('nav.manageDistricts', 'Manage Districts')}</NavLink>
               <NavLink to="/members">{t('nav.allMembers', 'All Province Members')}</NavLink>
               <NavLink to="/unit/cabinet">{t('nav.assignCabinetRoles', 'Assign District Cabinet Roles')}</NavLink>
@@ -463,7 +463,7 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
             </div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               <NavLink to="/unit/cabinet">{t('nav.cabinetAndRoles', 'Cabinet & Roles')}</NavLink>
               <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
               <UnitNavLink to="/unit/activities">{t('nav.activities', 'Activities')}</UnitNavLink>
@@ -486,7 +486,7 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
             </div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
               <NavLink to="/unit/cabinet">{t('nav.cabinet', 'Cabinet')}</NavLink>
               <UnitNavLink to="/unit/meetings">{t('nav.meetings', 'Meetings')}</UnitNavLink>
@@ -512,7 +512,7 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
             </div>
             <nav>
-              <NavLink to="/unit" end>
+              <NavLink to="/" end>
                 {t('nav.dashboard', 'Dashboard')}
               </NavLink>
               {canFinance && <UnitNavLink to="/unit/finance">{t('nav.finance', 'Finance')}</UnitNavLink>}
@@ -539,7 +539,7 @@ export default function Layout() {
           <>
             <div className="nav-group">{t('nav.myUnit', 'My Unit')}</div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.myDashboard', 'My Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.myDashboard', 'My Dashboard')}</NavLink>
               {/* No committee group for a pure member, but these stay
                   body-aware so the entry doesn't stay lit if one lands
                   on a ?body=COMMITTEE URL from elsewhere. */}
@@ -559,7 +559,7 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('nav.myProvince', 'Province')}
             </div>
             <nav>
-              <NavLink to="/unit" end>
+              <NavLink to="/" end>
                 {t('nav.dashboard', 'Dashboard')}
               </NavLink>
               <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
@@ -585,7 +585,7 @@ export default function Layout() {
               {ctx ? `${ctx.unitLevel.replace('_', ' ')} · ${ctx.unitName}` : t('units.unit', 'Unit')}
             </div>
             <nav>
-              <NavLink to="/unit" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
+              <NavLink to="/" end>{t('nav.dashboard', 'Dashboard')}</NavLink>
               <NavLink to="/members">{t('nav.members', 'Members')}</NavLink>
               {canRegister && <NavLink to="/members/new">{t('nav.registerMember', 'Register Member')}</NavLink>}
               {canApproveMembers && <NavLink to="/members/pending">{t('nav.approvalQueue', 'Approval Queue')}</NavLink>}

@@ -47,7 +47,7 @@ export default function NationalPage() {
           <Link className="btn" to="/unit/congress" onClick={jumpToCentral}>Open Congress Roster →</Link>
           <Link className="btn secondary" to="/unit/meetings?body=CONGRESS" onClick={jumpToCentral}>Congress Meetings →</Link>
           <Link className="btn secondary" to="/unit/jirga" onClick={jumpToCentral}>Qomi Jirga Assembly →</Link>
-          <Link className="btn secondary" to="/unit" onClick={jumpToCentral}>Central Dashboard →</Link>
+          <Link className="btn secondary" to="/" onClick={jumpToCentral}>Central Dashboard →</Link>
         </div>
       </div>
 
